@@ -12,7 +12,7 @@ export class ObservabilityManager {
 
 
   /**
-   * Configures Kairo with OpenTelemetry tracing for AI agents and tools
+   * Configures Agent365 with OpenTelemetry tracing for AI agents and tools
    * @param configure Optional configuration callback for the Builder
    * @returns The configured Builder instance
    */

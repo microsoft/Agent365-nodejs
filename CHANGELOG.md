@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - 2025-01-03
 
 ### Added
-- Initial release of Kairo TypeScript SDK
+- Initial release of Agent365 TypeScript SDK
 - OpenTelemetry integration for comprehensive observability
 - Multi-agent support with context propagation
 - Agent execution tracking with `ExecuteAgentScope`

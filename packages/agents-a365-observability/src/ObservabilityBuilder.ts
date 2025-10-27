@@ -12,7 +12,7 @@ import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
 import { trace } from '@opentelemetry/api';
 import { ClusterCategory } from '@microsoft/agents-a365-runtime';
 /**
- * Configuration options for Kairo
+ * Configuration options for Agent365 Observability Builder
  */
 export interface BuilderOptions {
   /** Custom service name for telemetry */
@@ -28,7 +28,7 @@ export interface BuilderOptions {
 }
 
 /**
- * Builder for configuring Kairo with OpenTelemetry tracing
+ * Builder for configuring Agent365 with OpenTelemetry tracing
  */
 export class ObservabilityBuilder {
   private options: BuilderOptions = {};
@@ -92,7 +92,7 @@ export class ObservabilityBuilder {
   }
 
   /**
-   * Builds and initializes the Kairo configuration
+   * Builds and initializes the Agent365 configuration
    * @returns The configured NodeSDK instance
    */
   public build(): boolean {

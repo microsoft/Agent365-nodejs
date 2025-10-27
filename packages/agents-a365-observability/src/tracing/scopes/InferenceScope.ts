@@ -5,18 +5,22 @@
 import { SpanKind } from '@opentelemetry/api';
 import { OpenTelemetryScope } from './OpenTelemetryScope';
 import { OpenTelemetryConstants } from '../constants';
-import { InferenceDetails, InferenceResponse, InferenceOperationType, AgentDetails, TenantDetails } from '../contracts';
+import {
+  InferenceDetails,
+  AgentDetails,
+  TenantDetails
+} from '../contracts';
 
 /**
- * Provides tracing scope for LLM/AI model inference calls
+ * Provides OpenTelemetry tracing scope for generative AI inference operations.
  */
 export class InferenceScope extends OpenTelemetryScope {
   /**
-   * Creates and starts a new scope for inference tracing
-   * @param details The inference details
+   * Creates and starts a new scope for inference tracing.
+   * @param details The inference call details
    * @param agentDetails The agent details
    * @param tenantDetails The tenant details
-   * @returns A new scope instance
+   * @returns A new InferenceScope instance
    */
   public static start(details: InferenceDetails, agentDetails: AgentDetails, tenantDetails: TenantDetails): InferenceScope {
     return new InferenceScope(details, agentDetails, tenantDetails);
@@ -25,39 +29,71 @@ export class InferenceScope extends OpenTelemetryScope {
   private constructor(details: InferenceDetails, agentDetails: AgentDetails, tenantDetails: TenantDetails) {
     super(
       SpanKind.CLIENT,
-      InferenceOperationType.CHAT,
-      `${InferenceOperationType.CHAT} ${details.modelName}`,
+      details.operationName.toString(),
+      `${details.operationName} ${details.model}`,
       agentDetails,
       tenantDetails
     );
 
-    // Set model information
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_REQUEST_MODEL_KEY, details.modelName);
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY, details.provider);
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_REQUEST_MODEL_KEY, details.modelVersion);
-
-    // Set request parameters
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_REQUEST_TEMPERATURE_KEY, details.temperature);
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_REQUEST_MAX_TOKENS_KEY, details.maxTokens);
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_REQUEST_TOP_P_KEY, details.topP);
-
-    // Set prompt content if enabled
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, details.prompt);
+    // Set core inference information matching C# implementation
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY, details.operationName.toString());
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_REQUEST_MODEL_KEY, details.model);
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY, details.providerName);
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_INPUT_TOKENS_KEY, details.inputTokens?.toString());
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY, details.outputTokens?.toString());
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_RESPONSE_FINISH_REASONS_KEY, details.finishReasons?.join(','));
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_RESPONSE_ID_KEY, details.responseId);
   }
 
   /**
-   * Records response information for inference telemetry tracking
-   * @param response The inference response details
+   * Records the input messages for telemetry tracking.
+   * @param messages Array of input messages
    */
-  public recordResponse(response: InferenceResponse): void {
-    if (InferenceScope.enableTelemetry) {
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EVENT_CONTENT, response.content);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_RESPONSE_ID_KEY, response.responseId);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_RESPONSE_FINISH_REASONS_KEY, response.finishReason);
+  public recordInputMessages(messages: string[]): void {
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, messages.join(','));
+  }
 
-      // Token usage metrics
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_INPUT_TOKENS_KEY, response.inputTokens);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY, response.outputTokens);
+  /**
+   * Records the output messages for telemetry tracking.
+   * @param messages Array of output messages
+   */
+  public recordOutputMessages(messages: string[]): void {
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY, messages.join(','));
+  }
+
+  /**
+   * Records the number of input tokens for telemetry tracking.
+   * @param inputTokens Number of input tokens
+   */
+  public recordInputTokens(inputTokens: number): void {
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_INPUT_TOKENS_KEY, inputTokens.toString());
+  }
+
+  /**
+   * Records the number of output tokens for telemetry tracking.
+   * @param outputTokens Number of output tokens
+   */
+  public recordOutputTokens(outputTokens: number): void {
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY, outputTokens.toString());
+  }
+
+  /**
+   * Records the response id for telemetry tracking.
+   * @param responseId The response ID
+   */
+  public recordResponseId(responseId: string): void {
+    if (responseId && responseId.trim()) {
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_RESPONSE_ID_KEY, responseId);
+    }
+  }
+
+  /**
+   * Records the finish reasons for telemetry tracking.
+   * @param finishReasons Array of finish reasons
+   */
+  public recordFinishReasons(finishReasons: string[]): void {
+    if (finishReasons && finishReasons.length > 0) {
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_RESPONSE_FINISH_REASONS_KEY, finishReasons.join(','));
     }
   }
 

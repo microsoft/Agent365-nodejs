@@ -129,6 +129,61 @@ export interface ToolCallDetails {
 
   /** The type of the tool being executed */
   toolType?: string;
+
+  /** The endpoint for the tool execution */
+  endpoint?: ServiceEndpoint;
+}
+
+/**
+ * Details about a caller
+ */
+export interface CallerDetails {
+  /** The unique identifier for the caller */
+  callerId?: string;
+
+  /** The user principal name (UPN) of the caller */
+  callerUpn?: string;
+
+  /** The display name of the caller */
+  callerName?: string;
+
+  /** The user ID of the caller */
+  callerUserId?: string;
+
+  /** The tenant ID of the caller */
+  tenantId?: string;
+}
+
+/**
+ * Enhanced agent details with additional properties
+ */
+export interface EnhancedAgentDetails extends AgentDetails {
+  /** The agent user ID (AUID) */
+  agentAUID?: string;
+
+  /** The agent user principal name (UPN) */
+  agentUPN?: string;
+
+  /** The agent blueprint/application ID */
+  agentBlueprintId?: string;
+
+  /** The tenant ID for the agent */
+  tenantId?: string;
+}
+
+/**
+ * Represents an endpoint for agent invocation
+ */
+export interface ServiceEndpoint {
+  /** The host address */
+  host: string;
+
+  /** The port number */
+  port?: number;
+
+  /** The protocol (e.g., http, https) */
+  protocol?: string;
+
 }
 
 /**
@@ -137,33 +192,38 @@ export interface ToolCallDetails {
 export interface InvokeAgentDetails extends AgentDetails {
   /** The request payload for the agent invocation */
   request?: AgentRequest;
+
+  /** The endpoint for the agent invocation */
+  endpoint?: ServiceEndpoint;
+
+  /** Session ID for the invocation */
+  sessionId?: string;
 }
 
-
 /**
- * Details for an LLM/AI model inference call
+ * Details for an inference call matching C# implementation
  */
 export interface InferenceDetails {
-  /** The name/identifier of the model being used */
-  modelName: string;
+  /** The operation name/type for the inference */
+  operationName: InferenceOperationType;
 
-  /** The provider of the model (e.g., openai, azure, anthropic) */
-  provider?: string;
+  /** The model name/identifier */
+  model: string;
 
-  /** The specific model version or variant */
-  modelVersion?: string;
+  /** The provider name (e.g., openai, azure, anthropic) */
+  providerName?: string;
 
-  /** Temperature parameter for the model */
-  temperature?: number;
+  /** Number of input tokens used */
+  inputTokens?: number;
 
-  /** Maximum tokens to generate */
-  maxTokens?: number;
+  /** Number of output tokens generated */
+  outputTokens?: number;
 
-  /** Top-p parameter for the model */
-  topP?: number;
+  /** Array of finish reasons */
+  finishReasons?: string[];
 
-  /** Input prompt or messages to the model */
-  prompt?: string;
+  /** Response ID from the model provider */
+  responseId?: string;
 }
 
 /**
