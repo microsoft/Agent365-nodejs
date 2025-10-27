@@ -8,15 +8,15 @@ import { ToolCallDetails, AgentDetails, TenantDetails } from '../contracts';
 import { OpenTelemetryConstants } from '../constants';
 
 /**
- * Provides OpenTelemetry tracing scope for AI tool execution operations
+ * Provides OpenTelemetry tracing scope for AI tool execution operations.
  */
-export class ExecuteToolScope extends OpenTelemetryScope {
+export class ExecuteToolScope extends OpenTelemetryScope {  
   /**
-   * Creates and starts a new scope for tool execution tracing
+   * Creates and starts a new scope for tool execution tracing.
    * @param details The tool call details
    * @param agentDetails The agent details
    * @param tenantDetails The tenant details
-   * @returns A new scope instance
+   * @returns A new ExecuteToolScope instance.
    */
   public static start(details: ToolCallDetails, agentDetails: AgentDetails, tenantDetails: TenantDetails): ExecuteToolScope {
     return new ExecuteToolScope(details, agentDetails, tenantDetails);
@@ -31,20 +31,31 @@ export class ExecuteToolScope extends OpenTelemetryScope {
       tenantDetails
     );
 
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_TOOL_NAME_KEY, details.toolName);
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_TOOL_ARGS_KEY, details.arguments);
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_TOOL_TYPE_KEY, details.toolType);
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_TOOL_CALL_ID_KEY, details.toolCallId);
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_TOOL_DESCRIPTION_KEY, details.description);
+    // Destructure the details object to match C# pattern
+    const { toolName, arguments: args, toolCallId, description, toolType, endpoint } = details;
+    
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_TOOL_NAME_KEY, toolName);
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_TOOL_ARGS_KEY, args);
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_TOOL_TYPE_KEY, toolType);
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_TOOL_CALL_ID_KEY, toolCallId);
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_TOOL_DESCRIPTION_KEY, description);
+
+    // Set endpoint information if provided
+    if (endpoint) {
+      this.setTagMaybe(OpenTelemetryConstants.SERVER_ADDRESS_KEY, endpoint.host);
+      
+      // Only record port if it is different from 443 (default HTTPS port)
+      if (endpoint.port && endpoint.port !== 443) {
+        this.setTagMaybe(OpenTelemetryConstants.SERVER_PORT_KEY, endpoint.port);
+      }
+    }
   }
 
   /**
-   * Records response information for telemetry tracking
+   * Records response information for telemetry tracking.
    * @param response The tool execution response
    */
   public recordResponse(response: string): void {
-    if (ExecuteToolScope.enableTelemetry) {
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_TOOL_CALL_RESULT_KEY, response);
-    }
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EVENT_CONTENT, response);
   }
 }

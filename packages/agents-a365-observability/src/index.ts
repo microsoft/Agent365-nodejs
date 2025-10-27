@@ -22,6 +22,9 @@ export {
   TenantDetails,
   ToolCallDetails,
   InvokeAgentDetails,
+  CallerDetails,
+  EnhancedAgentDetails,
+  ServiceEndpoint,
   InferenceDetails,
   InferenceOperationType,
   InferenceResponse
