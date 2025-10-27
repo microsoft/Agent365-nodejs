@@ -5,10 +5,10 @@
 import { SpanKind } from '@opentelemetry/api';
 import { OpenTelemetryScope } from './OpenTelemetryScope';
 import { OpenTelemetryConstants } from '../constants';
-import { 
-  InferenceDetails,  
-  AgentDetails, 
-  TenantDetails 
+import {
+  InferenceDetails,
+  AgentDetails,
+  TenantDetails
 } from '../contracts';
 
 /**

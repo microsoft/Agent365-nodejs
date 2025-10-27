@@ -10,7 +10,7 @@ import { OpenTelemetryConstants } from '../constants';
 /**
  * Provides OpenTelemetry tracing scope for AI tool execution operations.
  */
-export class ExecuteToolScope extends OpenTelemetryScope {  
+export class ExecuteToolScope extends OpenTelemetryScope {
   /**
    * Creates and starts a new scope for tool execution tracing.
    * @param details The tool call details
@@ -33,7 +33,7 @@ export class ExecuteToolScope extends OpenTelemetryScope {
 
     // Destructure the details object to match C# pattern
     const { toolName, arguments: args, toolCallId, description, toolType, endpoint } = details;
-    
+
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_TOOL_NAME_KEY, toolName);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_TOOL_ARGS_KEY, args);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_TOOL_TYPE_KEY, toolType);
@@ -43,7 +43,7 @@ export class ExecuteToolScope extends OpenTelemetryScope {
     // Set endpoint information if provided
     if (endpoint) {
       this.setTagMaybe(OpenTelemetryConstants.SERVER_ADDRESS_KEY, endpoint.host);
-      
+
       // Only record port if it is different from 443 (default HTTPS port)
       if (endpoint.port && endpoint.port !== 443) {
         this.setTagMaybe(OpenTelemetryConstants.SERVER_PORT_KEY, endpoint.port);

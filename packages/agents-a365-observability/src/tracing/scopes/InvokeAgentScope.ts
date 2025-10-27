@@ -4,13 +4,11 @@
 
 import { SpanKind } from '@opentelemetry/api';
 import { OpenTelemetryScope } from './OpenTelemetryScope';
-import { 
-  InvokeAgentDetails, 
-  AgentDetails, 
-  TenantDetails, 
-  AgentRequest, 
-  CallerDetails, 
-  EnhancedAgentDetails 
+import {
+  InvokeAgentDetails,
+  TenantDetails,
+  CallerDetails,
+  EnhancedAgentDetails
 } from '../contracts';
 import { OpenTelemetryConstants } from '../constants';
 
@@ -28,24 +26,24 @@ export class InvokeAgentScope extends OpenTelemetryScope {
    * @returns A new InvokeAgentScope instance.
    */
   public static start(
-    invokeAgentDetails: InvokeAgentDetails, 
-    tenantDetails: TenantDetails,  
-    callerAgentDetails?: EnhancedAgentDetails, 
-    callerDetails?: CallerDetails, 
+    invokeAgentDetails: InvokeAgentDetails,
+    tenantDetails: TenantDetails,
+    callerAgentDetails?: EnhancedAgentDetails,
+    callerDetails?: CallerDetails,
   ): InvokeAgentScope {
     return new InvokeAgentScope(invokeAgentDetails, tenantDetails, callerAgentDetails, callerDetails);
   }
 
   private constructor(
-    invokeAgentDetails: InvokeAgentDetails, 
-    tenantDetails: TenantDetails, 
-    callerAgentDetails?: EnhancedAgentDetails, 
-    callerDetails?: CallerDetails, 
+    invokeAgentDetails: InvokeAgentDetails,
+    tenantDetails: TenantDetails,
+    callerAgentDetails?: EnhancedAgentDetails,
+    callerDetails?: CallerDetails,
   ) {
     super(
       SpanKind.CLIENT,
       OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME,
-      invokeAgentDetails.agentName 
+      invokeAgentDetails.agentName
         ? `${OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME} ${invokeAgentDetails.agentName}`
         : OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME,
       invokeAgentDetails,
@@ -54,10 +52,10 @@ export class InvokeAgentScope extends OpenTelemetryScope {
 
     // Set session ID and endpoint information
     this.setTagMaybe(OpenTelemetryConstants.SESSION_ID_KEY, invokeAgentDetails.sessionId);
-    
+
     if (invokeAgentDetails.endpoint) {
       this.setTagMaybe(OpenTelemetryConstants.SERVER_ADDRESS_KEY, invokeAgentDetails.endpoint.host);
-      
+
       // Only record port if it is different from 443 (default HTTPS port)
       if (invokeAgentDetails.endpoint.port && invokeAgentDetails.endpoint.port !== 443) {
         this.setTagMaybe(OpenTelemetryConstants.SERVER_PORT_KEY, invokeAgentDetails.endpoint.port);
@@ -68,7 +66,7 @@ export class InvokeAgentScope extends OpenTelemetryScope {
     const requestToUse = invokeAgentDetails.request;
     if (requestToUse) {
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY, requestToUse.executionType?.toString());
-      
+
       if (requestToUse.sourceMetadata) {
         this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_ID_KEY, requestToUse.sourceMetadata.id);
         this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY, requestToUse.sourceMetadata.name);
