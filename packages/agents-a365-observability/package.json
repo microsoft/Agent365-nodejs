@@ -19,7 +19,7 @@
     "ci": "npm ci"
   },
   "keywords": [
-    "kairo",
+    "Agent365",
     "opentelemetry",
     "tracing",
     "monitoring",

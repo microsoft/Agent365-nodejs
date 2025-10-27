@@ -43,8 +43,6 @@ The SDK supports various environment variables for configuration:
   - Values: `true`, `1` (case-insensitive)
 
 ### Exporter Configuration
-- `ENABLE_KAIRO_EXPORTER`: Enable Agent365 custom exporter (default: `false`)
-  - Values: `true`, `1`, `yes`, `on` (case-insensitive)
 - `ENABLE_A365_OBSERVABILITY_EXPORTER`: Alternative flag for custom exporter
   - Values: `true`, `1`, `yes`, `on` (case-insensitive)
 
