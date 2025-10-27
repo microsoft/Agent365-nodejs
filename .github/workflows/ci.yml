@@ -63,7 +63,7 @@ jobs:
     - id: check_nodejs_sdk
       name: Check Node.js SDK changes
       run: |
-        if git diff --name-only "${{ steps.git_refs.outputs.base }}" "${{ steps.git_refs.outputs.head }}" -- 'nodejs/**' | grep -q .; then
+        if git diff --name-only "${{ steps.git_refs.outputs.base }}" "${{ steps.git_refs.outputs.head }}" -- '/**' | grep -q .; then
           echo "Node.js SDK changes detected"
           echo "changed=true" >> $GITHUB_OUTPUT
         else
@@ -77,7 +77,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./nodejs
+        working-directory: ./
 
     strategy:
       matrix:
