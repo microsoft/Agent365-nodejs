@@ -109,22 +109,6 @@ jobs:
     - name: Pack packages
       run: cd packages && npm pack --workspaces
 
-    # Copy packages and samples to drop folder
-    - name: Copy packages and samples to drop folder
-      run: |
-        mkdir -p ~/drop/nodejs-${{ matrix.node-version }} && cp -v packages/*.tgz $_
-        mkdir -p ~/drop/nodejs-${{ matrix.node-version }}/samples && cp -rv samples/claude-code-sdk $_
-
-    # Zip files since upload-artifact does not seem like to like folders
-    - name: Create zip
-      run: cd ~/drop/nodejs-${{ matrix.node-version }} && zip -r ~/drop/nodejs-${{ matrix.node-version }}.zip .
-
-    - name: Upload packages and samples as artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: nodejs-${{ matrix.node-version }}
-        path: ~/drop/nodejs-${{ matrix.node-version }}.zip
-
     - name: Run tests
       run: npm test
 
