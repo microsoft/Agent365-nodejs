@@ -1,0 +1,67 @@
+{
+  "name": "@microsoft/agents-a365-observability-tests",
+  "version": "2025.10.10",
+  "private": true,
+  "type": "module",
+  "description": "OpenTelemetry tracing and monitoring SDK for AI agents built with TypeScript/Node.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "clean": "rimraf dist",
+    "test": "jest --passWithNoTests",
+    "test:watch": "jest --watch",
+    "prepublishOnly": "npm run clean && npm run build",
+    "ci": "npm ci",
+    "build:all": "npm run build --workspaces"
+  },
+  "keywords": [
+    "agents",
+    "opentelemetry",
+    "tracing",
+    "monitoring",
+    "ai",
+    "agents",
+    "azure",
+    "typescript"
+  ],
+  "author": "Microsoft Corporation",
+  "license": "See license file",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/microsoft/Agent365.git",
+    "directory": "nodejs/tests"
+  },
+  "dependencies": {
+    "@microsoft/agents-a365-observability": "*",
+    "@microsoft/agents-a365-runtime": "*",
+    "@azure/monitor-opentelemetry-exporter": "^1.0.0-beta.32",
+    "@modelcontextprotocol/sdk": "^1.18.1",
+    "@openai/agents": "^0.1.5",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.205.0",
+    "@opentelemetry/resources": "^2.1.0",
+    "@opentelemetry/sdk-node": "^0.204.0",
+    "@opentelemetry/sdk-trace-base": "^2.1.0",
+    "@opentelemetry/semantic-conventions": "^1.37.0"
+  },
+  "devDependencies": {
+    "@babel/preset-typescript": "^7.27.1",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "jest": "^29.0.0",
+    "rimraf": "^5.0.0",
+    "ts-jest": "^29.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "CHANGELOG.md"
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "name": "@microsoft/agent365-monorepo",
+  "version": "1.0.0",
+  "description": "Agent365 SDK monorepo for AI agents built with TypeScript/Node.js",
+  "private": true,
+  "scripts": {
+    "build": "npm run build --workspace=@microsoft/agents-a365-notifications --workspace=@microsoft/agents-a365-runtime --workspace=@microsoft/agents-a365-tooling --if-present && npm run build --workspace=@microsoft/agents-a365-observability --workspace=@microsoft/agents-a365-tooling-extensions-claude --workspace=@microsoft/agents-a365-tooling-extensions-langchain --workspace=@microsoft/agents-a365-tooling-extensions-openai --if-present && npm run build --workspaces --if-present",
+    "build:watch": "npm run build:watch --workspaces --if-present",
+    "clean": "npm run clean --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:watch": "npm run test:watch --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "lint:fix": "npm run lint:fix --workspaces --if-present",
+    "ci": "npm run ci --workspaces --if-present"
+  },
+  "workspaces": [
+    "packages/*",
+    "samples/*",
+    "tests"
+  ],
+  "keywords": [
+    "ai",
+    "agents",
+    "azure",
+    "typescript",
+    "microsoft-365"
+  ],
+  "author": "Microsoft Corporation",
+  "license": "See license file",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/microsoft/Agent365.git",
+    "directory": "nodejs"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

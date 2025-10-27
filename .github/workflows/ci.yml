@@ -1,0 +1,135 @@
+name: CI - Build, Test, and Publish SDKs
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  version-number:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Set current date in UTC as env variable
+      run: |
+        export CURRENT_DATE="$(date -u +'%Y.%m.%d')"
+        echo "Current date is ${CURRENT_DATE}"
+        echo "CURRENT_DATE=${CURRENT_DATE}" >> $GITHUB_ENV
+
+    - id: build_version
+      name: Generate Build Version
+      run: |
+        export BUILD_VERSION="$CURRENT_DATE.${{ github.run_number }}"
+        echo "Build version is ${BUILD_VERSION}"
+        echo "BUILD_VERSION=${BUILD_VERSION}" >> $GITHUB_OUTPUT
+
+    - id: package_version
+      name: Generate Package Version
+      run: |
+        export PACKAGE_VERSION="$CURRENT_DATE-preview.${{ github.run_number }}"
+        echo "Package version is ${PACKAGE_VERSION}"
+        echo "PACKAGE_VERSION=${PACKAGE_VERSION}" >> $GITHUB_OUTPUT
+        export PYTHON_PACKAGE_VERSION="$CURRENT_DATE+preview.${{ github.run_number }}"
+        echo "Python package version is ${PYTHON_PACKAGE_VERSION}"
+        echo "PYTHON_PACKAGE_VERSION=${PYTHON_PACKAGE_VERSION}" >> $GITHUB_OUTPUT
+
+    outputs:
+      BUILD_VERSION: ${{ steps.build_version.outputs.BUILD_VERSION }}
+      PACKAGE_VERSION: ${{ steps.package_version.outputs.PACKAGE_VERSION }}
+      PYTHON_PACKAGE_VERSION: ${{ steps.package_version.outputs.PYTHON_PACKAGE_VERSION }}
+  
+  changed-sdks:
+    name: Determine Changed SDKs
+    runs-on: ubuntu-latest
+    outputs:
+      nodejs-sdk: ${{ steps.check_nodejs_sdk.outputs.changed }}
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - id: git_refs
+      name: Set Git refs for diff
+      run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "base=${{ github.event.pull_request.base.sha }}" >> "$GITHUB_OUTPUT"
+            echo "head=${{ github.event.pull_request.head.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "base=${{ github.event.before }}" >> "$GITHUB_OUTPUT"
+            echo "head=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
+
+    - id: check_nodejs_sdk
+      name: Check Node.js SDK changes
+      run: |
+        if git diff --name-only "${{ steps.git_refs.outputs.base }}" "${{ steps.git_refs.outputs.head }}" -- 'nodejs/**' | grep -q .; then
+          echo "Node.js SDK changes detected"
+          echo "changed=true" >> $GITHUB_OUTPUT
+        else
+          echo "No Node.js SDK changes detected"
+          echo "changed=false" >> $GITHUB_OUTPUT
+        fi
+
+  nodejs-sdk:
+    name: Node.js SDK
+    needs: [version-number, changed-sdks]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./nodejs
+
+    strategy:
+      matrix:
+        node-version: ['18', '20']
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: '**/package-lock.json'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Lint code
+      run: npm run lint
+
+    - name: Set version
+      run: npm version ${{ needs.version-number.outputs.PACKAGE_VERSION }} --workspaces
+
+    - name: Build package
+      run: npm run build
+
+    - name: Pack packages
+      run: cd packages && npm pack --workspaces
+
+    # Copy packages and samples to drop folder
+    - name: Copy packages and samples to drop folder
+      run: |
+        mkdir -p ~/drop/nodejs-${{ matrix.node-version }} && cp -v packages/*.tgz $_
+        mkdir -p ~/drop/nodejs-${{ matrix.node-version }}/samples && cp -rv samples/claude-code-sdk $_
+
+    # Zip files since upload-artifact does not seem like to like folders
+    - name: Create zip
+      run: cd ~/drop/nodejs-${{ matrix.node-version }} && zip -r ~/drop/nodejs-${{ matrix.node-version }}.zip .
+
+    - name: Upload packages and samples as artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: nodejs-${{ matrix.node-version }}
+        path: ~/drop/nodejs-${{ matrix.node-version }}.zip
+
+    - name: Run tests
+      run: npm test
+
+    # - name: Publish to NPM (commented for now)
+    #   if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    #   run: npm publish
+    #   env:
+    #     NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
