@@ -34,7 +34,7 @@
   },
   "dependencies": {
     "@anthropic-ai/claude-code": "^1.0.105",
-    "@microsoft/agents-hosting": "^1.0.0",
+    "@microsoft/agents-hosting": "1.1.0-alpha.58",
     "@microsoft/agents-a365-tooling": "*",
     "@microsoft/agents-a365-runtime": "*",
     "@modelcontextprotocol/sdk": "^1.18.1"
