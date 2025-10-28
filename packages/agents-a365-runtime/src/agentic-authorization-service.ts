@@ -3,7 +3,7 @@ import { PowerPlatformApiDiscovery, ClusterCategory } from './power-platform-api
 import { getClusterCategory } from './environment-utils';
 
 export interface Authorization {
-  exchangeToken(turnContext: TurnContext, authHandlerId: string, scopes: string[]): Promise<{ token: string}>;
+  exchangeToken(turnContext: TurnContext, authHandlerId: string, scopes: string[]): Promise<{ token: string }>;
 }
 
 export class AgenticAuthenticationService {
