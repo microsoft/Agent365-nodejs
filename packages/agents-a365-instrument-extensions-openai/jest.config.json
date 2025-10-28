@@ -19,6 +19,5 @@
     "text",
     "lcov",
     "html"
-  ],
-  "setupFilesAfterEnv": ["<rootDir>/../../tests/agents-a365-instrument-extensions-openai/setup.ts"]
+  ]
 }
