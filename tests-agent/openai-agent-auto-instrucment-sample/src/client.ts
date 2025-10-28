@@ -1,5 +1,5 @@
 import { Agent, run } from '@openai/agents';
-import { TurnContext } from '@microsoft/agents-hosting';
+import { Authorization, TurnContext } from '@microsoft/agents-hosting';
 
 import { McpToolRegistrationService } from '@microsoft/agents-a365-tooling-extensions-openai';
 
@@ -9,21 +9,23 @@ export interface Client {
 
 const toolService = new McpToolRegistrationService();
 
-export async function getClient(authorization: any, turnContext: TurnContext): Promise<Client> {
+export async function getClient(authorization: Authorization | undefined, turnContext: TurnContext): Promise<Client> {
   const agent = new Agent({
     // You can customize the agent configuration here if needed
     name: 'OpenAI Agent',
   });
 
   try {
-    await toolService.addMcpToolServers(
-      agent,
-      process.env.AGENTIC_USER_ID || '',
-      process.env.MCP_ENVIRONMENT_ID || "",
-      authorization,
-      turnContext as any,
-      process.env.MCP_AUTH_TOKEN || "",
-    );
+    if (authorization) {
+      await toolService.addMcpToolServers(
+        agent,
+        process.env.AGENTIC_USER_ID || '',
+        process.env.MCP_ENVIRONMENT_ID || '',
+        authorization,
+        turnContext,
+        process.env.MCP_AUTH_TOKEN || '',
+      );
+    }
   } catch (error) {
     console.warn('Failed to register MCP tool servers:', error);
   }
@@ -54,11 +56,11 @@ class OpenAIClient implements Client {
       await this.connectToServers();
 
       const result = await run(this.agent, prompt);
-      return result.finalOutput || "Sorry, I couldn't get a response from OpenAI :(";
+      return result.finalOutput || 'Sorry, I couldn\'t get a response from OpenAI :(';
     } catch (error) {
       console.error('OpenAI agent error:', error);
-      const err = error as any;
-      return `Error: ${err.message || err}`;
+      const err = error as Error;
+      return `Error: ${err.message || String(err)}`;
     } finally {
       await this.closeServers();
     }

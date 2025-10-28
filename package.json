@@ -15,9 +15,12 @@
   },
   "workspaces": [
     "packages/*",
-    "samples/*",
+    "tests-agent/*",
     "tests"
   ],
+"resolutions": {
+  "@openai/agents-core": "^0.1.11"
+},
   "keywords": [
     "ai",
     "agents",

@@ -12,7 +12,7 @@ type ApplicationTurnState = TurnState<ConversationState>
 export class A365Agent extends AgentApplication<ApplicationTurnState> {
   isApplicationInstalled: boolean = false;
   termsAndConditionsAccepted: boolean = false;
-  agentName = "A365 Agent";
+  agentName = 'A365 Agent';
 
   constructor() {
     super();
@@ -33,19 +33,19 @@ export class A365Agent extends AgentApplication<ApplicationTurnState> {
   /**
    * Handles incoming user messages and sends responses.
    */
-  async handleAgentMessageActivity(turnContext: TurnContext, state: TurnState): Promise<void> {
+  async handleAgentMessageActivity(turnContext: TurnContext, _state: TurnState): Promise<void> {
     if (!this.isApplicationInstalled) {
-      await turnContext.sendActivity("Please install the application before sending messages.");
+      await turnContext.sendActivity('Please install the application before sending messages.');
       return;
     }
 
     if (!this.termsAndConditionsAccepted) {
-      if (turnContext.activity.text?.trim().toLowerCase() === "i accept") {
+      if (turnContext.activity.text?.trim().toLowerCase() === 'i accept') {
         this.termsAndConditionsAccepted = true;
-        await turnContext.sendActivity("Thank you for accepting the terms and conditions! How can I assist you today?");
+        await turnContext.sendActivity('Thank you for accepting the terms and conditions! How can I assist you today?');
         return;
       } else {
-        await turnContext.sendActivity("Please accept the terms and conditions to proceed. Send 'I accept' to accept.");
+        await turnContext.sendActivity('Please accept the terms and conditions to proceed. Send \'I accept\' to accept.');
         return;
       }
     }
@@ -63,15 +63,15 @@ export class A365Agent extends AgentApplication<ApplicationTurnState> {
       await turnContext.sendActivity(response);
     } catch (error) {
       console.error('LLM query error:', error);
-      const err = error as any;
-      await turnContext.sendActivity(`Error: ${err.message || err}`);
+      const err = error as Error;
+      await turnContext.sendActivity(`Error: ${err.message || String(err)}`);
     }
   }
 
   /**
    * Handles agent installation and removal events.
    */
-  async handleInstallationUpdateActivity(turnContext: TurnContext, state: TurnState): Promise<void> {
+  async handleInstallationUpdateActivity(turnContext: TurnContext, _state: TurnState): Promise<void> {
     if (turnContext.activity.action === 'add') {
       this.isApplicationInstalled = true;
       this.termsAndConditionsAccepted = false;
