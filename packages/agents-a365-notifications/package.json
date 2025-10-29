@@ -32,8 +32,8 @@
     "directory": "nodejs/packages/agents-a365-notifications"
   },
   "dependencies": {
-    "@microsoft/agents-activity": "^1.0.15",
-    "@microsoft/agents-hosting": "^1.0.0"
+    "@microsoft/agents-activity": "^1.1.0-alpha.58",
+    "@microsoft/agents-hosting": "^1.1.0-alpha.58"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
