@@ -11,7 +11,18 @@ import { context, trace as OtelTrace, Span as OtelSpan, SpanStatusCode, Tracer a
 import { OpenTelemetryConstants } from '@microsoft/agents-a365-observability';
 import * as Constants from './constants';
 import * as Utils from './utils';
-import { Span as AgentsSpan, SpanData, ContextToken, TracingProcessor, Trace as AgentTrace, MCPListToolsSpanData } from './types';
+import {
+  Span as AgentsSpan,
+  SpanData,
+  MCPListToolsSpanData
+} from '@openai/agents-core/dist/tracing/spans';
+import { Trace as AgentTrace } from '@openai/agents-core/dist/tracing/traces';
+import { TracingProcessor } from '@openai/agents-core/dist/tracing/processor';
+
+/**
+ * Context token for span context management
+ */
+type ContextToken = unknown;
 
 /**
  * Processor for OpenAI Agents SDK traces

@@ -5,7 +5,7 @@
 import { SpanStatusCode } from '@opentelemetry/api';
 import { OpenTelemetryConstants } from '@microsoft/agents-a365-observability';
 import * as Constants from './constants';
-import { Span as AgentsSpan, SpanData } from './types';
+import { Span as AgentsSpan, SpanData } from '@openai/agents-core/dist/tracing/spans';
 
 /**
  * Safely stringify an object to JSON

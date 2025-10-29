@@ -7,7 +7,3 @@
  */
 
 export { OpenAIAgentsTraceInstrumentor, OpenAIAgentsInstrumentationConfig } from './trace-instrumentor';
-export { OpenAIAgentsTraceProcessor } from './trace-processor';
-export * as OpenAIAgentsConstants from './constants';
-export * as OpenAIAgentsUtils from './utils';
-export * from './types';
