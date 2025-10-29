@@ -27,7 +27,6 @@ export const GEN_AI_MESSAGE_TOOL_CALLS = 'message_tool_calls';
 export const GEN_AI_MESSAGE_TOOL_CALL_ID = 'message_tool_id';
 export const GEN_AI_MESSAGE_TOOL_CALL_NAME = 'message_tool_name';
 export const GEN_AI_TOOL_JSON_SCHEMA = 'tool_json_schema';
-export const GEN_AI_LLM_TOKEN_COUNT_TOTAL = 'llm_token_count_total';
 export const GEN_AI_LLM_TOKEN_COUNT_PROMPT_DETAILS_CACHED_READ = 'llm_token_count_prompt_details_cached_read';
 export const GEN_AI_LLM_TOKEN_COUNT_COMPLETION_DETAILS_REASONING = 'llm_token_count_completion_details_reasoning';
 export const GEN_AI_GRAPH_NODE_ID = 'graph_node_id';

@@ -108,9 +108,6 @@ export function getAttributesFromGenerationSpanData(data: SpanData): Record<stri
     if (usage.output_tokens !== undefined) {
       attributes[OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY] = usage.output_tokens;
     }
-    if (usage.total_tokens !== undefined) {
-      attributes[Constants.GEN_AI_LLM_TOKEN_COUNT_TOTAL] = usage.total_tokens;
-    }
   }
 
   return attributes;
@@ -176,9 +173,6 @@ export function getAttributesFromResponse(response: unknown): Record<string, unk
     }
     if (usage.output_tokens !== undefined) {
       attributes[OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY] = usage.output_tokens;
-    }
-    if (usage.total_tokens !== undefined) {
-      attributes[Constants.GEN_AI_LLM_TOKEN_COUNT_TOTAL] = usage.total_tokens;
     }
   }
 
