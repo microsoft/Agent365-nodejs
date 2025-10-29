@@ -251,7 +251,9 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
         });
       }
     }
-  }  /**
+  }
+
+  /**
    * Process generation span data
    */
   private processGenerationSpanData(otelSpan: OtelSpan, data: SpanData, traceId: string): void {
@@ -308,7 +310,7 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
     const serverName = (data as MCPListToolsSpanData).server ?? 'unknown';
     const newSpanName = `${OpenTelemetryConstants.EXECUTE_TOOL_OPERATION_NAME} ${serverName}`;
     otelSpan.updateName(newSpanName);
-    if(serverName) {
+    if (serverName) {
       otelSpan.setAttribute(OpenTelemetryConstants.GEN_AI_TOOL_NAME_KEY, serverName);
     }
     otelSpan.setAttribute(OpenTelemetryConstants.GEN_AI_TOOL_TYPE_KEY, 'extension');

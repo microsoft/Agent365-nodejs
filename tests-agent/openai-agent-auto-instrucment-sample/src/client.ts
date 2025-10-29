@@ -1,3 +1,7 @@
+// ------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// ------------------------------------------------------------------------------
+
 import { Agent, run } from '@openai/agents';
 import { Authorization, TurnContext } from '@microsoft/agents-hosting';
 
@@ -43,7 +47,8 @@ export async function getClient(authorization: Authorization | undefined, turnCo
     }
   } catch (error) {
     console.warn('Failed to register MCP tool servers:', error);
-  }  return new OpenAIClient(agent);
+  }
+  return new OpenAIClient(agent);
 }
 
 /**

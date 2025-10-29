@@ -1,3 +1,7 @@
+// ------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// ------------------------------------------------------------------------------
+
 // It is important to load environment variables before importing other modules
 import { configDotenv } from 'dotenv';
 

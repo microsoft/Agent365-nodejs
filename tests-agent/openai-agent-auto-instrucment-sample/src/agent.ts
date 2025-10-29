@@ -1,3 +1,7 @@
+// ------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// ------------------------------------------------------------------------------
+
 import { TurnState, AgentApplication, TurnContext, DefaultConversationState } from '@microsoft/agents-hosting';
 import { ActivityTypes } from '@microsoft/agents-activity';
 

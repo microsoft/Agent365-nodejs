@@ -5,8 +5,8 @@
  * Tests the trace and span processing lifecycle
  */
 
-import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
-import { Tracer, Span as OtelSpan, SpanStatusCode } from '@opentelemetry/api';
+import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import { Tracer } from '@opentelemetry/api';
 import { OpenAIAgentsTraceProcessor } from '@microsoft/agents-a365-instrument-extensions-openai';
 import { ObservabilityManager } from '@microsoft/agents-a365-observability';
 import { trace } from '@opentelemetry/api';
@@ -353,7 +353,6 @@ describe('OpenAIAgentsTraceProcessor', () => {
         const rootSpans = (processor as any).rootSpans;
         const rootSpan = rootSpans.get('trace-parent-child');
         // Based on test output, root spans are being created, so let's adjust accordingly
-        const hasRootSpan = rootSpan !== undefined;
 
         // Create parent span
         const parentSpan = {

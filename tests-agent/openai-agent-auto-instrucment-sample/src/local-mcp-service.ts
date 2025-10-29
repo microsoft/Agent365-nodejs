@@ -1,3 +1,7 @@
+// ------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// ------------------------------------------------------------------------------
+
 import { Agent } from '@openai/agents';
 import { TurnContext } from '@microsoft/agents-hosting';
 

@@ -6,7 +6,6 @@
  */
 
 import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
-import { trace, Tracer } from '@opentelemetry/api';
 
 // Mock OpenAI Agents SDK first
 const mockSetTraceProcessors = jest.fn();
@@ -32,7 +31,7 @@ describe('OpenAIAgentsTraceInstrumentor', () => {
   let instrumentor: OpenAIAgentsTraceInstrumentor;
   beforeEach(() => {
     jest.clearAllMocks();
-    // Kairo is now configured using real configuration above
+    // ObservabilityManager is now configured using real configuration above
   });
 
   afterEach(() => {
@@ -42,7 +41,7 @@ describe('OpenAIAgentsTraceInstrumentor', () => {
   });
 
   describe('Constructor', () => {
-    it('should create instrumentor when Kairo is configured', () => {
+    it('should create instrumentor when observabilityManager is configured', () => {
       expect(() => {
         instrumentor = new OpenAIAgentsTraceInstrumentor();
       }).not.toThrow();
