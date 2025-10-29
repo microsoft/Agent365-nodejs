@@ -62,7 +62,7 @@ export class OpenTelemetryConstants {
   public static readonly GEN_AI_TOOL_CALL_ID_KEY = 'gen_ai.tool.call.id';
   public static readonly GEN_AI_TOOL_NAME_KEY = 'gen_ai.tool.name';
   public static readonly GEN_AI_TOOL_DESCRIPTION_KEY = 'gen_ai.tool.description';
-  public static readonly GEN_AI_TOOL_ARGS_KEY = 'gen_ai.tool.arguments';
+  public static readonly GEN_AI_TOOL_ARGS_KEY = 'gen_ai.tool.call.arguments';
   public static readonly GEN_AI_TOOL_CALL_RESULT_KEY = 'gen_ai.event.content'; // GEN_AI_EVENT_CONTENT
   public static readonly GEN_AI_TOOL_TYPE_KEY = 'gen_ai.tool.type';
 

@@ -27,8 +27,19 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
   // Track span names for later access (since OTel Span doesn't expose name)
   private readonly spanNames: Map<OtelSpan, string> = new Map();
 
+  private readonly keyMappings: Map<string, string> = new Map([
+    ['mcp_tools' + OpenTelemetryConstants.GEN_AI_RESPONSE_CONTENT_KEY, OpenTelemetryConstants.GEN_AI_EVENT_CONTENT],
+    ['mcp_tools' + OpenTelemetryConstants.GEN_AI_REQUEST_CONTENT_KEY, OpenTelemetryConstants.GEN_AI_TOOL_ARGS_KEY],
+    ['function' + OpenTelemetryConstants.GEN_AI_RESPONSE_CONTENT_KEY, OpenTelemetryConstants.GEN_AI_EVENT_CONTENT],
+    ['function' + OpenTelemetryConstants.GEN_AI_REQUEST_CONTENT_KEY, OpenTelemetryConstants.GEN_AI_TOOL_ARGS_KEY],
+  ]);
+
   constructor(tracer: OtelTracer) {
     this.tracer = tracer;
+  }
+
+  private getNewKey(spanType: string, key: string): string | null {
+    return this.keyMappings.get(`${spanType}${key}`) ?? null;
   }
 
   /**
@@ -269,15 +280,15 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
     const attrs = Utils.getAttributesFromFunctionSpanData(data);
     Object.entries(attrs).forEach(([key, value]) => {
       if (value !== null && value !== undefined && key !== OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY) {
-        otelSpan.setAttribute(key, value as string | number | boolean);
+        const newKey = this.getNewKey(data.type, key);
+        otelSpan.setAttribute(newKey || key, value as string | number | boolean);
       }
       otelSpan.setAttribute(OpenTelemetryConstants.GEN_AI_TOOL_TYPE_KEY, 'function');
     });
 
     this.stampCustomParent(otelSpan, traceId);
     // Use function name from data instead of span name
-    const functionName = functionData.function_name || functionData.functionName || 'unknown';
-    otelSpan.updateName(`${OpenTelemetryConstants.EXECUTE_TOOL_OPERATION_NAME} ${functionName}`);
+    otelSpan.updateName(`${OpenTelemetryConstants.EXECUTE_TOOL_OPERATION_NAME} ${functionData.name ?? ''}`);
     otelSpan.setAttribute(OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY, OpenTelemetryConstants.EXECUTE_TOOL_OPERATION_NAME);
   }
 
@@ -287,12 +298,9 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
   private processMCPListToolsSpanData(otelSpan: OtelSpan, data: SpanData): void {
     const attrs = Utils.getAttributesFromMCPListToolsSpanData(data);
     Object.entries(attrs).forEach(([key, value]) => {
-      let newKey: string | undefined = undefined;
       if (value !== null && value !== undefined && key !== OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY) {
-        if(key == OpenTelemetryConstants.GEN_AI_RESPONSE_CONTENT_KEY) {
-          newKey = OpenTelemetryConstants.GEN_AI_EVENT_CONTENT;
-        }
-        otelSpan.setAttribute(newKey??key, value as string | number | boolean);
+        const newKey = this.getNewKey(data.type, key);
+        otelSpan.setAttribute(newKey || key, value as string | number | boolean);
       }
     });
 

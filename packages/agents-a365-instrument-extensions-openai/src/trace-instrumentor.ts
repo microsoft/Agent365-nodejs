@@ -44,7 +44,7 @@ export class OpenAIAgentsTraceInstrumentor extends InstrumentationBase<OpenAIAge
     };
 
     super(
-      'kairo-openai-agents-instrumentor',
+      'agent365-openai-agents-instrumentor',
       '1.0.0',
       configWithDefaults
     );
@@ -88,12 +88,12 @@ export class OpenAIAgentsTraceInstrumentor extends InstrumentationBase<OpenAIAge
     const tracerVersion = this._config.tracerVersion;
 
     // Get the configured tracer using OpenTelemetry API
-    const kairoTracer = trace.getTracer(tracerName ?? 'kairo-openai-agents', tracerVersion);
+    const agent365Tracer = trace.getTracer(tracerName ?? 'agent365-openai-agents', tracerVersion);
 
     // Get tracer provider
     trace.getTracerProvider();
 
-    this.processor = new OpenAIAgentsTraceProcessor(kairoTracer);
+    this.processor = new OpenAIAgentsTraceProcessor(agent365Tracer);
 
     // Register the processor directly using the imported setTraceProcessors function
     // This bypasses the OpenTelemetry instrumentation patching mechanism

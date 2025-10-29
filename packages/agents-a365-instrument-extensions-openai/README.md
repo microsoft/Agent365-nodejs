@@ -129,7 +129,6 @@ The instrumentor processes various span types from the OpenAI Agents SDK:
 
 - **Agent Spans**: High-level agent operations and workflows
 - **Function Spans**: Tool and function executions
-- **Generation Spans**: AI model inference calls
 - **Response Spans**: Model response processing
 
 ## Error Handling

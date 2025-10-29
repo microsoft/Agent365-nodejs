@@ -60,66 +60,78 @@ $ npm run test-tool
 
 This should open a web browser with a chat interface. Send a message to your agent and you should see it reply back with a mocked response.
 
-In the first terminal, where you are running the agent application, you should see telemetry rendered similar to:
+In the first terminal, where you are running the agent application with TOOLS_MODE=MockMCPServer and NODE_ENV=development in .env,  
+ you should see telemetry rendered starting similar as below when you invoke the agent e.g ask the agent to send email to someone.
 
 ```
+> openaiagent-instrument@1.0.0 start
+> node dist/index.js
+
+[dotenv@17.2.3] injecting env (27) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+
+Server listening to port 3978 for appId  debug agents:*:error
+Authorization is not set on the agent application
+🔗 Setting up 2 MCP servers...
+🔗 Connecting to MCP server: mcp_MailTools at http://localhost:5309
+✅ Added mcp_MailTools to agent's mcpServers array
+🔗 Connecting to MCP server: mcp_CalendarTools at http://localhost:5309
+✅ Added mcp_CalendarTools to agent's mcpServers array
+✅ Local MCP setup complete. Added 2 servers to agent: OpenAI Agent
+🌐 Mock connection established to mcp_MailTools
+🌐 Mock connection established to mcp_CalendarTools
+🔌 Mock connection closed to mcp_MailTools
+🔌 Mock connection closed to mcp_CalendarTools
 {
   resource: {
     attributes: {
-      'service.name': 'TypeScript Sample Agent',
-      'host.name': 'XXXXXX',
+      'host.name': 'pefan4-0',
       'host.arch': 'amd64',
-      'host.id': '2a7db653-9be9-4fdf-bf15-a475f6cd1e40',
-      'process.pid': 39784,
+      'host.id': '3dc679db-f652-4002-98b7-5e05e5071507',
+      'process.pid': 50460,
       'process.executable.name': 'C:\\WINDOWS\\system32\\cmd.exe ',
       'process.executable.path': 'C:\\Program Files\\nodejs\\node.exe',
       'process.command_args': [
-        'D:\\Agent365\\nodejs\\node_modules\\ts-node\\dist\\bin.js',
-        'D:\\Agent365\\nodejs\\node_modules\\ts-node\\dist\\bin.js',
-        'D:\\Agent365\\nodejs\\samples\\basic-agent-sdk-sample\\src\\index.ts'
+        'C:\\Program Files\\nodejs\\node.exe',
+        'D:\\repos\\sdk1\\Agent365-nodejs\\tests-agent\\openai-agent-auto-instrucment-sample\\dist\\index.js'
       ],
-      'process.runtime.version': '20.12.2',
+      'process.runtime.version': '20.18.3',
       'process.runtime.name': 'nodejs',
       'process.runtime.description': 'Node.js',
-      'process.command': 'D:\\Agent365\\nodejs\\samples\\basic-agent-sdk-sample\\src\\index.ts',
-      'process.owner': 'XXXX',
-      'telemetry.sdk.language': 'nodejs',
-      'telemetry.sdk.name': 'opentelemetry',
-      'telemetry.sdk.version': '2.0.1'
+      'process.command': 'D:\\repos\\sdk1\\Agent365-nodejs\\tests-agent\\openai-agent-auto-instrucment-sample\\dist\\index.js',
+      'process.owner': 'pefan',
+      'service.name': 'OpenAI Agent Instrumentation Sample-1.0.0'
     }
   },
-  instrumentationScope: undefined,
-  traceId: '9960c528cad72704cab091321a5e1c34',
-  parentId: undefined,
-  traceState: undefined,
-  name: 'inference gpt-4',
-  id: 'dcb34a8ed1be696d',
-  kind: 2,
-  timestamp: 1758200071596000,
-  duration: 201942.6,
-  attributes: {
-    'gen_ai.system': 'az.ai.agent365',
-    'gen_ai.operation.name': 'inference',
-    'gen_ai.agent.id': '30ed5699-b157-4e87-bb45-9b0cfb13b8e5',
-    'gen_ai.request.model': 'gpt-4',
-    'gen_ai.request.model.provider': 'openai',
-    'gen_ai.request.model.version': '0613',
-    'gen_ai.request.temperature': 0.7,
-    'gen_ai.request.max_tokens': 500,
-    'gen_ai.request.top_p': 0.9,
-    'gen_ai.request.content': 'Analyze the following compliance query: testing',
-    'gen_ai.event.content': 'Based on my analysis of "testing", I recommend checking policy documents XYZ and ensuring proper data handling procedures.',
-    'gen_ai.response.id': 'resp-1758200071798',
-    'gen_ai.response.finish_reasons': 'stop',
-    'gen_ai.usage.input_tokens': 45,
-    'gen_ai.usage.output_tokens': 78,
-    'gen_ai.usage.total_tokens': 123,
-    'operation.duration': 0.201
+  instrumentationScope: {
+    name: 'openai-agent-auto-instrumentation',
+    version: '1.0.0',
+    schemaUrl: undefined
   },
-  status: { code: 0 },
+  traceId: '3b91449a52bd15cc3343eab40c570cdb',
+  parentSpanContext: {
+    traceId: '3b91449a52bd15cc3343eab40c570cdb',
+    spanId: 'f9f26c098f3c98ba',
+    traceFlags: 1,
+    traceState: undefined
+  },
+  traceState: undefined,
+  name: 'execute_tool mcp_MailTools',
+  id: 'c5052df48e801a8f',
+  kind: 0,
+  timestamp: 1761764780213000,
+  duration: 2000,
+  attributes: {
+    'gen_ai.operation.name': 'execute_tool',
+    'gen_ai.system': 'openai',
+    'gen_ai.event.content': '["send_email","read_emails","search_emails"]',
+    'gen_ai.tool.name': 'mcp_MailTools',
+    'gen_ai.tool.type': 'extension'
+  },
+  status: { code: 1 },
   events: [],
   links: []
 }
+......
 ```
 
 That means your agent is correctly receiving activities and correctly sending traces!
