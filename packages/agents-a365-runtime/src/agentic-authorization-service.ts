@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 import { TurnContext } from '@microsoft/agents-hosting';
 import { PowerPlatformApiDiscovery, ClusterCategory } from './power-platform-api-discovery';
 import { getClusterCategory } from './environment-utils';
