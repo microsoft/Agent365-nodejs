@@ -2,12 +2,14 @@ import { Agent, run } from '@openai/agents';
 import { Authorization, TurnContext } from '@microsoft/agents-hosting';
 
 import { McpToolRegistrationService } from '@microsoft/agents-a365-tooling-extensions-openai';
+import { LocalMcpToolRegistrationService } from './local-mcp-service';
 
 export interface Client {
   invokeAgent(prompt: string): Promise<string>;
 }
 
 const toolService = new McpToolRegistrationService();
+const localMcpService = new LocalMcpToolRegistrationService();
 
 export async function getClient(authorization: Authorization | undefined, turnContext: TurnContext): Promise<Client> {
   const agent = new Agent({
@@ -16,7 +18,20 @@ export async function getClient(authorization: Authorization | undefined, turnCo
   });
 
   try {
-    if (authorization) {
+    const toolsMode = process.env.TOOLS_MODE || 'MockMCPServer';
+    const isDevelopment = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'Development';
+
+    if (toolsMode === 'MockMCPServer' || (isDevelopment && toolsMode !== 'ProductionMCPServer')) {
+      // Use local mock MCP servers
+      await localMcpService.addMcpToolServers(
+        agent,
+        process.env.AGENTIC_USER_ID || 'dev-user-id',
+        process.env.MCP_ENVIRONMENT_ID || 'dev-environment',
+        turnContext,
+        process.env.MCP_AUTH_TOKEN || 'dev-token',
+      );
+    } else if (authorization) {
+      // Use production MCP service (auth required)
       await toolService.addMcpToolServers(
         agent,
         process.env.AGENTIC_USER_ID || '',
@@ -28,9 +43,7 @@ export async function getClient(authorization: Authorization | undefined, turnCo
     }
   } catch (error) {
     console.warn('Failed to register MCP tool servers:', error);
-  }
-
-  return new OpenAIClient(agent);
+  }  return new OpenAIClient(agent);
 }
 
 /**

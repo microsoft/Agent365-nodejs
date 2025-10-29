@@ -30,7 +30,7 @@ app.post('/api/messages', async (req: Request, res: Response) => {
 const port = process.env.PORT || 3978;
 const server = app.listen(port, () => {
   console.log(`\nServer listening to port ${port} for appId ${authConfig.clientId} debug ${process.env.DEBUG}`);
-}).on('error', async (err: Error) => {
+}).on('error', async (err) => {
   console.error(err);
   openAIAgentsTraceInstrumentor.disable();
   await a365Observability.shutdown();
