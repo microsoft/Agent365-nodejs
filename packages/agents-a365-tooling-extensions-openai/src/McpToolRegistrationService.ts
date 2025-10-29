@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 import { McpToolServerConfigurationService, McpClientTool } from '@microsoft/agents-a365-tooling';
 import { AgenticAuthenticationService, Authorization } from '@microsoft/agents-a365-runtime';
 
