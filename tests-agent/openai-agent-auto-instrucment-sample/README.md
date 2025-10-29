@@ -172,7 +172,7 @@ This sample includes a VS Code debug configuration. To debug:
 - **Build errors**: Run `npm run build` to check for TypeScript compilation issues
 
 ### Known Issues with MCPPlatform
-MCPPlatform currently has compatability issues with OpenAI. Mail and Sharepoint tools will not work.
+MCPPlatform currently has compatibility issues with OpenAI. Mail and Sharepoint tools will not work.
 
 Issues seen:
 Mail:

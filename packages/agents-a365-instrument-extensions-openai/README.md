@@ -8,7 +8,7 @@ This package provides OpenTelemetry instrumentation for Agent365 which uses Open
 
 ## Features
 
-- **Automatic Instrumentation**: Seamlessly instruments OpenAI Agents SDK without manually instrument. 
+- **Automatic Instrumentation**: Seamlessly instruments OpenAI Agents SDK without manual instrumentation. 
 - **OpenTelemetry Integration**: Full compatibility with OpenTelemetry ecosystem
 - **Comprehensive Tracing**: Captures agent operations, function calls, AI generations
 
