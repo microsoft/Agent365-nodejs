@@ -3,7 +3,9 @@
 // ------------------------------------------------------------------------------
 
 import { Agent, run } from '@openai/agents';
-import { Authorization, TurnContext } from '@microsoft/agents-hosting';
+import { TurnContext } from '@microsoft/agents-hosting';
+import { Authorization as HostingAuthorization } from '@microsoft/agents-hosting/dist/src/app/auth/authorization';
+import { Authorization as RuntimeAuthorization } from '@microsoft/agents-a365-runtime';
 
 import { McpToolRegistrationService } from '@microsoft/agents-a365-tooling-extensions-openai';
 import { LocalMcpToolRegistrationService } from './LocalMcpToolRegistrationService';
@@ -15,7 +17,19 @@ export interface Client {
 const toolService = new McpToolRegistrationService();
 const localMcpService = new LocalMcpToolRegistrationService();
 
-export async function getClient(authorization: Authorization | undefined, turnContext: TurnContext): Promise<Client> {
+// Adapter to convert HostingAuthorization to RuntimeAuthorization
+class AuthorizationAdapter implements RuntimeAuthorization {
+  constructor(private hostingAuth: HostingAuthorization) {}
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async exchangeToken(turnContext: any, authHandlerId: string, scopes: string[]): Promise<{ token: string }> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const response = await this.hostingAuth.exchangeToken(turnContext as any, scopes, authHandlerId);
+    return { token: response.token || '' };
+  }
+}
+
+export async function getClient(authorization: HostingAuthorization | undefined, turnContext: TurnContext): Promise<Client> {
   const agent = new Agent({
     // You can customize the agent configuration here if needed
     name: 'OpenAI Agent',
@@ -36,12 +50,13 @@ export async function getClient(authorization: Authorization | undefined, turnCo
       );
     } else if (authorization) {
       // Use production MCP service (auth required)
+      const authAdapter = new AuthorizationAdapter(authorization);
       await toolService.addMcpToolServers(
         agent,
         process.env.AGENTIC_USER_ID || '',
         process.env.MCP_ENVIRONMENT_ID || '',
-        authorization,
-        turnContext,
+        authAdapter,
+        turnContext as any,
         process.env.MCP_AUTH_TOKEN || '',
       );
     }
