@@ -92,12 +92,12 @@ Authorization is not set on the agent application
       'process.executable.path': 'C:\\Program Files\\nodejs\\node.exe',
       'process.command_args': [
         'C:\\Program Files\\nodejs\\node.exe',
-        'D:\\repos\\sdk1\\Agent365-nodejs\\tests-agent\\openai-agent-auto-instrucment-sample\\dist\\index.js'
+        'D:\\repos\\sdk1\\Agent365-nodejs\\tests-agent\\openai-agent-auto-instrument-sample\\dist\\index.js'
       ],
       'process.runtime.version': '20.18.3',
       'process.runtime.name': 'nodejs',
       'process.runtime.description': 'Node.js',
-      'process.command': 'D:\\repos\\sdk1\\Agent365-nodejs\\tests-agent\\openai-agent-auto-instrucment-sample\\dist\\index.js',
+      'process.command': 'D:\\repos\\sdk1\\Agent365-nodejs\\tests-agent\\openai-agent-auto-instrument-sample\\dist\\index.js',
       'process.owner': 'pefan',
       'service.name': 'OpenAI Agent Instrumentation Sample-1.0.0'
     }
