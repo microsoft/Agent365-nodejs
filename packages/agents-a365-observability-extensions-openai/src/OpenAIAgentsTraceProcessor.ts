@@ -7,8 +7,8 @@
  * Converts OpenAI Agents SDK spans to OpenTelemetry spans
  */
 
-import { context, trace as OtelTrace, Span as OtelSpan, SpanStatusCode, Tracer as OtelTracer } from '@opentelemetry/api';
-import { OpenTelemetryConstants } from '@microsoft/agents-a365-observability';
+import { context, trace as OtelTrace, Span as OtelSpan, Tracer as OtelTracer } from '@opentelemetry/api';
+import { OpenTelemetryConstants, InferenceOperationType } from '@microsoft/agents-a365-observability';
 import * as Constants from './Constants';
 import * as Utils from './Utils';
 import {
@@ -39,10 +39,10 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
   private readonly spanNames: Map<OtelSpan, string> = new Map();
 
   private readonly keyMappings: Map<string, string> = new Map([
-    ['mcp_tools' + OpenTelemetryConstants.GEN_AI_RESPONSE_CONTENT_KEY, OpenTelemetryConstants.GEN_AI_EVENT_CONTENT],
-    ['mcp_tools' + OpenTelemetryConstants.GEN_AI_REQUEST_CONTENT_KEY, OpenTelemetryConstants.GEN_AI_TOOL_ARGS_KEY],
-    ['function' + OpenTelemetryConstants.GEN_AI_RESPONSE_CONTENT_KEY, OpenTelemetryConstants.GEN_AI_EVENT_CONTENT],
-    ['function' + OpenTelemetryConstants.GEN_AI_REQUEST_CONTENT_KEY, OpenTelemetryConstants.GEN_AI_TOOL_ARGS_KEY],
+    ['mcp_tools' + Constants.GEN_AI_RESPONSE_CONTENT_KEY, OpenTelemetryConstants.GEN_AI_EVENT_CONTENT],
+    ['mcp_tools' + Constants.GEN_AI_REQUEST_CONTENT_KEY, OpenTelemetryConstants.GEN_AI_TOOL_ARGS_KEY],
+    ['function' + Constants.GEN_AI_RESPONSE_CONTENT_KEY, OpenTelemetryConstants.GEN_AI_EVENT_CONTENT],
+    ['function' + Constants.GEN_AI_REQUEST_CONTENT_KEY, OpenTelemetryConstants.GEN_AI_TOOL_ARGS_KEY],
   ]);
 
   constructor(tracer: OtelTracer) {
@@ -74,7 +74,6 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
     const rootSpan = this.rootSpans.get(trace.traceId);
     if (rootSpan) {
       this.rootSpans.delete(trace.traceId);
-      rootSpan.setStatus({ code: SpanStatusCode.OK });
       rootSpan.end();
     }
   }
@@ -232,13 +231,13 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
       const attrs = Utils.getAttributesFromResponse(responseObj);
       Object.entries(attrs).forEach(([key, value]) => {
         if (value !== null && value !== undefined &&
-            key !== OpenTelemetryConstants.GEN_AI_RESPONSE_CONTENT_KEY) {
+            key !== Constants.GEN_AI_RESPONSE_CONTENT_KEY) {
           otelSpan.setAttribute(key, value as string | number | boolean);
         }
       });
 
       const modelName = attrs[OpenTelemetryConstants.GEN_AI_REQUEST_MODEL_KEY] ?? '';
-      otelSpan.updateName(`chat ${modelName}`);
+      otelSpan.updateName(`${InferenceOperationType.CHAT} ${modelName}`);
 
     }
 
@@ -256,7 +255,7 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
         const attrs = Utils.getAttributesFromInput(inputObj);
         Object.entries(attrs).forEach(([key, value]) => {
           if (value !== null && value !== undefined &&
-              key !== OpenTelemetryConstants.GEN_AI_REQUEST_CONTENT_KEY) {
+              key !== Constants.GEN_AI_REQUEST_CONTENT_KEY) {
             otelSpan.setAttribute(key, value as string | number | boolean);
           }
         });

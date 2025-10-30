@@ -59,7 +59,7 @@ export function getSpanKind(spanData: SpanData | undefined): string {
   case 'response':
     return Constants.GEN_AI_SPAN_KIND_LLM_KEY;
   case 'handoff':
-    return Constants.GEN_AI_SPAN_KIND_TOOL_KEY;
+    return Constants.GEN_AI_SPAN_KIND_CHAIN_KEY;
   case 'custom':
   case 'guardrail':
     return Constants.GEN_AI_SPAN_KIND_CHAIN_KEY;
@@ -88,12 +88,12 @@ export function getAttributesFromGenerationSpanData(data: SpanData): Record<stri
   }
 
   if (genData.input) {
-    attributes[OpenTelemetryConstants.GEN_AI_REQUEST_CONTENT_KEY] = safeJsonDumps(genData.input);
+    attributes[Constants.GEN_AI_REQUEST_CONTENT_KEY] = safeJsonDumps(genData.input);
     attributes[OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY] = 'application/json';
   }
 
   if (genData.output) {
-    attributes[OpenTelemetryConstants.GEN_AI_RESPONSE_CONTENT_KEY] = safeJsonDumps(genData.output);
+    attributes[Constants.GEN_AI_RESPONSE_CONTENT_KEY] = safeJsonDumps(genData.output);
     const output = genData.output as Record<string, unknown>;
     if (output.id) {
       attributes[OpenTelemetryConstants.GEN_AI_RESPONSE_ID_KEY] = output.id;
@@ -126,14 +126,14 @@ export function getAttributesFromFunctionSpanData(data: SpanData): Record<string
   }
 
   if (funcData.input) {
-    attributes[OpenTelemetryConstants.GEN_AI_REQUEST_CONTENT_KEY] =
+    attributes[Constants.GEN_AI_REQUEST_CONTENT_KEY] =
       typeof funcData.input === 'string' ? funcData.input : safeJsonDumps(funcData.input);
     attributes[OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY] = 'application/json';
   }
 
   if (funcData.output !== undefined && funcData.output !== null) {
     const output = typeof funcData.output === 'object' ? safeJsonDumps(funcData.output) : String(funcData.output);
-    attributes[OpenTelemetryConstants.GEN_AI_RESPONSE_CONTENT_KEY] = output;
+    attributes[Constants.GEN_AI_RESPONSE_CONTENT_KEY] = output;
   }
 
   return attributes;
@@ -148,7 +148,7 @@ export function getAttributesFromMCPListToolsSpanData(data: SpanData): Record<st
   const mcpData = data as Record<string, unknown>;
 
   if (mcpData.result) {
-    attributes[OpenTelemetryConstants.GEN_AI_RESPONSE_CONTENT_KEY] = safeJsonDumps(mcpData.result);
+    attributes[Constants.GEN_AI_RESPONSE_CONTENT_KEY] = safeJsonDumps(mcpData.result);
     attributes[OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY] = 'application/json';
   }
   return attributes;
@@ -186,9 +186,9 @@ export function getAttributesFromInput(input: unknown): Record<string, unknown> 
   const attributes: Record<string, unknown> = {};
 
   if (typeof input === 'string') {
-    attributes[OpenTelemetryConstants.GEN_AI_REQUEST_CONTENT_KEY] = input;
+    attributes[Constants.GEN_AI_REQUEST_CONTENT_KEY] = input;
   } else if (Array.isArray(input)) {
-    attributes[OpenTelemetryConstants.GEN_AI_REQUEST_CONTENT_KEY] = safeJsonDumps(input);
+    attributes[Constants.GEN_AI_REQUEST_CONTENT_KEY] = safeJsonDumps(input);
   }
 
   return attributes;

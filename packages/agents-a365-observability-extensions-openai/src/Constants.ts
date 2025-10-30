@@ -31,3 +31,6 @@ export const GEN_AI_LLM_TOKEN_COUNT_PROMPT_DETAILS_CACHED_READ = 'llm_token_coun
 export const GEN_AI_LLM_TOKEN_COUNT_COMPLETION_DETAILS_REASONING = 'llm_token_count_completion_details_reasoning';
 export const GEN_AI_GRAPH_NODE_ID = 'graph_node_id';
 export const GEN_AI_GRAPH_NODE_PARENT_ID = 'graph_node_parent_id';
+
+export const GEN_AI_REQUEST_CONTENT_KEY = 'gen_ai.request.content';
+export const GEN_AI_RESPONSE_CONTENT_KEY = 'gen_ai.response.content';
