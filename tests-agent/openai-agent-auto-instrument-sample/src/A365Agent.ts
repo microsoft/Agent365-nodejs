@@ -3,6 +3,7 @@
 // ------------------------------------------------------------------------------
 
 import { TurnState, AgentApplication, TurnContext, DefaultConversationState } from '@microsoft/agents-hosting';
+import { Authorization as HostingAuthorization } from '@microsoft/agents-hosting/dist/src/app/auth/authorization';
 import { ActivityTypes } from '@microsoft/agents-activity';
 
 import { Client, getClient } from './OpenAIClient';
@@ -96,7 +97,7 @@ export class A365Agent extends AgentApplication<ApplicationTurnState> {
     }
   }
 
-  private getAuthorizationSafe() {
+  private getAuthorizationSafe(): HostingAuthorization | undefined {
     try {
       // This will return an error if authorization is not set
       return this.authorization;
