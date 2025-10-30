@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 import { AgentApplication, TurnState, RouteHandler, Selector, TurnContext } from '@microsoft/agents-hosting';
 import { createAgentNotificationActivity } from './models/agent-notification-activity';
 import { AgentNotificationHandler } from './extensions';
@@ -33,7 +36,7 @@ function addAgenticRoute(
   rank = 32767,
   autoSignInHandlers?: string[]
 ): void {
-  const ensureAgentic: Selector = async (turnContext) => {
+  const ensureAgentic: Selector = async (turnContext: TurnContext) => {
     return isAgenticRequest(turnContext) && await Promise.resolve(routeSelector(turnContext));
   };
 
@@ -51,7 +54,7 @@ function onAgentNotificationInternal(
   autoSignInHandlers?: string[]) {
 
 
-  const routeSelector: Selector = async (turnContext) => {
+  const routeSelector: Selector = async (turnContext : TurnContext) => {
     const activity = turnContext.activity;
 
     // In case core JS SDK is updated to match .NET SDK, this will need to be updated.
@@ -91,7 +94,7 @@ function onLifecycleNotificationInternal(
   autoSignInHandlers?: string[]) {
 
 
-  const routeSelector: Selector = async (turnContext) => {
+  const routeSelector: Selector = async (turnContext: TurnContext) => {
     const activity = turnContext.activity;
 
     // In case core JS SDK is updated to match .NET SDK, this will need to be updated.
