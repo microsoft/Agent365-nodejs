@@ -7,3 +7,4 @@
  */
 
 export { OpenAIAgentsTraceInstrumentor, OpenAIAgentsInstrumentationConfig } from './trace-instrumentor';
+export { OpenAIAgentsTraceProcessor } from './trace-processor';

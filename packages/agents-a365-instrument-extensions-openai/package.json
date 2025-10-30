@@ -1,6 +1,6 @@
 {
   "name": "@microsoft/agents-a365-instrument-extensions-openai",
-  "version": "2025.10.13-preview",
+  "version": "2025.10.13",
   "description": "Agent365 SDK OpenAI Agents instrumentation extensions for telemetry and observability",
   "keywords": [
     "agent365",
@@ -11,27 +11,20 @@
     "opentelemetry",
     "instrumentation"
   ],
-  "homepage": "https://github.com/microsoft/Agent365",
+  "homepage": "https://github.com/microsoft/Agent365-nodejs",
   "bugs": {
-    "url": "https://github.com/microsoft/Agent365/issues"
+    "url": "https://github.com/microsoft/Agent365-nodejs/issues"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/microsoft/Agent365.git",
-    "directory": "nodejs/packages/agents-a365-instrument-extensions-openai"
+    "url": "https://github.com/microsoft/Agent365-nodejs.git",
+    "directory": "packages/agents-a365-instrument-extensions-openai"
   },
   "license": "MIT",
   "author": "Microsoft",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
   "types": "./dist/cjs/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/esm/index.js",
-      "require": "./dist/cjs/index.js",
-      "types": "./dist/cjs/index.d.ts"
-    }
-  },
   "files": [
     "dist",
     "README.md",

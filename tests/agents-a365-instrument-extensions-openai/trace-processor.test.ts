@@ -9,7 +9,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { Tracer } from '@opentelemetry/api';
-import { OpenAIAgentsTraceProcessor } from '../../packages/agents-a365-instrument-extensions-openai/src/trace-processor';
+import { OpenAIAgentsTraceProcessor } from '@microsoft/agents-a365-instrument-extensions-openai';
 import { ObservabilityManager } from '@microsoft/agents-a365-observability';
 import { trace } from '@opentelemetry/api';
 
