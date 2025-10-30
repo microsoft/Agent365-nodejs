@@ -84,7 +84,9 @@ agentApplication.onActivity(
       
       await context.sendActivity(`Preparing a response to your query (message #${state.conversation.count})...`);
 
-      await context.sendActivity('typing...');
+      await context.sendActivity(Activity.fromObject({
+        type: 'typing',
+      }));
 
 
         // Cache the agentic token for observability token resolver
@@ -106,7 +108,9 @@ agentApplication.onActivity(
 
       await context.sendActivity('Now performing a tool call...');
 
-      await context.sendActivity('typing');
+      await context.sendActivity(Activity.fromObject({
+        type: 'typing',
+      }));
 
       const toolResponse = await performToolCall(context);
 
