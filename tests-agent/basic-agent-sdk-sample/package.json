@@ -15,6 +15,7 @@
   "description": "",
   "dependencies": {
     "@microsoft/agents-hosting": "^1.1.0-alpha.58",
+    "@microsoft/agents-activity": "*",
     "@microsoft/agents-a365-observability": "file:../../packages/agents-a365-observability",
     "dotenv": "^17.2.2",
     "express": "^5.1.0",
