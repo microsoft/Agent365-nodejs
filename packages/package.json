@@ -17,6 +17,7 @@
   "workspaces": [
     "agents-a365-runtime",
     "agents-a365-observability",
+    "agents-a365-observability-extensions-openai",
     "agents-a365-notifications",
     "agents-a365-tooling",
     "agents-a365-tooling-extensions-claude",

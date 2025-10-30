@@ -6,7 +6,7 @@ import {
   ObservabilityManager,
   Builder,
 } from '@microsoft/agents-a365-observability';
-import { OpenAIAgentsTraceInstrumentor } from '@microsoft/agents-a365-instrument-extensions-openai';
+import { OpenAIAgentsTraceInstrumentor } from '@microsoft/agents-a365-observability-extensions-openai';
 
 // Configure observability
 export const a365Observability = ObservabilityManager.configure(

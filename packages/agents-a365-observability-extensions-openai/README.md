@@ -1,4 +1,4 @@
-# @microsoft/agents-a365-instrument-extensions-openai
+# @microsoft/agents-a365-observability-extensions-openai
 
 OpenAI Agents SDK instrumentation extensions for Agent365 telemetry and observability.
 
@@ -15,7 +15,7 @@ This package provides OpenTelemetry instrumentation for Agent365 which uses Open
 ## Installation
 
 ```bash
-npm install @microsoft/agents-a365-instrument-extensions-openai
+npm install @microsoft/agents-a365-observability-extensions-openai
 ```
 
 ## Prerequisites
@@ -30,7 +30,8 @@ npm install @microsoft/agents-a365-instrument-extensions-openai
 
 ```typescript
 import { ObservabilityManager } from '@microsoft/agents-a365-observability';
-import { OpenAIAgentsTraceInstrumentor } from '@microsoft/agents-a365-instrument-extensions-openai';
+```typescript
+import { OpenAIAgentsTraceInstrumentor } from '@microsoft/agents-a365-observability-extensions-openai';
 
 // Configure observability first
 const sdk = ObservabilityManager.configure((builder) =>
@@ -148,7 +149,7 @@ The instrumentor gracefully handles errors and provides detailed error tracking:
 - **TypeScript**: 5.5.0 or higher
 
 ## Complete Example
-See the complete working example in [`/nodejs/samples/agents-a365-instrument-extensions-openai/`](../../../samples/agents-a365-instrument-extensions-openai/)
+See the complete working example in [`/nodejs/samples/openai-agent-auto-instrucment-sample/`](../../../samples/openai-agent-auto-instrucment-sample/)
 
 ## Trace examples
 ```

@@ -27,7 +27,7 @@ export const observability = ObservabilityManager.start({
   serviceVersion: '1.0.0'
 });
 
-import { OpenAIAgentsTraceInstrumentor } from '@microsoft/agents-a365-instrument-extensions-openai';
+import { OpenAIAgentsTraceInstrumentor } from '@microsoft/agents-a365-observability-extensions-openai';
 
 describe('OpenAIAgentsTraceInstrumentor', () => {
   let instrumentor: OpenAIAgentsTraceInstrumentor;

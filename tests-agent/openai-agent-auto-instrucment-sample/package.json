@@ -1,5 +1,5 @@
 {
-  "name": "openaiagent-instrument",
+  "name": "openai-agent-auto-instrument-sample",
   "version": "1.0.0",
   "main": "dist/index.js",
   "scripts": {
@@ -26,7 +26,7 @@
   "dependencies": {
     "@microsoft/agents-hosting": "^1.0.15",
     "@microsoft/agents-a365-observability": "*",
-    "@microsoft/agents-a365-instrument-extensions-openai": "*",
+    "@microsoft/agents-a365-observability-extensions-openai": "*",
     "@microsoft/agents-a365-tooling-extensions-openai": "*",
     "@openai/agents": "^0.1.5",
     "@openai/agents-core": "^0.1.5",
