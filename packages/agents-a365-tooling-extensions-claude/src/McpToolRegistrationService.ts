@@ -1,12 +1,15 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 import { McpToolServerConfigurationService, McpClientTool } from '@microsoft/agents-a365-tooling';
-import { AgenticAuthenticationService } from '@microsoft/agents-a365-runtime';
+import { AgenticAuthenticationService, Authorization } from '@microsoft/agents-a365-runtime';
 
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 
 // Claude SDK expects a different shape for MCP server configs
 import type { McpServerConfig, Options } from '@anthropic-ai/claude-code';
-import { Authorization, TurnContext } from '@microsoft/agents-hosting';
+import { TurnContext } from '@microsoft/agents-hosting';
 
 /**
  * Discover MCP servers and list tools formatted for the Claude SDK.
