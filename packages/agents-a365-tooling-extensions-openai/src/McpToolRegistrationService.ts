@@ -1,9 +1,12 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 import { McpToolServerConfigurationService, McpClientTool } from '@microsoft/agents-a365-tooling';
-import { AgenticAuthenticationService } from '@microsoft/agents-a365-runtime';
+import { AgenticAuthenticationService, Authorization } from '@microsoft/agents-a365-runtime';
 
 // OpenAI Agents SDK
 import { Agent, MCPServerStreamableHttp } from '@openai/agents';
-import { Authorization, TurnContext } from '@microsoft/agents-hosting';
+import { TurnContext } from '@microsoft/agents-hosting';
 
 /**
  * Discover MCP servers and list tools formatted for the Claude SDK.
