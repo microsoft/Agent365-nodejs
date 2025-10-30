@@ -6,7 +6,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 
 // Claude SDK expects a different shape for MCP server configs
 import type { McpServerConfig, Options } from '@anthropic-ai/claude-code';
-import { Authorization, TurnContext } from '@microsoft/agents-hosting';
+import { TurnContext } from '@microsoft/agents-hosting';
 
 /**
  * Discover MCP servers and list tools formatted for the Claude SDK.
@@ -23,7 +23,6 @@ export class McpToolRegistrationService {
     agentOptions: Options,
     agentUserId: string,
     environmentId: string,
-    authorization: Authorization,
     turnContext: TurnContext,
     authToken: string
   ): Promise<void> {
@@ -33,7 +32,7 @@ export class McpToolRegistrationService {
     }
 
     if (!authToken) {
-      authToken = await AgenticAuthenticationService.GetAgenticUserToken(authorization, turnContext);
+      authToken = await AgenticAuthenticationService.GetAgenticUserToken(turnContext);
     }
 
     const servers = await this.configService.listToolServers(agentUserId, environmentId, authToken);

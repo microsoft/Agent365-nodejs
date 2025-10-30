@@ -1,4 +1,7 @@
-import { TurnContext, Authorization } from '@microsoft/agents-hosting';
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
+import { TurnContext, AuthConfiguration, loadAuthConfigFromEnv } from '@microsoft/agents-hosting';
 import { AgenticAuthProvider } from './agentic-auth-provider';
 import { PowerPlatformApiDiscovery, ClusterCategory } from './power-platform-api-discovery';
 import { getClusterCategory } from './environment-utils';
@@ -10,14 +13,16 @@ export class AgenticAuthenticationService {
   // This flag should be set to true when OAuth flow is implemented in Agents SDK
   private static readonly useOAuthFlow: boolean = false;
 
-  public static async GetAgenticUserToken(authorization: Authorization, turnContext: TurnContext) {
+  public static async GetAgenticUserToken(_turnContext: TurnContext): Promise<string> {
     const scope = `${this.apiDiscovery.getTokenAudience()}/.default`;
+    const authConfig: AuthConfiguration = loadAuthConfigFromEnv();
 
     if (!this.useOAuthFlow) {
-      return await this.agenticAuthProvider.getAccessToken(turnContext.adapter.authConfig, scope);
+      return await this.agenticAuthProvider.getAccessToken(authConfig, scope);
     }
 
-
-    return (await authorization.exchangeToken(turnContext, [scope], 'agentic')).token || '';
+    // TODO: Implement OAuth flow when Authorization type is available in the new SDK version
+    // The _turnContext will be used here for OAuth token exchange
+    throw new Error('OAuth flow is not yet implemented for the new agents hosting SDK version');
   }
 }

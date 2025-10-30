@@ -3,7 +3,7 @@ import { AgenticAuthenticationService } from '@microsoft/agents-a365-runtime';
 
 // OpenAI Agents SDK
 import { Agent, MCPServerStreamableHttp } from '@openai/agents';
-import { Authorization, TurnContext } from '@microsoft/agents-hosting';
+import { TurnContext } from '@microsoft/agents-hosting';
 
 /**
  * Discover MCP servers and list tools formatted for the Claude SDK.
@@ -16,7 +16,6 @@ export class McpToolRegistrationService {
     agent: Agent,
     agentUserId: string,
     environmentId: string,
-    authorization: Authorization,
     turnContext: TurnContext,
     authToken: string
   ): Promise<void> {
@@ -26,7 +25,7 @@ export class McpToolRegistrationService {
     }
 
     if (!authToken) {
-      authToken = await AgenticAuthenticationService.GetAgenticUserToken(authorization, turnContext);
+      authToken = await AgenticAuthenticationService.GetAgenticUserToken(turnContext);
     }
 
     const servers = await this.configService.listToolServers(agentUserId, environmentId, authToken);
