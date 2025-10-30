@@ -38,31 +38,23 @@ export class Utility {
       }
     }
 
-    return `${this.getMcpPlatformBaseUrl()}/mcp/environments`;
+    return `${this.getMcpPlatformBaseUrl()}/agents/servers`;
   }
 
   /**
    * Build the full URL for accessing a specific MCP server in a given environment.
-   * This appends the environment id and server name to the base MCP environments URL.
+   * This appends the server name to the base MCP environments URL.
    *
    * Example:
-   *   Utility.BuildMcpServerUrl('default-abc', 'MyServer')
-   *   // => "https://agent365.svc.cloud.microsoft/mcp/environments/default-abc/servers/MyServer/"
+   *   Utility.BuildMcpServerUrl('MyServer')
+   *   // => "https://agent365.svc.cloud.microsoft/agents/servers/MyServer/"
    *
-   * @param environmentId - The environment identifier (for example 'default-...').
    * @param serverName - The MCP server resource name.
    * @returns The fully-qualified MCP server URL including trailing slash.
   */
-  public static BuildMcpServerUrl(environmentId: string, serverName: string) : string {
+  public static BuildMcpServerUrl(serverName: string) : string {
     const baseUrl = this.GetMcpBaseUrl();
-    if (
-      this.getCurrentEnvironment().toLowerCase() === 'development' &&
-      baseUrl.endsWith('servers')
-    ) {
-      return `${baseUrl}/${serverName}`;
-    } else {
-      return `${baseUrl}/${environmentId}/servers/${serverName}`;
-    }
+    return `${baseUrl}/${serverName}`;
   }
 
   public static GetToolsMode(): ToolsMode {

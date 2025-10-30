@@ -25,7 +25,6 @@ export class McpToolRegistrationService {
   async addToolServers(
     agentOptions: Options,
     agentUserId: string,
-    environmentId: string,
     authorization: Authorization,
     turnContext: TurnContext,
     authToken: string
@@ -39,7 +38,7 @@ export class McpToolRegistrationService {
       authToken = await AgenticAuthenticationService.GetAgenticUserToken(authorization, turnContext);
     }
 
-    const servers = await this.configService.listToolServers(agentUserId, environmentId, authToken);
+    const servers = await this.configService.listToolServers(agentUserId, authToken);
     const mcpServers: Record<string, McpServerConfig> = {};
     const tools: McpClientTool[] = [];
 
@@ -48,10 +47,6 @@ export class McpToolRegistrationService {
       const headers: Record<string, string> = {};
       if (authToken) {
         headers['Authorization'] = `Bearer ${authToken}`;
-      }
-
-      if (environmentId) {
-        headers['x-ms-environment-id'] = environmentId;
       }
 
       // Add each server to the config object

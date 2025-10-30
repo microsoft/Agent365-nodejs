@@ -109,7 +109,6 @@ const mcpServer = new MCPServerStreamableHttp({
   requestInit: {
     headers: {
       'Authorization': `Bearer ${authToken}`,
-      'x-ms-environment-id': environmentId,
     }
   }
 });
@@ -128,7 +127,6 @@ The following environment variables are commonly used:
 ```bash
 # Agent365 Authentication
 AGENTIC_USER_ID=your-user-id
-MCP_ENVIRONMENT_ID=your-environment-id
 MCP_AUTH_TOKEN=your-auth-token
 
 # Agent Configuration
@@ -145,7 +143,6 @@ The SDK supports multiple authentication methods:
    await toolService.addMcpToolServers(
      agent,
      userId,
-     environmentId,
      authorization,
      turnContext,
      '' // Empty auth token - will be acquired automatically
@@ -158,7 +155,6 @@ The SDK supports multiple authentication methods:
    await toolService.addMcpToolServers(
      agent,
      userId,
-     environmentId,
      authorization,
      turnContext,
      process.env.MCP_AUTH_TOKEN
