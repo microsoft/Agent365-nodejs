@@ -4,7 +4,6 @@
 
 import { TurnState, AgentApplication, TurnContext, DefaultConversationState } from '@microsoft/agents-hosting';
 import { ActivityTypes } from '@microsoft/agents-activity';
-
 import { Client, getClient } from './OpenAIClient';
 import { Authorization } from '@microsoft/agents-a365-runtime';
 
