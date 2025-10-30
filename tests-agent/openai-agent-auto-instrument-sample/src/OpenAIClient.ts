@@ -36,7 +36,7 @@ export async function getClient(authorization: Authorization | undefined, turnCo
         process.env.MCP_AUTH_TOKEN || 'dev-token',
       );
     } else if (authorization) {
-      // Use production MCP service (auth required)      
+      // Use production MCP service (auth required)
       await toolService.addMcpToolServers(
         agent,
         process.env.AGENTIC_USER_ID || '',
