@@ -1,6 +1,6 @@
 # Sample Agent - Node.js OpenAI
 
-This directory contains a sample OpenAI agent implementation using the Agent365 framework with Node.js  and Agent365 OpenAI Agents SDK instrumentation extensions.
+This directory contains a sample OpenAI agent implementation using the Agent365 framework with Node.js and Agent365 OpenAI Agents SDK instrumentation extensions.
 
 ## Demonstrates
 
@@ -19,15 +19,15 @@ This sample demonstrates how to build auto instrument for Agent365 using  OpenAI
 To try it out, make sure the Agents Node.js SDK has been built:
 
 ```sh
-$ cd nodejs/src
+$ cd Agent365-nodejs
 $ npm install
-$ npm run build:all
+$ npm run build
 ```
 
 Switch to this sample directory and install the agent application dependencies:
 
 ```sh
-$ cd samples/nodejs/openai/sample-agent
+$ cd tests-agent/openai-agent-auto-instrument-sample
 $ npm install
 $ npm run build
 ```

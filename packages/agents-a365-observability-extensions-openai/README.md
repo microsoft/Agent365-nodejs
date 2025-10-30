@@ -149,7 +149,7 @@ The instrumentor gracefully handles errors and provides detailed error tracking:
 - **TypeScript**: 5.5.0 or higher
 
 ## Complete Example
-See the complete working example in [`/nodejs/samples/openai-agent-auto-instrucment-sample/`](../../../samples/openai-agent-auto-instrucment-sample/)
+See the complete working example in [tests-agent/openai-agent-auto-instrument-sample/](../../tests-agent/openai-agent-auto-instrument-sample/README.md)
 
 ## Trace examples
 ```

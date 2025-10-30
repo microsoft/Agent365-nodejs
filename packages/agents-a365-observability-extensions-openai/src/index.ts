@@ -6,5 +6,5 @@
  * Wraps the OpenAI Agents SDK tracer to integrate with Agent365 Observability.
  */
 
-export { OpenAIAgentsTraceInstrumentor, OpenAIAgentsInstrumentationConfig } from './trace-instrumentor';
-export { OpenAIAgentsTraceProcessor } from './trace-processor';
+export { OpenAIAgentsTraceInstrumentor, OpenAIAgentsInstrumentationConfig } from './OpenAIAgentsTraceInstrumentor';
+export { OpenAIAgentsTraceProcessor } from './OpenAIAgentsTraceProcessor';

@@ -9,8 +9,8 @@
 
 import { context, trace as OtelTrace, Span as OtelSpan, SpanStatusCode, Tracer as OtelTracer } from '@opentelemetry/api';
 import { OpenTelemetryConstants } from '@microsoft/agents-a365-observability';
-import * as Constants from './constants';
-import * as Utils from './utils';
+import * as Constants from './Constants';
+import * as Utils from './Utils';
 import {
   Span as AgentsSpan,
   SpanData,

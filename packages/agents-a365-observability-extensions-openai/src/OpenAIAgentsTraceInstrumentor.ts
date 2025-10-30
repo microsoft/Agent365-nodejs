@@ -10,7 +10,7 @@
 import { trace } from '@opentelemetry/api';
 import { InstrumentationBase, InstrumentationConfig, InstrumentationModuleDefinition } from '@opentelemetry/instrumentation';
 import { ObservabilityManager } from '@microsoft/agents-a365-observability';
-import { OpenAIAgentsTraceProcessor } from './trace-processor';
+import { OpenAIAgentsTraceProcessor } from './OpenAIAgentsTraceProcessor';
 import { setTraceProcessors, setTracingDisabled, TracingProcessor } from '@openai/agents';
 
 /**

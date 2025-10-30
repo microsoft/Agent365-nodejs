@@ -9,8 +9,8 @@ configDotenv();
 
 import { AuthConfiguration, authorizeJWT, CloudAdapter, loadAuthConfigFromEnv, Request } from '@microsoft/agents-hosting';
 import express, { Response } from 'express';
-import { agentApplication } from './agent';
-import { a365Observability, openAIAgentsTraceInstrumentor } from './telemetry';
+import { agentApplication } from './A365Agent';
+import { a365Observability, openAIAgentsTraceInstrumentor } from './Telemetry';
 
 // Start observability
 a365Observability.start();

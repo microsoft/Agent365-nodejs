@@ -6,7 +6,7 @@ import { Agent, run } from '@openai/agents';
 import { Authorization, TurnContext } from '@microsoft/agents-hosting';
 
 import { McpToolRegistrationService } from '@microsoft/agents-a365-tooling-extensions-openai';
-import { LocalMcpToolRegistrationService } from './local-mcp-service';
+import { LocalMcpToolRegistrationService } from './LocalMcpToolRegistrationService';
 
 export interface Client {
   invokeAgent(prompt: string): Promise<string>;
