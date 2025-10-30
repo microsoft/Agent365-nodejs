@@ -112,8 +112,8 @@ jobs:
     - name: Pack packages
       run: cd packages && npm pack --workspaces
     
-    # Copy packages and samples to drop folder
-    - name: Copy packages and samples to drop folder
+    # Copy packages to drop folder
+    - name: Copy packages to drop folder
       run: |
         mkdir -p ~/drop/nodejs-${{ matrix.node-version }} && cp -v packages/*.tgz $_        
 
@@ -121,7 +121,7 @@ jobs:
     - name: Create zip
       run: cd ~/drop/nodejs-${{ matrix.node-version }} && zip -r ~/drop/nodejs-${{ matrix.node-version }}.zip .
 
-    - name: Upload packages and samples as artifacts
+    - name: Upload packages as artifacts
       uses: actions/upload-artifact@v4
       with:
         name: nodejs-${{ matrix.node-version }}
