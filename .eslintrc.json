@@ -28,5 +28,13 @@
     "es6": true,
     "jest": true
   },
-  "ignorePatterns": ["dist/**/*", "node_modules/**/*", "*.js"]
+  "ignorePatterns": ["dist/**/*", "node_modules/**/*", "*.js"],
+  "overrides": [
+    {
+      "files": ["tests/**/*.ts", "**/*.test.ts", "**/*.spec.ts"],
+      "rules": {
+        "no-console": "off"
+      }
+    }
+  ]
 }
