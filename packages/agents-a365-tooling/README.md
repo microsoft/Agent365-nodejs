@@ -30,7 +30,7 @@ Helper class for URL construction and environment detection.
 import { McpToolServerConfigurationService } from '@microsoft/agents-a365-tooling';
 
 const configService = new McpToolServerConfigurationService();
-const servers = await configService.listToolServers(agentUserId, authToken);
+const servers = await configService.listToolServers(agentUserId, environmentId, authToken);
 ```
 
 ### Understanding Tool Server Discovery
@@ -109,13 +109,15 @@ Create a `ToolingManifest.json` file in your project root:
 For production environments, ensure you have:
 
 1. **Valid Agent User ID**: The unique identifier for your digital worker/agent
-2. **Authentication Token**: Bearer token for accessing the tooling gateway.
+2. **Environment ID**: Your MCP environment identifier (format: `default-[uuid]` or `uuid`)
+3. **Authentication Token**: Bearer token for accessing the tooling gateway.
 
 ```typescript
 const agentUserId = process.env.AGENTIC_USER_ID || 'your-agent-user-id';
+const environmentId = process.env.MCP_ENVIRONMENT_ID || 'default-your-env-id';
 const authToken = process.env.MCP_AUTH_TOKEN || await getAuthToken();
 
-const servers = await configService.listToolServers(agentUserId, authToken);
+const servers = await configService.listToolServers(agentUserId, environmentId, authToken);
 ```
 
 ## Troubleshooting Tool Discovery
@@ -138,7 +140,7 @@ const configService = new McpToolServerConfigurationService();
 console.log('Environment:', process.env.NODE_ENV);
 console.log('Current working directory:', process.cwd());
 
-const servers = await configService.listToolServers(agentUserId, authToken);
+const servers = await configService.listToolServers(agentUserId, environmentId, authToken);
 console.log('Discovered servers:', servers);
 ```
 
@@ -147,6 +149,7 @@ console.log('Discovered servers:', servers);
 **Problem**: Generated URLs don't work or return 404 errors.
 
 **Solutions:**
+- Verify `environmentId` is correct and exists
 - Check `mcpServerUniqueName` values in your manifest match available servers
 - Ensure the environment's base URL is accessible
 

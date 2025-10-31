@@ -18,6 +18,7 @@ export class McpToolRegistrationService {
   async addMcpToolServers(
     agent: Agent,
     agentUserId: string,
+    environmentId: string,
     authorization: Authorization,
     turnContext: TurnContext,
     authToken: string
@@ -31,7 +32,7 @@ export class McpToolRegistrationService {
       authToken = await AgenticAuthenticationService.GetAgenticUserToken(authorization, turnContext);
     }
 
-    const servers = await this.configService.listToolServers(agentUserId, authToken);
+    const servers = await this.configService.listToolServers(agentUserId, environmentId, authToken);
     const mcpServers: MCPServerStreamableHttp[] = [];
 
     for (const server of servers) {
@@ -39,6 +40,9 @@ export class McpToolRegistrationService {
       const headers: Record<string, string> = {};
       if (authToken) {
         headers['Authorization'] = `Bearer ${authToken}`;
+      }
+      if (environmentId) {
+        headers['x-ms-environment-id'] = environmentId;
       }
 
       // Create MCPServerStreamableHttp instance for OpenAI agents
