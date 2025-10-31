@@ -1,4 +1,4 @@
-// Copyright (c) Microsoft Corporation.
+ // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
 import { TurnContext } from '@microsoft/agents-hosting';
@@ -15,6 +15,6 @@ export class AgenticAuthenticationService {
   public static async GetAgenticUserToken(authorization: Authorization, turnContext: TurnContext) {
     const scope = `${this.apiDiscovery.getTokenAudience()}/.default`;
 
-    return (await authorization.exchangeToken(turnContext, 'agentic', [scope])).token || '';
+    return (await authorization.exchangeToken(turnContext, 'agentic', { scopes: [scope] })).token || '';
   }
 }
