@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 // Agent365 SDK
-import { McpToolServerConfigurationService, McpClientTool } from '@microsoft/agents-a365-tooling';
+import { McpToolServerConfigurationService, McpClientTool, Utility } from '@microsoft/agents-a365-tooling';
 import { AgenticAuthenticationService, Authorization } from '@microsoft/agents-a365-runtime';
 
 // Agents SDK
@@ -11,7 +11,6 @@ import { TurnContext } from '@microsoft/agents-hosting';
 // LangChain SDKs
 import { ClientConfig, Connection, MultiServerMCPClient } from '@langchain/mcp-adapters';
 import { DynamicStructuredTool } from '@langchain/core/tools';
-import { Utility } from '../../agents-a365-tooling/src/Utility';
 
 /**
  * Discover MCP servers and list tools formatted for the Claude SDK.
