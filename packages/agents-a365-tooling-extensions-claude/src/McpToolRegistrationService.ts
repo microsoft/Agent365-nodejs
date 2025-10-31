@@ -8,7 +8,7 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 
 // Claude SDK expects a different shape for MCP server configs
-import type { McpServerConfig, Options } from '@anthropic-ai/claude-code';
+import type { McpServerConfig, Options } from '@anthropic-ai/claude-agent-sdk';
 import { TurnContext } from '@microsoft/agents-hosting';
 
 /**

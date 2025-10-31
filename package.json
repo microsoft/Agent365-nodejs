@@ -7,12 +7,13 @@
     "build": "npm run build --workspaces --if-present",
     "build:watch": "npm run build:watch --workspaces --if-present",
     "clean": "npm run clean --workspaces --if-present",
+    "clean:all": "rimraf **/node_modules **/dist",
     "test": "npm run test --workspaces --if-present",
     "test:watch": "npm run test:watch --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "lint:fix": "npm run lint:fix --workspaces --if-present",
     "ci": "npm run ci --workspaces --if-present",
-    "pack": "npm pack "
+    "pack": "npm run pack --workspaces --if-present"
   },
   "workspaces": [
     "packages/agents-a365-*",

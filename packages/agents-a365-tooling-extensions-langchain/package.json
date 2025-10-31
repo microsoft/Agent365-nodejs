@@ -16,7 +16,8 @@
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "prepublishOnly": "npm run clean && npm run build",
-    "ci": "npm ci"
+    "ci": "npm ci",
+    "pack": "npm pack --pack-destination=../../"
   },
   "keywords": [
     "ai",
@@ -33,10 +34,10 @@
     "directory": "nodejs/packages/agents-a365-tooling-extensions-langchain"
   },
   "dependencies": {
-    "@microsoft/agents-a365-tooling": "workspace:*",
-    "@microsoft/agents-a365-runtime": "workspace:*",
-    "@langchain/core": "workspace:*",
-    "@langchain/mcp-adapters": "workspace:*"
+    "@microsoft/agents-a365-tooling": "*",
+    "@microsoft/agents-a365-runtime": "*",
+    "@langchain/core": "*",
+    "@langchain/mcp-adapters": "*"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",

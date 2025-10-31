@@ -16,7 +16,8 @@
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "prepublishOnly": "npm run clean && npm run build",
-    "ci": "npm ci"
+    "ci": "npm ci",
+    "pack": "npm pack --pack-destination=../../"
   },
   "keywords": [
     "ai",
@@ -32,9 +33,9 @@
     "directory": "nodejs/packages/agents-a365-tooling"
   },
   "dependencies": {
-    "@microsoft/agents-a365-runtime": "workspace:*",
-    "@modelcontextprotocol/sdk": "workspace:*",
-    "express": "workspace:*"
+    "@microsoft/agents-a365-runtime": "*",
+    "@modelcontextprotocol/sdk": "*",
+    "express": "*"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",

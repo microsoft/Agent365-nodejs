@@ -16,7 +16,8 @@
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "prepublishOnly": "npm run clean && npm run build",
-    "ci": "npm ci"
+    "ci": "npm ci",
+    "pack": "npm pack --pack-destination=../../"
   },
   "keywords": [
     "ai",
@@ -32,8 +33,8 @@
     "directory": "nodejs/packages/agents-a365-runtime"
   },
   "dependencies": {
-    "@microsoft/agents-hosting": "workspace:*",
-    "@azure/identity": "workspace:*"
+    "@microsoft/agents-hosting": "*",
+    "@azure/identity": "*"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",

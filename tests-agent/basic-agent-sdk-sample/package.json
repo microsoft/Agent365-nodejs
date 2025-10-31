@@ -14,20 +14,21 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@microsoft/agents-hosting": "workspace:*",
-    "@microsoft/agents-activity": "workspace:*",
-    "@microsoft/agents-a365-observability": "workspace:*",
-    "dotenv": "workspace:*",
-    "express": "workspace:*",
-    "uuid": "workspace:*"
+    "@microsoft/agents-hosting": "*",
+    "@microsoft/agents-activity": "*",
+    "@microsoft/agents-a365-observability": "*",
+    "@microsoft/agents-a365-runtime": "*",
+    "dotenv": "*",
+    "express": "*",
+    "uuid": "*"
   },
   "devDependencies": {
-    "@microsoft/m365agentsplayground": "workspace:*",
-    "@types/express": "workspace:*",
-    "@types/node": "workspace:*",
-    "@types/uuid": "workspace:*",
-    "nodemon": "workspace:*",
-    "ts-node": "workspace:*",
-    "typescript": "workspace:*"
+    "@microsoft/m365agentsplayground": "*",
+    "@types/express": "*",
+    "@types/node": "*",
+    "@types/uuid": "*",
+    "nodemon": "*",
+    "ts-node": "*",
+    "typescript": "*"
   }
 }

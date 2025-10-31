@@ -32,17 +32,17 @@
     "directory": "nodejs/tests"
   },
   "dependencies": {
-    "@microsoft/agents-a365-observability": "workspace:*",
-    "@microsoft/agents-a365-runtime": "workspace:*",
-    "@azure/monitor-opentelemetry-exporter": "workspace:*",
-    "@modelcontextprotocol/sdk": "workspace:*",
-    "@openai/agents": "workspace:*",
-    "@opentelemetry/api": "workspace:*",
-    "@opentelemetry/exporter-trace-otlp-http": "workspace:*",
-    "@opentelemetry/resources": "workspace:*",
-    "@opentelemetry/sdk-node": "workspace:*",
-    "@opentelemetry/sdk-trace-base": "workspace:*",
-    "@opentelemetry/semantic-conventions": "workspace:*"
+    "@microsoft/agents-a365-observability": "*",
+    "@microsoft/agents-a365-runtime": "*",
+    "@azure/monitor-opentelemetry-exporter": "*",
+    "@modelcontextprotocol/sdk": "*",
+    "@openai/agents": "*",
+    "@opentelemetry/api": "*",
+    "@opentelemetry/exporter-trace-otlp-http": "*",
+    "@opentelemetry/resources": "*",
+    "@opentelemetry/sdk-node": "*",
+    "@opentelemetry/sdk-trace-base": "*",
+    "@opentelemetry/semantic-conventions": "*"
   },
   "devDependencies": {
     "@babel/preset-typescript": "^7.27.1",
