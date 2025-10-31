@@ -33,11 +33,10 @@
     "directory": "nodejs/packages/agents-a365-tooling-extensions-langchain"
   },
   "dependencies": {
-    "@microsoft/agents-hosting": "1.1.0-alpha.58",
-    "@microsoft/agents-a365-tooling": "*",
-    "@microsoft/agents-a365-runtime": "*",
-    "@langchain/core": "*",
-    "@langchain/mcp-adapters": "*"
+    "@microsoft/agents-a365-tooling": "workspace:*",
+    "@microsoft/agents-a365-runtime": "workspace:*",
+    "@langchain/core": "workspace:*",
+    "@langchain/mcp-adapters": "workspace:*"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",

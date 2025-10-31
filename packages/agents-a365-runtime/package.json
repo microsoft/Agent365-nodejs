@@ -32,8 +32,8 @@
     "directory": "nodejs/packages/agents-a365-runtime"
   },
   "dependencies": {
-    "@microsoft/agents-hosting": "1.1.0-alpha.58",
-    "@azure/identity": "^4.12.0"
+    "@microsoft/agents-hosting": "workspace:*",
+    "@azure/identity": "workspace:*"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",

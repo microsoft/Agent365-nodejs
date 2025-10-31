@@ -32,9 +32,9 @@
     "directory": "nodejs/packages/agents-a365-tooling"
   },
   "dependencies": {
-    "@microsoft/agents-hosting": "1.1.0-alpha.58",
-    "@modelcontextprotocol/sdk": "^1.18.1",
-    "express": "^5.1.0"
+    "@microsoft/agents-a365-runtime": "workspace:*",
+    "@modelcontextprotocol/sdk": "workspace:*",
+    "express": "workspace:*"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",

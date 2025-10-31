@@ -33,10 +33,10 @@
     "directory": "nodejs/packages/agents-a365-tooling-extensions-openai"
   },
   "dependencies": {
-    "@openai/agents": "*",
-    "@microsoft/agents-hosting": "1.1.0-alpha.58",
-    "@microsoft/agents-a365-tooling": "*",
-    "@microsoft/agents-a365-runtime": "*"
+    "@microsoft/agents-a365-tooling": "workspace:*",
+    "@microsoft/agents-a365-runtime": "workspace:*",
+    "@openai/agents": "workspace:*",
+    "@microsoft/agents-hosting": "workspace:*"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",

@@ -42,10 +42,10 @@
     "test:coverage": "jest --coverage"
   },
   "dependencies": {
-    "@microsoft/agents-a365-observability": "*",
-    "@openai/agents": "^0.1.5",
-    "@opentelemetry/api": "^1.9.0",
-    "@opentelemetry/instrumentation": "^0.55.0"
+    "@microsoft/agents-a365-observability": "workspace:*",
+    "@openai/agents": "workspace:*",
+    "@opentelemetry/api": "workspace:*",
+    "@opentelemetry/instrumentation": "workspace:*"
   },
   "devDependencies": {
     "@types/jest": "^29.5.12",
