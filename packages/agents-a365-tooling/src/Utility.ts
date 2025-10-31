@@ -107,6 +107,13 @@ export class Utility {
     return MCP_PLATFORM_PROD_BASE_URL;
   }
 
+  /**
+   * Determines whether to use the environment ID in MCP server URLs.
+   * Reads the USE_ENVIRONMENT_ID environment variable (case-insensitive).
+   * If not set, defaults to 'true'.
+   *
+   * @returns {boolean} True if environment ID should be used in URLs; otherwise, false.
+   */
   public static GetUseEnvironmentId(): boolean {
     const useEnvId = process.env.USE_ENVIRONMENT_ID || 'true';
     return useEnvId.toLowerCase() === 'true';
