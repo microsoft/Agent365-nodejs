@@ -11,6 +11,7 @@ import { TurnContext } from '@microsoft/agents-hosting';
 // LangChain SDKs
 import { ClientConfig, Connection, MultiServerMCPClient } from '@langchain/mcp-adapters';
 import { DynamicStructuredTool } from '@langchain/core/tools';
+import { Utility } from '../../agents-a365-tooling/src/Utility';
 
 /**
  * Discover MCP servers and list tools formatted for the Claude SDK.
@@ -45,7 +46,7 @@ export class McpToolRegistrationService {
       if (authToken) {
         headers['Authorization'] = `Bearer ${authToken}`;
       }
-      if (environmentId) {
+      if (Utility.GetUseEnvironmentId() && environmentId) {
         headers['x-ms-environment-id'] = environmentId;
       }
 

@@ -10,6 +10,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 // Claude SDK expects a different shape for MCP server configs
 import type { McpServerConfig, Options } from '@anthropic-ai/claude-code';
 import { TurnContext } from '@microsoft/agents-hosting';
+import { Utility } from '../../agents-a365-tooling/src/Utility';
 
 /**
  * Discover MCP servers and list tools formatted for the Claude SDK.
@@ -50,7 +51,7 @@ export class McpToolRegistrationService {
         headers['Authorization'] = `Bearer ${authToken}`;
       }
 
-      if (environmentId) {
+      if (Utility.GetUseEnvironmentId() && environmentId) {
         headers['x-ms-environment-id'] = environmentId;
       }
 

@@ -7,6 +7,7 @@ import { AgenticAuthenticationService, Authorization } from '@microsoft/agents-a
 // OpenAI Agents SDK
 import { Agent, MCPServerStreamableHttp } from '@openai/agents';
 import { TurnContext } from '@microsoft/agents-hosting';
+import { Utility } from '../../agents-a365-tooling/src/Utility';
 
 /**
  * Discover MCP servers and list tools formatted for the Claude SDK.
@@ -41,7 +42,7 @@ export class McpToolRegistrationService {
       if (authToken) {
         headers['Authorization'] = `Bearer ${authToken}`;
       }
-      if (environmentId) {
+      if (Utility.GetUseEnvironmentId() && environmentId) {
         headers['x-ms-environment-id'] = environmentId;
       }
 
