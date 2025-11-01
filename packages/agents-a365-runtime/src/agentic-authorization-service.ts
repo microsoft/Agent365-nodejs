@@ -6,7 +6,7 @@ import { PowerPlatformApiDiscovery, ClusterCategory } from './power-platform-api
 import { getClusterCategory } from './environment-utils';
 
 export interface Authorization {
-  exchangeToken(turnContext: TurnContext, authHandlerId: string, scopes: string[]): Promise<{ token: string }>;
+  exchangeToken(turnContext: TurnContext, authHandlerId: string, options: { scopes: string[] }): Promise<{ token: string }>;
 }
 
 export class AgenticAuthenticationService {
@@ -15,6 +15,6 @@ export class AgenticAuthenticationService {
   public static async GetAgenticUserToken(authorization: Authorization, turnContext: TurnContext) {
     const scope = `${this.apiDiscovery.getTokenAudience()}/.default`;
 
-    return (await authorization.exchangeToken(turnContext, 'agentic', [scope])).token || '';
+    return (await authorization.exchangeToken(turnContext, 'agentic', { scopes: [scope] })).token || '';
   }
 }
