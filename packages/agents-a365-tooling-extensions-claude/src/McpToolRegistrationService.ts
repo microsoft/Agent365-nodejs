@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { McpToolServerConfigurationService, McpClientTool } from '@microsoft/agents-a365-tooling';
+import { McpToolServerConfigurationService, McpClientTool, Utility } from '@microsoft/agents-a365-tooling';
 import { AgenticAuthenticationService, Authorization } from '@microsoft/agents-a365-runtime';
 
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
@@ -50,7 +50,7 @@ export class McpToolRegistrationService {
         headers['Authorization'] = `Bearer ${authToken}`;
       }
 
-      if (environmentId) {
+      if (Utility.GetUseEnvironmentId() && environmentId) {
         headers['x-ms-environment-id'] = environmentId;
       }
 
