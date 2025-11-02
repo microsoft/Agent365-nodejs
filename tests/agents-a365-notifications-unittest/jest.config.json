@@ -1,0 +1,32 @@
+{
+  "preset": "ts-jest",
+  "testEnvironment": "node",
+  "roots": [
+    "<rootDir>"
+  ],
+  "testMatch": [
+    "**/*.test.ts"
+  ],
+  "transform": {
+    "^.+\\.ts$": "ts-jest"
+  },
+  "collectCoverage": true,
+  "coverageReporters": ["text", "lcov", "html"],
+  "collectCoverageFrom": [
+    "../../packages/agents-a365-notifications/src/**/*.ts",
+    "!../../packages/agents-a365-notifications/src/**/*.d.ts",
+    "!../../packages/agents-a365-notifications/src/index.ts"
+  ],
+  "coverageThreshold": {
+    "global": {
+      "branches": 80,
+      "functions": 80,
+      "lines": 80,
+      "statements": 80
+    }
+  },
+  "moduleNameMapper": {
+    "^@microsoft/agents-a365-notifications$": "<rootDir>/../../packages/agents-a365-notifications/src/index.ts"
+  },
+  "moduleDirectories": ["node_modules", "<rootDir>/../../node_modules"]
+}

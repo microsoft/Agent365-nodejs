@@ -1,0 +1,31 @@
+{
+  "name": "agents-a365-tooling-extensions-langchain-unittest",
+  "version": "1.0.0",
+  "description": "Unit tests for @microsoft/agents-a365-tooling-extensions-langchain",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  },
+  "keywords": [
+    "ai",
+    "agents",
+    "azure",
+    "typescript",
+    "langchain",
+    "unittest"
+  ],
+  "author": "Microsoft Corporation",
+  "license": "See license file",
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "@types/node": "^20.0.0",
+    "jest": "^29.0.0",
+    "ts-jest": "^29.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
