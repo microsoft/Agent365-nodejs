@@ -31,7 +31,7 @@ const setPackageVersionAndBuildNumber = async versionInfo => {
     }
 
     const folders = files
-      .filter(file => file.isDirectory())
+      .filter(file => file.isDirectory() && file.name !== 'node_modules')
       .map(folder => `${folder.parentPath}/${folder.name}`)
 
     for (const f of folders) {

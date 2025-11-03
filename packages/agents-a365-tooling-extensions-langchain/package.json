@@ -1,6 +1,6 @@
 {
   "name": "@microsoft/agents-a365-tooling-extensions-langchain",
-  "version": "2025.10.10",
+  "version": "1.0.0-preview.1.g06238556e1",
   "description": "Agent 365 Tooling SDK for LangChain AI agents built with TypeScript/Node.js",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
@@ -34,8 +34,8 @@
   },
   "dependencies": {
     "@microsoft/agents-hosting": "1.1.0-alpha.58",
-    "@microsoft/agents-a365-tooling": "*",
-    "@microsoft/agents-a365-runtime": "*",
+    "@microsoft/agents-a365-tooling": "1.0.0-preview.1.g06238556e1",
+    "@microsoft/agents-a365-runtime": "1.0.0-preview.1.g06238556e1",
     "@langchain/core": "*",
     "@langchain/mcp-adapters": "*"
   },
