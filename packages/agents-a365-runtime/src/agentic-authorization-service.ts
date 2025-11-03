@@ -12,8 +12,18 @@ export interface Authorization {
 export class AgenticAuthenticationService {
   private static readonly apiDiscovery: PowerPlatformApiDiscovery = new PowerPlatformApiDiscovery(getClusterCategory() as ClusterCategory);
 
+  private static getScope(): string {
+    const envScope = (global as any).process?.env?.MCP_PLATFORM_AUTHENTICATION_SCOPE;
+    
+    if (envScope) {
+      return envScope;
+    }
+    
+    return `${this.apiDiscovery.getTokenAudience()}/.default`;
+  }
+
   public static async GetAgenticUserToken(authorization: Authorization, turnContext: TurnContext) {
-    const scope = `${this.apiDiscovery.getTokenAudience()}/.default`;
+    const scope = this.getScope();
 
     return (await authorization.exchangeToken(turnContext, 'agentic', { scopes: [scope] })).token || '';
   }
