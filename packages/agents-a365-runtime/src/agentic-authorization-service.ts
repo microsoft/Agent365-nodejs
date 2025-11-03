@@ -14,8 +14,8 @@ export class AgenticAuthenticationService {
 
   public static async GetAgenticUserToken(authorization: Authorization, turnContext: TurnContext) {
     const envScope = getMcpPlatformAuthenticationScope();
-    const scope = (envScope !== undefined && envScope !== null && envScope !== '') 
-      ? envScope 
+    const scope = (envScope !== undefined && envScope !== null && envScope !== '')
+      ? envScope
       : `${this.apiDiscovery.getTokenAudience()}/.default`;
 
     return (await authorization.exchangeToken(turnContext, 'agentic', { scopes: [scope] })).token || '';
