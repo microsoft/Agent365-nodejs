@@ -15,7 +15,7 @@ export class AgenticAuthenticationService {
   private static getScope(): string {
     const envScope = getMcpPlatformAuthenticationScope();
 
-    if (envScope) {
+    if (envScope !== undefined && envScope !== null && envScope !== '') {
       return envScope;
     }
 
