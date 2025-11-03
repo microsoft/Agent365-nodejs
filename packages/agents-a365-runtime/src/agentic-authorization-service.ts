@@ -3,7 +3,7 @@
 
 import { TurnContext } from '@microsoft/agents-hosting';
 import { PowerPlatformApiDiscovery, ClusterCategory } from './power-platform-api-discovery';
-import { getClusterCategory } from './environment-utils';
+import { getClusterCategory, getMcpPlatformAuthenticationScope } from './environment-utils';
 
 export interface Authorization {
   exchangeToken(turnContext: TurnContext, authHandlerId: string, options: { scopes: string[] }): Promise<{ token: string }>;
@@ -13,12 +13,12 @@ export class AgenticAuthenticationService {
   private static readonly apiDiscovery: PowerPlatformApiDiscovery = new PowerPlatformApiDiscovery(getClusterCategory() as ClusterCategory);
 
   private static getScope(): string {
-    const envScope = (globalThis as any).process?.env?.MCP_PLATFORM_AUTHENTICATION_SCOPE;
-    
+    const envScope = getMcpPlatformAuthenticationScope();
+
     if (envScope) {
       return envScope;
     }
-    
+
     return `${this.apiDiscovery.getTokenAudience()}/.default`;
   }
 

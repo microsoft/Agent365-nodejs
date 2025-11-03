@@ -60,3 +60,12 @@ export function isDevelopmentEnvironment(): boolean {
   const clusterCategory = getClusterCategory();
   return ['local', 'dev'].includes(clusterCategory);
 }
+
+/**
+ * Gets the MCP platform authentication scope from environment variables.
+ *
+ * @returns The MCP platform authentication scope from MCP_PLATFORM_AUTHENTICATION_SCOPE env var, or undefined if not set.
+ */
+export function getMcpPlatformAuthenticationScope(): string | undefined {
+  return process.env.MCP_PLATFORM_AUTHENTICATION_SCOPE;
+}
