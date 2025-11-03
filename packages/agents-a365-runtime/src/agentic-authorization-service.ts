@@ -13,7 +13,7 @@ export class AgenticAuthenticationService {
   private static readonly apiDiscovery: PowerPlatformApiDiscovery = new PowerPlatformApiDiscovery(getClusterCategory() as ClusterCategory);
 
   private static getScope(): string {
-    const envScope = (global as any).process?.env?.MCP_PLATFORM_AUTHENTICATION_SCOPE;
+    const envScope = (globalThis as any).process?.env?.MCP_PLATFORM_AUTHENTICATION_SCOPE;
     
     if (envScope) {
       return envScope;
