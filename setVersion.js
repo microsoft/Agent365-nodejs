@@ -82,7 +82,7 @@ const updateLocalDeps = (folder, version) => {
   }
   
   if (!skipWrite) {
-    fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2))
+    fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n')
   }
 }
 
@@ -90,42 +90,45 @@ const setPackageVersionAndBuildNumber = async versionInfo => {
   console.log('##vso[task.setvariable variable=CUSTOM_VERSION;]' + versionInfo.npmPackageVersion)
   console.log(`📦 Calculated version: ${versionInfo.npmPackageVersion}`)
   
+  // Update root package.json
   if (!skipWrite) {
-    await nbgv.setPackageVersion('.')
+    const rootPackageJsonPath = './package.json'
+    const rootPackageJson = JSON.parse(fs.readFileSync(rootPackageJsonPath, 'utf8'))
+    rootPackageJson.version = versionInfo.npmPackageVersion
+    fs.writeFileSync(rootPackageJsonPath, JSON.stringify(rootPackageJson, null, 2) + '\n')
     console.log(`✅ Updated root package.json`)
   } else {
     console.log(`⏭️  Skipped updating root package.json (dry-run mode)`)
   }
   
-  fs.readdir('packages', { withFileTypes: true }, (err, files) => {
-    if (err) {
-      console.error('Failed to read the packages directory: ' + err)
-      return
-    }
+  const files = await fs.promises.readdir('packages', { withFileTypes: true })
+  
+  const folders = files
+    .filter(file => file.isDirectory() && file.name !== 'node_modules')
+    .map(folder => `${folder.parentPath}/${folder.name}`)
 
-    const folders = files
-      .filter(file => file.isDirectory() && file.name !== 'node_modules')
-      .map(folder => `${folder.parentPath}/${folder.name}`)
-
-    for (const f of folders) {
-      const action = skipWrite ? '⏭️  Would update' : '✅ Updating'
-      console.log(`${action} version in ${f}`)
-      updateLocalDeps(f, versionInfo.npmPackageVersion)
-    }
-    
-    if (skipWrite) {
-      console.log('\n💡 To write versions to disk (for CI/packaging), run without --dry-run flag')
-    }
-  })
+  for (const f of folders) {
+    const action = skipWrite ? '⏭️  Would update' : '✅ Updating'
+    console.log(`${action} version in ${f}`)
+    updateLocalDeps(f, versionInfo.npmPackageVersion)
+  }
+  
+  if (skipWrite) {
+    console.log('\n💡 To write versions to disk (for CI/packaging), run without --dry-run flag')
+  } else {
+    console.log(`\n✨ All packages updated to version: ${versionInfo.npmPackageVersion}`)
+  }
 }
 
-const handleError = err => console.error('Failed to update the package version number. nerdbank-gitversion failed: ' + err)
+const handleError = err => {
+  console.error('Failed to update the package version number. nerdbank-gitversion failed: ' + err)
+  process.exit(1)
+}
 
-(async () => {
-  try {
-    const v = await nbgv.getVersion('.')
-    await setPackageVersionAndBuildNumber(v)
-  } catch (err) {
-    handleError(err)
-  }
-})();
+console.log('🔍 Getting version from git history...')
+const v = await nbgv.getVersion('.')
+try {
+  await setPackageVersionAndBuildNumber(v)
+} catch (err) {
+  handleError(err)
+}
