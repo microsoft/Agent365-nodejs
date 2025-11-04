@@ -1,6 +1,6 @@
 {
   "name": "@microsoft/agents-a365-observability-extensions-openai",
-  "version": "1.0.0-preview.1.g06238556e1",
+  "version": "0.1.0-preview.0",
   "description": "Agent365 SDK OpenAI Agents instrumentation extensions for telemetry and observability",
   "keywords": [
     "agent365",
@@ -42,7 +42,7 @@
     "test:coverage": "jest --coverage"
   },
   "dependencies": {
-    "@microsoft/agents-a365-observability": "1.0.0-preview.1.g06238556e1",
+    "@microsoft/agents-a365-observability": "0.1.0-preview.0",
     "@openai/agents": "^0.1.5",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/instrumentation": "^0.55.0"
