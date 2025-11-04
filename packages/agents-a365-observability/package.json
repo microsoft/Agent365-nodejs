@@ -17,7 +17,7 @@
     "lint:fix": "eslint src/**/*.ts --fix",
     "prepublishOnly": "npm run clean && npm run build",
     "ci": "npm ci",
-    "pack": "npm pack --pack-destination=../../"
+    "pack": "npm pack --pack-destination=../"
   },
   "keywords": [
     "Agent365",
