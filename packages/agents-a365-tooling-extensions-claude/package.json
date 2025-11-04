@@ -1,6 +1,6 @@
 {
   "name": "@microsoft/agents-a365-tooling-extensions-claude",
-  "version": "0.1.0-preview.0",
+  "version": "0.0.0-placeholder",
   "description": "Agent 365 Tooling SDK for Claude for AI agents built with TypeScript/Node.js",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
@@ -35,8 +35,8 @@
   "dependencies": {
     "@anthropic-ai/claude-code": "^1.0.105",
     "@microsoft/agents-hosting": "1.1.0-alpha.58",
-    "@microsoft/agents-a365-tooling": "0.1.0-preview.0",
-    "@microsoft/agents-a365-runtime": "0.1.0-preview.0",
+    "@microsoft/agents-a365-tooling": "0.0.0-placeholder",
+    "@microsoft/agents-a365-runtime": "0.0.0-placeholder",
     "@modelcontextprotocol/sdk": "^1.18.1"
   },
   "devDependencies": {
