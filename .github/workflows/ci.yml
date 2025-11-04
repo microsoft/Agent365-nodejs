@@ -71,11 +71,11 @@ jobs:
     - name: Lint code
       run: npm run lint
 
-    - name: Build package
-      run: npm run build
-
     - name: Set version with Nerdbank.GitVersioning
       run: node setVersion.js
+
+    - name: Build package
+      run: npm run build
     
     - name: Run tests
       run: npm test
