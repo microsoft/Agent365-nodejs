@@ -7,37 +7,6 @@ on:
     branches: [ main, master ]
 
 jobs:
-  version-number:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Set current date in UTC as env variable
-      run: |
-        export CURRENT_DATE="$(date -u +'%Y.%m.%d')"
-        echo "Current date is ${CURRENT_DATE}"
-        echo "CURRENT_DATE=${CURRENT_DATE}" >> $GITHUB_ENV
-
-    - id: build_version
-      name: Generate Build Version
-      run: |
-        export BUILD_VERSION="$CURRENT_DATE.${{ github.run_number }}"
-        echo "Build version is ${BUILD_VERSION}"
-        echo "BUILD_VERSION=${BUILD_VERSION}" >> $GITHUB_OUTPUT
-
-    - id: package_version
-      name: Generate Package Version
-      run: |
-        export PACKAGE_VERSION="$CURRENT_DATE-preview.${{ github.run_number }}"
-        echo "Package version is ${PACKAGE_VERSION}"
-        echo "PACKAGE_VERSION=${PACKAGE_VERSION}" >> $GITHUB_OUTPUT
-        export PYTHON_PACKAGE_VERSION="$CURRENT_DATE+preview.${{ github.run_number }}"
-        echo "Python package version is ${PYTHON_PACKAGE_VERSION}"
-        echo "PYTHON_PACKAGE_VERSION=${PYTHON_PACKAGE_VERSION}" >> $GITHUB_OUTPUT
-
-    outputs:
-      BUILD_VERSION: ${{ steps.build_version.outputs.BUILD_VERSION }}
-      PACKAGE_VERSION: ${{ steps.package_version.outputs.PACKAGE_VERSION }}
-      PYTHON_PACKAGE_VERSION: ${{ steps.package_version.outputs.PYTHON_PACKAGE_VERSION }}
-  
   changed-sdks:
     name: Determine Changed SDKs
     runs-on: ubuntu-latest
@@ -73,7 +42,7 @@ jobs:
 
   nodejs-sdk:
     name: Node.js SDK
-    needs: [version-number, changed-sdks]
+    needs: [changed-sdks]
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -86,6 +55,8 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
     - name: Set up Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v4
@@ -100,8 +71,8 @@ jobs:
     - name: Lint code
       run: npm run lint
 
-    - name: Set version
-      run: npm version ${{ needs.version-number.outputs.PACKAGE_VERSION }} --workspaces
+    - name: Set version with Nerdbank.GitVersioning
+      run: node setVersion.js
 
     - name: Build package
       run: npm run build
