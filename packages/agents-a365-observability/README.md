@@ -130,6 +130,30 @@ const cachedTokenResolver = (agentId: string, tenantId: string): string => {
 };
 ```
 
+### Agent Hosting Framework Integration
+
+When using the Agent365 Observability SDK with the Agent Hosting framework (`@microsoft/agents-hosting`), you can generate tokens using the `TurnContext` from agent activities:
+
+#### Token Generation with Agent Hosting
+
+```typescript
+import { TurnContext } from '@microsoft/agents-hosting';
+import { getObservabilityAuthenticationScope } from '@microsoft/agents-a365-runtime';
+
+// Generate agentic token for observability
+const aauToken = await agentApplication.authorization.exchangeToken(
+  context,
+  'agentic', 
+  {
+    scopes: getObservabilityAuthenticationScope() 
+  }
+);
+
+// Cache the token for use by the observability token resolver
+const cacheKey = createAgenticTokenCacheKey(agentInfo.agentId, tenantInfo.tenantId);
+tokenCache.set(cacheKey, aauToken?.token || '');
+```
+
 ## 🎯 Span Types
 
 The SDK provides three main span types for comprehensive agent observability:

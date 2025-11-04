@@ -1,9 +1,12 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 // Agent365 SDK
-import { McpToolServerConfigurationService, McpClientTool } from '@microsoft/agents-a365-tooling';
-import { AgenticAuthenticationService } from '@microsoft/agents-a365-runtime';
+import { McpToolServerConfigurationService, McpClientTool, Utility } from '@microsoft/agents-a365-tooling';
+import { AgenticAuthenticationService, Authorization } from '@microsoft/agents-a365-runtime';
 
 // Agents SDK
-import { Authorization, TurnContext } from '@microsoft/agents-hosting';
+import { TurnContext } from '@microsoft/agents-hosting';
 
 // LangChain SDKs
 import { ClientConfig, Connection, MultiServerMCPClient } from '@langchain/mcp-adapters';
@@ -42,7 +45,7 @@ export class McpToolRegistrationService {
       if (authToken) {
         headers['Authorization'] = `Bearer ${authToken}`;
       }
-      if (environmentId) {
+      if (Utility.GetUseEnvironmentId() && environmentId) {
         headers['x-ms-environment-id'] = environmentId;
       }
 

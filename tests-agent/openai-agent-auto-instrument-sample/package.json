@@ -1,0 +1,52 @@
+{
+  "name": "openai-agent-auto-instrument-sample",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "prestart": "npm run build",
+    "start": "node dist/index.js",
+    "dev": "nodemon --watch src/*.ts --exec ts-node src/index.ts",
+    "test-tool": "agentsplayground",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "install:clean": "npm run clean && npm install",
+    "clean": "rimraf dist node_modules package-lock.json"
+  },
+  "keywords": [
+    "openai",
+    "agents",
+    "instrumentation",
+    "observability",
+    "sample"
+  ],
+  "author": "Microsoft Corporation",
+  "license": "MIT",
+  "description": "Sample OpenAI agent with instrumentation using Agent365 SDK",
+  "dependencies": {
+    "@microsoft/agents-hosting": "^1.1.0-alpha.58",
+    "@microsoft/agents-activity": "*",
+    "@microsoft/agents-a365-observability": "*",
+    "@microsoft/agents-a365-observability-extensions-openai": "*",
+    "@microsoft/agents-a365-tooling-extensions-openai": "*",
+    "@openai/agents": "^0.1.5",
+    "@openai/agents-core": "^0.1.5",
+    "dotenv": "^17.2.2",
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "@microsoft/m365agentsplayground": "^0.2.18",
+    "@types/express": "^5.0.0",
+    "@types/node": "^18.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "nodemon": "^3.1.10",
+    "rimraf": "^5.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
