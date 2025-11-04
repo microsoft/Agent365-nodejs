@@ -1,36 +1,36 @@
 import { describe, it, expect, afterEach } from '@jest/globals';
-import { ObservabilityManager as Kairo, Builder } from '@microsoft/agents-a365-observability';
+import { ObservabilityManager, Builder } from '@microsoft/agents-a365-observability';
 
 describe('Agent365 SDK', () => {
   afterEach(async () => {
     // Clean up after each test
-    await Kairo.shutdown();
+    await ObservabilityManager.shutdown();
   });
 
-  describe('Kairo Main Class', () => {
+  describe('ObservabilityManager Main Class', () => {
     it('should configure with builder pattern', () => {
-      const builder = Kairo.configure((b: Builder) =>
+      const builder = ObservabilityManager.configure((b: Builder) =>
         b.withService('Test Service', '1.0.0')
       );
 
       expect(builder).toBeInstanceOf(Builder);
-      expect(Kairo.getInstance()).toBe(builder);
+      expect(ObservabilityManager.getInstance()).toBe(builder);
     });
 
     it('should start with builder configuration', () => {
-      const builder = Kairo.configure((b: Builder) =>
+      const builder = ObservabilityManager.configure((b: Builder) =>
         b.withService('Test Service 2', '2.0.0')
       );
 
       builder.start();
 
       expect(builder).toBeInstanceOf(Builder);
-      expect(Kairo.getInstance()).toBe(builder);
+      expect(ObservabilityManager.getInstance()).toBe(builder);
     });
 
     it('should return null when no instance configured', async () => {
-      await Kairo.shutdown(); // Ensure clean state
-      expect(Kairo.getInstance()).toBeNull();
+      await ObservabilityManager.shutdown(); // Ensure clean state
+      expect(ObservabilityManager.getInstance()).toBeNull();
     });
   });
 
