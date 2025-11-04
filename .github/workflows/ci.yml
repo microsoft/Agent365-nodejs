@@ -88,16 +88,12 @@ jobs:
       run: |
         mkdir -p ~/drop/nodejs-${{ matrix.node-version }} && cp -v packages/*.tgz $_        
 
-    # Zip files since upload-artifact does not seem like to like folders
-    - name: Create zip
-      run: cd ~/drop/nodejs-${{ matrix.node-version }} && zip -r ~/drop/nodejs-${{ matrix.node-version }}.zip .
-
-    - name: Upload packages as artifacts
+    - name: Upload NPM packages as artifacts
       uses: actions/upload-artifact@v4
       with:
         name: nodejs-${{ matrix.node-version }}
-        path: ~/drop/nodejs-${{ matrix.node-version }}.zip
-
+        path: ~/drop/nodejs-${{ matrix.node-version }}/*.tgz
+          
     # - name: Publish to NPM (commented for now)
     #   if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     #   run: npm publish
