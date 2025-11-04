@@ -65,8 +65,6 @@ linkWorkspacePackages: true
 sharedWorkspaceLockfile: true
 saveWorkspaceProtocol: "rolling"
 hoistWorkspacePackages: true
-# shamefullyHoist: true
-# injectWorkspacePackages: false
 
 # Node.js version specification
 useNodeVersion: "20.18.0"
