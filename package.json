@@ -1,8 +1,9 @@
 {
   "name": "@microsoft/agent365-monorepo",
-  "version": "1.0.0",
+  "version": "0.0.0-placeholder",
   "description": "Agent365 SDK monorepo for AI agents built with TypeScript/Node.js",
   "private": true,
+  "type": "module",
   "scripts": {
     "build": "pnpm -r build",
     "build:watch": "npm run build:watch --workspaces --if-present",
@@ -12,7 +13,10 @@
     "lint": "npm run lint --workspaces --if-present",
     "lint:fix": "npm run lint:fix --workspaces --if-present",
     "ci": "npm run ci --workspaces --if-present",
-    "pack": "npm run pack --workspaces --if-present"
+    "pack": "npm run pack --workspaces --if-present",
+    "version": "node setVersion.js",
+    "version:local": "node setVersion.js --local",
+    "version:check": "node setVersion.js --dry-run"
   },
   "workspaces": [
     "packages/agents-a365-*",
@@ -35,5 +39,8 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "nerdbank-gitversioning": "^3.8.118"
   }
 }

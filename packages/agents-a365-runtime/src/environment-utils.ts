@@ -10,6 +10,7 @@
 export const TEST_OBSERVABILITY_SCOPE = 'https://api.test.powerplatform.com/.default';
 export const PREPROD_OBSERVABILITY_SCOPE = 'https://api.preprod.powerplatform.com/.default';
 export const PROD_OBSERVABILITY_SCOPE = 'https://api.powerplatform.com/.default';
+export const PROD_MCP_PLATFORM_AUTHENTICATION_SCOPE = 'ea9ffc3e-8a23-4a7d-836d-234d7c7565c1/.default';
 
 // Cluster categories for different environments
 export const TEST_OBSERVABILITY_CLUSTER_CATEGORY = 'test';
@@ -59,4 +60,13 @@ export function getClusterCategory(): string {
 export function isDevelopmentEnvironment(): boolean {
   const clusterCategory = getClusterCategory();
   return ['local', 'dev'].includes(clusterCategory);
+}
+
+/**
+ * Gets the MCP platform authentication scope from environment variables.
+ *
+ * @returns The MCP platform authentication scope from MCP_PLATFORM_AUTHENTICATION_SCOPE env var, defaults to production scope.
+ */
+export function getMcpPlatformAuthenticationScope(): string {
+  return process.env.MCP_PLATFORM_AUTHENTICATION_SCOPE || PROD_MCP_PLATFORM_AUTHENTICATION_SCOPE;
 }

@@ -1,6 +1,6 @@
 {
   "name": "@microsoft/agents-a365-observability-extensions-openai",
-  "version": "2025.10.13",
+  "version": "0.0.0-placeholder",
   "description": "Agent365 SDK OpenAI Agents instrumentation extensions for telemetry and observability",
   "keywords": [
     "agent365",
@@ -43,7 +43,7 @@
     "pack": "npm pack --pack-destination=../"
   },
   "dependencies": {
-    "@microsoft/agents-a365-observability": "*",
+    "@microsoft/agents-a365-observability": "0.0.0-placeholder",
     "@openai/agents": "*",
     "@opentelemetry/api": "*",
     "@opentelemetry/instrumentation": "*"
@@ -64,9 +64,5 @@
   },
   "engines": {
     "node": ">=18.0.0"
-  },
-  "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.org/"
   }
 }

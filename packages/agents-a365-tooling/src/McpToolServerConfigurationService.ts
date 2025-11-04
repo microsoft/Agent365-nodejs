@@ -47,7 +47,7 @@ export class McpToolServerConfigurationService {
         {
           headers: {
             'Authorization': authToken ? `Bearer ${authToken}` : undefined,
-            'x-ms-environment-id': environmentId,
+            'x-ms-environment-id': Utility.GetUseEnvironmentId() ? environmentId : undefined,
           },
           timeout: 10000 // 10 seconds timeout
         }

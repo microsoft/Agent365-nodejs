@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { McpToolServerConfigurationService, McpClientTool } from '@microsoft/agents-a365-tooling';
+import { McpToolServerConfigurationService, McpClientTool, Utility } from '@microsoft/agents-a365-tooling';
 import { AgenticAuthenticationService, Authorization } from '@microsoft/agents-a365-runtime';
 
 // OpenAI Agents SDK
@@ -41,7 +41,7 @@ export class McpToolRegistrationService {
       if (authToken) {
         headers['Authorization'] = `Bearer ${authToken}`;
       }
-      if (environmentId) {
+      if (Utility.GetUseEnvironmentId() && environmentId) {
         headers['x-ms-environment-id'] = environmentId;
       }
 
