@@ -44,7 +44,11 @@ overrides:
 
 importers:
 
-  .: {}
+  .:
+    devDependencies:
+      nerdbank-gitversioning:
+        specifier: ^3.8.118
+        version: 3.8.118
 
   packages/agents-a365-notifications:
     dependencies:
@@ -92,7 +96,7 @@ importers:
         specifier: ^1.0.0-beta.32
         version: 1.0.0-beta.32
       '@microsoft/agents-a365-runtime':
-        specifier: '*'
+        specifier: 0.0.0-placeholder
         version: link:../agents-a365-runtime
       '@modelcontextprotocol/sdk':
         specifier: ^1.19.0
@@ -156,7 +160,7 @@ importers:
   packages/agents-a365-observability-extensions-openai:
     dependencies:
       '@microsoft/agents-a365-observability':
-        specifier: '*'
+        specifier: 0.0.0-placeholder
         version: link:../agents-a365-observability
       '@openai/agents':
         specifier: ^0.1.5
@@ -282,10 +286,10 @@ importers:
         specifier: ^0.1.30
         version: 0.1.30(zod@4.1.12)
       '@microsoft/agents-a365-runtime':
-        specifier: '*'
+        specifier: 0.0.0-placeholder
         version: link:../agents-a365-runtime
       '@microsoft/agents-a365-tooling':
-        specifier: '*'
+        specifier: 0.0.0-placeholder
         version: link:../agents-a365-tooling
       '@microsoft/agents-hosting':
         specifier: 1.1.0-alpha.58
@@ -331,10 +335,10 @@ importers:
         specifier: ^1.0.0
         version: 1.0.0(@cfworker/json-schema@4.1.1)(@langchain/core@1.0.2(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.207.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@5.23.2(ws@8.18.3)(zod@4.1.12)))(@langchain/langgraph@1.0.1(@langchain/core@1.0.2(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.207.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@5.23.2(ws@8.18.3)(zod@4.1.12)))(zod-to-json-schema@3.24.6(zod@4.1.12))(zod@4.1.12))
       '@microsoft/agents-a365-runtime':
-        specifier: '*'
+        specifier: 0.0.0-placeholder
         version: link:../agents-a365-runtime
       '@microsoft/agents-a365-tooling':
-        specifier: '*'
+        specifier: 0.0.0-placeholder
         version: link:../agents-a365-tooling
       '@microsoft/agents-hosting':
         specifier: 1.1.0-alpha.58
@@ -371,10 +375,10 @@ importers:
   packages/agents-a365-tooling-extensions-openai:
     dependencies:
       '@microsoft/agents-a365-runtime':
-        specifier: '*'
+        specifier: 0.0.0-placeholder
         version: link:../agents-a365-runtime
       '@microsoft/agents-a365-tooling':
-        specifier: '*'
+        specifier: 0.0.0-placeholder
         version: link:../agents-a365-tooling
       '@microsoft/agents-hosting':
         specifier: 1.1.0-alpha.58
@@ -2784,6 +2788,10 @@ packages:
 
   neo-async@2.6.2:
     resolution: {integrity: sha512-Yd3UES5mWCSqR+qNT93S3UoYUkqAZ9lLg8a7g9rimsWmYGK8cVToA4/sF3RrshdyV3sAGMXVUmpMYOw+dLpOuw==}
+
+  nerdbank-gitversioning@3.8.118:
+    resolution: {integrity: sha512-HbwT9OA/XBLgtUqWWqpiA3glZRHV7kS/gjizguGElVXYzCNvhF7hHOEt1nuQ6wsGNAYLmwAMtEQcnHQqSMbItQ==}
+    hasBin: true
 
   node-int64@0.4.0:
     resolution: {integrity: sha512-O5lz91xSOeoXP6DulyHfllpq+Eg00MWitZIbtPfoSEvqIHdl5gfcY6hYzDWnj0qD5tz52PI08u9qUvSVeUBeHw==}
@@ -6222,6 +6230,8 @@ snapshots:
   negotiator@1.0.0: {}
 
   neo-async@2.6.2: {}
+
+  nerdbank-gitversioning@3.8.118: {}
 
   node-int64@0.4.0: {}
 
