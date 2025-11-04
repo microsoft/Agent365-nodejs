@@ -9,8 +9,8 @@ overrides:
   "@openai/agents-core": "^0.1.5"
 
   # Microsoft Agent packages
-  "@microsoft/agents-hosting": "^1.1.0-alpha.78"
-  "@microsoft/agents-activity": "^1.1.0-alpha.78"
+  "@microsoft/agents-hosting": "1.1.0-alpha.58"
+  "@microsoft/agents-activity": "1.1.0-alpha.58"
 
   # OpenTelemetry packages - align versions
   "@opentelemetry/core": "^1.9.0"
@@ -61,7 +61,7 @@ overrides:
 linkWorkspacePackages: true
 sharedWorkspaceLockfile: true
 saveWorkspaceProtocol: "rolling"
-hoistWorkspacePackages: false
+hoistWorkspacePackages: true
 # shamefullyHoist: true
 # injectWorkspacePackages: false
 
