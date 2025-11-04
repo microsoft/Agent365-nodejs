@@ -151,12 +151,13 @@ git clone https://github.com/microsoft/Agent365.git test-release
 cd test-release/nodejs
 git checkout v1.1.0
 
-# Install and run version script
+# Install and check version (dry-run mode)
 npm install
-node setVersion.js
+node setVersion.js --dry-run
 
 # Expected output:
-# Setting package version to: 1.1.0
+# 📦 Calculated version: 1.1.0
+# ⏭️  Skipped updating root package.json (dry-run mode)
 ```
 
 ### Step 6: Build and Test Release

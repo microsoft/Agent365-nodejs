@@ -12,7 +12,10 @@
     "test:watch": "npm run test:watch --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "lint:fix": "npm run lint:fix --workspaces --if-present",
-    "ci": "npm run ci --workspaces --if-present"
+    "ci": "npm run ci --workspaces --if-present",
+    "version": "node setVersion.js",
+    "version:local": "node setVersion.js --local",
+    "version:check": "node setVersion.js --dry-run"
   },
   "workspaces": [
     "packages/*",
