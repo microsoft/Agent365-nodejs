@@ -237,6 +237,9 @@ importers:
       '@microsoft/agents-a365-runtime':
         specifier: '*'
         version: link:../agents-a365-runtime
+      '@microsoft/agents-hosting':
+        specifier: 1.1.0-alpha.58
+        version: 1.1.0-alpha.58
       '@modelcontextprotocol/sdk':
         specifier: ^1.19.0
         version: 1.21.0(@cfworker/json-schema@4.1.1)
@@ -332,6 +335,9 @@ importers:
       '@microsoft/agents-a365-tooling':
         specifier: '*'
         version: link:../agents-a365-tooling
+      '@microsoft/agents-hosting':
+        specifier: 1.1.0-alpha.58
+        version: 1.1.0-alpha.58
     devDependencies:
       '@types/jest':
         specifier: ^29.5.14
