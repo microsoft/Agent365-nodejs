@@ -102,7 +102,7 @@ export class McpToolRegistrationService {
     await mcpClient.close();
 
     // Claude will add a prefix to the tool name based on the server name.
-    const tools = toolsObj.tools.map(tool => ({
+    const tools = toolsObj.tools.map((tool: McpClientTool) => ({
       name: 'mcp__' + mcpServerName + '__' + tool.name,
       description: tool.description,
       inputSchema: tool.inputSchema
