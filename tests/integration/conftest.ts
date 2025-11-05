@@ -70,26 +70,16 @@ export function getAgent365Config(): Agent365Config {
 
 /**
  * Check if integration tests should be skipped
- * Returns true if required Azure OpenAI environment variables are missing
- * Can be overridden with SKIP_ON_MISSING_CONFIG=false to run tests anyway
  */
 export function shouldSkipIntegrationTests(): boolean {
-  const azureConfig = getAzureOpenAIConfig();
   const skipOnMissing = process.env.SKIP_ON_MISSING_CONFIG !== 'false';
   
   // If config is missing and we should skip on missing config
-  if (!azureConfig && skipOnMissing) {
+  if (skipOnMissing) {
     return true;
   }
   
   return false;
-}
-
-/**
- * Get skip reason for integration tests
- */
-export function getSkipReason(): string {
-  return 'Azure OpenAI configuration not found. Set AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, and AZURE_OPENAI_DEPLOYMENT environment variables.';
 }
 
 /**

@@ -5,20 +5,22 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  roots: ['<rootDir>/tests'],
+  rootDir: '.',
   testMatch: ['**/tests/integration/**/*.test.ts'],
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
   collectCoverageFrom: [
-    'src/**/*.ts',
-    '!src/**/*.d.ts',
+    'tests/integration/**/*.ts',
+    '!tests/integration/**/*.d.ts',
+    '!tests/integration/**/*.test.ts',
   ],
-  verbose: true,
-  testTimeout: 60000, // 60 seconds for integration tests
+  coverageDirectory: 'coverage/integration',
   setupFilesAfterEnv: ['<rootDir>/tests/integration/setup.ts'],
+  testTimeout: 60000,
   globals: {
     'ts-jest': {
       tsconfig: {
+        module: 'commonjs',
         esModuleInterop: true,
-        allowSyntheticDefaultImports: true,
       },
     },
   },

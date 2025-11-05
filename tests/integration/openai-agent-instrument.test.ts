@@ -3,7 +3,7 @@
 // ------------------------------------------------------------------------------
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "@jest/globals";
-import { getAzureOpenAIConfig, shouldSkipIntegrationTests, getSkipReason } from "./conftest";
+import { getAzureOpenAIConfig, shouldSkipIntegrationTests, validateEnvironment } from "./conftest";
 import { ReadableSpan } from "@opentelemetry/sdk-trace-base";
 import { z } from "zod";
 import { ObservabilityManager, Builder, OpenTelemetryConstants } from "@microsoft/agents-a365-observability";
@@ -13,7 +13,6 @@ import { OpenAIChatCompletionsModel } from "@openai/agents-openai";
 import { ObservabilityBuilder } from "@microsoft/agents-a365-observability/dist/esm/ObservabilityBuilder";
 import { AzureOpenAI } from "openai";
 
-// Skip if environment not configured
 const skipTests = shouldSkipIntegrationTests();
 
 // Test instrumentation constants
@@ -29,10 +28,12 @@ describe("OpenAI Trace Processor Integration Tests", () => {
   beforeAll(async () => {
     if (skipTests) {
       console.warn(
-        `⚠️  Skipping OpenAI Trace Processor tests: ${getSkipReason()}`,
+        `⚠️  Skipping OpenAI Trace Processor tests based on environment setting!`,
       );
       return;
     }
+
+   validateEnvironment();
 
     console.log("Setting up OpenAI Trace Processor test suite...");
 
@@ -112,7 +113,7 @@ describe("OpenAI Trace Processor Integration Tests", () => {
       agent = new Agent({
         name: agentName,
         model: new OpenAIChatCompletionsModel(
-          azureClient,
+          azureClient as any,
           azureConfig.deployment,
         ),
         instructions: "You are a helpful assistant.",
@@ -255,24 +256,33 @@ describe("OpenAI Trace Processor Integration Tests", () => {
         apiVersion: azureConfig.apiVersion,
       });
 
-      const addTool = tool({
+      // Create tool - Azure OpenAI requires additionalProperties: false in schema
+      // Using a workaround: create the tool and patch its schema
+      const addToolSchema = z.object({
+        a: z.number().describe("The first number"),
+        b: z.number().describe("The second number"),
+      });
+      
+      const addTool: any = tool({
         name: "add_numbers",
         description: "Add two numbers together",
-        parameters: z.object({
-          a: z.number().describe("The first number"),
-          b: z.number().describe("The second number"),
-        }),
-        execute: async ({ a, b }) => {
+        parameters: addToolSchema,
+        execute: async ({ a, b }: { a: number; b: number }) => {
           const result = a + b;
           return `The sum of ${a} and ${b} is ${result}`;
         },
       });
+      
+      // Patch the schema to add additionalProperties: false
+      if (addTool.schema && addTool.schema.parameters) {
+        addTool.schema.parameters.additionalProperties = false;
+      }
 
       const agentName = "Math Agent";
       const agent = new Agent({
         name: "Math Agent",
         model: new OpenAIChatCompletionsModel(
-          azureClient,
+          azureClient as any,
           process.env.AZURE_OPENAI_DEPLOYMENT!,
         ),
         instructions:
