@@ -31,10 +31,13 @@ jobs:
       - name: Run integration tests
         env:
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
-          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
-          AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
-          AGENT365_TEST_TENANT_ID: ${{ secrets.AGENT365_TEST_TENANT_ID }}
-          AGENT365_TEST_AGENT_ID: ${{ secrets.AGENT365_TEST_AGENT_ID }}
+          AZURE_OPENAI_ENDPOINT: ${{ vars.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_DEPLOYMENT: ${{ vars.AZURE_OPENAI_DEPLOYMENT }}
+          AZURE_OPENAI_API_VERSION: ${{ vars.AZURE_OPENAI_API_VERSION }}
+          AGENT365_TEST_TENANT_ID: ${{ vars.AGENT365_TEST_TENANT_ID }}
+          AGENT365_TEST_AGENT_ID: ${{ vars.AGENT365_TEST_AGENT_ID }}
+          ENABLE_OBSERVABILITY: ${{ vars.ENABLE_OBSERVABILITY }}
+          SKIP_ON_MISSING_CONFIG: ${{ vars.SKIP_ON_MISSING_CONFIG }}
         run: |
           cd tests-agent/openai-agent-auto-instrument-sample
           npm run test:integration
