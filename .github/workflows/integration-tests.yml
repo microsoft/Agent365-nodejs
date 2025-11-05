@@ -16,17 +16,19 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
       
-      - name: Install pnpm
-        run: npm install -g pnpm
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10.20.0
           
-      - name: Install dependencies
+      - name: Install dependencies and build with pnpm
         run: |
-          npm install
-          npm run build
+          pnpm install
+          pnpm -r build
           cd tests-agent/openai-agent-auto-instrument-sample
-          npm install
+          pnpm install
           
       - name: Run integration tests
         env:
@@ -40,7 +42,7 @@ jobs:
           SKIP_ON_MISSING_CONFIG: ${{ vars.SKIP_ON_MISSING_CONFIG }}
         run: |
           cd tests-agent/openai-agent-auto-instrument-sample
-          npm run test:integration
+          pnpm run test:integration
         continue-on-error: true
         
       - name: Upload test results
