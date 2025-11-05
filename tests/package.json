@@ -8,9 +8,9 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "clean": "rimraf dist",
+    "build": "echo 'No build needed for test package'",
     "test": "jest --passWithNoTests",
     "test:watch": "jest --watch",
-    "prepublishOnly": "npm run clean && npm run build",
     "ci": "npm ci",
     "build:all": "npm run build --workspaces"
   },

@@ -22,7 +22,6 @@ export class OpenTelemetryConstants {
   public static readonly TRACE_CONTENTS_SWITCH = 'Azure.Experimental.TraceGenAIMessageContent';
   public static readonly TRACE_CONTENTS_ENVIRONMENT_VARIABLE = 'AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED';
   public static readonly ENABLE_OBSERVABILITY = 'ENABLE_OBSERVABILITY';
-  public static readonly ENABLE_KAIRO_EXPORTER = 'ENABLE_KAIRO_EXPORTER';
   public static readonly ENABLE_A365_OBSERVABILITY_EXPORTER = 'ENABLE_A365_OBSERVABILITY_EXPORTER';
   public static readonly ENABLE_A365_OBSERVABILITY = 'ENABLE_A365_OBSERVABILITY';
 
@@ -103,9 +102,6 @@ export class OpenTelemetryConstants {
   public static readonly GEN_AI_EXECUTION_SOURCE_ID_KEY = 'gen_ai.execution.sourceMetadata.id';
   public static readonly GEN_AI_EXECUTION_SOURCE_NAME_KEY = 'gen_ai.channel.name';
   public static readonly GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY = 'gen_ai.channel.link';
-
-  // Legacy constant for backward compatibility
-  public static readonly KAIRO_AGENT_ID_KEY = 'gen_ai.agent.id';
 
   // Custom parent id and parent name key
   public static readonly CUSTOM_PARENT_SPAN_ID_KEY = 'custom.parent.span.id';

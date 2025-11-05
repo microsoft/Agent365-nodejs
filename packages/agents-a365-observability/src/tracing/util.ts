@@ -5,14 +5,9 @@ import { OpenTelemetryConstants } from './constants';
  * Check if exporter is enabled via environment variables
  */
 export const isAgent365ExporterEnabled: () => boolean = (): boolean => {
-  const enableKairo = process.env[OpenTelemetryConstants.ENABLE_KAIRO_EXPORTER]?.toLowerCase();
   const enableA365Exporter = process.env[OpenTelemetryConstants.ENABLE_A365_OBSERVABILITY_EXPORTER]?.toLowerCase();
 
   return (
-    enableKairo === 'true' ||
-    enableKairo === '1' ||
-    enableKairo === 'yes' ||
-    enableKairo === 'on' ||
     enableA365Exporter === 'true' ||
     enableA365Exporter === '1' ||
     enableA365Exporter === 'yes' ||
