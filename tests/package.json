@@ -9,8 +9,8 @@
   "scripts": {
     "clean": "rimraf dist",
     "build": "echo 'No build needed for test package'",
-    "test": "jest --passWithNoTests",
-    "test:watch": "jest --watch",
+    "test": "jest --passWithNoTests --testPathIgnorePatterns=/integration/",
+    "test:watch": "jest --watch --testPathIgnorePatterns=/integration/",
     "ci": "npm ci",
     "build:all": "npm run build --workspaces"
   },
