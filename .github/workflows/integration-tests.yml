@@ -1,0 +1,45 @@
+name: Integration Tests
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  integration-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          
+      - name: Install dependencies
+        run: |
+          npm install
+          npm run build
+          cd tests-agent/openai-agent-auto-instrument-sample
+          npm install
+          
+      - name: Run integration tests
+        env:
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
+          AGENT365_TEST_TENANT_ID: ${{ secrets.AGENT365_TEST_TENANT_ID }}
+          AGENT365_TEST_AGENT_ID: ${{ secrets.AGENT365_TEST_AGENT_ID }}
+        run: |
+          cd tests-agent/openai-agent-auto-instrument-sample
+          npm run test:integration
+        continue-on-error: true
+        
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: tests-agent/openai-agent-auto-instrument-sample/coverage/
