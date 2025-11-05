@@ -16,7 +16,8 @@
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "prepublishOnly": "npm run clean && npm run build",
-    "ci": "npm ci"
+    "ci": "npm ci",
+    "pack": "npm pack --pack-destination=../"
   },
   "keywords": [
     "Agent365",
@@ -36,18 +37,18 @@
     "directory": "nodejs/packages/agents-a365-observability"
   },
   "dependencies": {
-    "@azure/monitor-opentelemetry-exporter": "^1.0.0-beta.32",
     "@microsoft/agents-a365-runtime": "0.0.0-placeholder",
-    "@modelcontextprotocol/sdk": "^1.18.1",
-    "@openai/agents": "^0.1.5",
-    "@openai/agents-core": "^0.1.5",
-    "@opentelemetry/api": "^1.9.0",
-    "@opentelemetry/exporter-trace-otlp-http": "^0.205.0",
-    "@opentelemetry/instrumentation": "^0.204.0",
-    "@opentelemetry/resources": "^2.1.0",
-    "@opentelemetry/sdk-node": "^0.204.0",
-    "@opentelemetry/sdk-trace-base": "^2.1.0",
-    "@opentelemetry/semantic-conventions": "^1.37.0"
+    "@azure/monitor-opentelemetry-exporter": "*",
+    "@modelcontextprotocol/sdk": "*",
+    "@openai/agents": "*",
+    "@openai/agents-core": "*",
+    "@opentelemetry/api": "*",
+    "@opentelemetry/exporter-trace-otlp-http": "*",
+    "@opentelemetry/instrumentation": "*",
+    "@opentelemetry/resources": "*",
+    "@opentelemetry/sdk-node": "*",
+    "@opentelemetry/sdk-trace-base": "*",
+    "@opentelemetry/semantic-conventions": "*"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",

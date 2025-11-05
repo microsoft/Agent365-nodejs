@@ -16,7 +16,8 @@
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "prepublishOnly": "npm run clean && npm run build",
-    "ci": "npm ci"
+    "ci": "npm ci",
+    "pack": "npm pack --pack-destination=../"
   },
   "keywords": [
     "ai",
@@ -33,11 +34,11 @@
     "directory": "nodejs/packages/agents-a365-tooling-extensions-claude"
   },
   "dependencies": {
-    "@anthropic-ai/claude-code": "^1.0.105",
-    "@microsoft/agents-hosting": "1.1.0-alpha.58",
     "@microsoft/agents-a365-tooling": "0.0.0-placeholder",
     "@microsoft/agents-a365-runtime": "0.0.0-placeholder",
-    "@modelcontextprotocol/sdk": "^1.18.1"
+    "@anthropic-ai/claude-agent-sdk": "*",
+    "@microsoft/agents-hosting": "*",
+    "@modelcontextprotocol/sdk": "*"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",

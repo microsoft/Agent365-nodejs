@@ -8,7 +8,7 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 
 // Claude SDK expects a different shape for MCP server configs
-import type { McpServerConfig, Options } from '@anthropic-ai/claude-code';
+import type { McpServerConfig, Options } from '@anthropic-ai/claude-agent-sdk';
 import { TurnContext } from '@microsoft/agents-hosting';
 
 /**
@@ -102,7 +102,7 @@ export class McpToolRegistrationService {
     await mcpClient.close();
 
     // Claude will add a prefix to the tool name based on the server name.
-    const tools = toolsObj.tools.map(tool => ({
+    const tools = toolsObj.tools.map((tool: McpClientTool) => ({
       name: 'mcp__' + mcpServerName + '__' + tool.name,
       description: tool.description,
       inputSchema: tool.inputSchema

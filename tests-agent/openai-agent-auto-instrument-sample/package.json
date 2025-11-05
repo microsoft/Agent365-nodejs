@@ -24,12 +24,13 @@
   "license": "MIT",
   "description": "Sample OpenAI agent with instrumentation using Agent365 SDK",
   "dependencies": {
-    "@microsoft/agents-hosting": "^1.1.0-alpha.58",
+    "@microsoft/agents-hosting": "*",
     "@microsoft/agents-activity": "*",
+    "@microsoft/agents-a365-runtime": "*",
     "@microsoft/agents-a365-observability": "*",
     "@microsoft/agents-a365-observability-extensions-openai": "*",
     "@microsoft/agents-a365-tooling-extensions-openai": "*",
-    "@openai/agents": "^0.1.5",
+    "@openai/agents": "*",
     "@openai/agents-core": "^0.1.5",
     "dotenv": "^17.2.2",
     "express": "^5.1.0"

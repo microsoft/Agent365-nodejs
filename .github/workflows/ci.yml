@@ -65,8 +65,13 @@ jobs:
         cache: 'npm'
         cache-dependency-path: '**/package-lock.json'
 
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v3
+      with:
+        version: 10.20.0
+
     - name: Install dependencies
-      run: npm ci
+      run: pnpm i
 
     - name: Lint code
       run: npm run lint
@@ -76,24 +81,24 @@ jobs:
 
     - name: Build package
       run: npm run build
-    
+
     - name: Run tests
       run: npm test
-      
+
     - name: Pack packages
-      run: cd packages && npm pack --workspaces
-    
+      run: npm run pack
+
     # Copy packages to drop folder
     - name: Copy packages to drop folder
       run: |
-        mkdir -p ~/drop/nodejs-${{ matrix.node-version }} && cp -v packages/*.tgz $_        
+        mkdir -p ~/drop/nodejs-${{ matrix.node-version }} && cp -v packages/*.tgz $_
 
     - name: Upload NPM packages as artifacts
       uses: actions/upload-artifact@v4
       with:
         name: nodejs-${{ matrix.node-version }}
         path: ~/drop/nodejs-${{ matrix.node-version }}/*.tgz
-          
+
     # - name: Publish to NPM (commented for now)
     #   if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     #   run: npm publish

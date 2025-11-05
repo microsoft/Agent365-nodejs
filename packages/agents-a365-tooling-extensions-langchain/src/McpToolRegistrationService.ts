@@ -79,7 +79,7 @@ export class McpToolRegistrationService {
     };
 
     const multiServerMcpClient = new MultiServerMCPClient(mcpClientConfig);
-    return (await multiServerMcpClient.getTools()).map(tool => ({
+    return (await multiServerMcpClient.getTools()).map((tool: DynamicStructuredTool) => ({
       name: tool.name,
       description: tool.description,
       inputSchema: tool.schema

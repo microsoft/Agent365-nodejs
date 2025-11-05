@@ -39,13 +39,14 @@
     "lint:fix": "eslint src/**/*.ts --fix",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "pack": "npm pack --pack-destination=../"
   },
   "dependencies": {
     "@microsoft/agents-a365-observability": "0.0.0-placeholder",
-    "@openai/agents": "^0.1.5",
-    "@opentelemetry/api": "^1.9.0",
-    "@opentelemetry/instrumentation": "^0.55.0"
+    "@openai/agents": "*",
+    "@opentelemetry/api": "*",
+    "@opentelemetry/instrumentation": "*"
   },
   "devDependencies": {
     "@types/jest": "^29.5.12",
