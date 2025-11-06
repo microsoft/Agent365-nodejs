@@ -69,20 +69,6 @@ export function getAgent365Config(): Agent365Config {
 }
 
 /**
- * Check if integration tests should be skipped
- */
-export function shouldSkipIntegrationTests(): boolean {
-  const skipOnMissing = process.env.SKIP_ON_MISSING_CONFIG !== 'false';
-  
-  // If config is missing and we should skip on missing config
-  if (skipOnMissing) {
-    return true;
-  }
-  
-  return false;
-}
-
-/**
  * Environment validation helper
  */
 export function validateEnvironment(): void {

@@ -3,7 +3,7 @@
 // ------------------------------------------------------------------------------
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "@jest/globals";
-import { getAzureOpenAIConfig, shouldSkipIntegrationTests, validateEnvironment } from "./conftest";
+import { getAzureOpenAIConfig, validateEnvironment } from "./conftest";
 import { ReadableSpan } from "@opentelemetry/sdk-trace-base";
 import { ObservabilityManager, Builder, OpenTelemetryConstants } from "@microsoft/agents-a365-observability";
 import { OpenAIAgentsTraceInstrumentor } from "@microsoft/agents-a365-observability-extensions-openai";
@@ -11,8 +11,6 @@ import { Agent, run, tool } from "@openai/agents";
 import { OpenAIChatCompletionsModel } from "@openai/agents-openai";
 import { ObservabilityBuilder } from "@microsoft/agents-a365-observability/dist/esm/ObservabilityBuilder";
 import { AzureOpenAI } from "openai";
-
-const skipTests = shouldSkipIntegrationTests();
 
 // Test instrumentation constants
 const TEST_INSTRUMENTATION_NAME = "openai-agent-test-instrumentation";
@@ -25,15 +23,7 @@ describe("OpenAI Trace Processor Integration Tests", () => {
   let spans: ReadableSpan[] = [];
 
   beforeAll(async () => {
-    if (skipTests) {
-      console.warn(
-        `⚠️  Skipping OpenAI Trace Processor tests based on environment setting!`,
-      );
-      return;
-    }
-
    validateEnvironment();
-
     console.log("Setting up OpenAI Trace Processor test suite...");
 
     // Also spy on console.dir which ConsoleSpanExporter uses
@@ -63,7 +53,6 @@ describe("OpenAI Trace Processor Integration Tests", () => {
   });
 
   afterAll(async () => {
-    if (skipTests) return;
     console.log("🧹 Tearing down OpenAI Trace Processor test suite...");
 
     // Restore console.log
@@ -85,8 +74,6 @@ describe("OpenAI Trace Processor Integration Tests", () => {
   });
 
   beforeEach(() => {
-    if (skipTests) return;
-
     // Clear spans for each test
     spans = [];
   });
