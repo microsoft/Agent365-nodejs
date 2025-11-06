@@ -120,3 +120,54 @@ export function parseIdentityKey(key: string): { tenantId: string; agentId: stri
   const [tenantId, agentId] = key.split(':');
   return { tenantId, agentId };
 }
+
+/**
+ * Simple logger that checks environment variables
+ *
+ * Usage:
+ *   import logger from './logger';
+ *   logger.info('Info message');    // Shows when LOG_LEVEL=info
+ *   logger.warn('Warning');         // Shows when LOG_LEVEL=warn
+ *   logger.error('Error');          // Shows when LOG_LEVEL=error
+ *
+ * Environment Variables:
+ *   LOG_LEVEL=info|warn|error  (default: info)
+ *   ENABLE_LOGS=true  (to enable logging, disabled by default)
+ */
+
+const LOG_LEVELS = {
+  info: 1,
+  warn: 2,
+  error: 3
+} as const;
+
+type LogLevelKey = keyof typeof LOG_LEVELS;
+
+const isEnabled = process.env.ENABLE_LOGS === 'true';
+const currentLogLevel = (process.env.LOG_LEVEL?.toLowerCase() as LogLevelKey) || 'info';
+const levelValue = LOG_LEVELS[currentLogLevel] ?? LOG_LEVELS.info;
+
+const logger = {
+  info: (message: string, ...args: unknown[]) => {
+    if (isEnabled && LOG_LEVELS.info >= levelValue) {
+      // eslint-disable-next-line no-console
+      console.log('[INFO]', message, ...args);
+    }
+  },
+
+  warn: (message: string, ...args: unknown[]) => {
+    if (isEnabled && LOG_LEVELS.warn >= levelValue) {
+      // eslint-disable-next-line no-console
+      console.warn('[WARN]', message, ...args);
+    }
+  },
+
+  error: (message: string, ...args: unknown[]) => {
+    if (isEnabled && LOG_LEVELS.error >= levelValue) {
+      // eslint-disable-next-line no-console
+      console.error('[ERROR]', message, ...args);
+    }
+  }
+};
+
+export default logger;
