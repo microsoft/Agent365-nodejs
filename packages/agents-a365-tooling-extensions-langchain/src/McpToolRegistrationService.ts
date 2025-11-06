@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 // Agent365 SDK
-import { McpToolServerConfigurationService, McpClientTool, Utility } from '@microsoft/agents-a365-tooling';
+import { McpToolServerConfigurationService, McpClientTool } from '@microsoft/agents-a365-tooling';
 import { AgenticAuthenticationService, Authorization } from '@microsoft/agents-a365-runtime';
 
 // Agents SDK
