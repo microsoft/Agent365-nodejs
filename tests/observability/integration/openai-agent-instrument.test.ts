@@ -5,7 +5,6 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "@jest/globals";
 import { getAzureOpenAIConfig, shouldSkipIntegrationTests, validateEnvironment } from "./conftest";
 import { ReadableSpan } from "@opentelemetry/sdk-trace-base";
-import { z } from "zod";
 import { ObservabilityManager, Builder, OpenTelemetryConstants } from "@microsoft/agents-a365-observability";
 import { OpenAIAgentsTraceInstrumentor } from "@microsoft/agents-a365-observability-extensions-openai";
 import { Agent, run, tool } from "@openai/agents";
@@ -256,28 +255,30 @@ describe("OpenAI Trace Processor Integration Tests", () => {
         apiVersion: azureConfig.apiVersion,
       });
 
-      // Create tool - Azure OpenAI requires additionalProperties: false in schema
-      // Using a workaround: create the tool and patch its schema
-      const addToolSchema = z.object({
-        a: z.number().describe("The first number"),
-        b: z.number().describe("The second number"),
-      });
-      
       const addTool: any = tool({
         name: "add_numbers",
         description: "Add two numbers together",
-        parameters: addToolSchema,
+        parameters: {
+          type: "object",
+          properties: {
+            a: {
+              type: "number",
+              description: "The first number"
+            },
+            b: {
+              type: "number",
+              description: "The second number"
+            }
+          },
+          required: ["a", "b"],
+          additionalProperties: false
+        } as any,
         execute: async ({ a, b }: { a: number; b: number }) => {
           const result = a + b;
           return `The sum of ${a} and ${b} is ${result}`;
         },
       });
       
-      // Patch the schema to add additionalProperties: false
-      if (addTool.schema && addTool.schema.parameters) {
-        addTool.schema.parameters.additionalProperties = false;
-      }
-
       const agentName = "Math Agent";
       const agent = new Agent({
         name: "Math Agent",

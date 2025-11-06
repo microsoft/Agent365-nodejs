@@ -10,7 +10,7 @@ import * as dotenv from 'dotenv';
 import * as path from 'path';
 
 // Load .env file if it exists (for local development)
-const envFile = path.join(__dirname, '..', '.env');
+const envFile = path.join(__dirname, '.', '.env');
 
 try {
   dotenv.config({ path: envFile });

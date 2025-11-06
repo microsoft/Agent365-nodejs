@@ -1,7 +1,7 @@
 {
   "preset": "ts-jest",
   "testEnvironment": "node",
-  "roots": ["<rootDir>/src", "<rootDir>/../../tests/agents-a365-observability-extensions-openai"],
+  "roots": ["<rootDir>/src", "<rootDir>/../../tests/observability/extension/openai"],
   "testMatch": [
     "**/__tests__/**/*.ts",
     "**/?(*.)+(spec|test).ts"

@@ -92,11 +92,8 @@ jobs:
         AZURE_OPENAI_DEPLOYMENT: ${{ vars.AZURE_OPENAI_DEPLOYMENT }}
         AZURE_OPENAI_API_VERSION: ${{ vars.AZURE_OPENAI_API_VERSION }}
         ENABLE_OBSERVABILITY: ${{ vars.ENABLE_OBSERVABILITY }}
-        SKIP_ON_MISSING_CONFIG: ${{ vars.SKIP_ON_MISSING_CONFIG }}
       run: |
-        cd tests/integration
         npm run test:integration
-      continue-on-error: true
 
     - name: Pack packages
       run: npm run pack

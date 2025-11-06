@@ -6,15 +6,15 @@ module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   rootDir: '.',
-  testMatch: ['**/tests/integration/**/*.test.ts'],
+  testMatch: ['**/tests/observability/integration/**/*.test.ts'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
   collectCoverageFrom: [
-    'tests/integration/**/*.ts',
-    '!tests/integration/**/*.d.ts',
-    '!tests/integration/**/*.test.ts',
+    'tests/observability/integration/**/*.ts',
+    '!tests/observability/integration/**/*.d.ts',
+    '!tests/observability/integration/**/*.test.ts',
   ],
   coverageDirectory: 'coverage/integration',
-  setupFilesAfterEnv: ['<rootDir>/tests/integration/setup.ts'],
+  setupFilesAfterEnv: ['<rootDir>/tests/observability/integration/setup.ts'],
   testTimeout: 60000,
   globals: {
     'ts-jest': {
