@@ -121,7 +121,7 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
       parentContext
     );
 
-    if(!parentSpan) {
+    if (!parentSpan) {
       this.rootSpans.set(traceId, otelSpan);
     }
 
