@@ -462,9 +462,6 @@ importers:
       openai:
         specifier: ^4.0.0
         version: 4.104.0(ws@8.18.3)(zod@4.1.12)
-      zod:
-        specifier: ^4.1.12
-        version: 4.1.12
     devDependencies:
       '@babel/preset-typescript':
         specifier: ^7.27.1
