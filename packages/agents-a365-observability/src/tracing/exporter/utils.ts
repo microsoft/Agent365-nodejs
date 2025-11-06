@@ -84,13 +84,15 @@ export function partitionByIdentity(
   spans: ReadableSpan[]
 ): Map<string, ReadableSpan[]> {
   const groups = new Map<string, ReadableSpan[]>();
-
+  let skippedCount = 0;
   for (const span of spans) {
     const attrs = span.attributes || {};
     const tenant = asStr(attrs[OpenTelemetryConstants.TENANT_ID_KEY]);
     const agent = asStr(attrs[OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]);
 
     if (!tenant || !agent) {
+      skippedCount++;
+      logger.warn(`[partitionByIdentity]Skipping span without tenant or agent ID. Span name: ${span.name}`);
       continue;
     }
 
@@ -100,6 +102,7 @@ export function partitionByIdentity(
     groups.set(key, existing);
   }
 
+  logger.info(`Partitioned into ${groups.size} identity groups (${skippedCount} spans skipped)`);
   return groups;
 }
 
@@ -109,7 +112,9 @@ export function partitionByIdentity(
 export function isAgent365ExporterEnabled(): boolean {
   const a365Env = process.env[OpenTelemetryConstants.ENABLE_A365_OBSERVABILITY_EXPORTER]?.toLowerCase() || '';
   const validValues = ['true', '1', 'yes', 'on'];
-  return validValues.includes(a365Env);
+  const enabled : boolean = validValues.includes(a365Env);
+  logger.info(`Agent365 exporter enabled: ${enabled} for env: '${a365Env}'`);
+  return enabled;
 }
 
 
