@@ -45,7 +45,7 @@ export class Utility {
    * Build the full URL for accessing a specific MCP server.
    *
    * Example:
-   *   Utility.BuildMcpServerUrl('default-abc', 'MyServer')
+   *   Utility.BuildMcpServerUrl('MyServer')
    *   // => "https://agent365.svc.cloud.microsoft/agents/servers/MyServer/"
    *
    * @param serverName - The MCP server resource name.
