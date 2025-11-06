@@ -43,6 +43,8 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
     ['mcp_tools' + Constants.GEN_AI_REQUEST_CONTENT_KEY, OpenTelemetryConstants.GEN_AI_TOOL_ARGS_KEY],
     ['function' + Constants.GEN_AI_RESPONSE_CONTENT_KEY, OpenTelemetryConstants.GEN_AI_EVENT_CONTENT],
     ['function' + Constants.GEN_AI_REQUEST_CONTENT_KEY, OpenTelemetryConstants.GEN_AI_TOOL_ARGS_KEY],
+    ['generation' + Constants.GEN_AI_RESPONSE_CONTENT_KEY, OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY],
+    ['generation' + Constants.GEN_AI_REQUEST_CONTENT_KEY, OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY],
   ]);
 
   constructor(tracer: OtelTracer) {
@@ -118,6 +120,10 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
       },
       parentContext
     );
+
+    if (!parentSpan) {
+      this.rootSpans.set(traceId, otelSpan);
+    }
 
     // Store span and activate context
     this.otelSpans.set(spanId, otelSpan);
@@ -269,8 +275,11 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
   private processGenerationSpanData(otelSpan: OtelSpan, data: SpanData, traceId: string): void {
     const attrs = Utils.getAttributesFromGenerationSpanData(data);
     Object.entries(attrs).forEach(([key, value]) => {
-      if (value !== null && value !== undefined) {
-        otelSpan.setAttribute(key, value as string | number | boolean);
+      const shouldExcludeKey = key === OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY
+        || key === Constants.GEN_AI_EXECUTION_PAYLOAD_KEY;
+      if (value !== null && value !== undefined && !shouldExcludeKey) {
+        const newKey = this.getNewKey(data.type, key);
+        otelSpan.setAttribute(newKey || key, value as string | number | boolean);
       }
     });
 
