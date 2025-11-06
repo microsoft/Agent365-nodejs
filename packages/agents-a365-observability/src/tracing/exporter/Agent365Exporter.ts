@@ -91,43 +91,39 @@ export class Agent365Exporter implements SpanExporter {
    */
   async export(spans: ReadableSpan[], resultCallback: (result: ExportResult) => void): Promise<void> {
     if (this.closed) {
-      logger.warn('Export call failed due to closed exporter');
       resultCallback({ code: ExportResultCode.FAILED });
       return;
     }
 
     try {
-      logger.info(`[export] Starting export of ${spans.length} spans`);
+      logger.info(`[Agent365Exporter] Exporting ${spans.length} spans`);
       const groups = partitionByIdentity(spans);
 
       if (groups.size === 0) {
-        logger.info('[export] No spans with valid identity, returning success');
+        logger.info('[Agent365Exporter] No groups to export');
         resultCallback({ code: ExportResultCode.SUCCESS });
         return;
       }
 
-      logger.info(`Exporting ${groups.size} identity groups`);
+      logger.info(`[Agent365Exporter] Exporting ${groups.size} identity groups`);
       let anyFailure = false;
       const promises: Promise<void>[] = [];
 
       for (const [identityKey, activities] of groups) {
-        const promise = this.exportGroup(identityKey, activities).catch((error) => {
-          logger.error(`Failed to export group ${identityKey}: ${error}`);
+        const promise = this.exportGroup(identityKey, activities).catch(() => {
           anyFailure = true;
         });
         promises.push(promise);
       }
 
       await Promise.all(promises);
-      const resultCode = anyFailure ? ExportResultCode.FAILED : ExportResultCode.SUCCESS;
-      logger.info(`Export completed with result: ${resultCode === ExportResultCode.SUCCESS ? 'SUCCESS' : 'FAILED'}`);
+      logger.info(`[Agent365Exporter] Export completed. Success: ${!anyFailure}`);
       resultCallback({
-        code: resultCode
+        code: anyFailure ? ExportResultCode.FAILED : ExportResultCode.SUCCESS
       });
 
     } catch (error) {
       // Exporters should not raise; signal failure
-      logger.error(`[export] ]Unexpected error during export: ${error}`);
       resultCallback({ code: ExportResultCode.FAILED });
     }
   }
@@ -137,8 +133,7 @@ export class Agent365Exporter implements SpanExporter {
    */
   private async exportGroup(identityKey: string, spans: ReadableSpan[]): Promise<void> {
     const { tenantId, agentId } = parseIdentityKey(identityKey);
-
-    logger.info(`[exportGroup]: Starting export of ${spans.length} spans for agent ${agentId} in tenant ${tenantId}`);
+    logger.info(`[exportGroup] Exporting ${spans.length} spans for tenantId: ${tenantId}, agentId: ${agentId}`);
 
     const payload = this.buildExportRequest(spans);
     const body = JSON.stringify(payload);
@@ -147,36 +142,29 @@ export class Agent365Exporter implements SpanExporter {
     const discovery = new PowerPlatformApiDiscovery(this.clusterCategory);
     const endpoint = discovery.getTenantIslandClusterEndpoint(tenantId);
     const url = `https://${endpoint}/maven/agent365/agents/${agentId}/traces?api-version=1`;
-
-    logger.info(`Resolving token using endpoint: ${endpoint} for agent ${agentId}`);
+    logger.info(`[exportGroup] Resolved endpoint: ${endpoint}`);
 
     const headers: Record<string, string> = {
       'content-type': 'application/json'
     };
 
-    try {
-      const tokenResult = this.tokenResolver(agentId, tenantId);
-      const token = tokenResult instanceof Promise ? await tokenResult : tokenResult;
-      if (token) {
-        headers['authorization'] = `Bearer ${token}`;
-        logger.info(`Token resolved successfully for agent ${agentId}`);
-      } else {
-        logger.warn(`No token available for agent ${agentId}`);
-      }
-    } catch (error) {
-      logger.error(`Token resolution failed for agent ${agentId}: ${error}`);
-      throw error;
+    const tokenResult = this.tokenResolver(agentId, tenantId);
+    const token = tokenResult instanceof Promise ? await tokenResult : tokenResult;
+    if (token) {
+      headers['authorization'] = `Bearer ${token}`;
+      logger.info('[exportGroup] Token resolved successfully');
+    } else {
+      logger.warn('[exportGroup] No token resolved');
     }
 
 
     // Basic retry loop
     const ok = await this.postWithRetries(url, body, headers);
     if (!ok) {
-      logger.error(`Failed to export spans for agent ${agentId} after retries`);
+      logger.error('[exportGroup] Failed to export spans after retries');
       throw new Error('Failed to export spans after retries');
     }
-
-    logger.info(`Successfully exported ${spans.length} spans for agent ${agentId}`);
+    logger.info('[exportGroup] Successfully exported spans');
   }
 
   /**
@@ -185,8 +173,7 @@ export class Agent365Exporter implements SpanExporter {
   private async postWithRetries(url: string, body: string, headers: Record<string, string>): Promise<boolean> {
     for (let attempt = 0; attempt <= DEFAULT_MAX_RETRIES; attempt++) {
       try {
-        logger.info(`[postWithRetries] Export attempt ${attempt + 1}/${DEFAULT_MAX_RETRIES + 1}`);
-
+        logger.info(`[postWithRetries] Attempt ${attempt + 1}/${DEFAULT_MAX_RETRIES + 1}`);
         const response = await fetch(url, {
           method: 'POST',
           headers,
@@ -196,32 +183,29 @@ export class Agent365Exporter implements SpanExporter {
 
         // 2xx => success
         if (response.status >= 200 && response.status < 300) {
-          logger.info(`[postWithRetries] Export successful with status ${response.status}`);
+          logger.info(`[postWithRetries] Success with status ${response.status}`);
           return true;
         }
 
         // Retry transient errors
         if ([408, 429].includes(response.status) || (response.status >= 500 && response.status < 600)) {
-          logger.warn(`Transient error ${response.status}, retrying( export attempt ${attempt + 1}/${DEFAULT_MAX_RETRIES + 1})`);
           if (attempt < DEFAULT_MAX_RETRIES) {
             const sleepMs = 200 * (attempt + 1);
-            logger.info(`Sleeping for ${sleepMs}ms before export retry`);
+            logger.warn(`[postWithRetries] Transient error ${response.status}, retrying after ${sleepMs}ms`);
             await this.sleep(sleepMs);
             continue;
           }
         }
-
-        logger.error(`[postWithRetries] Export failed with non-retryable status ${response.status}`);
+        logger.error(`[postWithRetries] Failed with status ${response.status}`);
         return false;
       } catch (error) {
-        logger.error(`HTTP POST error on export attempt ${attempt + 1}: ${error}`);
+        logger.error('[postWithRetries] Request error:', error);
         if (attempt < DEFAULT_MAX_RETRIES) {
           const sleepMs = 200 * (attempt + 1);
-          logger.info(`Sleeping for ${sleepMs}ms before export retry`);
+          logger.info(`[postWithRetries] Retrying after ${sleepMs}ms`);
           await this.sleep(sleepMs);
           continue;
         }
-        logger.error('[postWithRetries] Export failed after max number of retries');
         return false;
       }
     }
@@ -374,7 +358,7 @@ export class Agent365Exporter implements SpanExporter {
    * Shutdown the exporter
    */
   async shutdown(): Promise<void> {
-    logger.info('Shutting down Agent365 exporter');
+    logger.info('[Agent365Exporter] Shutting down exporter');
     this.closed = true;
   }
 

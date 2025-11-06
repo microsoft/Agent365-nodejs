@@ -84,6 +84,7 @@ export function partitionByIdentity(
   spans: ReadableSpan[]
 ): Map<string, ReadableSpan[]> {
   const groups = new Map<string, ReadableSpan[]>();
+
   let skippedCount = 0;
   for (const span of spans) {
     const attrs = span.attributes || {};
@@ -112,8 +113,8 @@ export function partitionByIdentity(
 export function isAgent365ExporterEnabled(): boolean {
   const a365Env = process.env[OpenTelemetryConstants.ENABLE_A365_OBSERVABILITY_EXPORTER]?.toLowerCase() || '';
   const validValues = ['true', '1', 'yes', 'on'];
-  const enabled : boolean = validValues.includes(a365Env);
-  logger.info(`Agent365 exporter enabled: ${enabled} for env: '${a365Env}'`);
+  const enabled: boolean = validValues.includes(a365Env);
+  logger.info(`Agent365 exporter enabled: ${enabled}`);
   return enabled;
 }
 
@@ -127,52 +128,33 @@ export function parseIdentityKey(key: string): { tenantId: string; agentId: stri
 }
 
 /**
- * Simple logger that checks environment variables
- *
- * Usage:
- *   import logger from './logger';
- *   logger.info('Info message');    // Shows when LOG_LEVEL=info
- *   logger.warn('Warning');         // Shows when LOG_LEVEL=warn
- *   logger.error('Error');          // Shows when LOG_LEVEL=error
- *
- * Environment Variables:
- *   LOG_LEVEL=info|warn|error  (default: info)
- *   ENABLE_LOGS=true  (to enable logging, disabled by default)
+ * Simple logger utility for Agent365 observability
+ * Logs only if ENABLE_LOGS environment variable is set to 'true'
  */
-
-const LOG_LEVELS = {
-  info: 1,
-  warn: 2,
-  error: 3
-} as const;
-
-type LogLevelKey = keyof typeof LOG_LEVELS;
-
-const isEnabled = process.env.ENABLE_LOGS === 'true';
-const currentLogLevel = (process.env.LOG_LEVEL?.toLowerCase() as LogLevelKey) || 'info';
-const levelValue = LOG_LEVELS[currentLogLevel] ?? LOG_LEVELS.info;
-
 const logger = {
-  info: (message: string, ...args: unknown[]) => {
-    if (isEnabled && LOG_LEVELS.info >= levelValue) {
-      // eslint-disable-next-line no-console
-      console.log('[INFO]', message, ...args);
-    }
+  /**
+   * Log info level message
+   */
+  info: (...args: unknown[]): void => {
+    // eslint-disable-next-line no-console
+    if (process.env.ENABLE_LOGS === 'true') console.log('[Agent365-INFO]', ...args);
   },
 
-  warn: (message: string, ...args: unknown[]) => {
-    if (isEnabled && LOG_LEVELS.warn >= levelValue) {
-      // eslint-disable-next-line no-console
-      console.warn('[WARN]', message, ...args);
-    }
+  /**
+   * Log warning level message
+   */
+  warn: (...args: unknown[]): void => {
+    // eslint-disable-next-line no-console
+    if (process.env.ENABLE_LOGS === 'true') console.warn('[Agent365-WARN]', ...args);
   },
 
-  error: (message: string, ...args: unknown[]) => {
-    if (isEnabled && LOG_LEVELS.error >= levelValue) {
-      // eslint-disable-next-line no-console
-      console.error('[ERROR]', message, ...args);
-    }
-  }
+  /**
+   * Log error level message
+   */
+  error: (...args: unknown[]): void => {
+    // eslint-disable-next-line no-console
+    if (process.env.ENABLE_LOGS === 'true') console.error('[Agent365-ERROR]', ...args);
+  },
 };
 
 export default logger;
