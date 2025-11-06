@@ -48,8 +48,7 @@
     "@opentelemetry/sdk-trace-base": "*",
     "@opentelemetry/semantic-conventions": "*",
     "dotenv": "^16.0.0",
-    "openai": "^4.0.0",
-    "zod": "^3.0.0"
+    "openai": "^4.0.0"
   },
   "devDependencies": {
     "@babel/preset-typescript": "^7.27.1",

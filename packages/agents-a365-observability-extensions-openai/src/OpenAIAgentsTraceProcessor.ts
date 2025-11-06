@@ -275,9 +275,9 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
   private processGenerationSpanData(otelSpan: OtelSpan, data: SpanData, traceId: string): void {
     const attrs = Utils.getAttributesFromGenerationSpanData(data);
     Object.entries(attrs).forEach(([key, value]) => {
-      if (value !== null && value !== undefined && key !== OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY
-        && key !== Constants.GEN_AI_EXECUTION_PAYLOAD_KEY
-      ) {
+      const shouldExcludeKey = key === OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY
+        || key === Constants.GEN_AI_EXECUTION_PAYLOAD_KEY;
+      if (value !== null && value !== undefined && !shouldExcludeKey) {
         const newKey = this.getNewKey(data.type, key);
         otelSpan.setAttribute(newKey || key, value as string | number | boolean);
       }
