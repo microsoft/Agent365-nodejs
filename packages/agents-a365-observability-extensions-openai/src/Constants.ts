@@ -34,3 +34,4 @@ export const GEN_AI_GRAPH_NODE_PARENT_ID = 'graph_node_parent_id';
 
 export const GEN_AI_REQUEST_CONTENT_KEY = 'gen_ai.request.content';
 export const GEN_AI_RESPONSE_CONTENT_KEY = 'gen_ai.response.content';
+export const GEN_AI_EXECUTION_PAYLOAD_KEY = 'gen_ai.execution.payload';
