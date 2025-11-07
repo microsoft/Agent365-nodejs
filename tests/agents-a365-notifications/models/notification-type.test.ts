@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { NotificationType } from '../../../packages/agents-a365-notifications/src/models/notification-type';
+import { NotificationType } from '@microsoft/agents-a365-notifications';
 
 describe('NotificationType', () => {
   describe('enum values', () => {

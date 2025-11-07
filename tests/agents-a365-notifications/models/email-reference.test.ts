@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { EmailReference, isEmailReference, createEmailReference, EMAIL_NOTIFICATION_TYPE } from '../../../packages/agents-a365-notifications/src/models/email-reference';
+import { EmailReference, isEmailReference, createEmailReference, EMAIL_NOTIFICATION_TYPE } from '@microsoft/agents-a365-notifications';
 import { Entity } from '@microsoft/agents-activity';
 
 describe('EmailReference', () => {

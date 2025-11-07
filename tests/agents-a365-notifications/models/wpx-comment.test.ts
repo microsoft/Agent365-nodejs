@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { WpxComment, isWpxComment, createWpxComment, WPX_COMMENT_TYPE } from '../../../packages/agents-a365-notifications/src/models/wpx-comment';
+import { WpxComment, isWpxComment, createWpxComment, WPX_COMMENT_TYPE } from '@microsoft/agents-a365-notifications';
 import { Entity } from '@microsoft/agents-activity';
 
 describe('WpxComment', () => {

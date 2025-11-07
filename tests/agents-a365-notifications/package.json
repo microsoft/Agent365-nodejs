@@ -1,5 +1,5 @@
 {
-  "name": "agents-a365-notifications-unittest",
+  "name": "@microsoft/agents-a365-notifications-tests",
   "version": "1.0.0",
   "description": "Unit tests for agents-a365-notifications package",
   "scripts": {

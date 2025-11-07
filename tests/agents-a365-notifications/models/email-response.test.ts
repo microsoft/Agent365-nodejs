@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { EmailResponse, createEmailResponse, EMAIL_RESPONSE_TYPE } from '../../../packages/agents-a365-notifications/src/models/email-response';
+import { EmailResponse, createEmailResponse, EMAIL_RESPONSE_TYPE } from '@microsoft/agents-a365-notifications';
 
 describe('EmailResponse', () => {
   describe('createEmailResponse', () => {
@@ -10,7 +10,7 @@ describe('EmailResponse', () => {
       const emailResponse = createEmailResponse(htmlBody);
 
       expect(emailResponse).toEqual({
-        type: 'emailResponse',
+        type: EMAIL_RESPONSE_TYPE,
         htmlBody,
       });
     });
@@ -19,7 +19,7 @@ describe('EmailResponse', () => {
       const emailResponse = createEmailResponse();
 
       expect(emailResponse).toEqual({
-        type: 'emailResponse',
+        type: EMAIL_RESPONSE_TYPE,
         htmlBody: '',
       });
     });
@@ -28,7 +28,7 @@ describe('EmailResponse', () => {
       const emailResponse = createEmailResponse('');
 
       expect(emailResponse).toEqual({
-        type: 'emailResponse',
+        type: EMAIL_RESPONSE_TYPE,
         htmlBody: '',
       });
     });
@@ -38,7 +38,7 @@ describe('EmailResponse', () => {
       const emailResponse = createEmailResponse(htmlBody);
 
       expect(emailResponse).toEqual({
-        type: 'emailResponse',
+        type: EMAIL_RESPONSE_TYPE,
         htmlBody,
       });
     });
@@ -53,20 +53,20 @@ describe('EmailResponse', () => {
   describe('EmailResponse interface compliance', () => {
     it('should match the interface structure', () => {
       const emailResponse: EmailResponse = {
-        type: 'emailResponse',
+        type: EMAIL_RESPONSE_TYPE,
         htmlBody: '<div>Test HTML</div>',
       };
 
-      expect(emailResponse.type).toBe('emailResponse');
+      expect(emailResponse.type).toBe(EMAIL_RESPONSE_TYPE);
       expect(emailResponse.htmlBody).toBe('<div>Test HTML</div>');
     });
 
     it('should allow optional htmlBody', () => {
       const emailResponse: EmailResponse = {
-        type: 'emailResponse',
+        type: EMAIL_RESPONSE_TYPE,
       };
 
-      expect(emailResponse.type).toBe('emailResponse');
+      expect(emailResponse.type).toBe(EMAIL_RESPONSE_TYPE);
       expect(emailResponse.htmlBody).toBeUndefined();
     });
   });

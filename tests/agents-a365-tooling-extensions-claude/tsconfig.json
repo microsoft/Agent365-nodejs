@@ -4,7 +4,7 @@
     "module": "commonjs",
     "lib": ["ES2020"],
     "outDir": "./dist",
-    "strict": false,
+    "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
@@ -16,7 +16,7 @@
     "allowSyntheticDefaultImports": true,
     "baseUrl": ".",
     "paths": {
-      "@microsoft/agents-a365-tooling/*": ["../../../packages/agents-a365-tooling/src/*"]
+      "@microsoft/agents-a365-tooling-extensions-claude/*": ["../../../packages/agents-a365-tooling-extensions-claude/src/*"]
     }
   },
   "include": [

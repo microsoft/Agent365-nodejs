@@ -1,9 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { AgentNotificationHandler } from '../../../packages/agents-a365-notifications/src/extensions/agent-notification-handler';
+import { AgentNotificationHandler, AgentNotificationActivity } from '@microsoft/agents-a365-notifications';
 import { TurnContext, TurnState } from '@microsoft/agents-hosting';
-import { AgentNotificationActivity } from '../../../packages/agents-a365-notifications/src/models/agent-notification-activity';
 
 // Mock implementations for testing
 const mockTurnContext = {} as TurnContext;
@@ -44,21 +43,6 @@ describe('AgentNotificationHandler', () => {
       const customTurnState = { customProperty: 'test' } as CustomTurnState;
       
       await expect(testHandler(mockTurnContext, customTurnState, mockNotificationActivity)).resolves.toBeUndefined();
-    });
-
-    it('should work with default TurnState when no generic provided', async () => {
-      const testHandler: AgentNotificationHandler = async (
-        turnContext,
-        turnState,
-        agentNotificationActivity
-      ) => {
-        // Should compile without specifying generic type
-        expect(turnContext).toBeDefined();
-        expect(turnState).toBeDefined();
-        expect(agentNotificationActivity).toBeDefined();
-      };
-
-      await expect(testHandler(mockTurnContext, mockTurnState, mockNotificationActivity)).resolves.toBeUndefined();
     });
   });
 

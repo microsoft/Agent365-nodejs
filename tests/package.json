@@ -32,6 +32,11 @@
     "directory": "nodejs/tests"
   },
   "dependencies": {
+    "@microsoft/agents-a365-notifications": "*",
+    "@microsoft/agents-a365-tooling": "*",
+    "@microsoft/agents-a365-tooling-extensions-claude": "*",
+    "@microsoft/agents-a365-tooling-extensions-langchain": "*",
+    "@microsoft/agents-a365-tooling-extensions-openai": "*",
     "@microsoft/agents-a365-observability": "*",
     "@microsoft/agents-a365-runtime": "*",
     "@azure/monitor-opentelemetry-exporter": "^1.0.0-beta.32",

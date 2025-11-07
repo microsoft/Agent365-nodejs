@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { Utility, ToolsMode } from '../../../packages/agents-a365-tooling/src/Utility';
+import { Utility, ToolsMode } from '@microsoft/agents-a365-tooling';
 
 describe('Utility', () => {
   // Store original environment variables to restore after tests
@@ -20,33 +20,50 @@ describe('Utility', () => {
   });
 
   describe('GetToolingGatewayForDigitalWorker', () => {
-    it('should generate correct URL for digital worker', () => {
+    it('should generate correct URL for digital worker using default base URL', () => {
+      // Clear any custom endpoint to test default behavior
+      delete process.env.MCP_PLATFORM_ENDPOINT;
+      
       const agentUserId = 'agent-123';
       const result = Utility.GetToolingGatewayForDigitalWorker(agentUserId);
       
+      // Verify it uses the production base URL format
       expect(result).toBe('https://agent365.svc.cloud.microsoft/agents/agent-123/mcpServers');
+      expect(result).toMatch(/^https:\/\/agent365\.svc\.cloud\.microsoft\/agents\/agent-123\/mcpServers$/);
     });
 
     it('should handle empty agent user ID', () => {
+      delete process.env.MCP_PLATFORM_ENDPOINT;
+      
       const agentUserId = '';
       const result = Utility.GetToolingGatewayForDigitalWorker(agentUserId);
       
+      // Should still follow the URL pattern even with empty ID
       expect(result).toBe('https://agent365.svc.cloud.microsoft/agents//mcpServers');
+      expect(result).toMatch(/^https:\/\/agent365\.svc\.cloud\.microsoft\/agents\/\/mcpServers$/);
     });
 
     it('should handle agent user ID with special characters', () => {
+      delete process.env.MCP_PLATFORM_ENDPOINT;
+      
       const agentUserId = 'agent-test@domain.com';
       const result = Utility.GetToolingGatewayForDigitalWorker(agentUserId);
       
+      // Should preserve special characters in the URL path
       expect(result).toBe('https://agent365.svc.cloud.microsoft/agents/agent-test@domain.com/mcpServers');
+      expect(result).toMatch(/^https:\/\/agent365\.svc\.cloud\.microsoft\/agents\/agent-test@domain\.com\/mcpServers$/);
     });
 
-    it('should use custom MCP platform endpoint when set', () => {
-      process.env.MCP_PLATFORM_ENDPOINT = 'https://custom.endpoint.com';
+    it('should use custom MCP platform endpoint when MCP_PLATFORM_ENDPOINT is set', () => {
+      const customEndpoint = 'https://custom.endpoint.com';
+      process.env.MCP_PLATFORM_ENDPOINT = customEndpoint;
+      
       const agentUserId = 'agent-456';
       const result = Utility.GetToolingGatewayForDigitalWorker(agentUserId);
       
-      expect(result).toBe('https://custom.endpoint.com/agents/agent-456/mcpServers');
+      // Should use the custom endpoint instead of default
+      expect(result).toBe(`${customEndpoint}/agents/agent-456/mcpServers`);
+      expect(result).toMatch(/^https:\/\/custom\.endpoint\.com\/agents\/agent-456\/mcpServers$/);
     });
   });
 

@@ -4,7 +4,7 @@
 import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
-import { McpToolServerConfigurationService } from '../../../packages/agents-a365-tooling/src/McpToolServerConfigurationService';
+import { McpToolServerConfigurationService } from '@microsoft/agents-a365-tooling';
 
 // Mock dependencies
 jest.mock('fs');

@@ -1,5 +1,5 @@
 {
-  "name": "agents-a365-tooling-extensions-claude-unittest",
+  "name": "@microsoft/agents-a365-tooling-extensions-claude-tests",
   "version": "1.0.0",
   "description": "Unit tests for agents-a365-tooling-extensions-claude package",
   "private": true,
@@ -9,10 +9,10 @@
     "test:coverage": "jest --coverage"
   },
   "devDependencies": {
-    "@types/jest": "^29.5.14",
+    "@types/jest": "29.5.14",
     "@types/node": "^20.0.0",
-    "jest": "^29.0.0",
-    "ts-jest": "^29.0.0",
+    "jest": "29.7.0",
+    "ts-jest": "29.1.1",
     "typescript": "^5.0.0"
   },
   "engines": {

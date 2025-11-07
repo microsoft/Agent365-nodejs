@@ -11,7 +11,7 @@ import {
   USER_CREATED_LIFECYCLE_EVENT,
   USER_WORKLOAD_ONBOARDING_LIFECYCLE_EVENT,
   USER_DELETED_LIFECYCLE_EVENT,
-} from '../../packages/agents-a365-notifications/src/constants';
+} from '@microsoft/agents-a365-notifications';
 
 describe('Constants', () => {
   describe('Channel Constants', () => {

@@ -13,9 +13,9 @@
   "collectCoverage": true,
   "coverageReporters": ["text", "lcov", "html"],
   "collectCoverageFrom": [
-    "<rootDir>/../../../packages/agents-a365-tooling/src/**/*.ts",
-    "!<rootDir>/../../../packages/agents-a365-tooling/src/**/*.d.ts",
-    "!<rootDir>/../../../packages/agents-a365-tooling/src/index.ts"
+    "<rootDir>\\..\\..\\packages\\agents-a365-tooling\\src\\**\\*.ts",
+    "!<rootDir>\\..\\..\\packages\\agents-a365-tooling\\src\\**\\*.d.ts",
+    "!<rootDir>\\..\\..\\packages\\agents-a365-tooling\\src\\index.ts"
   ],
   "coverageThreshold": {
     "global": {
@@ -26,7 +26,7 @@
     }
   },
   "moduleNameMapper": {
-    "^@microsoft/agents-a365-tooling$": "<rootDir>/../../../packages/agents-a365-tooling/src/index.ts"
+    "^@microsoft/agents-a365-tooling$": "<rootDir>\\..\\..\\packages\\agents-a365-tooling\\src\\index.ts"
   },
-  "moduleDirectories": ["node_modules", "<rootDir>/../../../node_modules"]
+  "moduleDirectories": ["node_modules", "<rootDir>\\..\\..\\node_modules"]
 }

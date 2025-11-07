@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { MCPServerConfig, McpClientTool, InputSchema } from '../../../packages/agents-a365-tooling/src/contracts';
+import { MCPServerConfig, McpClientTool, InputSchema } from '@microsoft/agents-a365-tooling';
 
 describe('Contracts', () => {
   describe('MCPServerConfig', () => {
