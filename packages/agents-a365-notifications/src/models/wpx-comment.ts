@@ -2,7 +2,7 @@ import { Entity } from '@microsoft/agents-activity';
 
 /**
  * Represents a Word (WPX) comment notification entity.
- * 
+ *
  * IMPORTANT: For observability and tracking purposes, always use the conversation ID
  * from the activity (activity.conversation.id) rather than attempting to generate a
  * custom conversation ID by combining documentId and initiatingCommentId. The
