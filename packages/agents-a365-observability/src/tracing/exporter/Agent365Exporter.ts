@@ -134,7 +134,7 @@ export class Agent365Exporter implements SpanExporter {
    */
   private async exportGroup(identityKey: string, spans: ReadableSpan[]): Promise<void> {
     const { tenantId, agentId } = parseIdentityKey(identityKey);
-    logger.info(`[exportGroup] Exporting ${spans.length} spans for tenantId: ${tenantId}, agentId: ${agentId}`);
+    logger.info(`[Agent365Exporter] Exporting ${spans.length} spans for tenantId: ${tenantId}, agentId: ${agentId}`);
 
     const payload = this.buildExportRequest(spans);
     const body = JSON.stringify(payload);
@@ -143,7 +143,7 @@ export class Agent365Exporter implements SpanExporter {
     const discovery = new PowerPlatformApiDiscovery(this.clusterCategory);
     const endpoint = discovery.getTenantIslandClusterEndpoint(tenantId);
     const url = `https://${endpoint}/maven/agent365/agents/${agentId}/traces?api-version=1`;
-    logger.info(`[exportGroup] Resolved endpoint: ${endpoint}`);
+    logger.info(`[Agent365Exporter] Resolved endpoint: ${endpoint}`);
 
     const headers: Record<string, string> = {
       'content-type': 'application/json'
@@ -153,19 +153,19 @@ export class Agent365Exporter implements SpanExporter {
     const token = tokenResult instanceof Promise ? await tokenResult : tokenResult;
     if (token) {
       headers['authorization'] = `Bearer ${token}`;
-      logger.info('[exportGroup] Token resolved successfully');
+      logger.info('[Agent365Exporter] Token resolved successfully');
     } else {
-      logger.error('[exportGroup] No token resolved');
+      logger.error('[Agent365Exporter] No token resolved');
     }
 
 
     // Basic retry loop
     const ok = await this.postWithRetries(url, body, headers);
     if (!ok) {
-      logger.error('[exportGroup] Failed to export spans');
+      logger.error('[Agent365Exporter] Failed to export spans');
       throw new Error('Failed to export spans');
     }
-    logger.info('[exportGroup] Successfully exported spans');
+    logger.info('[Agent365Exporter] Successfully exported spans');
   }
 
   /**
@@ -173,8 +173,9 @@ export class Agent365Exporter implements SpanExporter {
    */
   private async postWithRetries(url: string, body: string, headers: Record<string, string>): Promise<boolean> {
     for (let attempt = 0; attempt <= DEFAULT_MAX_RETRIES; attempt++) {
+      let correlationId: string;
       try {
-        logger.info(`[postWithRetries] Posting OTLP export request - Attempt ${attempt + 1}`);
+        logger.info(`[Agent365Exporter] Posting OTLP export request - Attempt ${attempt + 1}`);
         const response = await fetch(url, {
           method: 'POST',
           headers,
@@ -182,9 +183,10 @@ export class Agent365Exporter implements SpanExporter {
           signal: AbortSignal.timeout(DEFAULT_HTTP_TIMEOUT_SECONDS)
         });
 
+        correlationId = response?.headers?.get('x-ms-correlation-id') || response?.headers?.get('x-correlation-id') || 'unknown';
         // 2xx => success
         if (response.status >= 200 && response.status < 300) {
-          logger.info(`[postWithRetries] Success with status ${response.status}`);
+          logger.info(`[Agent365Exporter] Success with status ${response.status}, correlation ID: ${correlationId}`);
           return true;
         }
 
@@ -192,18 +194,18 @@ export class Agent365Exporter implements SpanExporter {
         if ([408, 429].includes(response.status) || (response.status >= 500 && response.status < 600)) {
           if (attempt < DEFAULT_MAX_RETRIES) {
             const sleepMs = 200 * (attempt + 1);
-            logger.warn(`[postWithRetries] Transient error ${response.status}, retrying after ${sleepMs}ms`);
+            logger.warn(`[Agent365Exporter] Transient error ${response.status}, correlation ID: ${correlationId}, retrying after ${sleepMs}ms`);
             await this.sleep(sleepMs);
             continue;
           }
         }
-        logger.error(`[postWithRetries] Failed with status ${response.status}`);
+        logger.error(`[Agent365Exporter] Failed with status ${response.status}, correlation ID: ${correlationId}`);
         return false;
       } catch (error) {
-        logger.error('[postWithRetries] Request error:', formatError(error));
+        logger.error('[Agent365Exporter] Request error:', formatError(error));
         if (attempt < DEFAULT_MAX_RETRIES) {
           const sleepMs = 200 * (attempt + 1);
-          logger.info(`[postWithRetries] Retrying after ${sleepMs}ms`);
+          logger.info(`[Agent365Exporter] Retrying after ${sleepMs}ms`);
           await this.sleep(sleepMs);
           continue;
         }
@@ -226,7 +228,7 @@ export class Agent365Exporter implements SpanExporter {
   private buildExportRequest(spans: ReadableSpan[]): OTLPExportRequest {
     // Group by instrumentation scope (name, version)
     const scopeMap = new Map<string, OTLPSpan[]>();
-    logger.info('[buildExportRequest] Building OTLP export request payload');
+    logger.info('[Agent365Exporter] Building OTLP export request payload');
     for (const sp of spans) {
       const scope = sp.instrumentationScope || (sp as ReadableSpan & { instrumentationLibrary?: { name?: string; version?: string } }).instrumentationLibrary;
       const scopeKey = `${scope?.name || 'unknown'}:${scope?.version || ''}`;

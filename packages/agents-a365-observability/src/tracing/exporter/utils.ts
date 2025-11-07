@@ -94,7 +94,7 @@ export function partitionByIdentity(
 
     if (!tenant || !agent) {
       skippedCount++;
-      logger.warn(`[partitionByIdentity]Skipping span without tenant or agent ID. Span name: ${span.name}`);
+      logger.warn(`[Agent365Exporter] Skipping span without tenant or agent ID. Span name: ${span.name}`);
       continue;
     }
 
@@ -104,7 +104,7 @@ export function partitionByIdentity(
     groups.set(key, existing);
   }
 
-  logger.info(`Partitioned into ${groups.size} identity groups (${skippedCount} spans skipped)`);
+  logger.info(`[Agent365Exporter] Partitioned into ${groups.size} identity groups (${skippedCount} spans skipped)`);
   return groups;
 }
 
@@ -115,7 +115,7 @@ export function isAgent365ExporterEnabled(): boolean {
   const a365Env = process.env[OpenTelemetryConstants.ENABLE_A365_OBSERVABILITY_EXPORTER]?.toLowerCase() || '';
   const validValues = ['true', '1', 'yes', 'on'];
   const enabled: boolean = validValues.includes(a365Env);
-  logger.info(`Agent365 exporter enabled: ${enabled}`);
+  logger.info(`[Agent365Exporter] Agent365 exporter enabled: ${enabled}`);
   return enabled;
 }
 
