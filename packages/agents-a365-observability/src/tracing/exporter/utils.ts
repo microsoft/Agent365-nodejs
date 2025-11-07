@@ -5,6 +5,7 @@
 import { ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import { SpanKind, SpanStatusCode } from '@opentelemetry/api';
 import { OpenTelemetryConstants } from '../constants';
+import debug from 'debug';
 
 /**
  * Convert trace ID to hex string format
@@ -128,32 +129,34 @@ export function parseIdentityKey(key: string): { tenantId: string; agentId: stri
 }
 
 /**
+ * Format error object for logging with message and stack trace
+ */
+export function formatError(error: unknown): string {
+  if (error instanceof Error) {
+    return `${error.message}\nStack: ${error.stack || 'No stack trace'}`;
+  }
+  return String(error);
+}
+
+const debugInfo = debug('agent365:observability:info');
+const debugWarn = debug('agent365:observability:warn');
+const debugError = debug('agent365:observability:error');
+
+/**
  * Simple logger utility for Agent365 observability
- * Logs only if ENABLE_LOGS environment variable is set to 'true'
+ * Uses debug package with namespaces: agent365:observability:{info|warn|error}
+ * Control via DEBUG environment variable (e.g., DEBUG=agent365:observability:*)
  */
 const logger = {
-  /**
-   * Log info level message
-   */
   info: (...args: unknown[]): void => {
-    // eslint-disable-next-line no-console
-    if (process.env.ENABLE_LOGS === 'true') console.log('[Agent365-INFO]', ...args);
+    debugInfo('%O', ...args);
   },
 
-  /**
-   * Log warning level message
-   */
   warn: (...args: unknown[]): void => {
-    // eslint-disable-next-line no-console
-    if (process.env.ENABLE_LOGS === 'true') console.warn('[Agent365-WARN]', ...args);
+    debugWarn('%O', ...args);
   },
-
-  /**
-   * Log error level message
-   */
   error: (...args: unknown[]): void => {
-    // eslint-disable-next-line no-console
-    if (process.env.ENABLE_LOGS === 'true') console.error('[Agent365-ERROR]', ...args);
+    debugError('%O', ...args);
   },
 };
 

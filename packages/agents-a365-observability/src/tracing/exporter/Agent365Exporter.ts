@@ -2,7 +2,7 @@ import { ExportResult,ExportResultCode } from '@opentelemetry/core';
 import { ReadableSpan, SpanExporter } from '@opentelemetry/sdk-trace-base';
 
 import { PowerPlatformApiDiscovery, ClusterCategory } from '@microsoft/agents-a365-runtime';
-import { partitionByIdentity, parseIdentityKey, hexTraceId, hexSpanId, kindName, statusName } from './utils';
+import { partitionByIdentity, parseIdentityKey, hexTraceId, hexSpanId, kindName, statusName, formatError } from './utils';
 import logger from './utils';
 
 const DEFAULT_HTTP_TIMEOUT_SECONDS = 30000; // 30 seconds in ms
@@ -80,6 +80,7 @@ export class Agent365Exporter implements SpanExporter {
     clusterCategory: ClusterCategory = 'prod'
   ) {
     if (!tokenResolver) {
+      logger.error('[Agent365Exporter] token_resolver is not provided');
       throw new Error('token_resolver must be provided.');
     }
     this.tokenResolver = tokenResolver;
@@ -154,15 +155,15 @@ export class Agent365Exporter implements SpanExporter {
       headers['authorization'] = `Bearer ${token}`;
       logger.info('[exportGroup] Token resolved successfully');
     } else {
-      logger.warn('[exportGroup] No token resolved');
+      logger.error('[exportGroup] No token resolved');
     }
 
 
     // Basic retry loop
     const ok = await this.postWithRetries(url, body, headers);
     if (!ok) {
-      logger.error('[exportGroup] Failed to export spans after retries');
-      throw new Error('Failed to export spans after retries');
+      logger.error('[exportGroup] Failed to export spans');
+      throw new Error('Failed to export spans');
     }
     logger.info('[exportGroup] Successfully exported spans');
   }
@@ -173,7 +174,7 @@ export class Agent365Exporter implements SpanExporter {
   private async postWithRetries(url: string, body: string, headers: Record<string, string>): Promise<boolean> {
     for (let attempt = 0; attempt <= DEFAULT_MAX_RETRIES; attempt++) {
       try {
-        logger.info(`[postWithRetries] Attempt ${attempt + 1}/${DEFAULT_MAX_RETRIES + 1}`);
+        logger.info(`[postWithRetries] Posting OTLP export request - Attempt ${attempt + 1}`);
         const response = await fetch(url, {
           method: 'POST',
           headers,
@@ -199,7 +200,7 @@ export class Agent365Exporter implements SpanExporter {
         logger.error(`[postWithRetries] Failed with status ${response.status}`);
         return false;
       } catch (error) {
-        logger.error('[postWithRetries] Request error:', error);
+        logger.error('[postWithRetries] Request error:', formatError(error));
         if (attempt < DEFAULT_MAX_RETRIES) {
           const sleepMs = 200 * (attempt + 1);
           logger.info(`[postWithRetries] Retrying after ${sleepMs}ms`);
@@ -225,7 +226,7 @@ export class Agent365Exporter implements SpanExporter {
   private buildExportRequest(spans: ReadableSpan[]): OTLPExportRequest {
     // Group by instrumentation scope (name, version)
     const scopeMap = new Map<string, OTLPSpan[]>();
-
+    logger.info('[buildExportRequest] Building OTLP export request payload');
     for (const sp of spans) {
       const scope = sp.instrumentationScope || (sp as ReadableSpan & { instrumentationLibrary?: { name?: string; version?: string } }).instrumentationLibrary;
       const scopeKey = `${scope?.name || 'unknown'}:${scope?.version || ''}`;
