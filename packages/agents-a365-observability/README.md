@@ -175,7 +175,11 @@ const invokeDetails = {
   agentId: 'email-agent-123',
   agentName: 'Email Assistant',
   agentDescription: 'AI assistant for email management',
-  conversationId: 'conv-456',
+  // IMPORTANT: Use the conversation ID directly from the activity.
+  // For Office document notifications (WPX comments), do NOT generate a custom
+  // conversation ID by combining documentId and initiatingCommentId. The activity's
+  // conversation ID is already unique among threads in the same document.
+  conversationId: context.activity.conversation?.id, // Use activity conversation ID directly
   sessionId: 'session-789',
   endpoint: {
     host: 'agents.contoso.com',
@@ -356,7 +360,10 @@ using baggageScope = new BaggageBuilder()
   .callerUpn('jane.smith@company.com')
   
   // Conversation context
-  .conversationId('conv-123')
+  // IMPORTANT: Use the conversation ID directly from the activity.
+  // For Office document notifications (WPX comments), do NOT generate a custom
+  // conversation ID by combining documentId and initiatingCommentId.
+  .conversationId(context.activity.conversation?.id)
   .conversationItemLink('https://teams.microsoft.com/...')
   
   // Source metadata (e.g., Teams channel)

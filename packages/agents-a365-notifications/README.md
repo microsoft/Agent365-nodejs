@@ -158,6 +158,12 @@ app.onAgenticWordNotification(async (context, state, notification) => {
 
   console.log('Document ID:', comment.documentId);
   console.log('Comment ID:', comment.initiatingCommentId);
+  
+  // IMPORTANT: Use the conversation ID from the activity directly.
+  // The conversation ID from context.activity.conversation.id is unique among
+  // threads in the same document. Do NOT generate a custom conversation ID by
+  // combining documentId and initiatingCommentId.
+  console.log('Conversation ID:', context.activity.conversation?.id);
 
   // Respond to the comment
   await context.sendActivity({
