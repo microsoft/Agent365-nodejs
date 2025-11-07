@@ -48,11 +48,9 @@
     "@opentelemetry/resources": "*",
     "@opentelemetry/sdk-node": "*",
     "@opentelemetry/sdk-trace-base": "*",
-    "@opentelemetry/semantic-conventions": "*",
-    "debug": "^4.4.3"
+    "@opentelemetry/semantic-conventions": "*"
   },
   "devDependencies": {
-    "@types/debug": "^4.1.12",
     "@types/jest": "^29.5.14",
     "@types/node": "^20.0.0",
     "@typescript-eslint/eslint-plugin": "^6.0.0",

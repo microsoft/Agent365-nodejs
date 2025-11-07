@@ -5,7 +5,6 @@
 import { ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import { SpanKind, SpanStatusCode } from '@opentelemetry/api';
 import { OpenTelemetryConstants } from '../constants';
-import debug from 'debug';
 
 /**
  * Convert trace ID to hex string format
@@ -138,26 +137,60 @@ export function formatError(error: unknown): string {
   return String(error);
 }
 
-const debugInfo = debug('agent365:observability:info');
-const debugWarn = debug('agent365:observability:warn');
-const debugError = debug('agent365:observability:error');
-
 /**
- * Simple logger utility for Agent365 observability
- * Uses debug package with namespaces: agent365:observability:{info|warn|error}
- * Control via DEBUG environment variable (e.g., DEBUG=agent365:observability:*)
+ * Simple logger for Agent365 observability
+ *
+ * Usage:
+ *   import logger from './utils';
+ *   logger.info('Info message');    // Shows when A365ObservabilityLogLevel = info
+ *   logger.warn('Warning');         // Shows when A365ObservabilityLogLevel = info|warn
+ *   logger.error('Error');          // Shows when A365ObservabilityLogLevel = info|warn|error
+ *
+ * Environment Variable:
+ *   A365ObservabilityLogLevel=none|info|warn|error  (default: none)
+ *   none = no logging (default)
+ *   info = info, warn, error messages
+ *   warn = warn, error messages only
+ *   error = error messages only
  */
+
+const LOG_LEVELS = {
+  none: 0,
+  info: 1,
+  warn: 2,
+  error: 3
+} as const;
+
+type LogLevel = keyof typeof LOG_LEVELS;
+
+function parseLogLevel(level: string): number {
+  const normalizedLevel = level.toLowerCase().trim() as LogLevel;
+  return LOG_LEVELS[normalizedLevel] ?? LOG_LEVELS.none;
+}
+
+const currentLogLevel = parseLogLevel(process.env.A365_OBSERVABILITY_LOG_LEVEL || 'none');
+
 const logger = {
-  info: (...args: unknown[]): void => {
-    debugInfo('%O', ...args);
+  info: (message: string, ...args: unknown[]) => {
+    if (currentLogLevel === LOG_LEVELS.info) {
+      // eslint-disable-next-line no-console
+      console.log('[INFO]', message, ...args);
+    }
   },
 
-  warn: (...args: unknown[]): void => {
-    debugWarn('%O', ...args);
+  warn: (message: string, ...args: unknown[]) => {
+    if (currentLogLevel === LOG_LEVELS.info || currentLogLevel === LOG_LEVELS.warn) {
+      // eslint-disable-next-line no-console
+      console.warn('[WARN]', message, ...args);
+    }
   },
-  error: (...args: unknown[]): void => {
-    debugError('%O', ...args);
-  },
+
+  error: (message: string, ...args: unknown[]) => {
+    if (currentLogLevel === LOG_LEVELS.info || currentLogLevel === LOG_LEVELS.warn || currentLogLevel === LOG_LEVELS.error) {
+      // eslint-disable-next-line no-console
+      console.error('[ERROR]', message, ...args);
+    }
+  }
 };
 
 export default logger;
