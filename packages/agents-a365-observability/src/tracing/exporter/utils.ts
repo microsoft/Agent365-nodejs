@@ -142,16 +142,23 @@ export function formatError(error: unknown): string {
  *
  * Usage:
  *   import logger from './utils';
- *   logger.info('Info message');    // Shows when A365ObservabilityLogLevel = info
- *   logger.warn('Warning');         // Shows when A365ObservabilityLogLevel = info|warn
- *   logger.error('Error');          // Shows when A365ObservabilityLogLevel = info|warn|error
+ *   logger.info('Info message');    // Shows when A365ObservabilityLogLevel includes 'info'
+ *   logger.warn('Warning');         // Shows when A365ObservabilityLogLevel includes 'warn'
+ *   logger.error('Error');          // Shows when A365ObservabilityLogLevel includes 'error'
  *
  * Environment Variable:
- *   A365ObservabilityLogLevel=none|info|warn|error  (default: none)
+ *   A365ObservabilityLogLevel=none|info|warn|error|info|warn|info|error  (default: none)
+ *
+ *   Single values:
  *   none = no logging (default)
- *   info = info, warn, error messages
- *   warn = warn, error messages only
+ *   info = info messages only
+ *   warn = warn messages only
  *   error = error messages only
+ *
+ *   Multiple values (pipe-separated):
+ *   info|warn = info and warn messages
+ *   warn|error = warn and error messages
+ *   info|warn|error = all message types
  */
 
 const LOG_LEVELS = {
@@ -163,30 +170,47 @@ const LOG_LEVELS = {
 
 type LogLevel = keyof typeof LOG_LEVELS;
 
-function parseLogLevel(level: string): number {
-  const normalizedLevel = level.toLowerCase().trim() as LogLevel;
-  return LOG_LEVELS[normalizedLevel] ?? LOG_LEVELS.none;
+function parseLogLevel(level: string): Set<number> {
+  const levels = new Set<number>();
+
+  // Split by | to support multiple levels like "info|warn|error"
+  const levelStrings = level.toLowerCase().trim().split('|');
+
+  for (const levelString of levelStrings) {
+    const normalizedLevel = levelString.trim() as LogLevel;
+    const levelValue = LOG_LEVELS[normalizedLevel];
+    if (levelValue !== undefined) {
+      levels.add(levelValue);
+    }
+  }
+
+  // If no valid levels found, default to none
+  if (levels.size === 0) {
+    levels.add(LOG_LEVELS.none);
+  }
+
+  return levels;
 }
 
-const currentLogLevel = parseLogLevel(process.env.A365_OBSERVABILITY_LOG_LEVEL || 'none');
+const enabledLogLevels = parseLogLevel(process.env.A365_OBSERVABILITY_LOG_LEVEL || 'none');
 
 const logger = {
   info: (message: string, ...args: unknown[]) => {
-    if (currentLogLevel === LOG_LEVELS.info) {
+    if (enabledLogLevels.has(LOG_LEVELS.info)) {
       // eslint-disable-next-line no-console
       console.log('[INFO]', message, ...args);
     }
   },
 
   warn: (message: string, ...args: unknown[]) => {
-    if (currentLogLevel === LOG_LEVELS.info || currentLogLevel === LOG_LEVELS.warn) {
+    if (enabledLogLevels.has(LOG_LEVELS.warn)) {
       // eslint-disable-next-line no-console
       console.warn('[WARN]', message, ...args);
     }
   },
 
   error: (message: string, ...args: unknown[]) => {
-    if (currentLogLevel === LOG_LEVELS.info || currentLogLevel === LOG_LEVELS.warn || currentLogLevel === LOG_LEVELS.error) {
+    if (enabledLogLevels.has(LOG_LEVELS.error)) {
       // eslint-disable-next-line no-console
       console.error('[ERROR]', message, ...args);
     }
