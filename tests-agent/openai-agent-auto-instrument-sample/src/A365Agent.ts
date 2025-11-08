@@ -66,6 +66,7 @@ export class A365Agent extends AgentApplication<ApplicationTurnState> {
       const response = await this.invokeAgent(client, userMessage);
       await turnContext.sendActivity(response);
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('LLM query error:', error);
       const err = error as Error;
       await turnContext.sendActivity(`Error: ${err.message || String(err)}`);
@@ -91,6 +92,7 @@ export class A365Agent extends AgentApplication<ApplicationTurnState> {
     try {
       return await client.invokeAgent(prompt);
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('Error invoking agent:', error);
       throw error;
     }
@@ -101,6 +103,7 @@ export class A365Agent extends AgentApplication<ApplicationTurnState> {
       // This will return an error if authorization is not set
       return this.authorization as Authorization;
     } catch {
+      // eslint-disable-next-line no-console
       console.warn('Authorization is not set on the agent application');
       return undefined;
     }

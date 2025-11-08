@@ -28,15 +28,18 @@ export class LocalMcpToolRegistrationService {
   ): Promise<void> {
     try {
       const serverConfigs = this.getServerConfigurations(userId, environmentId, authToken);
+      // eslint-disable-next-line no-console
       console.log(`🔗 Setting up ${serverConfigs.length} MCP servers...`);
 
       for (const config of serverConfigs) {
         await this.createAndAddMcpServer(agent, config);
       }
 
+      // eslint-disable-next-line no-console
       console.log(`✅ Local MCP setup complete. Added ${serverConfigs.length} servers to agent: ${agent.name}`);
 
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.warn('⚠️ Failed to setup local MCP servers:', error);
     }
   }
@@ -60,6 +63,7 @@ export class LocalMcpToolRegistrationService {
 
   private async createAndAddMcpServer(agent: Agent, config: McpServerConfig): Promise<void> {
     try {
+      // eslint-disable-next-line no-console
       console.log(`🔗 Connecting to MCP server: ${config.serverName} at ${config.serverUrl}`);
       // For local development, we simulate the server creation
       const mockMcpServer = this.createMockMcpServer(config);
@@ -70,9 +74,11 @@ export class LocalMcpToolRegistrationService {
       }
       agent.mcpServers.push(mockMcpServer);
 
+      // eslint-disable-next-line no-console
       console.log(`✅ Added ${config.serverName} to agent's mcpServers array`);
 
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error(`Failed to create MCP server ${config.serverName}:`, error);
     }
   }
@@ -103,10 +109,12 @@ export class LocalMcpToolRegistrationService {
       url: config.serverUrl,
       cacheToolsList: true,
       connect: async () => {
+        // eslint-disable-next-line no-console
         console.log(`🌐 Mock connection established to ${config.serverName}`);
         return Promise.resolve();
       },
       close: async () => {
+        // eslint-disable-next-line no-console
         console.log(`🔌 Mock connection closed to ${config.serverName}`);
         return Promise.resolve();
       },

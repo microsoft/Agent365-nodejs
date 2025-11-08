@@ -45,6 +45,7 @@ export interface AgentNotificationActivity {
   /**
    * Channel-specific data.
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   channelData: any;
 
   /**
