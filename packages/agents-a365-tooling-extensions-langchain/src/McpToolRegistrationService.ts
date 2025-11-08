@@ -25,7 +25,7 @@ export class McpToolRegistrationService {
     environmentId: string,
     authorization: Authorization,
     turnContext: TurnContext,
-    authToken: string
+    authToken: string = ''
   ): Promise<DynamicStructuredTool[]> {
 
     if (!mcpClientConfig) {
