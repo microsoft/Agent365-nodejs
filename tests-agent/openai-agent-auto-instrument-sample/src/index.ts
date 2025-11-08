@@ -33,26 +33,21 @@ app.post('/api/messages', async (req: Request, res: Response) => {
 
 const port = process.env.PORT || 3978;
 const server = app.listen(port, () => {
-  // eslint-disable-next-line no-console
   console.log(`\nServer listening to port ${port} for appId ${authConfig.clientId} debug ${process.env.DEBUG}`);
 }).on('error', async (err) => {
-  // eslint-disable-next-line no-console
   console.error(err);
   openAIAgentsTraceInstrumentor.disable();
   await a365Observability.shutdown();
   process.exit(1);
 }).on('close', async () => {
-  // eslint-disable-next-line no-console
   console.log('Observability is shutting down...');
   openAIAgentsTraceInstrumentor.disable();
   await a365Observability.shutdown();
 });
 
 process.on('SIGINT', () => {
-  // eslint-disable-next-line no-console
   console.log('Received SIGINT. Shutting down gracefully...');
   server.close(() => {
-    // eslint-disable-next-line no-console
     console.log('Server closed.');
     process.exit(0);
   });

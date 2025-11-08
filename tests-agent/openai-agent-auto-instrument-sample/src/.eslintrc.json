@@ -17,7 +17,7 @@
     "@typescript-eslint/no-explicit-any": "error",
     "prefer-const": "error",
     "no-var": "error",
-    "no-console": "error",
+    "no-console": "off",
     "semi": ["error", "always"],
     "quotes": ["error", "single"],
     "indent": ["error", 2],

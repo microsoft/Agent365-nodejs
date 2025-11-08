@@ -42,13 +42,11 @@ export async function getClient(authorization: Authorization | undefined, turnCo
         process.env.AGENTIC_USER_ID || '',
         process.env.MCP_ENVIRONMENT_ID || '',
         authorization,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        turnContext as any,
+        turnContext,
         process.env.MCP_AUTH_TOKEN || '',
       );
     }
   } catch (error) {
-    // eslint-disable-next-line no-console
     console.warn('Failed to register MCP tool servers:', error);
   }
   return new OpenAIClient(agent);
@@ -79,7 +77,6 @@ class OpenAIClient implements Client {
       const result = await run(this.agent, prompt);
       return result.finalOutput || 'Sorry, I couldn\'t get a response from OpenAI :(';
     } catch (error) {
-      // eslint-disable-next-line no-console
       console.error('OpenAI agent error:', error);
       const err = error as Error;
       return `Error: ${err.message || String(err)}`;
