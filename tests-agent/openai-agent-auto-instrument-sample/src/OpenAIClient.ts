@@ -42,7 +42,7 @@ export async function getClient(authorization: Authorization | undefined, turnCo
         process.env.AGENTIC_USER_ID || '',
         process.env.MCP_ENVIRONMENT_ID || '',
         authorization,
-        turnContext as any,
+        turnContext,
         process.env.MCP_AUTH_TOKEN || '',
       );
     }
