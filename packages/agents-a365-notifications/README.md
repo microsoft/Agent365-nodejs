@@ -1,103 +1,70 @@
-# Agent Notifications SDK for Node.js
+# @microsoft/agents-a365-notifications
 
-This package provides TypeScript/Node.js support for handling agent notifications in Microsoft 365 Agent applications, including email and document collaboration notifications.
+[![npm](https://img.shields.io/npm/v/@microsoft/agents-a365-notifications?label=npm&logo=npm)](https://www.npmjs.com/package/@microsoft/agents-a365-notifications)
+[![npm Downloads](https://img.shields.io/npm/dm/@microsoft/agents-a365-notifications?label=Downloads&logo=npm)](https://www.npmjs.com/package/@microsoft/agents-a365-notifications)
 
-## Features
-
-- **Type-safe notification handling** with strongly-typed models
-- **Multiple notification types** including Email and Word (WPX) comments
-- **Sub-channel routing** for email, Word, Excel, and PowerPoint
-- **Activity extensions** for easy entity extraction
-- **TypeScript-first** with comprehensive type definitions
+Agent notification services and models for handling user notifications in Microsoft Agents A365 applications. This package provides type-safe notification handling for email, Word comments, and other collaboration scenarios.
 
 ## Installation
 
-This package is part of the `@microsoft/agent365-sdk` workspace and is typically installed as a dependency:
-
 ```bash
 npm install @microsoft/agents-a365-notifications
-```
-
-## Models
-
-### Entity Types
-
-The SDK provides several entity types that represent different notification formats:
-
-#### `EmailReference`
-Represents an email notification entity.
-
-```typescript
-interface EmailReference {
-  type: 'emailNotification';
-  id?: string;
-  conversationId?: string;
-  htmlBody?: string;
-}
-```
-
-#### `EmailResponse`
-Represents an email response to be sent back.
-
-```typescript
-interface EmailResponse {
-  type: 'emailResponse';
-  htmlBody?: string;
-}
-```
-
-#### `WpxComment`
-Represents a Word (WPX) comment notification.
-
-```typescript
-interface WpxComment {
-  type: 'WpxComment';
-  odataId?: string;
-  documentId?: string;
-  initiatingCommentId?: string;
-  subjectCommentId?: string;
-}
-```
-
-### `AgentNotificationActivity`
-
-A parsed notification activity with strongly-typed notification data:
-
-```typescript
-interface AgentNotificationActivity {
-  wpxCommentNotification?: WpxComment;
-  emailNotification?: EmailReference;
-  notificationType: NotificationType;
-  conversation?: ConversationAccount;
-  from: ChannelAccount;
-  recipient: ChannelAccount;
-  channelData: any;
-  text: string;
-}
-```
-
-### `NotificationType` Enum
-
-```typescript
-enum NotificationType {
-  Unknown = 0,
-  WpxComment = 1,
-  EmailNotification = 2,
-}
 ```
 
 ## Usage
 
 ### Basic Notification Handling
 
-Handle all agent notifications across all sub-channels:
-
 ```typescript
-import { AgentApplication, TurnState } from '@microsoft/agents-hosting';
 import {
   AgentNotificationActivity,
   NotificationType
 } from '@microsoft/agents-a365-notifications';
+
+// Handle agent notifications
+app.messageExtension('agentNotifications', async (context, activity) => {
+  const notificationActivity = activity as AgentNotificationActivity;
+  
+  if (notificationActivity.notificationType === NotificationType.EmailNotification) {
+    const email = notificationActivity.emailNotification;
+    console.log(`Email from: ${email?.id}`);
+    console.log(`Body: ${email?.htmlBody}`);
+  }
+  
+  if (notificationActivity.notificationType === NotificationType.WpxComment) {
+    const comment = notificationActivity.wpxCommentNotification;
+    console.log(`Document: ${comment?.documentId}`);
+    console.log(`Comment: ${comment?.initiatingCommentId}`);
+  }
+});
+```
+
+### Email Response
+
+```typescript
+import { EmailResponse } from '@microsoft/agents-a365-notifications';
+
+// Send email response
+const response: EmailResponse = {
+  type: 'emailResponse',
+  htmlBody: '<p>Thank you for your message!</p>'
+};
+
+await context.sendActivity({ type: 'message', value: response });
+```
+
+## Support
+
+For issues, questions, or feedback:
+
+- File issues in the [GitHub Issues](https://github.com/microsoft/Agent365-nodejs/issues) section
+- See the [main documentation](../../README.md) for more information
+
+## License
+
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+Licensed under the MIT License - see the [LICENSE](../../LICENSE.md) file for details.
 
 const app = new AgentApplication<TurnState>();
 

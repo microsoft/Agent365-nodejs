@@ -1,41 +1,25 @@
-# Agent 365 Node.js LangChain Tooling SDK
+# @microsoft/agents-a365-tooling-extensions-langchain
 
-This package provides TypeScript/Node.js support for integrating Microsoft Agent365 tooling with LangChain, enabling seamless access to MCP servers and tools within LangChain-based AI agents.
+[![npm](https://img.shields.io/npm/v/@microsoft/agents-a365-tooling-extensions-langchain?label=npm&logo=npm)](https://www.npmjs.com/package/@microsoft/agents-a365-tooling-extensions-langchain)
+[![npm Downloads](https://img.shields.io/npm/dm/@microsoft/agents-a365-tooling-extensions-langchain?label=Downloads&logo=npm)](https://www.npmjs.com/package/@microsoft/agents-a365-tooling-extensions-langchain)
 
-The package name is **@microsoft/agents-a365-tooling-extensions-langchain**
+LangChain integration for Microsoft Agents A365 tooling. This package enables seamless integration of MCP (Model Context Protocol) tool servers with LangChain agents, providing automatic tool discovery and registration as DynamicStructuredTool instances.
 
 ## Installation
-
-This package is part of the `@microsoft/agent365-sdk` workspace and is typically installed as a dependency:
 
 ```bash
 npm install @microsoft/agents-a365-tooling-extensions-langchain
 ```
 
-## Core Components
-
-### `McpToolRegistrationService`
-
-The main service class that handles MCP server discovery and tool registration for LangChain agents. It converts MCP tools into LangChain-compatible `DynamicStructuredTool` instances.
-
-```typescript
-import { McpToolRegistrationService } from '@microsoft/agents-a365-tooling-extensions-langchain';
-
-const toolService = new McpToolRegistrationService();
-```
-
 ## Usage
 
-### 1. Basic Tool Server Registration
-
-Register all available MCP tool servers with LangChain client configuration:
+### Basic Tool Server Registration
 
 ```typescript
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { ChatOpenAI } from "@langchain/openai";
 import { McpToolRegistrationService } from '@microsoft/agents-a365-tooling-extensions-langchain';
 import { ClientConfig } from '@langchain/mcp-adapters';
-import { Authorization, TurnContext } from '@microsoft/agents-hosting';
 
 const toolService = new McpToolRegistrationService();
 
@@ -61,12 +45,11 @@ const model = new ChatOpenAI({
 const agent = createReactAgent({
   llm: model,
   tools: tools,
-  name: 'LangChain Agent',
-  includeAgentName: 'inline'
+  name: 'LangChain Agent'
 });
 ```
 
-### 2. Complete Agent Setup with Agent365 Integration
+### Complete Agent Setup
 
 ```typescript
 async function invokeAgent(userMessage: string): Promise<string> {
@@ -74,10 +57,32 @@ async function invokeAgent(userMessage: string): Promise<string> {
     const result = await agent.invoke({
       messages: [
         {
-        role: "user",
-        content: userMessage,
+          role: "user",
+          content: userMessage,
         },
       ],
+    });
+    
+    return result.messages[result.messages.length - 1].content;
+  } catch (error) {
+    console.error('LangChain agent error:', error);
+    return `Error: ${error.message || error}`;
+  }
+}
+```
+
+## Support
+
+For issues, questions, or feedback:
+
+- File issues in the [GitHub Issues](https://github.com/microsoft/Agent365-nodejs/issues) section
+- See the [main documentation](../../README.md) for more information
+
+## License
+
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+Licensed under the MIT License - see the [LICENSE](../../LICENSE.md) file for details.
     });
 
     let agentMessage = '';

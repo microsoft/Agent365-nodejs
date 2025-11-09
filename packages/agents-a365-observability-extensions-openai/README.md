@@ -1,16 +1,9 @@
 # @microsoft/agents-a365-observability-extensions-openai
 
-OpenAI Agents SDK instrumentation extensions for Agent365 telemetry and observability.
+[![npm](https://img.shields.io/npm/v/@microsoft/agents-a365-observability-extensions-openai?label=npm&logo=npm)](https://www.npmjs.com/package/@microsoft/agents-a365-observability-extensions-openai)
+[![npm Downloads](https://img.shields.io/npm/dm/@microsoft/agents-a365-observability-extensions-openai?label=Downloads&logo=npm)](https://www.npmjs.com/package/@microsoft/agents-a365-observability-extensions-openai)
 
-## Overview
-
-This package provides OpenTelemetry instrumentation for Agent365 which uses OpenAI Agents SDK, enabling automatic tracing and telemetry collection for agent operations, function calls, and AI model interactions.
-
-## Features
-
-- **Automatic Instrumentation**: Seamlessly instruments OpenAI Agents SDK without manual instrumentation. 
-- **OpenTelemetry Integration**: Full compatibility with OpenTelemetry ecosystem
-- **Comprehensive Tracing**: Captures agent operations, function calls, AI generations
+OpenAI Agents SDK instrumentation for Microsoft Agents A365 observability. This package provides automatic OpenTelemetry tracing and telemetry collection for OpenAI Agents SDK operations, including agent execution, function calls, and AI model interactions.
 
 ## Installation
 
@@ -18,19 +11,12 @@ This package provides OpenTelemetry instrumentation for Agent365 which uses Open
 npm install @microsoft/agents-a365-observability-extensions-openai
 ```
 
-## Prerequisites
-
-- Node.js 18.0.0 or higher
-- @openai/agents 0.1.5 or higher
-- @microsoft/agents-a365-observability configured and initialized
-
 ## Usage
 
 ### Basic Setup
 
 ```typescript
 import { ObservabilityManager } from '@microsoft/agents-a365-observability';
-```typescript
 import { OpenAIAgentsTraceInstrumentor } from '@microsoft/agents-a365-observability-extensions-openai';
 
 // Configure observability first
@@ -48,7 +34,6 @@ const instrumentor = new OpenAIAgentsTraceInstrumentor({
 });
 
 sdk.start();
-
 instrumentor.enable();
 ```
 
@@ -65,18 +50,18 @@ interface OpenAIAgentsInstrumentationConfig {
 }
 ```
 
-### Automatic Tracing
+## Support
 
-Once configured, the instrumentor automatically traces:
+For issues, questions, or feedback:
 
-- **Agent Operations**: Agent initialization, execution, and lifecycle
-- **Function Calls**: Tool invocations with input/output parameters
-- **AI Generations**: Model calls with prompts, responses, and token usage
-- **Errors**: Exception handling and error propagation
+- File issues in the [GitHub Issues](https://github.com/microsoft/Agent365-nodejs/issues) section
+- See the [main documentation](../../README.md) for more information
 
-### Span Attributes
+## License
 
-The instrumentor captures rich telemetry attributes following OpenTelemetry semantic conventions:
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+Licensed under the MIT License - see the [LICENSE](../../LICENSE.md) file for details.
 
 #### Generation Spans
 - `gen_ai.provider.name`: AI provider (always "openai")

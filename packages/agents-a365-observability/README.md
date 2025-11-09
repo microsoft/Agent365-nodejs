@@ -1,56 +1,17 @@
-# Agent365 Observability SDK for Node.js
+# @microsoft/agents-a365-observability
 
-## 🚀 Features
+[![npm](https://img.shields.io/npm/v/@microsoft/agents-a365-observability?label=npm&logo=npm)](https://www.npmjs.com/package/@microsoft/agents-a365-observability)
+[![npm Downloads](https://img.shields.io/npm/dm/@microsoft/agents-a365-observability?label=Downloads&logo=npm)](https://www.npmjs.com/package/@microsoft/agents-a365-observability)
 
-- **🔍 Agent Monitoring**: Specialized tracing for AI agent invocations with detailed telemetry
-- **🛠️ Tool Execution Tracking**: Monitor tool executions and function calls with comprehensive metrics
-- **📊 OpenTelemetry Integration**: Built-in OpenTelemetry tracing for standardized observability
-- **☁️ Azure Monitor Support**: Seamless integration with Azure Monitor for cloud-based monitoring
-- **🧳 Baggage Propagation**: Context propagation across distributed agent systems
-- **🎯 Multiple Span Types**: Support for invoke agent, execute tool, and inference call spans
-- **👤 Enhanced Caller Tracking**: Detailed agent information with caller details and agent metadata
-- **🌐 Service Endpoint Support**: Track service endpoints with host, port, and protocol information
-- **🧠 Granular Inference Telemetry**: Token counting, message recording, and finish reason tracking
-- **↔️ C# Implementation Parity**: Full feature compatibility with the C# observability SDK
+OpenTelemetry-based observability and tracing for Microsoft Agents A365 applications. This package provides comprehensive monitoring capabilities for agent invocations, tool executions, and AI model inference calls with seamless Azure Monitor integration.
 
-## 📋 Table of Contents
-
-- [Installation](#installation)
-- [Environment Variables](#environment-variables)
-- [Quick Start](#quick-start)
-- [Configuration](#configuration)
-- [Span Types](#span-types)
-- [Baggage Usage](#baggage-usage)
-- [Enhanced Interfaces](#enhanced-interfaces)
-- [Advanced Usage](#advanced-usage)
-
-## 📦 Installation
-
-Install the package via npm:
+## Installation
 
 ```bash
 npm install @microsoft/agents-a365-observability
 ```
 
-## 🌍 Environment Variables
-
-The SDK supports various environment variables for configuration:
-
-### Telemetry Control
-- `ENABLE_OBSERVABILITY`: Enable/disable observability (default: `false`)
-  - Values: `true`, `1`, `yes`, `on` (case-insensitive)
-- `ENABLE_A365_OBSERVABILITY`: Alternative flag for enabling observability
-  - Values: `true`, `1` (case-insensitive)
-
-### Exporter Configuration
-- `ENABLE_A365_OBSERVABILITY_EXPORTER`: Alternative flag for custom exporter
-  - Values: `true`, `1`, `yes`, `on` (case-insensitive)
-
-### Environment/Cluster Configuration
-- `CLUSTER_CATEGORY`: Deployment environment (default: `prod`)
-  - Values: `preprod`, `prod`
-
-## 🚀 Quick Start
+## Usage
 
 ### Basic Setup
 
@@ -68,7 +29,6 @@ const sdk = ObservabilityManager.start({
 
 ```typescript
 import { ObservabilityManager } from '@microsoft/agents-a365-observability';
-import { getUserManagedIdentityToken } from '@microsoft/agents-a365-runtime';
 
 // Advanced configuration with builder pattern
 const builder = ObservabilityManager.configure(builder =>
@@ -83,20 +43,37 @@ const builder = ObservabilityManager.configure(builder =>
 builder.start();
 ```
 
-## ⚙️ Configuration
-
-### BuilderOptions Interface
+### Creating Spans
 
 ```typescript
-interface BuilderOptions {
-  /** Custom service name for telemetry */
-  serviceName?: string;
-  
-  /** Custom service version for telemetry */
-  serviceVersion?: string;
-  
-  /** Token resolver function for authentication */
-  tokenResolver?: TokenResolver;
+import { InvokeAgentScope, ExecuteToolScope } from '@microsoft/agents-a365-observability';
+
+// Track agent invocation
+const agentScope = new InvokeAgentScope({
+  agentId: 'my-agent',
+  agentName: 'My Agent',
+  conversationId: 'conv-123'
+});
+
+// Track tool execution
+const toolScope = new ExecuteToolScope({
+  toolName: 'SearchTool',
+  endpoint: 'https://api.example.com'
+});
+```
+
+## Support
+
+For issues, questions, or feedback:
+
+- File issues in the [GitHub Issues](https://github.com/microsoft/Agent365-nodejs/issues) section
+- See the [main documentation](../../README.md) for more information
+
+## License
+
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+Licensed under the MIT License - see the [LICENSE](../../LICENSE.md) file for details.
   
   /** Environment/cluster category (e.g., "preprod", "prod") */
   clusterCategory?: ClusterCategory;

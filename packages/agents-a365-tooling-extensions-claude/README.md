@@ -1,41 +1,23 @@
-# Agent 365 Node.js Claude Tooling SDK
+# @microsoft/agents-a365-tooling-extensions-claude
 
-This package provides TypeScript/Node.js support for integrating Microsoft Agent365 tooling with Claude SDK, enabling seamless access to MCP servers.
+[![npm](https://img.shields.io/npm/v/@microsoft/agents-a365-tooling-extensions-claude?label=npm&logo=npm)](https://www.npmjs.com/package/@microsoft/agents-a365-tooling-extensions-claude)
+[![npm Downloads](https://img.shields.io/npm/dm/@microsoft/agents-a365-tooling-extensions-claude?label=Downloads&logo=npm)](https://www.npmjs.com/package/@microsoft/agents-a365-tooling-extensions-claude)
 
-The package name is **@microsoft/agents-a365-tooling-extensions-claude**
+Claude SDK integration for Microsoft Agents A365 tooling. This package enables seamless integration of MCP (Model Context Protocol) tool servers with Anthropic's Claude, providing automatic tool discovery and registration.
 
 ## Installation
-
-This package is part of the `@microsoft/agent365-sdk` workspace and is typically installed as a dependency:
 
 ```bash
 npm install @microsoft/agents-a365-tooling-extensions-claude
 ```
 
-## Core Components
-
-### `McpToolRegistrationService`
-
-The main service class that handles MCP server discovery and tool registration for Claude.
-
-```typescript
-import { McpToolRegistrationService } from '@microsoft/agents-a365-tooling-extensions-claude';
-
-const toolService = new McpToolRegistrationService();
-```
-
 ## Usage
 
-### 1. Basic Tool Server Registration
-
-Register all available MCP tool servers with Claude options:
+### Basic Tool Server Registration
 
 ```typescript
 import { query, Options } from '@anthropic-ai/claude-code';
 import { McpToolRegistrationService } from '@microsoft/agents-a365-tooling-extensions-claude';
-import { AgentApplication } from '@microsoft/agents-hosting';
-
-const app = new AgentApplication();
 
 const agentOptions: Options = {
   appendSystemPrompt: `You are a helpful AI assistant integrated with Microsoft 365.`,
@@ -45,17 +27,18 @@ const agentOptions: Options = {
 
 const toolService = new McpToolRegistrationService();
 
+// Add MCP tool servers to Claude options
 await toolService.addToolServers(
   agentOptions,
   process.env.AGENTIC_USER_ID || '',
   process.env.MCP_ENVIRONMENT_ID || '',
-  app.authorization,
+  authorization,
   turnContext,
   process.env.MCP_AUTH_TOKEN || ''
 );
 ```
 
-### 2. Complete Agent Setup with Tools
+### Complete Agent Setup
 
 ```typescript
 import { query, Options } from '@anthropic-ai/claude-code';
@@ -73,11 +56,26 @@ async function invokeAgent(userMessage: string): Promise<string> {
         break;
       }
     }
-    if (!claudeResponse) {
-      return "Sorry, I couldn't get a response from Claude :(";
-    }
-    return claudeResponse;
+    return claudeResponse || "Sorry, I couldn't get a response from Claude.";
   } catch (error) {
+    console.error('Claude error:', error);
+    return `Error: ${error.message || error}`;
+  }
+}
+```
+
+## Support
+
+For issues, questions, or feedback:
+
+- File issues in the [GitHub Issues](https://github.com/microsoft/Agent365-nodejs/issues) section
+- See the [main documentation](../../README.md) for more information
+
+## License
+
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+Licensed under the MIT License - see the [LICENSE](../../LICENSE.md) file for details.
     console.error('Claude query error:', error);
     return `Error: ${error.message || error}`;
   }

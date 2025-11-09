@@ -1,35 +1,19 @@
-````markdown
-# Agent 365 Node.js OpenAI Tooling SDK
+# @microsoft/agents-a365-tooling-extensions-openai
 
-This package provides TypeScript/Node.js support for integrating Microsoft Agent365 tooling with OpenAI Agents SDK, enabling seamless access to MCP servers.
+[![npm](https://img.shields.io/npm/v/@microsoft/agents-a365-tooling-extensions-openai?label=npm&logo=npm)](https://www.npmjs.com/package/@microsoft/agents-a365-tooling-extensions-openai)
+[![npm Downloads](https://img.shields.io/npm/dm/@microsoft/agents-a365-tooling-extensions-openai?label=Downloads&logo=npm)](https://www.npmjs.com/package/@microsoft/agents-a365-tooling-extensions-openai)
 
-The package name is **@microsoft/agents-a365-tooling-extensions-openai**
+OpenAI Agents SDK integration for Microsoft Agents A365 tooling. This package enables seamless integration of MCP (Model Context Protocol) tool servers with OpenAI Agents, providing automatic tool discovery and registration.
 
 ## Installation
-
-This package is part of the `@microsoft/agent365-sdk` workspace and is typically installed as a dependency:
 
 ```bash
 npm install @microsoft/agents-a365-tooling-extensions-openai
 ```
 
-## Core Components
-
-### `McpToolRegistrationService`
-
-The main service class that handles MCP server discovery and tool registration for OpenAI Agents.
-
-```typescript
-import { McpToolRegistrationService } from '@microsoft/agents-a365-tooling-extensions-openai';
-
-const toolService = new McpToolRegistrationService();
-```
-
 ## Usage
 
-### 1. Basic Tool Server Registration
-
-Register all available MCP tool servers with an OpenAI Agent:
+### Basic Tool Server Registration
 
 ```typescript
 import { Agent } from '@openai/agents';
@@ -37,11 +21,12 @@ import { McpToolRegistrationService } from '@microsoft/agents-a365-tooling-exten
 
 const agent = new Agent({
   name: 'My Agent',
-  // Other agent configuration
+  model: 'gpt-4o'
 });
 
 const toolService = new McpToolRegistrationService();
 
+// Register MCP tool servers with the agent
 await toolService.addMcpToolServers(
   agent,
   process.env.AGENTIC_USER_ID || '',
@@ -52,32 +37,35 @@ await toolService.addMcpToolServers(
 );
 ```
 
-### 2. Complete Agent Setup with Tools
+### Complete Agent Setup
 
 ```typescript
 import { Agent, run } from '@openai/agents';
 import { McpToolRegistrationService } from '@microsoft/agents-a365-tooling-extensions-openai';
 
 async function invokeAgent(userMessage: string): Promise<string> {
-try {
-    // Connect to MCP servers
-    await connectToServers();
-
-    // Run the agent with the user message
+  try {
     const result = await run(agent, userMessage);
     return result.finalOutput || "Sorry, I couldn't process your request.";
-} catch (error) {
+  } catch (error) {
     console.error('OpenAI agent error:', error);
     return `Error: ${error.message || error}`;
-} finally {
-    // Clean up connections
-    await closeServers();
+  }
 }
-}
+```
 
-async function connectToServers(): Promise<void> {
-if (agent.mcpServers && agent.mcpServers.length > 0) {
-    for (const server of agent.mcpServers) {
+## Support
+
+For issues, questions, or feedback:
+
+- File issues in the [GitHub Issues](https://github.com/microsoft/Agent365-nodejs/issues) section
+- See the [main documentation](../../README.md) for more information
+
+## License
+
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+Licensed under the MIT License - see the [LICENSE](../../LICENSE.md) file for details.
     await server.connect();
     }
 }
