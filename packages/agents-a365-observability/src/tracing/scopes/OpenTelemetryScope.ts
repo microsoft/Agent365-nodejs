@@ -5,7 +5,7 @@
 import { trace, SpanKind, Span, SpanStatusCode, Attributes, context } from '@opentelemetry/api';
 import { OpenTelemetryConstants } from '../constants';
 import { isAgent365TelemetryEnabled } from '../util';
-import { AgentDetails, TenantDetails } from '../contracts';
+import { EnhancedAgentDetails, TenantDetails } from '../contracts';
 
 /**
  * Base class for OpenTelemetry tracing scopes
@@ -34,7 +34,7 @@ export abstract class OpenTelemetryScope implements Disposable {
     kind: SpanKind,
     operationName: string,
     spanName: string,
-    agentDetails?: AgentDetails,
+    agentDetails?: EnhancedAgentDetails,
     tenantDetails?: TenantDetails
   ) {
     const currentContext = context.active();
@@ -56,6 +56,9 @@ export abstract class OpenTelemetryScope implements Disposable {
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_DESCRIPTION_KEY, agentDetails.agentDescription);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, agentDetails.conversationId);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_ICON_URI_KEY, agentDetails.iconUri);
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_AUID_KEY, agentDetails.agentAUID );
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_UPN_KEY, agentDetails.agentUPN);
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY, agentDetails.agentBlueprintId);
     }
 
     // Set tenant details if provided
