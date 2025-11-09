@@ -6,7 +6,82 @@ export enum ToolsMode {
 // Constant for MCP Platform base URL in production
 const MCP_PLATFORM_PROD_BASE_URL = 'https://agent365.svc.cloud.microsoft';
 
+/**
+ * Validates a JWT authentication token.
+ * Checks that the token is a valid JWT, is not expired, and contains the required scope.
+ *
+ * @param authToken - The JWT token to validate.
+ * @param requiredScope - The scope that must be present in the token.
+ * @throws Error if the token is invalid, expired, or missing the required scope.
+ */
+function validateAuthToken(authToken: string | undefined, requiredScope: string): void {
+  if (!authToken) {
+    throw new Error('Authentication token is required');
+  }
+
+  // Parse JWT token (format: header.payload.signature)
+  const parts = authToken.split('.');
+  if (parts.length !== 3) {
+    throw new Error('Invalid JWT token format');
+  }
+
+  let payload: {
+    exp?: number;
+    scp?: string;
+    roles?: string[];
+  };
+
+  try {
+    // Decode the payload (second part of the JWT)
+    const payloadBase64 = parts[1];
+    // Handle URL-safe base64
+    const payloadJson = Buffer.from(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8');
+    payload = JSON.parse(payloadJson);
+  } catch (error) {
+    throw new Error('Failed to decode JWT token payload');
+  }
+
+  // Check expiration
+  if (payload.exp) {
+    const currentTimestamp = Math.floor(Date.now() / 1000);
+    if (payload.exp < currentTimestamp) {
+      throw new Error('Authentication token has expired');
+    }
+  } else {
+    throw new Error('Authentication token does not contain expiration claim');
+  }
+
+  // Check scope - can be in 'scp' claim (space-separated) or 'roles' claim (array)
+  const scopes: string[] = [];
+  if (payload.scp) {
+    scopes.push(...payload.scp.split(' '));
+  }
+  if (payload.roles && Array.isArray(payload.roles)) {
+    scopes.push(...payload.roles);
+  }
+
+  if (scopes.length === 0) {
+    throw new Error('Authentication token does not contain any scopes');
+  }
+
+  if (!scopes.includes(requiredScope)) {
+    throw new Error(`Authentication token does not contain required scope: ${requiredScope}`);
+  }
+}
+
 export class Utility {
+  /**
+   * Validates a JWT authentication token.
+   * Checks that the token is a valid JWT, is not expired, and contains the required scope.
+   *
+   * @param authToken - The JWT token to validate.
+   * @param requiredScope - The scope that must be present in the token.
+   * @throws Error if the token is invalid, expired, or missing the required scope.
+   */
+  public static ValidateAuthToken(authToken: string | undefined, requiredScope: string): void {
+    return validateAuthToken(authToken, requiredScope);
+  }
+
   /**
    * Construct the tooling gateway URL for a given digital worker (agent user).
    * This endpoint is used to discover MCP servers associated with the specified agent user.

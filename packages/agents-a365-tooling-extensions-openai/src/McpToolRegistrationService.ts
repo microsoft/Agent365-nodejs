@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 import { McpToolServerConfigurationService, McpClientTool, Utility } from '@microsoft/agents-a365-tooling';
-import { AgenticAuthenticationService, Authorization } from '@microsoft/agents-a365-runtime';
+import { AgenticAuthenticationService, Authorization, getMcpPlatformAuthenticationScope } from '@microsoft/agents-a365-runtime';
 
 // OpenAI Agents SDK
 import { Agent, MCPServerStreamableHttp } from '@openai/agents';
@@ -31,6 +31,10 @@ export class McpToolRegistrationService {
     if (!authToken) {
       authToken = await AgenticAuthenticationService.GetAgenticUserToken(authorization, turnContext);
     }
+
+    // Validate the authentication token
+    const requiredScope = getMcpPlatformAuthenticationScope();
+    Utility.ValidateAuthToken(authToken, requiredScope);
 
     const servers = await this.configService.listToolServers(agentUserId, environmentId, authToken);
     const mcpServers: MCPServerStreamableHttp[] = [];

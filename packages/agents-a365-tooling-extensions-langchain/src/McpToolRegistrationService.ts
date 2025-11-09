@@ -3,7 +3,7 @@
 
 // Agent365 SDK
 import { McpToolServerConfigurationService, McpClientTool, Utility } from '@microsoft/agents-a365-tooling';
-import { AgenticAuthenticationService, Authorization } from '@microsoft/agents-a365-runtime';
+import { AgenticAuthenticationService, Authorization, getMcpPlatformAuthenticationScope } from '@microsoft/agents-a365-runtime';
 
 // Agents SDK
 import { TurnContext } from '@microsoft/agents-hosting';
@@ -35,6 +35,10 @@ export class McpToolRegistrationService {
     if (!authToken) {
       authToken = await AgenticAuthenticationService.GetAgenticUserToken(authorization, turnContext);
     }
+
+    // Validate the authentication token
+    const requiredScope = getMcpPlatformAuthenticationScope();
+    Utility.ValidateAuthToken(authToken, requiredScope);
 
     const servers = await this.configService.listToolServers(agentUserId, environmentId, authToken);
     const mcpServers: Record<string, Connection> = {};
