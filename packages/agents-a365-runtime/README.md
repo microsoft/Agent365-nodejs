@@ -1,57 +1,30 @@
-# @microsoft/agents-a365-runtime# @microsoft/agents-a365-runtime
+# @microsoft/agents-a365-runtime
 
-
-
-[![npm](https://img.shields.io/npm/v/@microsoft/agents-a365-runtime?label=npm&logo=npm)](https://www.npmjs.com/package/@microsoft/agents-a365-runtime)Agent 365 Runtime SDK for AI agents built with TypeScript/Node.js.
-
+[![npm](https://img.shields.io/npm/v/@microsoft/agents-a365-runtime?label=npm&logo=npm)](https://www.npmjs.com/package/@microsoft/agents-a365-runtime)
 [![npm Downloads](https://img.shields.io/npm/dm/@microsoft/agents-a365-runtime?label=Downloads&logo=npm)](https://www.npmjs.com/package/@microsoft/agents-a365-runtime)
-
-## Description
 
 Core runtime utilities and services for Microsoft Agents A365 applications. This package provides authentication, authorization, and Power Platform API discovery capabilities for building enterprise-ready AI agents.
 
-This package provides runtime utilities and services for Agent365 SDK, including:
-
-## Installation- Agentic Authentication Service
-
-- Agentic Authorization Service  
-
-```bash- Power Platform API Discovery
-
-npm install @microsoft/agents-a365-runtime- Semaphore utilities
-
-```
-
 ## Installation
+
+```bash
+npm install @microsoft/agents-a365-runtime
+```
 
 ## Usage
 
-\\\ash
-
-### Authentication Servicenpm install @microsoft/agents-a365-runtime
-
-\\\
+### Authentication Service
 
 ```typescript
+import { AgenticAuthenticationService } from '@microsoft/agents-a365-runtime';
 
-import { AgenticAuthenticationService } from '@microsoft/agents-a365-runtime';## Usage
+const authService = new AgenticAuthenticationService();
 
-
-
-const authService = new AgenticAuthenticationService();\\\	ypescript
-
-import { AgenticAuthenticationService, AgenticAuthorizationService } from '@microsoft/agents-a365-runtime';
-
-// Get authentication token\\\
-
+// Get authentication token
 const token = await authService.getToken(tenantId, scopes);
+```
 
-```## License
-
-
-
-### Authorization ServiceSee license file
-
+### Authorization Service
 
 ```typescript
 import { AgenticAuthorizationService } from '@microsoft/agents-a365-runtime';
@@ -82,4 +55,4 @@ For issues, questions, or feedback:
 
 Copyright (c) Microsoft Corporation. All rights reserved.
 
-Licensed under the MIT License - see the [LICENSE](../../LICENSE.md) file for details.
+Licensed under the MIT License - see the [LICENSE](../../LICENSE.md) file for details

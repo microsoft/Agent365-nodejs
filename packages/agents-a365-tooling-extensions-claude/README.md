@@ -20,7 +20,7 @@ import { query, Options } from '@anthropic-ai/claude-code';
 import { McpToolRegistrationService } from '@microsoft/agents-a365-tooling-extensions-claude';
 
 const agentOptions: Options = {
-  appendSystemPrompt: `You are a helpful AI assistant integrated with Microsoft 365.`,
+  appendSystemPrompt: \You are a helpful AI assistant integrated with Microsoft 365.\,
   maxTurns: 3,
   allowedTools: ['Read', 'Write', 'WebSearch', 'Bash', 'Grep'],
 };
@@ -45,7 +45,7 @@ import { query, Options } from '@anthropic-ai/claude-code';
 import { McpToolRegistrationService } from '@microsoft/agents-a365-tooling-extensions-claude';
 
 async function invokeAgent(userMessage: string): Promise<string> {
-  let claudeResponse = "";
+  let claudeResponse = \"\";
   try {
     for await (const message of query({
       prompt: userMessage,
@@ -56,10 +56,10 @@ async function invokeAgent(userMessage: string): Promise<string> {
         break;
       }
     }
-    return claudeResponse || "Sorry, I couldn't get a response from Claude.";
+    return claudeResponse || \"Sorry, I couldn't get a response from Claude.\";
   } catch (error) {
     console.error('Claude error:', error);
-    return `Error: ${error.message || error}`;
+    return \Error: \\;
   }
 }
 ```
@@ -75,112 +75,4 @@ For issues, questions, or feedback:
 
 Copyright (c) Microsoft Corporation. All rights reserved.
 
-Licensed under the MIT License - see the [LICENSE](../../LICENSE.md) file for details.
-    console.error('Claude query error:', error);
-    return `Error: ${error.message || error}`;
-  }
-}
-```
-
-### 3. Tool Discovery and Inspection
-
-List available tools from registered MCP servers:
-
-```typescript
-import { McpServerConfig } from '@anthropic-ai/claude-code';
-import { McpToolRegistrationService } from '@microsoft/agents-a365-tooling-extensions-claude';
-
-const toolService = new McpToolRegistrationService();
-
-// Create MCP server configuration
-const mcpServerConfig: McpServerConfig = {
-  type: 'http',
-  url: 'https://your-mcp-server.com',
-  headers: {
-    'Authorization': `Bearer ${authToken}`,
-    'x-ms-environment-id': environmentId,
-  }
-};
-
-// Get available tools
-const tools = await toolService.getTools('MyToolServer', mcpServerConfig);
-console.log('Available tools:', tools);
-```
-
-## Configuration
-
-### Environment Variables
-
-The following environment variables are commonly used:
-
-```bash
-# Agent365 Authentication
-AGENTIC_USER_ID=your-user-id
-MCP_ENVIRONMENT_ID=your-environment-id
-MCP_AUTH_TOKEN=your-auth-token
-
-# Agent Configuration
-AGENT_ID=your-agent-id
-```
-
-### Authentication Options
-
-The SDK supports multiple authentication methods:
-
-1. **Agent365 Authentication** (Recommended for production)
-   ```typescript
-   // Uses authorization and turnContext for token acquisition
-   await toolService.addToolServers(
-     agentOptions,
-     userId,
-     environmentId,
-     authorization,
-     turnContext,
-     '' // Empty auth token - will be acquired automatically
-   );
-   ```
-
-2. **Direct Token Authentication**
-   ```typescript
-   // Uses provided MCP_AUTH_TOKEN
-   await toolService.addToolServers(
-     agentOptions,
-     userId,
-     environmentId,
-     authorization,
-     turnContext,
-     process.env.MCP_AUTH_TOKEN
-   );
-   ```
-
-## Complete Example
-
-See the complete working example in [`/nodejs/samples/claude-code-sdk/`](../../../samples/claude-code-sdk/) which demonstrates:
-
-- Full agent setup with MCP tool registration
-- Agent365 notification handling (email and Word comments)
-- Observability integration
-- Error handling and lifecycle management
-
-## Dependencies
-
-This package depends on:
-
-- `@anthropic-ai/claude-code` - Claude SDK
-- `@microsoft/agents-hosting` - Agent365 hosting framework
-- `@microsoft/agents-a365-tooling` - Common tooling functionality
-- `@microsoft/agents-a365-runtime` - Agent365 runtime services
-
-## License
-
-See the main repository license file.
-
-## Contributing
-
-Contributions are welcome! Please see the main repository for contribution guidelines.
-
-## Support
-
-- **Issues**: Report bugs and request features through GitHub Issues
-- **Documentation**: Additional documentation available in the main repository
-- **Samples**: Working examples in `/nodejs/samples/claude-code-sdk/`
+Licensed under the MIT License - see the [LICENSE](../../LICENSE.md) file for details
