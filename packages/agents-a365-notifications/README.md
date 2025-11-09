@@ -16,41 +16,53 @@ npm install @microsoft/agents-a365-notifications
 ### Basic Notification Handling
 
 ```typescript
+import { AgentApplication, TurnState } from '@microsoft/agents-hosting';
+import '@microsoft/agents-a365-notifications'; // Import to extend AgentApplication
 import {
   AgentNotificationActivity,
   NotificationType
 } from '@microsoft/agents-a365-notifications';
 
-// Handle agent notifications
-app.messageExtension('agentNotifications', async (context, activity) => {
-  const notificationActivity = activity as AgentNotificationActivity;
-  
-  if (notificationActivity.notificationType === NotificationType.EmailNotification) {
-    const email = notificationActivity.emailNotification;
+const app = new AgentApplication<TurnState>();
+
+// Handle all agent notifications
+app.onAgentNotification('*', async (context, state, notification) => {
+  if (notification.notificationType === NotificationType.EmailNotification) {
+    const email = notification.emailNotification;
     console.log(`Email from: ${email?.id}`);
     console.log(`Body: ${email?.htmlBody}`);
   }
   
-  if (notificationActivity.notificationType === NotificationType.WpxComment) {
-    const comment = notificationActivity.wpxCommentNotification;
+  if (notification.notificationType === NotificationType.WpxComment) {
+    const comment = notification.wpxCommentNotification;
     console.log(`Document: ${comment?.documentId}`);
     console.log(`Comment: ${comment?.initiatingCommentId}`);
   }
 });
 ```
 
-### Email Response
+### Email-Specific Notification Handler
 
 ```typescript
-import { EmailResponse } from '@microsoft/agents-a365-notifications';
+import { AgentApplication, TurnState } from '@microsoft/agents-hosting';
+import '@microsoft/agents-a365-notifications';
+import { createEmailResponse } from '@microsoft/agents-a365-notifications';
 
-// Send email response
-const response: EmailResponse = {
-  type: 'emailResponse',
-  htmlBody: '<p>Thank you for your message!</p>'
-};
+const app = new AgentApplication<TurnState>();
 
-await context.sendActivity({ type: 'message', value: response });
+// Handle only email notifications
+app.onAgenticEmailNotification(async (context, state, notification) => {
+  const email = notification.emailNotification;
+  
+  if (email) {
+    // Create and send email response
+    const response = createEmailResponse('<p>Thank you for your message!</p>');
+    await context.sendActivity({
+      type: 'message',
+      entities: [response]
+    });
+  }
+});
 ```
 
 ## Support

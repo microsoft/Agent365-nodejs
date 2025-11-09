@@ -46,10 +46,10 @@ import { McpToolRegistrationService } from '@microsoft/agents-a365-tooling-exten
 async function invokeAgent(userMessage: string): Promise<string> {
   try {
     const result = await run(agent, userMessage);
-    return result.finalOutput || \"Sorry, I couldn't process your request.\";
+    return result.finalOutput || "Sorry, I couldn't process your request.";
   } catch (error) {
     console.error('OpenAI agent error:', error);
-    return \Error: \\;
+    return `Error: ${error.message || error}`;
   }
 }
 ```

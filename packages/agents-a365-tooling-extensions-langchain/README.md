@@ -16,8 +16,8 @@ npm install @microsoft/agents-a365-tooling-extensions-langchain
 ### Basic Tool Server Registration
 
 ```typescript
-import { createReactAgent } from \"@langchain/langgraph/prebuilt\";
-import { ChatOpenAI } from \"@langchain/openai\";
+import { createReactAgent } from "@langchain/langgraph/prebuilt";
+import { ChatOpenAI } from "@langchain/openai";
 import { McpToolRegistrationService } from '@microsoft/agents-a365-tooling-extensions-langchain';
 import { ClientConfig } from '@langchain/mcp-adapters';
 
@@ -38,7 +38,7 @@ const tools = await toolService.addMcpToolServers(
 
 // Create the model
 const model = new ChatOpenAI({
-  model: \"gpt-4o-mini\",
+  model: "gpt-4o-mini",
 });
 
 // Create the agent with MCP tools
@@ -57,7 +57,7 @@ async function invokeAgent(userMessage: string): Promise<string> {
     const result = await agent.invoke({
       messages: [
         {
-          role: \"user\",
+          role: "user",
           content: userMessage,
         },
       ],
@@ -66,8 +66,9 @@ async function invokeAgent(userMessage: string): Promise<string> {
     return result.messages[result.messages.length - 1].content;
   } catch (error) {
     console.error('LangChain agent error:', error);
-    return \Error: \\;
+    return `Error: ${error.message || error}`;
   }
+}
 }
 ```
 

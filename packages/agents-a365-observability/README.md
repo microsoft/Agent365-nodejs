@@ -48,18 +48,25 @@ builder.start();
 ```typescript
 import { InvokeAgentScope, ExecuteToolScope } from '@microsoft/agents-a365-observability';
 
-// Track agent invocation
-const agentScope = new InvokeAgentScope({
-  agentId: 'my-agent',
-  agentName: 'My Agent',
-  conversationId: 'conv-123'
-});
+// Track agent invocation using static start method
+const agentScope = InvokeAgentScope.start(
+  {
+    agentId: 'my-agent',
+    agentName: 'My Agent',
+    conversationId: 'conv-123'
+  },
+  { tenantId: 'tenant-123' }
+);
 
-// Track tool execution
-const toolScope = new ExecuteToolScope({
-  toolName: 'SearchTool',
-  endpoint: 'https://api.example.com'
-});
+// Track tool execution using static start method
+const toolScope = ExecuteToolScope.start(
+  {
+    toolName: 'SearchTool',
+    endpoint: { host: 'https://api.example.com' }
+  },
+  { agentId: 'my-agent' },
+  { tenantId: 'tenant-123' }
+);
 ```
 
 ## Support

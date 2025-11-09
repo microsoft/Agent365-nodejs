@@ -17,31 +17,26 @@ npm install @microsoft/agents-a365-runtime
 
 ```typescript
 import { AgenticAuthenticationService } from '@microsoft/agents-a365-runtime';
+import { TurnContext } from '@microsoft/agents-hosting';
 
-const authService = new AgenticAuthenticationService();
-
-// Get authentication token
-const token = await authService.getToken(tenantId, scopes);
-```
-
-### Authorization Service
-
-```typescript
-import { AgenticAuthorizationService } from '@microsoft/agents-a365-runtime';
-
-const authzService = new AgenticAuthorizationService();
-
-// Check user permissions
-const hasAccess = await authzService.checkAccess(userId, resource);
+// Get agentic user token (static method)
+const token = await AgenticAuthenticationService.GetAgenticUserToken(
+  authorization,
+  turnContext
+);
 ```
 
 ### Power Platform API Discovery
 
 ```typescript
-import { PowerPlatformApiDiscovery } from '@microsoft/agents-a365-runtime';
+import { PowerPlatformApiDiscovery, ClusterCategory } from '@microsoft/agents-a365-runtime';
 
-// Discover Power Platform API endpoints
-const apiEndpoint = await PowerPlatformApiDiscovery.getEndpoint(environment);
+// Create API discovery service
+const apiDiscovery = new PowerPlatformApiDiscovery(ClusterCategory.Prod);
+
+// Get service endpoints
+const mcpPlatformEndpoint = apiDiscovery.getMcpPlatformEndpoint();
+const toolingGatewayEndpoint = apiDiscovery.getToolingGatewayEndpoint();
 ```
 
 ## Support

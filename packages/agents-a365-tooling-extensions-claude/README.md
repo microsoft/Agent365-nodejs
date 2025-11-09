@@ -20,7 +20,7 @@ import { query, Options } from '@anthropic-ai/claude-code';
 import { McpToolRegistrationService } from '@microsoft/agents-a365-tooling-extensions-claude';
 
 const agentOptions: Options = {
-  appendSystemPrompt: \You are a helpful AI assistant integrated with Microsoft 365.\,
+  appendSystemPrompt: `You are a helpful AI assistant integrated with Microsoft 365.`,
   maxTurns: 3,
   allowedTools: ['Read', 'Write', 'WebSearch', 'Bash', 'Grep'],
 };
@@ -45,7 +45,7 @@ import { query, Options } from '@anthropic-ai/claude-code';
 import { McpToolRegistrationService } from '@microsoft/agents-a365-tooling-extensions-claude';
 
 async function invokeAgent(userMessage: string): Promise<string> {
-  let claudeResponse = \"\";
+  let claudeResponse = "";
   try {
     for await (const message of query({
       prompt: userMessage,
@@ -56,10 +56,10 @@ async function invokeAgent(userMessage: string): Promise<string> {
         break;
       }
     }
-    return claudeResponse || \"Sorry, I couldn't get a response from Claude.\";
+    return claudeResponse || "Sorry, I couldn't get a response from Claude.";
   } catch (error) {
     console.error('Claude error:', error);
-    return \Error: \\;
+    return `Error: ${error.message || error}`;
   }
 }
 ```
