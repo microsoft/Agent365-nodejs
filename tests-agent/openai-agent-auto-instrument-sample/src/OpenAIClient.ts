@@ -3,11 +3,10 @@
 // ------------------------------------------------------------------------------
 
 import { Agent, run } from '@openai/agents';
-import { TurnContext } from '@microsoft/agents-hosting';
+import { TurnContext, Authorization } from '@microsoft/agents-hosting';
 
 import { McpToolRegistrationService } from '@microsoft/agents-a365-tooling-extensions-openai';
 import { LocalMcpToolRegistrationService } from './LocalMcpToolRegistrationService';
-import { Authorization } from '@microsoft/agents-a365-runtime';
 
 export interface Client {
   invokeAgent(prompt: string): Promise<string>;

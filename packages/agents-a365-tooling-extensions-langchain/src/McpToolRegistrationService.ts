@@ -3,10 +3,10 @@
 
 // Agent365 SDK
 import { McpToolServerConfigurationService, McpClientTool, Utility } from '@microsoft/agents-a365-tooling';
-import { AgenticAuthenticationService, Authorization } from '@microsoft/agents-a365-runtime';
+import { AgenticAuthenticationService } from '@microsoft/agents-a365-runtime';
 
 // Agents SDK
-import { TurnContext } from '@microsoft/agents-hosting';
+import { TurnContext, Authorization } from '@microsoft/agents-hosting';
 
 // LangChain SDKs
 import { createAgent, ReactAgent } from "langchain";

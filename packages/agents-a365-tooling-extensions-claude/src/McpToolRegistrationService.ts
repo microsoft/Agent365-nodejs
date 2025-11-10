@@ -2,14 +2,16 @@
 // Licensed under the MIT License.
 
 import { McpToolServerConfigurationService, McpClientTool, Utility } from '@microsoft/agents-a365-tooling';
-import { AgenticAuthenticationService, Authorization } from '@microsoft/agents-a365-runtime';
+import { AgenticAuthenticationService } from '@microsoft/agents-a365-runtime';
+
+// Agents SDK
+import { TurnContext, Authorization } from '@microsoft/agents-hosting';
 
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 
 // Claude SDK expects a different shape for MCP server configs
 import type { McpServerConfig, Options } from '@anthropic-ai/claude-agent-sdk';
-import { TurnContext } from '@microsoft/agents-hosting';
 
 /**
  * Discover MCP servers and list tools formatted for the Claude SDK.
@@ -22,7 +24,7 @@ export class McpToolRegistrationService {
    * Registers MCP tool servers and updates agent options with discovered tools and server configs.
    * Call this to enable dynamic Claude tool access based on the current MCP environment.
    */
-  async addToolServers(
+  async addToolServersToAgent(
     agentOptions: Options,
     agentUserId: string,
     environmentId: string,
@@ -61,7 +63,7 @@ export class McpToolRegistrationService {
         headers: headers
       } as McpServerConfig;
 
-      tools.push(...await this.getTools(server.mcpServerName, mcpServers[server.mcpServerName]));
+      tools.push(...await this.getMcpServerTools(server.mcpServerName, mcpServers[server.mcpServerName]));
     }
 
     agentOptions.allowedTools = agentOptions.allowedTools ?? [];
@@ -74,7 +76,7 @@ export class McpToolRegistrationService {
    * Connect to the MCP server and return tools with names prefixed by the server name.
    * Throws if the server URL is missing or the client fails to list tools.
    */
-  async getTools(mcpServerName: string, mcpServerConfig: McpServerConfig): Promise<McpClientTool[]> {
+  async getMcpServerTools(mcpServerName: string, mcpServerConfig: McpServerConfig): Promise<McpClientTool[]> {
     if (!mcpServerConfig || mcpServerConfig.type !== 'http') {
       throw new Error('Invalid MCP Server Configuration');
     }
