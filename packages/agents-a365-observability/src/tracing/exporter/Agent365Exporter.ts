@@ -3,6 +3,7 @@ import { ReadableSpan, SpanExporter } from '@opentelemetry/sdk-trace-base';
 
 import { PowerPlatformApiDiscovery, ClusterCategory } from '@microsoft/agents-a365-runtime';
 import { partitionByIdentity, parseIdentityKey, hexTraceId, hexSpanId, kindName, statusName } from './utils';
+import logger, {formatError} from '../../utils/logging';
 
 const DEFAULT_HTTP_TIMEOUT_SECONDS = 30000; // 30 seconds in ms
 const DEFAULT_MAX_RETRIES = 3;
@@ -79,6 +80,7 @@ export class Agent365Exporter implements SpanExporter {
     clusterCategory: ClusterCategory = 'prod'
   ) {
     if (!tokenResolver) {
+      logger.error('[Agent365Exporter] token_resolver is not provided');
       throw new Error('token_resolver must be provided.');
     }
     this.tokenResolver = tokenResolver;
@@ -95,13 +97,16 @@ export class Agent365Exporter implements SpanExporter {
     }
 
     try {
+      logger.info(`[Agent365Exporter] Exporting ${spans.length} spans`);
       const groups = partitionByIdentity(spans);
 
       if (groups.size === 0) {
+        logger.info('[Agent365Exporter] No groups to export');
         resultCallback({ code: ExportResultCode.SUCCESS });
         return;
       }
 
+      logger.info(`[Agent365Exporter] Exporting ${groups.size} identity groups`);
       let anyFailure = false;
       const promises: Promise<void>[] = [];
 
@@ -113,6 +118,7 @@ export class Agent365Exporter implements SpanExporter {
       }
 
       await Promise.all(promises);
+      logger.info(`[Agent365Exporter] Export completed. Success: ${!anyFailure}`);
       resultCallback({
         code: anyFailure ? ExportResultCode.FAILED : ExportResultCode.SUCCESS
       });
@@ -128,6 +134,7 @@ export class Agent365Exporter implements SpanExporter {
    */
   private async exportGroup(identityKey: string, spans: ReadableSpan[]): Promise<void> {
     const { tenantId, agentId } = parseIdentityKey(identityKey);
+    logger.info(`[Agent365Exporter] Exporting ${spans.length} spans for tenantId: ${tenantId}, agentId: ${agentId}`);
 
     const payload = this.buildExportRequest(spans);
     const body = JSON.stringify(payload);
@@ -136,6 +143,7 @@ export class Agent365Exporter implements SpanExporter {
     const discovery = new PowerPlatformApiDiscovery(this.clusterCategory);
     const endpoint = discovery.getTenantIslandClusterEndpoint(tenantId);
     const url = `https://${endpoint}/maven/agent365/agents/${agentId}/traces?api-version=1`;
+    logger.info(`[Agent365Exporter] Resolved endpoint: ${endpoint}`);
 
     const headers: Record<string, string> = {
       'content-type': 'application/json'
@@ -145,14 +153,19 @@ export class Agent365Exporter implements SpanExporter {
     const token = tokenResult instanceof Promise ? await tokenResult : tokenResult;
     if (token) {
       headers['authorization'] = `Bearer ${token}`;
+      logger.info('[Agent365Exporter] Token resolved successfully');
+    } else {
+      logger.error('[Agent365Exporter] No token resolved');
     }
 
 
     // Basic retry loop
     const ok = await this.postWithRetries(url, body, headers);
     if (!ok) {
-      throw new Error('Failed to export spans after retries');
+      logger.error('[Agent365Exporter] Failed to export spans');
+      throw new Error('Failed to export spans');
     }
+    logger.info('[Agent365Exporter] Successfully exported spans');
   }
 
   /**
@@ -160,7 +173,9 @@ export class Agent365Exporter implements SpanExporter {
    */
   private async postWithRetries(url: string, body: string, headers: Record<string, string>): Promise<boolean> {
     for (let attempt = 0; attempt <= DEFAULT_MAX_RETRIES; attempt++) {
+      let correlationId: string;
       try {
+        logger.info(`[Agent365Exporter] Posting OTLP export request - Attempt ${attempt + 1}`);
         const response = await fetch(url, {
           method: 'POST',
           headers,
@@ -168,22 +183,30 @@ export class Agent365Exporter implements SpanExporter {
           signal: AbortSignal.timeout(DEFAULT_HTTP_TIMEOUT_SECONDS)
         });
 
+        correlationId = response?.headers?.get('x-ms-correlation-id') || response?.headers?.get('x-correlation-id') || 'unknown';
         // 2xx => success
         if (response.status >= 200 && response.status < 300) {
+          logger.info(`[Agent365Exporter] Success with status ${response.status}, correlation ID: ${correlationId}`);
           return true;
         }
 
         // Retry transient errors
         if ([408, 429].includes(response.status) || (response.status >= 500 && response.status < 600)) {
           if (attempt < DEFAULT_MAX_RETRIES) {
-            await this.sleep(200 * (attempt + 1));
+            const sleepMs = 200 * (attempt + 1);
+            logger.warn(`[Agent365Exporter] Transient error ${response.status}, correlation ID: ${correlationId}, retrying after ${sleepMs}ms`);
+            await this.sleep(sleepMs);
             continue;
           }
         }
+        logger.error(`[Agent365Exporter] Failed with status ${response.status}, correlation ID: ${correlationId}`);
         return false;
       } catch (error) {
+        logger.error('[Agent365Exporter] Request error:', formatError(error));
         if (attempt < DEFAULT_MAX_RETRIES) {
-          await this.sleep(200 * (attempt + 1));
+          const sleepMs = 200 * (attempt + 1);
+          logger.info(`[Agent365Exporter] Retrying after ${sleepMs}ms`);
+          await this.sleep(sleepMs);
           continue;
         }
         return false;
@@ -205,7 +228,7 @@ export class Agent365Exporter implements SpanExporter {
   private buildExportRequest(spans: ReadableSpan[]): OTLPExportRequest {
     // Group by instrumentation scope (name, version)
     const scopeMap = new Map<string, OTLPSpan[]>();
-
+    logger.info('[Agent365Exporter] Building OTLP export request payload');
     for (const sp of spans) {
       const scope = sp.instrumentationScope || (sp as ReadableSpan & { instrumentationLibrary?: { name?: string; version?: string } }).instrumentationLibrary;
       const scopeKey = `${scope?.name || 'unknown'}:${scope?.version || ''}`;
@@ -338,6 +361,7 @@ export class Agent365Exporter implements SpanExporter {
    * Shutdown the exporter
    */
   async shutdown(): Promise<void> {
+    logger.info('[Agent365Exporter] Shutting down exporter');
     this.closed = true;
   }
 
