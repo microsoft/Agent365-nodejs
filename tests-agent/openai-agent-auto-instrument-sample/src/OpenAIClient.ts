@@ -36,7 +36,7 @@ export async function getClient(authorization: Authorization | undefined, turnCo
       );
     } else if (authorization) {
       // Use production MCP service (auth required)
-      await toolService.addMcpToolServers(
+      await toolService.addToolServersToAgent(
         agent,
         process.env.AGENTIC_USER_ID || '',
         process.env.MCP_ENVIRONMENT_ID || '',
