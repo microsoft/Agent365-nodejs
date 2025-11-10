@@ -1,4 +1,4 @@
-# Microsoft Agents A365 SDK - Node.js
+# Microsoft Agents 365 SDK - Node.js
 
 [![npm](https://img.shields.io/npm/v/@microsoft/agents-a365-observability?label=npm&logo=npm)](https://www.npmjs.com/search?q=%40microsoft%2Fagents-a365)
 [![npm Downloads](https://img.shields.io/npm/dm/@microsoft/agents-a365-observability?label=Downloads&logo=npm)](https://www.npmjs.com/search?q=%40microsoft%2Fagents-a365)
@@ -7,9 +7,12 @@
 [![Node.js Version](https://img.shields.io/badge/Node.js-18%2B-339933?logo=node.js)](https://nodejs.org/)
 [![Contributors](https://img.shields.io/github/contributors/microsoft/Agent365-nodejs?label=Contributors&logo=github)](https://github.com/microsoft/Agent365-nodejs/graphs/contributors)
 
-The Microsoft Agents A365 SDK extends the Microsoft 365 Agents SDK with enterprise-grade capabilities for building sophisticated agents. This SDK provides comprehensive tooling for observability, notifications, runtime utilities, and development tools that help developers create production-ready agents for platforms including M365, Teams, Copilot Studio, and Webchat.
+> #### Note:
+> Use the information in this README to contribute to this open-source project. To learn about using this SDK in your projects, refer to the [Microsoft Agents 365 developer documentation](https://learn.microsoft.com/microsoft-agent-365/developer/).
 
-The Microsoft Agents A365 SDK focuses on four core areas:
+The Microsoft Agents 365 SDK extends the Microsoft 365 Agents SDK with enterprise-grade capabilities for building sophisticated agents. This SDK provides comprehensive tooling for observability, notifications, runtime utilities, and development tools that help developers create production-ready agents for platforms including M365, Teams, Copilot Studio, and Webchat.
+
+The Microsoft Agents 365 SDK focuses on four core areas:
 
 - **Observability**: Comprehensive tracing, caching, and monitoring capabilities for agent applications
 - **Notifications**: Agent notification services and models for handling user notifications
@@ -64,15 +67,15 @@ For more detailed build instructions, see the [HOW_TO_BUILD.md](HOW_TO_BUILD.md)
 
 ## Project Structure
 
-- **packages/agents-a365-notifications**: Microsoft Agents A365 Notifications - Agent notification services and models
-- **packages/agents-a365-observability**: Microsoft Agents A365 Observability Core - Core observability functionality
+- **packages/agents-a365-notifications**: Microsoft Agents 365 Notifications - Agent notification services and models
+- **packages/agents-a365-observability**: Microsoft Agents 365 Observability Core - Core observability functionality
 - **packages/agents-a365-observability-extensions-openai**: OpenAI observability extensions
-- **packages/agents-a365-runtime**: Microsoft Agents A365 Runtime - Core runtime utilities and extensions
-- **packages/agents-a365-tooling**: Microsoft Agents A365 Tooling - Agent tooling and MCP integration
+- **packages/agents-a365-runtime**: Microsoft Agents 365 Runtime - Core runtime utilities and extensions
+- **packages/agents-a365-tooling**: Microsoft Agents 365 Tooling - Agent tooling and MCP integration
 - **packages/agents-a365-tooling-extensions-claude**: Claude/Anthropic tooling extensions
 - **packages/agents-a365-tooling-extensions-langchain**: LangChain tooling extensions
 - **packages/agents-a365-tooling-extensions-openai**: OpenAI tooling extensions
-- **samples/**: For sample applications, see the [Agent365-Samples Repository](https://github.com/microsoft/Agent365-Samples/tree/main/nodejs)
+- **samples/**: For sample applications, see the [Agent365-Samples repository](https://github.com/microsoft/Agent365-Samples/tree/main/nodejs)
 - **tests/**: Unit and integration tests
 
 ## Support
@@ -80,7 +83,7 @@ For more detailed build instructions, see the [HOW_TO_BUILD.md](HOW_TO_BUILD.md)
 For issues, questions, or feedback:
 
 - **Issues**: Please file issues in the [GitHub Issues](https://github.com/microsoft/Agent365-nodejs/issues) section
-- **Documentation**: See the [Microsoft Agents A365 Developer Documentation](https://learn.microsoft.com/en-us/microsoft-agent-365/developer/)
+- **Documentation**: See the [Microsoft Agents 365 developer documentation](https://learn.microsoft.com/microsoft-agent-365/developer/)
 - **Security**: For security issues, please see [SECURITY.md](SECURITY.md)
 
 ## Contributing
@@ -93,7 +96,7 @@ This project has adopted the [Microsoft Open Source Code of Conduct](https://ope
 
 ## Trademarks
 
-This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft trademarks or logos is subject to and must follow [Microsoft's Trademark & Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general). Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship. Any use of third-party trademarks or logos are subject to those third-party's policies.
+This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft trademarks or logos is subject to and must follow [Microsoft's Trademark & Brand Guidelines](https://www.microsoft.com/legal/intellectualproperty/trademarks/usage/general). Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship. Any use of third-party trademarks or logos are subject to those third-party's policies.
 
 ## Useful Links
 
@@ -102,24 +105,24 @@ This project may contain trademarks or logos for projects, products, or services
 The core SDK for building conversational AI agents for Microsoft 365 platforms.
 
 - [Microsoft 365 Agents SDK](https://aka.ms/agents)
-- [Agents-for-net Repository](https://github.com/Microsoft/Agents-for-net)
-- [Agents-for-js Repository](https://github.com/Microsoft/Agents-for-js)
-- [Agents-for-python Repository](https://github.com/Microsoft/Agents-for-python)
-- [Official Agents Documentation](https://learn.microsoft.com/en-us/microsoft-365/agents-sdk/)
+- [Agents-for-net repository](https://github.com/Microsoft/Agents-for-net)
+- [Agents-for-js repository](https://github.com/Microsoft/Agents-for-js)
+- [Agents-for-python repository](https://github.com/Microsoft/Agents-for-python)
+- [Official Agents Documentation](https://learn.microsoft.com/microsoft-365/agents-sdk/)
 
-### Microsoft Agents A365 SDK
+### Microsoft Agents 365 SDK
 
 Enterprise-grade extensions for observability, notifications, runtime utilities, and developer tools.
 
-- [Agent365-dotnet Repository](https://github.com/microsoft/Agent365-dotnet)
-- [Agent365-python Repository](https://github.com/microsoft/Agent365-python)
-- [Agent365-nodejs Repository](https://github.com/microsoft/Agent365-nodejs) - You are here
-- [Agent365-Samples Repository](https://github.com/microsoft/Agent365-Samples)
-- [Microsoft Agents A365 Developer Documentation](https://learn.microsoft.com/en-us/microsoft-agent-365/developer/)
+- [Agent365-dotnet repository](https://github.com/microsoft/Agent365-dotnet)
+- [Agent365-python repository](https://github.com/microsoft/Agent365-python)
+- [Agent365-nodejs repository](https://github.com/microsoft/Agent365-nodejs) - You are here
+- [Agent365-Samples repository](https://github.com/microsoft/Agent365-Samples)
+- [Microsoft Agents 365 developer documentation](https://learn.microsoft.com/microsoft-agent-365/developer/)
 
 ### Additional Resources
 
-- [Node.js Documentation](https://learn.microsoft.com/en-us/javascript/api/?view=m365-agents-sdk&preserve-view=true)
+- [Node.js documentation](https://learn.microsoft.com/javascript/api/?view=m365-agents-sdk&preserve-view=true)
 
 ## Data Collection Notice
 
