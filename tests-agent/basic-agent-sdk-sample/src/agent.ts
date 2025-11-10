@@ -12,12 +12,12 @@ import {
   InvokeAgentDetails,
   InvokeAgentScope,
   ExecuteToolScope,
-  TenantDetails,
-  AgentDetails,
   ToolCallDetails,
   InferenceDetails,
   InferenceOperationType,
   ExecutionType,
+  EnhancedAgentDetails,
+  ServiceEndpoint,
 } from '@microsoft/agents-a365-observability';
 import { getObservabilityAuthenticationScope } from '@microsoft/agents-a365-runtime';
 
@@ -57,26 +57,24 @@ agentApplication.onActivity(
       .correlationId("7ff6dca0-917c-4bb0-b31a-794e533d8aad")
       .agentName(agentInfo.agentName)
       .conversationId(context.activity.conversation?.id)
+      .callerId(context.activity.from?.aadObjectId)
+      .callerUpn(context.activity.from?.id)
       .build();
 
     // Run the rest of the logic within the baggage scope
     await baggageScope.run(async () => {
       const invokeAgentDetails: InvokeAgentDetails = {
-        agentId: agentInfo.agentId,
-        agentName: agentInfo.agentName,
+        ...agentInfo,
         conversationId: context.activity.conversation?.id,
         request: {
           content: context.activity.text || 'Unknown text',
           executionType: ExecutionType.HumanToAgent,
           sessionId: context.activity.conversation?.id,
-        }
-      };
-
-      const tenantDetails: TenantDetails = {
-        tenantId: tenantInfo.tenantId,
-      };
+        },
+        endpoint: {host:context.activity.serviceUrl, port:56150} as ServiceEndpoint,
+      };      
       
-    const invokeAgentScope = InvokeAgentScope.start(invokeAgentDetails, tenantDetails);
+    const invokeAgentScope = InvokeAgentScope.start(invokeAgentDetails, tenantInfo);
 
     await invokeAgentScope.withActiveSpanAsync(async () => {
       // Record input message
@@ -133,16 +131,6 @@ async function performInference(prompt: string, context: TurnContext): Promise<s
   // Create the inference (child) scope while the invoke span is active
   const agentInfo = createAgentDetails(context);
   const tenantInfo = createTenantDetails(context);
-  
-  const agentDetails: AgentDetails = {
-    agentId: agentInfo.agentId,
-    agentName: agentInfo.agentName,
-    conversationId: context.activity.conversation?.id,
-  };
-
-  const tenantDetails: TenantDetails = {
-    tenantId: tenantInfo.tenantId,
-  };
 
   const inferenceDetails: InferenceDetails = {
     operationName: InferenceOperationType.CHAT,
@@ -154,7 +142,7 @@ async function performInference(prompt: string, context: TurnContext): Promise<s
     finishReasons: ['stop']
   };
 
-  const scope = InferenceScope.start(inferenceDetails, agentDetails, tenantDetails);
+  const scope = InferenceScope.start(inferenceDetails, agentInfo, tenantInfo);
 
   try {
     // Activate the inference span for the inference work
@@ -202,7 +190,10 @@ function createAgentDetails(context: TurnContext): { agentId: string; agentName?
   return {
     agentId: agentId,
     agentName: (context.activity.recipient as any)?.name || process.env.AGENT_NAME || 'Basic Agent Sample',
-  };
+    agentAUID: (context.activity.recipient as any)?.agenticUserId,
+    agentUPN: (context.activity.recipient as any)?.id,
+    conversationId: context.activity.conversation?.id,
+  } as EnhancedAgentDetails;
 }
 
 function createTenantDetails(context: TurnContext): { tenantId: string } {
@@ -238,17 +229,7 @@ async function performToolCall(context: TurnContext): Promise<string> {
     toolType: 'function'
   };
 
-  const agentDetails: AgentDetails = {
-    agentId: agentInfo.agentId,
-    agentName: agentInfo.agentName,
-    conversationId: context.activity.conversation?.id,
-  };
-
-  const tenantDetails: TenantDetails = {
-    tenantId: tenantInfo.tenantId,
-  };
-
-  const scope = ExecuteToolScope.start(toolDetails, agentDetails, tenantDetails);
+  const scope = ExecuteToolScope.start(toolDetails, agentInfo, tenantInfo);
 
   try {
     const result = await scope.withActiveSpanAsync(async () => {
