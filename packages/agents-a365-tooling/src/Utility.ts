@@ -44,7 +44,8 @@ export class Utility {
       // Decode the payload (second part of the JWT)
       const payloadBase64 = parts[1];
       // Handle URL-safe base64
-      const payloadJson = Buffer.from(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8');
+      const paddedBase64 = payloadBase64.padEnd(payloadBase64.length + (4 - payloadBase64.length % 4) % 4, '=');
+      const payloadJson = Buffer.from(paddedBase64.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8');
       payload = JSON.parse(payloadJson);
     } catch (error) {
       throw new Error('Failed to decode JWT token payload');
