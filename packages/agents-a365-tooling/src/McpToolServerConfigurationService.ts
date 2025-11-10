@@ -3,7 +3,6 @@ import path from 'path';
 import axios from 'axios';
 import { MCPServerConfig } from './contracts';
 import { Utility } from './Utility';
-import { getMcpPlatformAuthenticationScope } from '@microsoft/agents-a365-runtime';
 
 /**
  * Service responsible for discovering and normalizing MCP (Model Context Protocol)
@@ -41,8 +40,7 @@ export class McpToolServerConfigurationService {
    */
   private async getMCPServerConfigsFromToolingGateway(agentUserId: string, environmentId: string, authToken: string): Promise<MCPServerConfig[]> {
     // Validate the authentication token
-    const requiredScope = getMcpPlatformAuthenticationScope();
-    Utility.ValidateAuthToken(authToken, requiredScope);
+    Utility.ValidateAuthToken(authToken);
 
     const configEndpoint = Utility.GetToolingGatewayForDigitalWorker(agentUserId);
 

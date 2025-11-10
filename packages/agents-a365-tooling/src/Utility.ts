@@ -9,25 +9,23 @@ const MCP_PLATFORM_PROD_BASE_URL = 'https://agent365.svc.cloud.microsoft';
 export class Utility {
   /**
    * Validates a JWT authentication token.
-   * Checks that the token is a valid JWT, is not expired, and contains the required scope.
+   * Checks that the token is a valid JWT and is not expired.
    *
    * @param authToken - The JWT token to validate.
-   * @param requiredScope - The scope that must be present in the token.
-   * @throws Error if the token is invalid, expired, or missing the required scope.
+   * @throws Error if the token is invalid or expired.
    */
-  public static ValidateAuthToken(authToken: string | undefined, requiredScope: string): void {
-    return Utility.validateAuthToken(authToken, requiredScope);
+  public static ValidateAuthToken(authToken: string | undefined): void {
+    return Utility.validateAuthToken(authToken);
   }
 
   /**
    * Private helper to validate a JWT authentication token.
-   * Checks that the token is a valid JWT, is not expired, and contains the required scope.
+   * Checks that the token is a valid JWT and is not expired.
    *
    * @param authToken - The JWT token to validate.
-   * @param requiredScope - The scope that must be present in the token.
-   * @throws Error if the token is invalid, expired, or missing the required scope.
+   * @throws Error if the token is invalid or expired.
    */
-  private static validateAuthToken(authToken: string | undefined, requiredScope: string): void {
+  private static validateAuthToken(authToken: string | undefined): void {
     if (!authToken) {
       throw new Error('Authentication token is required');
     }
@@ -40,8 +38,6 @@ export class Utility {
 
     let payload: {
       exp?: number;
-      scp?: string;
-      roles?: string[];
     };
 
     try {
@@ -62,23 +58,6 @@ export class Utility {
       }
     } else {
       throw new Error('Authentication token does not contain expiration claim');
-    }
-
-    // Check scope - can be in 'scp' claim (space-separated) or 'roles' claim (array)
-    const scopes: string[] = [];
-    if (payload.scp) {
-      scopes.push(...payload.scp.split(' '));
-    }
-    if (payload.roles && Array.isArray(payload.roles)) {
-      scopes.push(...payload.roles);
-    }
-
-    if (scopes.length === 0) {
-      throw new Error('Authentication token does not contain any scopes');
-    }
-
-    if (!scopes.includes(requiredScope)) {
-      throw new Error(`Authentication token does not contain required scope: ${requiredScope}`);
     }
   }
 
