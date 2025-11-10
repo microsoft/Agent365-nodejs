@@ -20,7 +20,7 @@ import { DynamicStructuredTool } from '@langchain/core/tools';
 export class McpToolRegistrationService {
   private configService: McpToolServerConfigurationService  = new McpToolServerConfigurationService();
 
-  async addMcpToolServers(
+  async addToolServersToAgent(
     agent: ReactAgent,
     agentUserId: string,
     environmentId: string,
