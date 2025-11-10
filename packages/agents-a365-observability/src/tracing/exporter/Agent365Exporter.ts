@@ -3,7 +3,9 @@ import { ReadableSpan, SpanExporter } from '@opentelemetry/sdk-trace-base';
 
 import { PowerPlatformApiDiscovery, ClusterCategory } from '@microsoft/agents-a365-runtime';
 import { partitionByIdentity, parseIdentityKey, hexTraceId, hexSpanId, kindName, statusName } from './utils';
-import logger, {formatError} from '../../utils/logging';
+import logger, { formatError } from '../../utils/logging';
+import { AgenticTokenCacheInstance } from '../../utils/AgenticTokenCache';
+import { Agent365ExporterOptions } from './Agent365ExporterOptions';
 
 const DEFAULT_HTTP_TIMEOUT_SECONDS = 30000; // 30 seconds in ms
 const DEFAULT_MAX_RETRIES = 3;
@@ -14,7 +16,7 @@ interface OTLPExportRequest {
 
 interface ResourceSpan {
   resource: {
-    attributes: Record<string, any> | null;
+    attributes: Record<string, unknown> | null;
   };
   scopeSpans: ScopeSpan[];
 }
@@ -35,7 +37,7 @@ interface OTLPSpan {
   kind: string;
   startTimeUnixNano: number;
   endTimeUnixNano: number;
-  attributes: Record<string, any> | null;
+  attributes: Record<string, unknown> | null;
   events?: OTLPEvent[] | null;
   links?: OTLPLink[] | null;
   status: OTLPStatus;
@@ -44,13 +46,13 @@ interface OTLPSpan {
 interface OTLPEvent {
   timeUnixNano: number;
   name: string;
-  attributes?: Record<string, any> | null;
+  attributes?: Record<string, unknown> | null;
 }
 
 interface OTLPLink {
   traceId: string;
   spanId: string;
-  attributes?: Record<string, any> | null;
+  attributes?: Record<string, unknown> | null;
 }
 
 interface OTLPStatus {
@@ -71,20 +73,34 @@ export type TokenResolver = (agentId: string, tenantId: string) => string | null
  * - Adds Bearer token via token_resolver(agentId, tenantId)
  */
 export class Agent365Exporter implements SpanExporter {
-  private readonly tokenResolver: TokenResolver;
-  private readonly clusterCategory: ClusterCategory;
   private closed = false;
+  private readonly options: Agent365ExporterOptions;
 
-  constructor(
-    tokenResolver: TokenResolver,
-    clusterCategory: ClusterCategory = 'prod'
-  ) {
-    if (!tokenResolver) {
-      logger.error('[Agent365Exporter] token_resolver is not provided');
-      throw new Error('token_resolver must be provided.');
+  /**
+   * Initializes a new instance of the Agent365Exporter class.
+   * @param tokenResolver The token resolver function.
+   * @param clusterCategory The cluster category (optional, defaults to 'prod').
+   */
+  constructor(tokenResolver?: TokenResolver, clusterCategory: ClusterCategory = 'prod') {
+    this.options = new Agent365ExporterOptions();
+    this.options.clusterCategory = clusterCategory;
+
+    if (tokenResolver) {
+      this.options.tokenResolver = tokenResolver;
+      logger.info('Agent365Exporter initialized with custom tokenResolver', `clusterCategory=${this.options.clusterCategory}`);
+    } else {
+      this.options.tokenResolver = async (agentId: string, tenantId: string): Promise<string | null> => {
+        const key = AgenticTokenCacheInstance.createCacheKey(agentId, tenantId);
+        const cached = AgenticTokenCacheInstance.get(key);
+        if (!cached) {
+          logger.warn('Token cache miss', { agentId, tenantId });
+        } else {
+          logger.info('Token cache hit', { agentId, tenantId });
+        }
+        return cached;
+      };
+      logger.info('Agent365Exporter initialized with cache-backed tokenResolver', `clusterCategory=${this.options.clusterCategory}`);
     }
-    this.tokenResolver = tokenResolver;
-    this.clusterCategory = clusterCategory;
   }
 
   /**
@@ -140,7 +156,7 @@ export class Agent365Exporter implements SpanExporter {
     const body = JSON.stringify(payload);
 
     // Resolve endpoint + token
-    const discovery = new PowerPlatformApiDiscovery(this.clusterCategory);
+    const discovery = new PowerPlatformApiDiscovery(this.options.clusterCategory as ClusterCategory);
     const endpoint = discovery.getTenantIslandClusterEndpoint(tenantId);
     const url = `https://${endpoint}/maven/agent365/agents/${agentId}/traces?api-version=1`;
     logger.info(`[Agent365Exporter] Resolved endpoint: ${endpoint}`);
@@ -149,7 +165,7 @@ export class Agent365Exporter implements SpanExporter {
       'content-type': 'application/json'
     };
 
-    const tokenResult = this.tokenResolver(agentId, tenantId);
+    const tokenResult = this.options.tokenResolver!(agentId, tenantId);
     const token = tokenResult instanceof Promise ? await tokenResult : tokenResult;
     if (token) {
       headers['authorization'] = `Bearer ${token}`;

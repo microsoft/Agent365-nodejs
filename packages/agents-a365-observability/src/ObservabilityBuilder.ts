@@ -69,9 +69,6 @@ export class ObservabilityBuilder {
 
   private getTraceExporter() {
     if (isAgent365ExporterEnabled()){
-      if (!this.options.tokenResolver) {
-        throw new Error('tokenResolver must be provided when Agent365 exporter is enabled');
-      }
       return new Agent365Exporter(
         this.options.tokenResolver,
         this.options.clusterCategory || 'prod'
