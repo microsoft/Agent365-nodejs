@@ -9,7 +9,7 @@ import { AgenticAuthenticationService } from '@microsoft/agents-a365-runtime';
 import { TurnContext, Authorization } from '@microsoft/agents-hosting';
 
 // LangChain SDKs
-import { createAgent, ReactAgent } from "langchain";
+import { createAgent, ReactAgent } from 'langchain';
 import { ClientConfig, Connection, MultiServerMCPClient } from '@langchain/mcp-adapters';
 import { DynamicStructuredTool } from '@langchain/core/tools';
 
