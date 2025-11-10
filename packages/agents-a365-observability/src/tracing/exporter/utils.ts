@@ -5,10 +5,7 @@
 import { ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import { SpanKind, SpanStatusCode } from '@opentelemetry/api';
 import { OpenTelemetryConstants } from '../constants';
-import logger, { formatError } from '../../utils/logging';
-
-// Re-export formatError for backward compatibility
-export { formatError };
+import logger from '../../utils/logging';
 
 /**
  * Convert trace ID to hex string format
