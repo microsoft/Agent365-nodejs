@@ -189,7 +189,7 @@ export interface ServiceEndpoint {
 /**
  * Details for invoking another agent
  */
-export interface InvokeAgentDetails extends AgentDetails {
+export interface InvokeAgentDetails extends EnhancedAgentDetails {
   /** The request payload for the agent invocation */
   request?: AgentRequest;
 
