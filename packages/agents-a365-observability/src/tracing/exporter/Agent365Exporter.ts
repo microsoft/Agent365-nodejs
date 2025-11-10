@@ -3,7 +3,7 @@ import { ReadableSpan, SpanExporter } from '@opentelemetry/sdk-trace-base';
 
 import { PowerPlatformApiDiscovery, ClusterCategory } from '@microsoft/agents-a365-runtime';
 import { partitionByIdentity, parseIdentityKey, hexTraceId, hexSpanId, kindName, statusName, formatError } from './utils';
-import logger from './utils';
+import logger from '../../utils/logging';
 
 const DEFAULT_HTTP_TIMEOUT_SECONDS = 30000; // 30 seconds in ms
 const DEFAULT_MAX_RETRIES = 3;

@@ -6,7 +6,7 @@ import { trace, SpanKind, Span, SpanStatusCode, Attributes, context } from '@ope
 import { OpenTelemetryConstants } from '../constants';
 import { isAgent365TelemetryEnabled } from '../util';
 import { AgentDetails, TenantDetails } from '../contracts';
-import logger from '../exporter/utils';
+import logger from '../../utils/logging';
 
 /**
  * Base class for OpenTelemetry tracing scopes
