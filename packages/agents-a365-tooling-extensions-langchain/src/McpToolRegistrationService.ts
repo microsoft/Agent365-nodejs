@@ -9,6 +9,7 @@ import { AgenticAuthenticationService, Authorization } from '@microsoft/agents-a
 import { TurnContext } from '@microsoft/agents-hosting';
 
 // LangChain SDKs
+import { createAgent, ReactAgent } from "langchain";
 import { ClientConfig, Connection, MultiServerMCPClient } from '@langchain/mcp-adapters';
 import { DynamicStructuredTool } from '@langchain/core/tools';
 
@@ -20,16 +21,16 @@ export class McpToolRegistrationService {
   private configService: McpToolServerConfigurationService  = new McpToolServerConfigurationService();
 
   async addMcpToolServers(
-    mcpClientConfig: ClientConfig,
+    agent: ReactAgent,
     agentUserId: string,
     environmentId: string,
     authorization: Authorization,
     turnContext: TurnContext,
     authToken: string
-  ): Promise<DynamicStructuredTool[]> {
+  ): Promise<any> {
 
-    if (!mcpClientConfig) {
-      throw new Error('MCP Client is Required');
+    if (!agent) {
+      throw new Error('Langchain Agent is Required');
     }
 
     if (!authToken) {
@@ -57,17 +58,24 @@ export class McpToolRegistrationService {
       } as Connection;
     }
 
+    const mcpClientConfig = {} as ClientConfig;
     mcpClientConfig.mcpServers = Object.assign(mcpClientConfig.mcpServers ?? {}, mcpServers);
     const multiServerMcpClient = new MultiServerMCPClient(mcpClientConfig);
+    const tools = await multiServerMcpClient.getTools();
+    tools.push(...(agent.options.tools ?? [])); // Retain existing tools
 
-    return multiServerMcpClient.getTools();
+    // Create the agent with existing options and new tools
+    return createAgent({
+      tools: tools,
+      ...agent.options
+    });
   }
 
   /**
    * Connect to the MCP server and return tools with names prefixed by the server name.
    * Throws if the server URL is missing or the client fails to list tools.
    */
-  async getTools(mcpServerName: string, mcpServerConnection: Connection): Promise<McpClientTool[]> {
+  async getMcpServerTools(mcpServerName: string, mcpServerConnection: Connection): Promise<McpClientTool[]> {
     if (!mcpServerConnection) {
       throw new Error('MCP Server Connection is required');
     }
