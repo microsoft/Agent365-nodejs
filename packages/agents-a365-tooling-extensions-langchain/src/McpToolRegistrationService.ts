@@ -27,7 +27,7 @@ export class McpToolRegistrationService {
     authorization: Authorization,
     turnContext: TurnContext,
     authToken: string
-  ): Promise<any> {
+  ): Promise<ReactAgent> {
 
     if (!agent) {
       throw new Error('Langchain Agent is Required');
