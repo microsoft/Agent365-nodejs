@@ -5,6 +5,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { Agent365Exporter } from '@microsoft/agents-a365-observability/src/tracing/exporter/Agent365Exporter';
+import { Agent365ExporterOptions } from '@microsoft/agents-a365-observability/src/tracing/exporter/Agent365ExporterOptions';
 import { AgenticTokenCacheInstance } from '@microsoft/agents-a365-observability/src/utils/AgenticTokenCache';
 // Using standard import instead of 'import type' to avoid Babel/Jest transform issues in this workspace
 import { ReadableSpan } from '@opentelemetry/sdk-trace-base';
@@ -58,7 +59,10 @@ describe('Agent365Exporter', () => {
   });
 
   it('returns success immediately with no spans', async () => {
-    const exporter = new Agent365Exporter(() => null, 'local');
+    const opts = new Agent365ExporterOptions();
+    opts.clusterCategory = 'local';
+    opts.tokenResolver = () => null;
+    const exporter = new Agent365Exporter(opts);
     const callback = jest.fn();
     await exporter.export([], callback);
     expect(callback).toHaveBeenCalledWith({ code: ExportResultCode.SUCCESS });
@@ -67,7 +71,10 @@ describe('Agent365Exporter', () => {
   it('uses provided token resolver and sets authorization header', async () => {
     const token = 'abc123';
     mockFetchSequence([200]);
-    const exporter = new Agent365Exporter(() => token, 'local');
+    const opts = new Agent365ExporterOptions();
+    opts.clusterCategory = 'local';
+    opts.tokenResolver = () => token;
+    const exporter = new Agent365Exporter(opts);
 
     const spans = [
       makeSpan({
@@ -101,7 +108,9 @@ describe('Agent365Exporter', () => {
     const key = AgenticTokenCacheInstance.createCacheKey(agent, tenant);
     AgenticTokenCacheInstance.set(key, 'cached-token');
 
-    const exporter = new Agent365Exporter(undefined, 'local'); // no resolver provided
+  const opts = new Agent365ExporterOptions();
+  opts.clusterCategory = 'local'; // no tokenResolver assigned -> fallback to cache
+  const exporter = new Agent365Exporter(opts); // no resolver provided
     const spans = [
       makeSpan({
         [OpenTelemetryConstants.TENANT_ID_KEY]: tenant,

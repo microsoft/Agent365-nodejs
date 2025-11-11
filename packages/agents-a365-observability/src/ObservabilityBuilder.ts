@@ -7,6 +7,7 @@ import { ConsoleSpanExporter, BatchSpanProcessor } from '@opentelemetry/sdk-trac
 import { SpanProcessor } from './tracing/processors/SpanProcessor';
 import { isAgent365ExporterEnabled } from './tracing/util';
 import { Agent365Exporter, TokenResolver } from './tracing/exporter/Agent365Exporter';
+import { Agent365ExporterOptions } from './tracing/exporter/Agent365ExporterOptions';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
 import { trace } from '@opentelemetry/api';
@@ -67,16 +68,23 @@ export class ObservabilityBuilder {
     return this;
   }
 
-  private getTraceExporter() {
-    if (isAgent365ExporterEnabled()){
-      return new Agent365Exporter(
-        this.options.tokenResolver,
-        this.options.clusterCategory || 'prod'
-      );
-    } else {
-      return new ConsoleSpanExporter();
+  private createBatchProcessor(): BatchSpanProcessor {
+    if (!isAgent365ExporterEnabled()) {
+      return new BatchSpanProcessor(new ConsoleSpanExporter());
     }
+    const opts = new Agent365ExporterOptions();
+    opts.clusterCategory = this.options.clusterCategory || 'prod';
+    if (this.options.tokenResolver) {
+      opts.tokenResolver = this.options.tokenResolver;
+    }
+    return new BatchSpanProcessor(new Agent365Exporter(opts), {
+      maxQueueSize: opts.maxQueueSize,
+      scheduledDelayMillis: opts.scheduledDelayMilliseconds,
+      exportTimeoutMillis: opts.exporterTimeoutMilliseconds,
+      maxExportBatchSize: opts.maxExportBatchSize
+    });
   }
+
 
   private createResource() {
     const serviceName = this.options.serviceVersion
@@ -101,7 +109,7 @@ export class ObservabilityBuilder {
     const spanProcessor = new SpanProcessor();
 
     // 2. batch processor that actually ships spans out
-    const batchProcessor = new BatchSpanProcessor(this.getTraceExporter());
+    const batchProcessor = this.createBatchProcessor();
 
     const globalProvider: any = trace.getTracerProvider();
 

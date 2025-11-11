@@ -77,19 +77,13 @@ export class Agent365Exporter implements SpanExporter {
   private readonly options: Agent365ExporterOptions;
 
   /**
-   * Initializes a new instance of the Agent365Exporter class.
-   * @param tokenResolver The token resolver function.
-   * @param clusterCategory The cluster category (optional, defaults to 'prod').
+   * Initialize exporter with a fully constructed options instance.
+   * If tokenResolver is missing, installs cache-backed resolver.
    */
-  constructor(tokenResolver?: TokenResolver, clusterCategory: ClusterCategory = 'prod') {
-    this.options = new Agent365ExporterOptions();
-    this.options.clusterCategory = clusterCategory;
+  constructor(options: Agent365ExporterOptions) {
 
-    if (tokenResolver) {
-      this.options.tokenResolver = tokenResolver;
-      logger.info('Agent365Exporter initialized with custom tokenResolver', `clusterCategory=${this.options.clusterCategory}`);
-    } else {
-      this.options.tokenResolver = async (agentId: string, tenantId: string): Promise<string | null> => {
+    if (!options.tokenResolver) {
+      options.tokenResolver = (agentId: string, tenantId: string): string | null => {
         const key = AgenticTokenCacheInstance.createCacheKey(agentId, tenantId);
         const cached = AgenticTokenCacheInstance.get(key);
         if (!cached) {
@@ -99,8 +93,12 @@ export class Agent365Exporter implements SpanExporter {
         }
         return cached;
       };
-      logger.info('Agent365Exporter initialized with cache-backed tokenResolver', `clusterCategory=${this.options.clusterCategory}`);
+      logger.info('Agent365Exporter initialized with cache-backed tokenResolver', `clusterCategory=${options.clusterCategory}`);
+    } else {
+      logger.info('Agent365Exporter initialized with custom tokenResolver', `clusterCategory=${options.clusterCategory}`);
     }
+
+    this.options = options;
   }
 
   /**
