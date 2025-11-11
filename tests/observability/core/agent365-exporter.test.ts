@@ -54,8 +54,8 @@ describe('Agent365Exporter', () => {
   afterEach(() => {
     jest.clearAllTimers();
     jest.useRealTimers();
-    global.fetch = originalFetch;   
-    AgenticTokenCacheInstance.clear();    
+    global.fetch = originalFetch;
+    AgenticTokenCacheInstance.clear();
   });
 
   it('returns success immediately with no spans', async () => {
@@ -108,9 +108,9 @@ describe('Agent365Exporter', () => {
     const key = AgenticTokenCacheInstance.createCacheKey(agent, tenant);
     AgenticTokenCacheInstance.set(key, 'cached-token');
 
-  const opts = new Agent365ExporterOptions();
-  opts.clusterCategory = 'local'; // no tokenResolver assigned -> fallback to cache
-  const exporter = new Agent365Exporter(opts); // no resolver provided
+    const opts = new Agent365ExporterOptions();
+    opts.clusterCategory = 'local'; // no tokenResolver assigned -> fallback to cache
+    const exporter = new Agent365Exporter(opts); // no resolver provided
     const spans = [
       makeSpan({
         [OpenTelemetryConstants.TENANT_ID_KEY]: tenant,
@@ -130,8 +130,7 @@ describe('Agent365Exporter', () => {
     const bodyJson = JSON.parse(bodyStr);
     expect(Array.isArray(bodyJson.resourceSpans)).toBe(true);
     expect(bodyJson.resourceSpans.length).toBe(1);
-    // eslint-disable-next-line no-console
-    console.log('[test] resourceSpans:', JSON.stringify(bodyJson.resourceSpans, null, 2));
+    // console.log('[test] resourceSpans:', JSON.stringify(bodyJson.resourceSpans, null, 2));
     const rs = bodyJson.resourceSpans[0];
     expect(Array.isArray(rs.scopeSpans)).toBe(true);
     expect(rs.scopeSpans.length).toBe(1);

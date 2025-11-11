@@ -1,3 +1,8 @@
+// ------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------------------------
+
 import { ExportResult,ExportResultCode } from '@opentelemetry/core';
 import { ReadableSpan, SpanExporter } from '@opentelemetry/sdk-trace-base';
 
@@ -75,12 +80,16 @@ export type TokenResolver = (agentId: string, tenantId: string) => string | null
 export class Agent365Exporter implements SpanExporter {
   private closed = false;
   private readonly options: Agent365ExporterOptions;
+  private readonly tokenResolver: TokenResolver; // defensive copy of resolver
 
   /**
    * Initialize exporter with a fully constructed options instance.
    * If tokenResolver is missing, installs cache-backed resolver.
    */
   constructor(options: Agent365ExporterOptions) {
+    if (!options) {
+      throw new Error('Agent365ExporterOptions must be provided (was null/undefined)');
+    }
 
     if (!options.tokenResolver) {
       options.tokenResolver = (agentId: string, tenantId: string): string | null => {
@@ -97,8 +106,8 @@ export class Agent365Exporter implements SpanExporter {
     } else {
       logger.info('Agent365Exporter initialized with custom tokenResolver', `clusterCategory=${options.clusterCategory}`);
     }
-
     this.options = options;
+    this.tokenResolver = options.tokenResolver!;
   }
 
   /**
@@ -163,7 +172,7 @@ export class Agent365Exporter implements SpanExporter {
       'content-type': 'application/json'
     };
 
-    const tokenResult = this.options.tokenResolver!(agentId, tenantId);
+    const tokenResult = this.tokenResolver(agentId, tenantId);
     const token = tokenResult instanceof Promise ? await tokenResult : tokenResult;
     if (token) {
       headers['authorization'] = `Bearer ${token}`;

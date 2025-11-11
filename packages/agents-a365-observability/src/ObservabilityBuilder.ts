@@ -85,7 +85,6 @@ export class ObservabilityBuilder {
     });
   }
 
-
   private createResource() {
     const serviceName = this.options.serviceVersion
       ? `${this.options.serviceName}-${this.options.serviceVersion}`
