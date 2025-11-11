@@ -13,61 +13,7 @@ npm install @microsoft/agents-a365-observability
 
 ## Usage
 
-### Basic Setup
-
-```typescript
-import { ObservabilityManager } from '@microsoft/agents-a365-observability';
-
-// Simple configuration
-const sdk = ObservabilityManager.start({
-  serviceName: 'my-agent-service',
-  serviceVersion: '1.0.0'
-});
-```
-
-### Using Builder Pattern
-
-```typescript
-import { ObservabilityManager } from '@microsoft/agents-a365-observability';
-
-// Advanced configuration with builder pattern
-const builder = ObservabilityManager.configure(builder =>
-  builder
-    .withService('my-agent-service', '1.0.0')
-    .withTokenResolver((agentId, tenantId) => {
-      return getUserManagedIdentityToken();
-    })
-    .withClusterCategory('preprod')
-);
-
-builder.start();
-```
-
-### Creating Spans
-
-```typescript
-import { InvokeAgentScope, ExecuteToolScope } from '@microsoft/agents-a365-observability';
-
-// Track agent invocation using static start method
-const agentScope = InvokeAgentScope.start(
-  {
-    agentId: 'my-agent',
-    agentName: 'My Agent',
-    conversationId: 'conv-123'
-  },
-  { tenantId: 'tenant-123' }
-);
-
-// Track tool execution using static start method
-const toolScope = ExecuteToolScope.start(
-  {
-    toolName: 'SearchTool',
-    endpoint: { host: 'https://api.example.com' }
-  },
-  { agentId: 'my-agent' },
-  { tenantId: 'tenant-123' }
-);
-```
+For detailed usage examples and implementation guidance, see the [Microsoft Agent 365 Observability Documentation](https://learn.microsoft.com/microsoft-agent-365/developer/observability?tabs=js).
 
 ## Support
 

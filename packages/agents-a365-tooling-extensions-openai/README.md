@@ -3,7 +3,7 @@
 [![npm](https://img.shields.io/npm/v/@microsoft/agents-a365-tooling-extensions-openai?label=npm&logo=npm)](https://www.npmjs.com/package/@microsoft/agents-a365-tooling-extensions-openai)
 [![npm Downloads](https://img.shields.io/npm/dm/@microsoft/agents-a365-tooling-extensions-openai?label=Downloads&logo=npm)](https://www.npmjs.com/package/@microsoft/agents-a365-tooling-extensions-openai)
 
-OpenAI Agents SDK integration for Microsoft Agents A365 tooling. This package enables seamless integration of MCP (Model Context Protocol) tool servers with OpenAI Agents, providing automatic tool discovery and registration.
+OpenAI Agents SDK integration for the Microsoft Agent 365 Tooling SDK. This package enables seamless integration of MCP (Model Context Protocol) tool servers with OpenAI Agents, providing automatic tool discovery and registration.
 
 ## Installation
 
@@ -13,46 +13,7 @@ npm install @microsoft/agents-a365-tooling-extensions-openai
 
 ## Usage
 
-### Basic Tool Server Registration
-
-```typescript
-import { Agent } from '@openai/agents';
-import { McpToolRegistrationService } from '@microsoft/agents-a365-tooling-extensions-openai';
-
-const agent = new Agent({
-  name: 'My Agent',
-  model: 'gpt-4o'
-});
-
-const toolService = new McpToolRegistrationService();
-
-// Register MCP tool servers with the agent
-await toolService.addMcpToolServers(
-  agent,
-  process.env.AGENTIC_USER_ID || '',
-  process.env.MCP_ENVIRONMENT_ID || '',
-  authorization,
-  turnContext,
-  process.env.MCP_AUTH_TOKEN || ''
-);
-```
-
-### Complete Agent Setup
-
-```typescript
-import { Agent, run } from '@openai/agents';
-import { McpToolRegistrationService } from '@microsoft/agents-a365-tooling-extensions-openai';
-
-async function invokeAgent(userMessage: string): Promise<string> {
-  try {
-    const result = await run(agent, userMessage);
-    return result.finalOutput || "Sorry, I couldn't process your request.";
-  } catch (error) {
-    console.error('OpenAI agent error:', error);
-    return `Error: ${error.message || error}`;
-  }
-}
-```
+For detailed usage examples and implementation guidance, see the [Microsoft Agent 365 Tooling Documentation](https://learn.microsoft.com/microsoft-agent-365/developer/tooling?tabs=js).
 
 ## Support
 

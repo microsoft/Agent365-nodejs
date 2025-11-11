@@ -3,7 +3,7 @@
 [![npm](https://img.shields.io/npm/v/@microsoft/agents-a365-tooling-extensions-claude?label=npm&logo=npm)](https://www.npmjs.com/package/@microsoft/agents-a365-tooling-extensions-claude)
 [![npm Downloads](https://img.shields.io/npm/dm/@microsoft/agents-a365-tooling-extensions-claude?label=Downloads&logo=npm)](https://www.npmjs.com/package/@microsoft/agents-a365-tooling-extensions-claude)
 
-Claude SDK integration for Microsoft Agents A365 tooling. This package enables seamless integration of MCP (Model Context Protocol) tool servers with Anthropic's Claude, providing automatic tool discovery and registration.
+Claude SDK integration for the Microsoft Agent 365 Tooling SDK. This package enables seamless integration of MCP (Model Context Protocol) tool servers with Anthropic's Claude, providing automatic tool discovery and registration.
 
 ## Installation
 
@@ -13,55 +13,7 @@ npm install @microsoft/agents-a365-tooling-extensions-claude
 
 ## Usage
 
-### Basic Tool Server Registration
-
-```typescript
-import { query, Options } from '@anthropic-ai/claude-code';
-import { McpToolRegistrationService } from '@microsoft/agents-a365-tooling-extensions-claude';
-
-const agentOptions: Options = {
-  appendSystemPrompt: `You are a helpful AI assistant integrated with Microsoft 365.`,
-  maxTurns: 3,
-  allowedTools: ['Read', 'Write', 'WebSearch', 'Bash', 'Grep'],
-};
-
-const toolService = new McpToolRegistrationService();
-
-// Add MCP tool servers to Claude options
-await toolService.addToolServers(
-  agentOptions,
-  process.env.AGENTIC_USER_ID || '',
-  process.env.MCP_ENVIRONMENT_ID || '',
-  authorization,
-  turnContext,
-  process.env.MCP_AUTH_TOKEN || ''
-);
-```
-
-### Complete Agent Setup
-
-```typescript
-import { query, Options } from '@anthropic-ai/claude-code';
-import { McpToolRegistrationService } from '@microsoft/agents-a365-tooling-extensions-claude';
-
-async function invokeAgent(userMessage: string): Promise<string> {
-  let claudeResponse = "";
-  try {
-    for await (const message of query({
-      prompt: userMessage,
-      options: agentOptions
-    })) {
-      if (message.type === 'result' && message.result) {
-        claudeResponse = message.result;
-        break;
-      }
-    }
-    return claudeResponse || "Sorry, I couldn't get a response from Claude.";
-  } catch (error) {
-    console.error('Claude error:', error);
-    return `Error: ${error.message || error}`;
-  }
-}
+For detailed usage examples and implementation guidance, see the [Microsoft Agent 365 Developer Documentation](https://learn.microsoft.com/microsoft-agent-365/developer/?tabs=js).
 ```
 
 ## Support

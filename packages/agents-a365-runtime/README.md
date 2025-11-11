@@ -3,7 +3,7 @@
 [![npm](https://img.shields.io/npm/v/@microsoft/agents-a365-runtime?label=npm&logo=npm)](https://www.npmjs.com/package/@microsoft/agents-a365-runtime)
 [![npm Downloads](https://img.shields.io/npm/dm/@microsoft/agents-a365-runtime?label=Downloads&logo=npm)](https://www.npmjs.com/package/@microsoft/agents-a365-runtime)
 
-Core runtime utilities and services for Microsoft Agents A365 applications. This package provides authentication, authorization, and Power Platform API discovery capabilities for building enterprise-ready AI agents.
+Core runtime utilities and services for applications built with the Microsoft Agent 365 SDK. This package provides authentication, authorization, and Power Platform API discovery capabilities for building enterprise-ready AI agents.
 
 ## Installation
 
@@ -13,31 +13,7 @@ npm install @microsoft/agents-a365-runtime
 
 ## Usage
 
-### Authentication Service
-
-```typescript
-import { AgenticAuthenticationService } from '@microsoft/agents-a365-runtime';
-import { TurnContext } from '@microsoft/agents-hosting';
-
-// Get agentic user token (static method)
-const token = await AgenticAuthenticationService.GetAgenticUserToken(
-  authorization,
-  turnContext
-);
-```
-
-### Power Platform API Discovery
-
-```typescript
-import { PowerPlatformApiDiscovery, ClusterCategory } from '@microsoft/agents-a365-runtime';
-
-// Create API discovery service
-const apiDiscovery = new PowerPlatformApiDiscovery(ClusterCategory.Prod);
-
-// Get service endpoints
-const mcpPlatformEndpoint = apiDiscovery.getMcpPlatformEndpoint();
-const toolingGatewayEndpoint = apiDiscovery.getToolingGatewayEndpoint();
-```
+For detailed usage examples and implementation guidance, see the [Microsoft Agent 365 Developer Documentation](https://learn.microsoft.com/microsoft-agent-365/developer/?tabs=js).
 
 ## Support
 

@@ -3,7 +3,7 @@
 [![npm](https://img.shields.io/npm/v/@microsoft/agents-a365-tooling-extensions-langchain?label=npm&logo=npm)](https://www.npmjs.com/package/@microsoft/agents-a365-tooling-extensions-langchain)
 [![npm Downloads](https://img.shields.io/npm/dm/@microsoft/agents-a365-tooling-extensions-langchain?label=Downloads&logo=npm)](https://www.npmjs.com/package/@microsoft/agents-a365-tooling-extensions-langchain)
 
-LangChain integration for Microsoft Agents A365 tooling. This package enables seamless integration of MCP (Model Context Protocol) tool servers with LangChain agents, providing automatic tool discovery and registration as DynamicStructuredTool instances.
+LangChain integration for the Microsoft Agent 365 Tooling SDK. This package enables seamless integration of MCP (Model Context Protocol) tool servers with LangChain agents, providing automatic tool discovery and registration as DynamicStructuredTool instances.
 
 ## Installation
 
@@ -13,63 +13,7 @@ npm install @microsoft/agents-a365-tooling-extensions-langchain
 
 ## Usage
 
-### Basic Tool Server Registration
-
-```typescript
-import { createReactAgent } from "@langchain/langgraph/prebuilt";
-import { ChatOpenAI } from "@langchain/openai";
-import { McpToolRegistrationService } from '@microsoft/agents-a365-tooling-extensions-langchain';
-import { ClientConfig } from '@langchain/mcp-adapters';
-
-const toolService = new McpToolRegistrationService();
-
-// Configure MCP client
-const mcpClientConfig = {} as ClientConfig;
-
-// Add MCP tool servers and get LangChain tools
-const tools = await toolService.addMcpToolServers(
-  mcpClientConfig,
-  process.env.AGENTIC_USER_ID || '',
-  process.env.MCP_ENVIRONMENT_ID || '',
-  authorization,
-  turnContext,
-  process.env.MCP_AUTH_TOKEN || ''
-);
-
-// Create the model
-const model = new ChatOpenAI({
-  model: "gpt-4o-mini",
-});
-
-// Create the agent with MCP tools
-const agent = createReactAgent({
-  llm: model,
-  tools: tools,
-  name: 'LangChain Agent'
-});
-```
-
-### Complete Agent Setup
-
-```typescript
-async function invokeAgent(userMessage: string): Promise<string> {
-  try {
-    const result = await agent.invoke({
-      messages: [
-        {
-          role: "user",
-          content: userMessage,
-        },
-      ],
-    });
-    
-    return result.messages[result.messages.length - 1].content;
-  } catch (error) {
-    console.error('LangChain agent error:', error);
-    return `Error: ${error.message || error}`;
-  }
-}
-}
+For detailed usage examples and implementation guidance, see the [Microsoft Agent 365 Developer Documentation](https://learn.microsoft.com/microsoft-agent-365/developer/?tabs=js).
 ```
 
 ## Support

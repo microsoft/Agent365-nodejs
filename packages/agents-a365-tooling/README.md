@@ -3,7 +3,7 @@
 [![npm](https://img.shields.io/npm/v/@microsoft/agents-a365-tooling?label=npm&logo=npm)](https://www.npmjs.com/package/@microsoft/agents-a365-tooling)
 [![npm Downloads](https://img.shields.io/npm/dm/@microsoft/agents-a365-tooling?label=Downloads&logo=npm)](https://www.npmjs.com/package/@microsoft/agents-a365-tooling)
 
-Core tooling functionality for MCP (Model Context Protocol) tool server management in Microsoft Agents A365 applications. This package provides the foundation for discovering, registering, and managing tool servers across different AI frameworks.
+Core tooling functionality for MCP (Model Context Protocol) tool server management in applications built with the Microsoft Agent 365 SDK. This package provides the foundation for discovering, registering, and managing tool servers across different AI frameworks.
 
 ## Installation
 
@@ -13,37 +13,7 @@ npm install @microsoft/agents-a365-tooling
 
 ## Usage
 
-### Tool Server Discovery
-
-```typescript
-import { McpToolServerConfigurationService } from '@microsoft/agents-a365-tooling';
-
-const configService = new McpToolServerConfigurationService();
-
-// List all available tool servers for an agent
-const toolServers = await configService.listToolServers(
-  agentUserId,
-  environmentId,
-  authToken
-);
-
-for (const server of toolServers) {
-  console.log(`Tool Server: ${server.mcpServerName}`);
-  console.log(`  Server URL: ${server.url}`);
-}
-```
-
-### Get MCP Client Tools
-
-```typescript
-// Get tools from a specific server
-const mcpTools = await configService.getMcpClientTools(
-  turnContext,
-  server,
-  environmentId,
-  authToken
-);
-```
+For detailed usage examples and implementation guidance, see the [Microsoft Agent 365 Tooling Documentation](https://learn.microsoft.com/microsoft-agent-365/developer/tooling?tabs=js).
 
 ## Support
 
