@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 export enum ToolsMode {
   MockMCPServer = 'MockMCPServer',
   MCPPlatform = 'MCPPlatform'
