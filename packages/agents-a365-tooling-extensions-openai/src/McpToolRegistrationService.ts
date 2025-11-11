@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { McpToolServerConfigurationService, McpClientTool, Utility } from '@microsoft/agents-a365-tooling';
+import { McpToolServerConfigurationService, Utility } from '@microsoft/agents-a365-tooling';
 import { AgenticAuthenticationService } from '@microsoft/agents-a365-runtime';
 
 // Agents SDK
@@ -63,21 +63,5 @@ export class McpToolRegistrationService {
     agent.mcpServers.push(...mcpServers);
 
     return agent;
-  }
-
-  /**
-   * Connect to the MCP server and return tools with names prefixed by the server name.
-   * Throws if the server URL is missing or the client fails to list tools.
-   */
-  async getMcpServerTools(mcpServerConfig: MCPServerStreamableHttp): Promise<McpClientTool[]> {
-    if (!mcpServerConfig) {
-      throw new Error('MCP Server Configuration is required');
-    }
-
-    await mcpServerConfig.connect();
-    const tools = await mcpServerConfig.listTools();
-    await mcpServerConfig.close();
-
-    return tools as McpClientTool[];
   }
 }

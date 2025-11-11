@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 // Agent365 SDK
-import { McpToolServerConfigurationService, McpClientTool, Utility } from '@microsoft/agents-a365-tooling';
+import { McpToolServerConfigurationService, Utility } from '@microsoft/agents-a365-tooling';
 import { AgenticAuthenticationService } from '@microsoft/agents-a365-runtime';
 
 // Agents SDK
@@ -69,28 +69,5 @@ export class McpToolRegistrationService {
       tools: tools,
       ...agent.options
     });
-  }
-
-  /**
-   * Connect to the MCP server and return tools with names prefixed by the server name.
-   * Throws if the server URL is missing or the client fails to list tools.
-   */
-  async getMcpServerTools(mcpServerName: string, mcpServerConnection: Connection): Promise<McpClientTool[]> {
-    if (!mcpServerConnection) {
-      throw new Error('MCP Server Connection is required');
-    }
-
-    const mcpClientConfig: ClientConfig = {
-      mcpServers: {
-        [mcpServerName]: mcpServerConnection
-      }
-    };
-
-    const multiServerMcpClient = new MultiServerMCPClient(mcpClientConfig);
-    return (await multiServerMcpClient.getTools()).map((tool: DynamicStructuredTool) => ({
-      name: tool.name,
-      description: tool.description,
-      inputSchema: tool.schema
-    })) as McpClientTool[];
   }
 }
