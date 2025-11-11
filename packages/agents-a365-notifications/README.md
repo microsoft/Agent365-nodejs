@@ -13,7 +13,7 @@ npm install @microsoft/agents-a365-notifications
 
 ## Usage
 
-For detailed usage examples and implementation guidance, see the [Microsoft Agent 365 Notification Documentation](https://learn.microsoft.com/microsoft-agent-365/developer/notification?tabs=js).
+For detailed usage examples and implementation guidance, see the [Microsoft Agent 365 Notification Documentation](https://learn.microsoft.com/microsoft-agent-365/developer/notification?tabs=nodejs).
 
 ## Support
 

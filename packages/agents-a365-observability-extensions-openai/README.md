@@ -13,7 +13,7 @@ npm install @microsoft/agents-a365-observability-extensions-openai
 
 ## Usage
 
-For detailed usage examples and implementation guidance, see the [Microsoft Agent 365 Observability Documentation](https://learn.microsoft.com/microsoft-agent-365/developer/observability?tabs=js).
+For detailed usage examples and implementation guidance, see the [Microsoft Agent 365 Observability Documentation](https://learn.microsoft.com/microsoft-agent-365/developer/observability?tabs=nodejs).
 
 ## Support
 

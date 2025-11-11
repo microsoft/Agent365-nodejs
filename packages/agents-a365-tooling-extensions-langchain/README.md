@@ -13,8 +13,7 @@ npm install @microsoft/agents-a365-tooling-extensions-langchain
 
 ## Usage
 
-For detailed usage examples and implementation guidance, see the [Microsoft Agent 365 Developer Documentation](https://learn.microsoft.com/microsoft-agent-365/developer/?tabs=js).
-```
+For detailed usage examples and implementation guidance, see the [Microsoft Agent 365 Developer Documentation](https://learn.microsoft.com/microsoft-agent-365/developer/?tabs=nodejs).
 
 ## Support
 

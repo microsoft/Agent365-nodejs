@@ -13,7 +13,7 @@ npm install @microsoft/agents-a365-tooling
 
 ## Usage
 
-For detailed usage examples and implementation guidance, see the [Microsoft Agent 365 Tooling Documentation](https://learn.microsoft.com/microsoft-agent-365/developer/tooling?tabs=js).
+For detailed usage examples and implementation guidance, see the [Microsoft Agent 365 Tooling Documentation](https://learn.microsoft.com/microsoft-agent-365/developer/tooling?tabs=nodejs).
 
 ## Support
 
