@@ -67,6 +67,6 @@ export function isDevelopmentEnvironment(): boolean {
  *
  * @returns The MCP platform authentication scope from MCP_PLATFORM_AUTHENTICATION_SCOPE env var, defaults to production scope.
  */
-export function getMcpPlatformAuthenticationScope(): string {
-  return process.env.MCP_PLATFORM_AUTHENTICATION_SCOPE || PROD_MCP_PLATFORM_AUTHENTICATION_SCOPE;
+export function getMcpPlatformAuthenticationScope(): string[] {
+  return [process.env.MCP_PLATFORM_AUTHENTICATION_SCOPE || PROD_MCP_PLATFORM_AUTHENTICATION_SCOPE];
 }
