@@ -38,7 +38,6 @@
     "@microsoft/agents-a365-runtime": "0.0.0-placeholder",
     "@microsoft/agents-hosting": "*",
     "langchain": "*",
-    "@langchain/core": "*",
     "@langchain/mcp-adapters": "*"
   },
   "devDependencies": {

@@ -11,7 +11,6 @@ import { TurnContext, Authorization } from '@microsoft/agents-hosting';
 // LangChain SDKs
 import { createAgent, ReactAgent } from 'langchain';
 import { ClientConfig, Connection, MultiServerMCPClient } from '@langchain/mcp-adapters';
-import { DynamicStructuredTool } from '@langchain/core/tools';
 
 /**
  * Discover MCP servers and list tools formatted for the Claude SDK.

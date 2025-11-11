@@ -1,6 +1,7 @@
 export interface MCPServerConfig {
   mcpServerName: string;
   url: string;
+  headers?: Record<string, string>;
 }
 
 export interface McpClientTool {
