@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
@@ -32,7 +35,7 @@ export class McpToolServerConfigurationService {
     return await (this.isDevScenario() ? this.getMCPServerConfigsFromManifest(environmentId) : this.getMCPServerConfigsFromToolingGateway(agentUserId, environmentId, authToken));
   }
 
-    /**
+  /**
    * Connect to the MCP server and return tools with names prefixed by the server name.
    * Throws if the server URL is missing or the client fails to list tools.
    */
