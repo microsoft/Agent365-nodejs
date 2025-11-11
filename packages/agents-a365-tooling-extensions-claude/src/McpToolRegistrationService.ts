@@ -76,7 +76,7 @@ export class McpToolRegistrationService {
    * Connect to the MCP server and return tools with names prefixed by the server name.
    * Throws if the server URL is missing or the client fails to list tools.
    */
-  async getMcpServerTools(mcpServerName: string, mcpServerConfig: McpServerConfig): Promise<McpClientTool[]> {
+  private async getMcpServerTools(mcpServerName: string, mcpServerConfig: McpServerConfig): Promise<McpClientTool[]> {
     if (!mcpServerConfig || mcpServerConfig.type !== 'http') {
       throw new Error('Invalid MCP Server Configuration');
     }
