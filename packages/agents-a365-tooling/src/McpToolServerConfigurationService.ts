@@ -79,6 +79,9 @@ export class McpToolServerConfigurationService {
    * @throws Error when the gateway call fails or returns an unexpected payload.
    */
   private async getMCPServerConfigsFromToolingGateway(agentUserId: string, environmentId: string, authToken: string): Promise<MCPServerConfig[]> {
+    // Validate the authentication token
+    Utility.ValidateAuthToken(authToken);
+
     const configEndpoint = Utility.GetToolingGatewayForDigitalWorker(agentUserId);
 
     try {

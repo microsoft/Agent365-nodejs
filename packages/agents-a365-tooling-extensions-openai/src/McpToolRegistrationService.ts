@@ -39,6 +39,9 @@ export class McpToolRegistrationService {
       authToken = await AgenticAuthenticationService.GetAgenticUserToken(authorization, turnContext);
     }
 
+    // Validate the authentication token
+    Utility.ValidateAuthToken(authToken);
+
     const servers = await this.configService.listToolServers(agentUserId, environmentId, authToken);
     const mcpServers: MCPServerStreamableHttp[] = [];
 
