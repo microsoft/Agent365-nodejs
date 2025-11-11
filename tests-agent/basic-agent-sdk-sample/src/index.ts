@@ -18,6 +18,7 @@ a365Observability.start();
 
 // Mock authentication middleware for development
 // This is only required when running from agents playground
+try {
 app.use((req: Request, res: Response, next: NextFunction) => {
   // Create a mock identity when JWT is disabled
   req.user = {
@@ -27,12 +28,36 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   }
   next()
 })
+} catch (err) {
+  console.warn('Skipping mock authentication middleware:', err);
+}
 
 app.post('/api/messages', async (req: Request, res: Response) => {
-  await adapter.process(req, res, async (context) => {
-    const app = agentApplication;
-    await app.run(context);
-  });
+  try {
+    await adapter.process(req, res, async (context) => {
+      const app = agentApplication;
+      await app.run(context);
+    });
+  } catch (err) {
+    // Enhanced diagnostic logging for token acquisition / adapter failures
+    const anyErr = err as any;
+    const status = anyErr?.status || anyErr?.response?.status;
+    const data = anyErr?.response?.data;
+    const message = anyErr?.message || 'Unknown error';
+    // Axios style nested config
+    const aadError = data?.error || data?.error_description || data;
+    console.error('[diagnostic] adapter.process failed', {
+      message,
+      status,
+      aadError,
+      url: anyErr?.config?.url,
+      scope: anyErr?.config?.data,
+    });
+    // Surface minimal info to caller while keeping internals in log
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'internal_error', detail: status ? `upstream status ${status}` : message });
+    }
+  }
 });
 
 const port = process.env.PORT || 3978;

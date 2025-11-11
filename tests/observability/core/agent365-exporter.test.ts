@@ -53,12 +53,13 @@ describe('Agent365Exporter', () => {
   afterEach(() => {
     jest.clearAllTimers();
     jest.useRealTimers();
-    global.fetch = originalFetch;
+    global.fetch = originalFetch;   
+    AgenticTokenCacheInstance.clear();    
   });
 
   it('returns success immediately with no spans', async () => {
     const exporter = new Agent365Exporter(() => null, 'local');
-  const callback = jest.fn();
+    const callback = jest.fn();
     await exporter.export([], callback);
     expect(callback).toHaveBeenCalledWith({ code: ExportResultCode.SUCCESS });
   });
@@ -75,7 +76,7 @@ describe('Agent365Exporter', () => {
       })
     ];
 
-  const callback = jest.fn();
+    const callback = jest.fn();
     await exporter.export(spans, callback);
     expect(callback).toHaveBeenCalledWith({ code: ExportResultCode.SUCCESS });
     // Ensure fetch saw auth header
@@ -120,9 +121,8 @@ describe('Agent365Exporter', () => {
     const bodyJson = JSON.parse(bodyStr);
     expect(Array.isArray(bodyJson.resourceSpans)).toBe(true);
     expect(bodyJson.resourceSpans.length).toBe(1);
-  // Debug output of resourceSpans for inspection
-  // eslint-disable-next-line no-console
-  console.log('[test] resourceSpans:', JSON.stringify(bodyJson.resourceSpans, null, 2));
+    // eslint-disable-next-line no-console
+    console.log('[test] resourceSpans:', JSON.stringify(bodyJson.resourceSpans, null, 2));
     const rs = bodyJson.resourceSpans[0];
     expect(Array.isArray(rs.scopeSpans)).toBe(true);
     expect(rs.scopeSpans.length).toBe(1);
@@ -137,7 +137,7 @@ describe('Agent365Exporter', () => {
     expect(span.attributes[OpenTelemetryConstants.TENANT_ID_KEY]).toBe(tenant);
     expect(span.attributes[OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]).toBe(agent);
     // Validate local cluster endpoint format
-    const urlArg = fetchCalls[0][0] as string;   
+    const urlArg = fetchCalls[0][0] as string;
     expect(urlArg).toContain('localhost');
   });
 });

@@ -11,11 +11,11 @@ export interface AgenticTokenCacheOptions {
 }
 
 interface CacheEntry {
-	token: string;
-	/** Expiration timestamp in epoch milliseconds. */
-	expiresAt: number;
-	/** Creation timestamp. */
-	createdAt: number;
+  token: string;
+  /** Expiration timestamp in epoch milliseconds. */
+  expiresAt: number;
+  /** Creation timestamp. */
+  createdAt: number;
 }
 
 /**
@@ -58,8 +58,11 @@ export class AgenticTokenCache {
     }
     return entry.token;
   }
+
+  /** Clear all cache entries (primarily for test isolation). */
+  clear(): void {
+    this.store.clear();
+  }
 }
 
 export const AgenticTokenCacheInstance = new AgenticTokenCache();
-
-

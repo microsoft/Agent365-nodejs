@@ -17,7 +17,7 @@ export class Agent365ExporterOptions {
   public clusterCategory: ClusterCategory | string = 'preprod';
 
   /**
-   * delegate used to resolve the auth token. REQUIRED.
+  * Resolver used to resolve the auth token. Optional - falls back to AgenticTokenCache when not provided.
    */
   public tokenResolver?: TokenResolver;
 
