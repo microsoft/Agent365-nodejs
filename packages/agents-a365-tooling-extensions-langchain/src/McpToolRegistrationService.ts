@@ -13,12 +13,16 @@ import { createAgent, ReactAgent } from 'langchain';
 import { ClientConfig, Connection, MultiServerMCPClient } from '@langchain/mcp-adapters';
 
 /**
- * Discover MCP servers and list tools formatted for the Claude SDK.
- * Use getMcpServers to fetch server configs and getTools to enumerate tools.
+ * Discover MCP servers and list tools formatted for the LangChain Orchestrator.
+ * Uses listToolServers to fetch server configs and getTools to enumerate tools.
  */
 export class McpToolRegistrationService {
   private configService: McpToolServerConfigurationService  = new McpToolServerConfigurationService();
 
+  /**
+   * Registers MCP tool servers and updates agent options with discovered tools and server configs.
+   * Call this to enable dynamic LangChain tool access based on the current MCP environment.
+   */
   async addToolServersToAgent(
     agent: ReactAgent,
     agentUserId: string,
@@ -49,7 +53,7 @@ export class McpToolRegistrationService {
         headers['x-ms-environment-id'] = environmentId;
       }
 
-      // Create Connection instance for OpenAI agents
+      // Create Connection instance for LangChain agents
       mcpServers[server.mcpServerName] = {
         type: 'http',
         url: server.url,
@@ -65,8 +69,8 @@ export class McpToolRegistrationService {
 
     // Create the agent with existing options and new tools
     return createAgent({
+      ...agent.options,
       tools: tools,
-      ...agent.options
     });
   }
 }

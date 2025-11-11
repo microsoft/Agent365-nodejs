@@ -11,12 +11,17 @@ import { TurnContext, Authorization } from '@microsoft/agents-hosting';
 import { Agent, MCPServerStreamableHttp } from '@openai/agents';
 
 /**
- * Discover MCP servers and list tools formatted for the Claude SDK.
- * Use getMcpServers to fetch server configs and getTools to enumerate tools.
+ * Discover MCP servers and list tools formatted for the OpenAI Agents SDK.
+ * Uses listToolServers to fetch server configs.
  */
 export class McpToolRegistrationService {
   private configService: McpToolServerConfigurationService  = new McpToolServerConfigurationService();
 
+
+  /**
+   * Registers MCP tool servers and updates agent options with discovered tools and server configs.
+   * Call this to enable dynamic OpenAI tool access based on the current MCP environment.
+   */
   async addToolServersToAgent(
     agent: Agent,
     agentUserId: string,
