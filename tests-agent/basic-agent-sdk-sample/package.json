@@ -16,8 +16,8 @@
   "dependencies": {
     "@microsoft/agents-hosting": "*",
     "@microsoft/agents-activity": "*",
-    "@microsoft/agents-a365-observability": "*",
-    "@microsoft/agents-a365-runtime": "*",
+    "@microsoft/agents-a365-observability": "workspace:*",
+    "@microsoft/agents-a365-runtime": "workspace:*",
     "dotenv": "*",
     "express": "*",
     "uuid": "*"
