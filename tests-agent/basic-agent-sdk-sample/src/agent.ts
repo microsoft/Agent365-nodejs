@@ -18,6 +18,7 @@ import {
   ExecutionType,
   EnhancedAgentDetails,
   ServiceEndpoint,
+  AgenticTokenCacheInstance,
 } from '@microsoft/agents-a365-observability';
 import { getObservabilityAuthenticationScope } from '@microsoft/agents-a365-runtime';
 
@@ -87,15 +88,7 @@ agentApplication.onActivity(
       }));
 
 
-        // Cache the agentic token for observability token resolver
-      // const aauToken = await agentApplication.authorization.exchangeToken(context, ['https://api.powerplatform.com/.default'],'agentic')
-      const aauToken = await agentApplication.authorization.exchangeToken(context,'agentic', {
-        scopes: getObservabilityAuthenticationScope() 
-      } )
-      const cacheKey = createAgenticTokenCacheKey(agentInfo.agentId, tenantInfo.tenantId);
-      tokenCache.set(cacheKey, aauToken?.token || '');
-
-      await context.sendActivity(`(Agentic) You said: ${context.activity.text}, user token length=${aauToken.token?.length ?? 0}`);
+      AgenticTokenCacheInstance.registerObservability(agentInfo.agentId, tenantInfo.tenantId, context, agentApplication.authorization, getObservabilityAuthenticationScope());      
 
       const llmResponse = await performInference(
         context.activity.text ?? 'Unknown text',

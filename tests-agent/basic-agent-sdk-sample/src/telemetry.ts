@@ -37,7 +37,7 @@ export const a365Observability = ObservabilityManager.configure(
   (builder: Builder) =>
     builder            
       .withService('TypeScript Sample Agent', '1.0.0')
-      .withTokenResolver(tokenResolver)
+      //.withTokenResolver(tokenResolver)
       .withClusterCategory(getClusterCategory())
 );
 

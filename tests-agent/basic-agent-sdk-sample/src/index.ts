@@ -27,7 +27,9 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     azp: authConfig.clientId || 'mock-client-id'
   }
   next()
-})
+}) 
+
+//app.use(authorizeJWT(authConfig));
 } catch (err) {
   console.warn('Skipping mock authentication middleware:', err);
 }
