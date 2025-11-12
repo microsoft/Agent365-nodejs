@@ -43,7 +43,7 @@
     "pack": "npm pack --pack-destination=../"
   },
   "dependencies": {
-    "@microsoft/agents-a365-observability": "workspace:*",
+    "@microsoft/agents-a365-observability": "file:../agents-a365-observability",
     "@openai/agents": "*",
     "@opentelemetry/api": "*",
     "@opentelemetry/instrumentation": "*"

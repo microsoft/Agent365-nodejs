@@ -33,7 +33,7 @@
     "directory": "nodejs/packages/agents-a365-notifications"
   },
   "dependencies": {
-    "@microsoft/agents-a365-runtime": "workspace:*",
+    "@microsoft/agents-a365-runtime": "file:../agents-a365-runtime",
     "@microsoft/agents-activity": "*",
     "@microsoft/agents-hosting": "*"
   },
