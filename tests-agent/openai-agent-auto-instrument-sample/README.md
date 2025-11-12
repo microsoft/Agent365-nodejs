@@ -40,10 +40,7 @@ If you'd like to use Agentic authentication, you should set the values under Age
 Otherwise, you can set the value `MCP_AUTH_TOKEN` to authentication against your MCP servers.
 
 `NODE_ENV` should be set to `Development` if you'd like to use your tooling manifest. Otherwise, the tooling sdk will
-default to retrieving MCP servers from the agent's tooling gateway, in which case you will need to set `AGENTIC_USER_ID`
-and `MCP_ENVIRONMENT_ID`.
-
-**Note** If you are using servers from the MCPPlatform but don't want to use the tooling gateway, you only need to set `MCP_ENVIRONMENT_ID`.
+default to retrieving MCP servers from the agent's tooling gateway, in which case you will need to set `AGENTIC_USER_ID`.
 
 ### Interacting with your Agent
 Start the agent application:

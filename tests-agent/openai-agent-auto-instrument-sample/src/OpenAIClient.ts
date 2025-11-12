@@ -30,7 +30,6 @@ export async function getClient(authorization: Authorization | undefined, turnCo
       await localMcpService.addMcpToolServers(
         agent,
         process.env.AGENTIC_USER_ID || 'dev-user-id',
-        process.env.MCP_ENVIRONMENT_ID || 'dev-environment',
         turnContext,
         process.env.MCP_AUTH_TOKEN || 'dev-token',
       );
@@ -39,7 +38,6 @@ export async function getClient(authorization: Authorization | undefined, turnCo
       await toolService.addToolServersToAgent(
         agent,
         process.env.AGENTIC_USER_ID || '',
-        process.env.MCP_ENVIRONMENT_ID || '',
         authorization,
         turnContext,
         process.env.MCP_AUTH_TOKEN || '',

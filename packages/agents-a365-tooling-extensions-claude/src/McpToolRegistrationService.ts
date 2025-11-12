@@ -19,12 +19,11 @@ export class McpToolRegistrationService {
 
   /**
    * Registers MCP tool servers and updates agent options with discovered tools and server configs.
-   * Call this to enable dynamic Claude tool access based on the current MCP environment.
+   * Call this to enable dynamic Claude tool access.
    */
   async addToolServersToAgent(
     agentOptions: Options,
     agentUserId: string,
-    environmentId: string,
     authorization: Authorization,
     turnContext: TurnContext,
     authToken: string
@@ -41,7 +40,8 @@ export class McpToolRegistrationService {
     // Validate the authentication token
     Utility.ValidateAuthToken(authToken);
 
-    const servers = await this.configService.listToolServers(agentUserId, environmentId, authToken);
+    const servers = await this.configService.listToolServers(agentUserId, authToken);
+
     const mcpServers: Record<string, McpServerConfig> = {};
     const tools: McpClientTool[] = [];
 
@@ -50,10 +50,6 @@ export class McpToolRegistrationService {
       const headers: Record<string, string> = {};
       if (authToken) {
         headers['Authorization'] = `Bearer ${authToken}`;
-      }
-
-      if (Utility.GetUseEnvironmentId() && environmentId) {
-        headers['x-ms-environment-id'] = environmentId;
       }
 
       // Add each server to the config object
