@@ -24,15 +24,14 @@ export class McpToolServerConfigurationService {
   }
 
   /**
-   * Return MCP server definitions for the given agent and environment. In development (NODE_ENV=Development) this reads the local ToolingManifest.json; otherwise it queries the remote tooling gateway.
+   * Return MCP server definitions for the given agent. In development (NODE_ENV=Development) this reads the local ToolingManifest.json; otherwise it queries the remote tooling gateway.
    *
    * @param agentUserId The unique identifier of the digital worker/agent user for which to discover servers.
-   * @param environmentId The MCP environment identifier (e.g. 'default-...') used to normalize server URLs.
    * @param authToken Optional bearer token used when querying the remote tooling gateway.
    * @returns A promise resolving to an array of normalized MCP server configuration objects.
    */
-  async listToolServers(agentUserId: string, environmentId: string, authToken: string): Promise<MCPServerConfig[]> {
-    return await (this.isDevScenario() ? this.getMCPServerConfigsFromManifest(environmentId) : this.getMCPServerConfigsFromToolingGateway(agentUserId, environmentId, authToken));
+  async listToolServers(agentUserId: string, authToken: string): Promise<MCPServerConfig[]> {
+    return await (this.isDevScenario() ? this.getMCPServerConfigsFromManifest() : this.getMCPServerConfigsFromToolingGateway(agentUserId, authToken));
   }
 
   /**
@@ -74,11 +73,10 @@ export class McpToolServerConfigurationService {
    * Throws an error if the gateway call fails.
    *
    * @param agentId The digital worker/agent id used by the tooling gateway to scope results.
-   * @param environmentId The MCP environment id used to build normalized MCP server URLs.
    * @param authToken Optional Bearer token to include in the Authorization header when calling the gateway.
    * @throws Error when the gateway call fails or returns an unexpected payload.
    */
-  private async getMCPServerConfigsFromToolingGateway(agentUserId: string, environmentId: string, authToken: string): Promise<MCPServerConfig[]> {
+  private async getMCPServerConfigsFromToolingGateway(agentUserId: string, authToken: string): Promise<MCPServerConfig[]> {
     // Validate the authentication token
     Utility.ValidateAuthToken(authToken);
 
@@ -90,7 +88,6 @@ export class McpToolServerConfigurationService {
         {
           headers: {
             'Authorization': authToken ? `Bearer ${authToken}` : undefined,
-            'x-ms-environment-id': Utility.GetUseEnvironmentId() ? environmentId : undefined,
           },
           timeout: 10000 // 10 seconds timeout
         }
@@ -124,7 +121,7 @@ export class McpToolServerConfigurationService {
    *   ]
    * }
    */
-  private async getMCPServerConfigsFromManifest(environmentId: string): Promise<MCPServerConfig[]> {
+  private async getMCPServerConfigsFromManifest(): Promise<MCPServerConfig[]> {
     let manifestPath = path.join(process.cwd(), 'ToolingManifest.json');
     if (!fs.existsSync(manifestPath)) {
       this.logger.warn(`ToolingManifest.json not found at ${manifestPath}, checking argv[1] location.`);
@@ -144,7 +141,7 @@ export class McpToolServerConfigurationService {
       return mcpServers.map((s: MCPServerConfig) => {
         return {
           mcpServerName: s.mcpServerName,
-          url: Utility.BuildMcpServerUrl(environmentId, s.mcpServerName)
+          url: Utility.BuildMcpServerUrl(s.mcpServerName)
         };
       });
     } catch (err: unknown) {
