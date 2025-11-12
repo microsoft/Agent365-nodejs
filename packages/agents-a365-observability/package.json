@@ -38,7 +38,7 @@
   },
   "dependencies": {
     "@azure/monitor-opentelemetry-exporter": "*",
-    "@microsoft/agents-a365-runtime": "*",
+    "@microsoft/agents-a365-runtime": "workspace:*",
     "@opentelemetry/api": "*",
     "@opentelemetry/exporter-trace-otlp-http": "*",
     "@opentelemetry/instrumentation": "*",
