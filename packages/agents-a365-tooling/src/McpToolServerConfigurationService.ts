@@ -1,8 +1,14 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
-import { MCPServerConfig } from './contracts';
+import { MCPServerConfig, McpClientTool } from './contracts';
 import { Utility } from './Utility';
+
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 
 /**
  * Service responsible for discovering and normalizing MCP (Model Context Protocol)
@@ -30,6 +36,40 @@ export class McpToolServerConfigurationService {
   }
 
   /**
+   * Connect to the MCP server and return tools with names prefixed by the server name.
+   * Throws if the server URL is missing or the client fails to list tools.
+   */
+  async getMcpClientTools(mcpServerName: string, mcpServerConfig: MCPServerConfig): Promise<McpClientTool[]> {
+    if (!mcpServerConfig) {
+      throw new Error('Invalid MCP Server Configuration');
+    }
+
+    if (!mcpServerConfig.url) {
+      throw new Error('MCP Server URL cannot be null or empty');
+    }
+
+    const transport = new StreamableHTTPClientTransport(
+      new URL(mcpServerConfig.url),
+      {
+        requestInit: {
+          headers: mcpServerConfig.headers
+        }
+      }
+    );
+
+    const mcpClient = new Client({
+      name: mcpServerName + ' Client',
+      version: '1.0',
+    });
+
+    await mcpClient.connect(transport);
+    const toolsObj = await mcpClient.listTools();
+    await mcpClient.close();
+
+    return toolsObj.tools;
+  }
+
+  /**
    * Query the tooling gateway for MCP servers for the specified agent and normalize each entry's mcpServerUniqueName into a full URL using Utility.BuildMcpServerUrl.
    * Throws an error if the gateway call fails.
    *
@@ -39,6 +79,9 @@ export class McpToolServerConfigurationService {
    * @throws Error when the gateway call fails or returns an unexpected payload.
    */
   private async getMCPServerConfigsFromToolingGateway(agentUserId: string, environmentId: string, authToken: string): Promise<MCPServerConfig[]> {
+    // Validate the authentication token
+    Utility.ValidateAuthToken(authToken);
+
     const configEndpoint = Utility.GetToolingGatewayForDigitalWorker(agentUserId);
 
     try {

@@ -1,15 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { McpToolServerConfigurationService, McpClientTool, Utility } from '@microsoft/agents-a365-tooling';
-import { AgenticAuthenticationService, Authorization } from '@microsoft/agents-a365-runtime';
+import { McpToolServerConfigurationService, McpClientTool, Utility, MCPServerConfig } from '@microsoft/agents-a365-tooling';
+import { AgenticAuthenticationService } from '@microsoft/agents-a365-runtime';
 
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+// Agents SDK
+import { TurnContext, Authorization } from '@microsoft/agents-hosting';
 
 // Claude SDK expects a different shape for MCP server configs
 import type { McpServerConfig, Options } from '@anthropic-ai/claude-agent-sdk';
-import { TurnContext } from '@microsoft/agents-hosting';
 
 /**
  * Discover MCP servers and list tools formatted for the Claude SDK.
@@ -22,7 +21,7 @@ export class McpToolRegistrationService {
    * Registers MCP tool servers and updates agent options with discovered tools and server configs.
    * Call this to enable dynamic Claude tool access based on the current MCP environment.
    */
-  async addToolServers(
+  async addToolServersToAgent(
     agentOptions: Options,
     agentUserId: string,
     environmentId: string,
@@ -38,6 +37,9 @@ export class McpToolRegistrationService {
     if (!authToken) {
       authToken = await AgenticAuthenticationService.GetAgenticUserToken(authorization, turnContext);
     }
+
+    // Validate the authentication token
+    Utility.ValidateAuthToken(authToken);
 
     const servers = await this.configService.listToolServers(agentUserId, environmentId, authToken);
     const mcpServers: Record<string, McpServerConfig> = {};
@@ -61,53 +63,27 @@ export class McpToolRegistrationService {
         headers: headers
       } as McpServerConfig;
 
-      tools.push(...await this.getTools(server.mcpServerName, mcpServers[server.mcpServerName]));
+      let clientTools = await this.configService.getMcpClientTools(
+        server.mcpServerName,
+        {
+          url: server.url,
+          headers: headers
+        } as MCPServerConfig,
+      );
+
+      // Claude will add a prefix to the tool name based on the server name.
+      clientTools = clientTools.map((tool: McpClientTool) => ({
+        name: 'mcp__' + server.mcpServerName + '__' + tool.name,
+        description: tool.description,
+        inputSchema: tool.inputSchema
+      })) as McpClientTool[];
+
+      tools.push(...clientTools);
     }
 
     agentOptions.allowedTools = agentOptions.allowedTools ?? [];
     agentOptions.allowedTools.push(...tools.map(t => t.name));
 
     agentOptions.mcpServers = Object.assign(agentOptions.mcpServers ?? {}, mcpServers);
-  }
-
-  /**
-   * Connect to the MCP server and return tools with names prefixed by the server name.
-   * Throws if the server URL is missing or the client fails to list tools.
-   */
-  async getTools(mcpServerName: string, mcpServerConfig: McpServerConfig): Promise<McpClientTool[]> {
-    if (!mcpServerConfig || mcpServerConfig.type !== 'http') {
-      throw new Error('Invalid MCP Server Configuration');
-    }
-
-    if (!mcpServerConfig.url) {
-      throw new Error('MCP Server URL cannot be null or empty');
-    }
-
-    const transport = new StreamableHTTPClientTransport(
-      new URL(mcpServerConfig.url),
-      {
-        requestInit: {
-          headers: mcpServerConfig.headers
-        }
-      }
-    );
-
-    const mcpClient = new Client({
-      name: 'Claude ' + mcpServerName + ' Client',
-      version: '1.0',
-    });
-
-    await mcpClient.connect(transport);
-    const toolsObj = await mcpClient.listTools();
-    await mcpClient.close();
-
-    // Claude will add a prefix to the tool name based on the server name.
-    const tools = toolsObj.tools.map((tool: McpClientTool) => ({
-      name: 'mcp__' + mcpServerName + '__' + tool.name,
-      description: tool.description,
-      inputSchema: tool.inputSchema
-    })) as McpClientTool[];
-
-    return tools;
   }
 }

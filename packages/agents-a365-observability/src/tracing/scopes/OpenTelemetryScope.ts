@@ -5,7 +5,8 @@
 import { trace, SpanKind, Span, SpanStatusCode, Attributes, context } from '@opentelemetry/api';
 import { OpenTelemetryConstants } from '../constants';
 import { isAgent365TelemetryEnabled } from '../util';
-import { AgentDetails, TenantDetails } from '../contracts';
+import { EnhancedAgentDetails, TenantDetails } from '../contracts';
+import logger from '../../utils/logging';
 
 /**
  * Base class for OpenTelemetry tracing scopes
@@ -34,10 +35,12 @@ export abstract class OpenTelemetryScope implements Disposable {
     kind: SpanKind,
     operationName: string,
     spanName: string,
-    agentDetails?: AgentDetails,
+    agentDetails?: EnhancedAgentDetails,
     tenantDetails?: TenantDetails
   ) {
     const currentContext = context.active();
+    logger.info(`[A365Observability] Starting span: ${spanName}, operation: ${operationName} for tenantId: ${tenantDetails?.tenantId || 'unknown'}, agentId: ${agentDetails?.agentId || 'unknown'}`);
+
     // Start span with current context to establish parent-child relationship
     this.span = OpenTelemetryScope.tracer.startSpan(spanName, {
       kind,
@@ -46,6 +49,8 @@ export abstract class OpenTelemetryScope implements Disposable {
         [OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY]: operationName,
       },
     }, currentContext);
+
+    logger.info(`[A365Observability] Span[${this.span.spanContext().spanId}] ${spanName}, operation: ${operationName} started successfully`);
 
     this.startTime = Date.now();
 
@@ -56,6 +61,9 @@ export abstract class OpenTelemetryScope implements Disposable {
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_DESCRIPTION_KEY, agentDetails.agentDescription);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, agentDetails.conversationId);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_ICON_URI_KEY, agentDetails.iconUri);
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_AUID_KEY, agentDetails.agentAUID);
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_UPN_KEY, agentDetails.agentUPN);
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY, agentDetails.agentBlueprintId);
     }
 
     // Set tenant details if provided
@@ -78,6 +86,7 @@ export abstract class OpenTelemetryScope implements Disposable {
    */
   public recordError(error: Error): void {
     if (OpenTelemetryScope.enableTelemetry) {
+      logger.error(`[A365Observability] Records an error that occurred during the operation span[${this.span.spanContext().spanId}]: ${error.message}`);
       // Check if it's an HTTP error with status code
       if ('status' in error && typeof error.status === 'number') {
         this.errorType = error.status.toString();
@@ -124,6 +133,7 @@ export abstract class OpenTelemetryScope implements Disposable {
    */
   private end(): void {
     if (this.hasEnded) {
+      logger.info(`[A365Observability] Span already ended for span[${this.span.spanContext().spanId}]`);
       return;
     }
 
@@ -140,6 +150,7 @@ export abstract class OpenTelemetryScope implements Disposable {
     this.span.setAttributes({ 'operation.duration': duration });
 
     this.hasEnded = true;
+    logger.info(`[A365Observability] Ending span[${this.span.spanContext().spanId}], duration: ${duration}s`);
   }
 
   /**
