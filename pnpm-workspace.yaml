@@ -5,61 +5,61 @@ packages:
 
 overrides:
   # OpenAI Agents packages
-  "@openai/agents": "^0.1.5"
-  "@openai/agents-core": "^0.1.5"
+  "@openai/agents": ^0.1.5
+  "@openai/agents-core": ^0.1.5
 
   # Microsoft Agent packages
-  "@microsoft/agents-hosting": "^1.1.0-alpha.85"
-  "@microsoft/agents-activity": "^1.1.0-alpha.85"
+  "@microsoft/agents-hosting": ^1.1.0-alpha.85
+  "@microsoft/agents-activity": ^1.1.0-alpha.85
 
   # OpenTelemetry packages - align versions
-  "@opentelemetry/core": "^2.2.0"
-  "@opentelemetry/api": "^1.9.0"
-  "@opentelemetry/exporter-trace-otlp-http": "^0.205.0"
-  "@opentelemetry/instrumentation": "^0.204.0"
-  "@opentelemetry/resources": "^2.1.0"
-  "@opentelemetry/sdk-node": "^0.204.0"
-  "@opentelemetry/sdk-trace-base": "^2.1.0"
-  "@opentelemetry/semantic-conventions": "^1.37.0"
+  "@opentelemetry/core": ^2.2.0
+  "@opentelemetry/api": ^1.9.0
+  "@opentelemetry/exporter-trace-otlp-http": ^0.205.0
+  "@opentelemetry/instrumentation": ^0.204.0
+  "@opentelemetry/resources": ^2.1.0
+  "@opentelemetry/sdk-node": ^0.204.0
+  "@opentelemetry/sdk-trace-base": ^2.1.0
+  "@opentelemetry/semantic-conventions": ^1.37.0
 
   # Model Context Protocol SDK
-  "@modelcontextprotocol/sdk": "^1.19.0"
+  "@modelcontextprotocol/sdk": ^1.19.0
 
   # Azure packages
-  "@azure/monitor-opentelemetry-exporter": "^1.0.0-beta.32"
-  "@azure/identity": "^4.12.0"
+  "@azure/monitor-opentelemetry-exporter": ^1.0.0-beta.32
+  "@azure/identity": ^4.12.0
 
   # LangChain packages - use latest stable
-  "langchain": "^1.0.1"
-  "@langchain/core": "^1.0.2"
-  "@langchain/mcp-adapters": "^1.0.0"
+  "langchain": ^1.0.1
+  "@langchain/core": ^1.0.2
+  "@langchain/mcp-adapters": ^1.0.0
 
   # Claude AI package
-  "@anthropic-ai/claude-agent-sdk": "^0.1.30"
+  "@anthropic-ai/claude-agent-sdk": ^0.1.30
 
   # Express framework
-  "express": "^5.1.0"
+  "express": ^5.1.0
 
   # Zod
-  "zod": "^4.1.12"
+  "zod": ^4.1.12
 
   # Development dependencies - align versions
-  "@microsoft/m365agentsplayground": "^0.2.18"
-  "typescript": "^5.6.0"
-  "jest": "^29.7.0"
-  "ts-jest": "^29.2.0"
-  "@types/jest": "^29.5.14"
-  "@types/node": "^20.17.0"
-  "@types/express": "^5.0.0"
-  "@types/uuid": "^9.0.0"
-  "eslint": "^8.57.0"
-  "@typescript-eslint/eslint-plugin": "^6.21.0"
-  "@typescript-eslint/parser": "^6.21.0"
-  "rimraf": "^6.0.0"
-  "nodemon": "^3.1.10"
-  "ts-node": "^10.9.2"
-  "dotenv": "^17.2.2"
-  "uuid": "^9.0.0"
+  "@microsoft/m365agentsplayground": ^0.2.18
+  "typescript": ^5.6.0
+  "jest": ^29.7.0
+  "ts-jest": ^29.2.0
+  "@types/jest": ^29.5.14
+  "@types/node": ^20.17.0
+  "@types/express": ^5.0.0
+  "@types/uuid": ^9.0.0
+  "eslint": ^8.57.0
+  "@typescript-eslint/eslint-plugin": ^6.21.0
+  "@typescript-eslint/parser": ^6.21.0
+  "rimraf": ^6.0.0
+  "nodemon": ^3.1.10
+  "ts-node": ^10.9.2
+  "dotenv": ^17.2.2
+  "uuid": ^9.0.0
 
 # Workspace settings
 linkWorkspacePackages: true
