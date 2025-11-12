@@ -67,13 +67,15 @@ export class McpToolRegistrationService {
     const mcpClientConfig = {} as ClientConfig;
     mcpClientConfig.mcpServers = Object.assign(mcpClientConfig.mcpServers ?? {}, mcpServers);
     const multiServerMcpClient = new MultiServerMCPClient(mcpClientConfig);
-    const tools = await multiServerMcpClient.getTools();
-    tools.push(...(agent.options.tools ?? [])); // Retain existing tools
+    const mcpTools = await multiServerMcpClient.getTools();
+    
+    // Merge MCP tools with existing agent tools
+    const allTools = [...(agent.options.tools ?? []), ...mcpTools];
 
     // Create the agent with existing options and new tools
     return createAgent({
       ...agent.options,
-      tools: tools,
+      tools: allTools,
     });
   }
 }
