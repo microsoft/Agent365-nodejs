@@ -9,8 +9,10 @@
   "scripts": {
     "clean": "rimraf dist",
     "build": "echo 'No build needed for test package'",
-    "test": "jest --passWithNoTests",
-    "test:watch": "jest --watch",
+    "test": "jest --passWithNoTests --testPathIgnorePatterns=/integration/",
+    "test:watch": "jest --watch --testPathIgnorePatterns=/integration/",
+    "test:integration": "jest --config ../jest.integration.config.cjs",
+    "test:integration:watch": "jest --config ../jest.integration.config.cjs --watch",
     "ci": "npm ci",
     "build:all": "npm run build --workspaces"
   },
@@ -38,12 +40,15 @@
     "@azure/monitor-opentelemetry-exporter": "*",
     "@modelcontextprotocol/sdk": "*",
     "@openai/agents": "*",
+    "@openai/agents-openai": "*",
     "@opentelemetry/api": "*",
     "@opentelemetry/exporter-trace-otlp-http": "*",
     "@opentelemetry/resources": "*",
     "@opentelemetry/sdk-node": "*",
     "@opentelemetry/sdk-trace-base": "*",
-    "@opentelemetry/semantic-conventions": "*"
+    "@opentelemetry/semantic-conventions": "*",
+    "dotenv": "^16.0.0",
+    "openai": "^4.0.0"
   },
   "devDependencies": {
     "@babel/preset-typescript": "^7.27.1",

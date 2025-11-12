@@ -7,8 +7,8 @@ settings:
 overrides:
   '@openai/agents': ^0.1.5
   '@openai/agents-core': ^0.1.5
-  '@microsoft/agents-hosting': 1.1.0-alpha.58
-  '@microsoft/agents-activity': 1.1.0-alpha.58
+  '@microsoft/agents-hosting': ^1.1.0-alpha.85
+  '@microsoft/agents-activity': ^1.1.0-alpha.85
   '@opentelemetry/core': ^2.2.0
   '@opentelemetry/api': ^1.9.0
   '@opentelemetry/exporter-trace-otlp-http': ^0.205.0
@@ -20,6 +20,7 @@ overrides:
   '@modelcontextprotocol/sdk': ^1.19.0
   '@azure/monitor-opentelemetry-exporter': ^1.0.0-beta.32
   '@azure/identity': ^4.12.0
+  langchain: ^1.0.1
   '@langchain/core': ^1.0.2
   '@langchain/mcp-adapters': ^1.0.0
   '@anthropic-ai/claude-agent-sdk': ^0.1.30
@@ -56,11 +57,11 @@ importers:
         specifier: '*'
         version: link:../agents-a365-runtime
       '@microsoft/agents-activity':
-        specifier: 1.1.0-alpha.58
-        version: 1.1.0-alpha.58
+        specifier: ^1.1.0-alpha.85
+        version: 1.1.0-alpha.85
       '@microsoft/agents-hosting':
-        specifier: 1.1.0-alpha.58
-        version: 1.1.0-alpha.58
+        specifier: ^1.1.0-alpha.85
+        version: 1.1.0-alpha.85
     devDependencies:
       '@types/jest':
         specifier: ^29.5.14
@@ -96,17 +97,8 @@ importers:
         specifier: ^1.0.0-beta.32
         version: 1.0.0-beta.32
       '@microsoft/agents-a365-runtime':
-        specifier: 0.0.0-placeholder
+        specifier: '*'
         version: link:../agents-a365-runtime
-      '@modelcontextprotocol/sdk':
-        specifier: ^1.19.0
-        version: 1.21.0(@cfworker/json-schema@4.1.1)
-      '@openai/agents':
-        specifier: ^0.1.5
-        version: 0.1.11(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.12)
-      '@openai/agents-core':
-        specifier: ^0.1.5
-        version: 0.1.11(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.12)
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
@@ -206,8 +198,8 @@ importers:
         specifier: ^4.12.0
         version: 4.13.0
       '@microsoft/agents-hosting':
-        specifier: 1.1.0-alpha.58
-        version: 1.1.0-alpha.58
+        specifier: ^1.1.0-alpha.85
+        version: 1.1.0-alpha.85
     devDependencies:
       '@types/jest':
         specifier: ^29.5.14
@@ -243,8 +235,8 @@ importers:
         specifier: '*'
         version: link:../agents-a365-runtime
       '@microsoft/agents-hosting':
-        specifier: 1.1.0-alpha.58
-        version: 1.1.0-alpha.58
+        specifier: ^1.1.0-alpha.85
+        version: 1.1.0-alpha.85
       '@modelcontextprotocol/sdk':
         specifier: ^1.19.0
         version: 1.21.0(@cfworker/json-schema@4.1.1)
@@ -292,8 +284,8 @@ importers:
         specifier: 0.0.0-placeholder
         version: link:../agents-a365-tooling
       '@microsoft/agents-hosting':
-        specifier: 1.1.0-alpha.58
-        version: 1.1.0-alpha.58
+        specifier: ^1.1.0-alpha.85
+        version: 1.1.0-alpha.85
       '@modelcontextprotocol/sdk':
         specifier: ^1.19.0
         version: 1.21.0(@cfworker/json-schema@4.1.1)
@@ -328,9 +320,6 @@ importers:
 
   packages/agents-a365-tooling-extensions-langchain:
     dependencies:
-      '@langchain/core':
-        specifier: ^1.0.2
-        version: 1.0.2(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.207.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@5.23.2(ws@8.18.3)(zod@4.1.12))
       '@langchain/mcp-adapters':
         specifier: ^1.0.0
         version: 1.0.0(@cfworker/json-schema@4.1.1)(@langchain/core@1.0.2(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.207.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@5.23.2(ws@8.18.3)(zod@4.1.12)))(@langchain/langgraph@1.0.1(@langchain/core@1.0.2(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.207.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@5.23.2(ws@8.18.3)(zod@4.1.12)))(zod-to-json-schema@3.24.6(zod@4.1.12))(zod@4.1.12))
@@ -341,8 +330,11 @@ importers:
         specifier: 0.0.0-placeholder
         version: link:../agents-a365-tooling
       '@microsoft/agents-hosting':
-        specifier: 1.1.0-alpha.58
-        version: 1.1.0-alpha.58
+        specifier: ^1.1.0-alpha.85
+        version: 1.1.0-alpha.85
+      langchain:
+        specifier: ^1.0.1
+        version: 1.0.3(@langchain/core@1.0.2(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.207.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@5.23.2(ws@8.18.3)(zod@4.1.12)))(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.207.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@5.23.2(ws@8.18.3)(zod@4.1.12))(zod-to-json-schema@3.24.6(zod@4.1.12))
     devDependencies:
       '@types/jest':
         specifier: ^29.5.14
@@ -381,8 +373,8 @@ importers:
         specifier: 0.0.0-placeholder
         version: link:../agents-a365-tooling
       '@microsoft/agents-hosting':
-        specifier: 1.1.0-alpha.58
-        version: 1.1.0-alpha.58
+        specifier: ^1.1.0-alpha.85
+        version: 1.1.0-alpha.85
       '@openai/agents':
         specifier: ^0.1.5
         version: 0.1.11(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.12)
@@ -435,6 +427,9 @@ importers:
       '@openai/agents':
         specifier: ^0.1.5
         version: 0.1.11(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.12)
+      '@openai/agents-openai':
+        specifier: '*'
+        version: 0.1.11(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.12)
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
@@ -453,6 +448,12 @@ importers:
       '@opentelemetry/semantic-conventions':
         specifier: ^1.37.0
         version: 1.37.0
+      dotenv:
+        specifier: ^17.2.2
+        version: 17.2.3
+      openai:
+        specifier: ^4.0.0
+        version: 4.104.0(ws@8.18.3)(zod@4.1.12)
     devDependencies:
       '@babel/preset-typescript':
         specifier: ^7.27.1
@@ -494,11 +495,11 @@ importers:
         specifier: '*'
         version: link:../../packages/agents-a365-runtime
       '@microsoft/agents-activity':
-        specifier: 1.1.0-alpha.58
-        version: 1.1.0-alpha.58
+        specifier: ^1.1.0-alpha.85
+        version: 1.1.0-alpha.85
       '@microsoft/agents-hosting':
-        specifier: 1.1.0-alpha.58
-        version: 1.1.0-alpha.58
+        specifier: ^1.1.0-alpha.85
+        version: 1.1.0-alpha.85
       dotenv:
         specifier: ^17.2.2
         version: 17.2.3
@@ -546,11 +547,11 @@ importers:
         specifier: '*'
         version: link:../../packages/agents-a365-tooling-extensions-openai
       '@microsoft/agents-activity':
-        specifier: 1.1.0-alpha.58
-        version: 1.1.0-alpha.58
+        specifier: ^1.1.0-alpha.85
+        version: 1.1.0-alpha.85
       '@microsoft/agents-hosting':
-        specifier: 1.1.0-alpha.58
-        version: 1.1.0-alpha.58
+        specifier: ^1.1.0-alpha.85
+        version: 1.1.0-alpha.85
       '@openai/agents':
         specifier: ^0.1.5
         version: 0.1.11(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.12)
@@ -564,6 +565,9 @@ importers:
         specifier: ^5.1.0
         version: 5.1.0
     devDependencies:
+      '@jest/globals':
+        specifier: ^29.7.0
+        version: 29.7.0
       '@microsoft/m365agentsplayground':
         specifier: ^0.2.18
         version: 0.2.20
@@ -582,12 +586,18 @@ importers:
       eslint:
         specifier: ^8.57.0
         version: 8.57.1
+      jest:
+        specifier: ^29.7.0
+        version: 29.7.0(@types/node@20.19.24)(ts-node@10.9.2(@types/node@20.19.24)(typescript@5.9.3))
       nodemon:
         specifier: ^3.1.10
         version: 3.1.10
       rimraf:
         specifier: ^6.0.0
         version: 6.1.0
+      ts-jest:
+        specifier: ^29.2.0
+        version: 29.4.5(@babel/core@7.28.5)(@jest/transform@29.7.0)(@jest/types@29.6.3)(babel-jest@29.7.0(@babel/core@7.28.5))(jest-util@29.7.0)(jest@29.7.0(@types/node@20.19.24)(ts-node@10.9.2(@types/node@20.19.24)(typescript@5.9.3)))(typescript@5.9.3)
       ts-node:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@20.19.24)(typescript@5.9.3)
@@ -1120,12 +1130,12 @@ packages:
       '@langchain/core': ^1.0.2
       '@langchain/langgraph': ^1.0.0
 
-  '@microsoft/agents-activity@1.1.0-alpha.58':
-    resolution: {integrity: sha512-YRC9upu3WF9LFiglxA8k7Z8Hff7FZynTmioPqqhi49+qROxaQURy1435KcZcRb40axLJLWq4Nnm57PL0rsmEWw==}
+  '@microsoft/agents-activity@1.1.0-alpha.85':
+    resolution: {integrity: sha512-iMzeYFJZPSrXkhHpHesKQ1gjvCm6uyPlH0ojsNf8Z3EODCeiFsxHOahoLyzCuqzcWBYhNCcQ45aarNbeJ84HgA==}
     engines: {node: '>=20.0.0'}
 
-  '@microsoft/agents-hosting@1.1.0-alpha.58':
-    resolution: {integrity: sha512-uv0D0lnLlRw57f51zgMviqDq1grzi8IaWqrtKzYh0K0+kbJuWxAYLk/pjbfSsoAH1ZEWVpm+UinjPczAjPHY0A==}
+  '@microsoft/agents-hosting@1.1.0-alpha.85':
+    resolution: {integrity: sha512-1Ii92EJSaQTuqjOBWUqoioClum+6Dh82uBmzoExMi3ZDJ9UTV6Kqg4W1h4PYhUZPmqIP3HLSVNvty84Gx/mqYg==}
     engines: {node: '>=20.0.0'}
 
   '@microsoft/m365agentsplayground@0.2.20':
@@ -1509,6 +1519,9 @@ packages:
   '@types/ms@2.1.0':
     resolution: {integrity: sha512-GsCCIZDE/p3i96vtEqx+7dBUGXrc7zeSK3wwPHIaRThS+9OhWIXRqzs4d6k1SVU8g91DrNRWxWUGhp5KXQb2VA==}
 
+  '@types/node-fetch@2.6.13':
+    resolution: {integrity: sha512-QGpRVpzSaUs30JBSGPjOg4Uveu384erbHBoT1zeONvyCfwQxIkUshLAOqN/k9EjGviPRmWTTe6aH2qySWKTVSw==}
+
   '@types/node@20.19.24':
     resolution: {integrity: sha512-FE5u0ezmi6y9OZEzlJfg37mqqf6ZDSF2V/NLjUyGrR9uTZ7Sb9F7bLNZ03S4XVUNRWGA7Ck4c1kK+YnuWjl+DA==}
 
@@ -1613,6 +1626,10 @@ packages:
   '@ungap/structured-clone@1.3.0':
     resolution: {integrity: sha512-WmoN8qaIAo7WTYWbAZuG8PYEhn5fkz7dZrqTBZ7dtt//lL2Gwms1IcnQ5yHqjDfX8Ft5j4YzDM23f87zBfDe9g==}
 
+  abort-controller@3.0.0:
+    resolution: {integrity: sha512-h8lQ8tacZYnR3vNQTgibj+tODHI5/+l06Au2Pcriv/Gmet0eaj4TwWH41sO9wnHDiQsEj19q0drzdWdeAHtweg==}
+    engines: {node: '>=6.5'}
+
   accepts@2.0.0:
     resolution: {integrity: sha512-5cvg6CtKwfgdmVqY1WIiXKc3Q1bkRqGLi+2W/6ao+6Y7gu/RCwRuAhGEzh5B4KlszSuTLgZYuqFqo5bImjNKng==}
     engines: {node: '>= 0.6'}
@@ -1639,6 +1656,10 @@ packages:
   agent-base@7.1.4:
     resolution: {integrity: sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ==}
     engines: {node: '>= 14'}
+
+  agentkeepalive@4.6.0:
+    resolution: {integrity: sha512-kja8j7PjmncONqaTsB8fQ+wE2mSU2DJ9D4XKoJ5PFWIdRMa6SLSN1ff4mOr4jCbfRSsxR4keIiySJU0N9T5hIQ==}
+    engines: {node: '>= 8.0.0'}
 
   ajv-formats@3.0.1:
     resolution: {integrity: sha512-8iUql50EUR+uUcdRQ3HDqa6EVyo3docL8g5WJ3FNcWmu62IbkGUue/pEyLBW8VGKKucTPgqeks4fIU1DA4yowQ==}
@@ -2064,6 +2085,10 @@ packages:
     resolution: {integrity: sha512-aIL5Fx7mawVa300al2BnEE4iNvo1qETxLrPI/o05L7z6go7fCw1J6EQmbK4FmJ2AS7kgVF/KEZWufBfdClMcPg==}
     engines: {node: '>= 0.6'}
 
+  event-target-shim@5.0.1:
+    resolution: {integrity: sha512-i/2XbnSz/uxRCU6+NdVJgKWDTM427+MqYbkQzD321DuCQJUqOuJKIA0IM2+W2xtYHdKOmZ4dR6fExsd4SXL+WQ==}
+    engines: {node: '>=6'}
+
   eventemitter3@4.0.7:
     resolution: {integrity: sha512-8guHBZCwKnFhYdHr2ysuRWErTwhoN2X8XELRlrRwpmfeY2jjuUN4taQMsULKUVo1K4DvZl+0pgfyoysHxvmvEw==}
 
@@ -2162,9 +2187,16 @@ packages:
     resolution: {integrity: sha512-gIXjKqtFuWEgzFRJA9WCQeSJLZDjgJUOMCMzxtvFq/37KojM1BFGufqsCy0r4qSQmYLsZYMeyRqzIWOMup03sw==}
     engines: {node: '>=14'}
 
+  form-data-encoder@1.7.2:
+    resolution: {integrity: sha512-qfqtYan3rxrnCk1VYaA4H+Ms9xdpPqvLZa6xmMgFvhO32x7/3J/ExcTd6qpxM0vH2GdMI+poehyBZvqfMTto8A==}
+
   form-data@4.0.4:
     resolution: {integrity: sha512-KrGhL9Q4zjj0kiUt5OO4Mr/A/jlI2jDYs5eHBpYHPcBEVSiipAvn2Ko2HnPe20rmcuuvMHNdZFp+4IlGTMF0Ow==}
     engines: {node: '>= 6'}
+
+  formdata-node@4.4.1:
+    resolution: {integrity: sha512-0iirZp3uVDjVGt9p49aTaqjk84TrglENEDuqfdlZQ1roC9CWlPk6Avf8EEnZNcAqPonwkG35x4n3ww/1THYAeQ==}
+    engines: {node: '>= 12.20'}
 
   forwarded@0.2.0:
     resolution: {integrity: sha512-buRG0fpBtRHSTCOASe6hD258tEubFoRLb4ZNA6NxMVHNw2gOcwHo9wyablzMzOA5z9xA9L1KNjk/Nt6MT9aYow==}
@@ -2287,6 +2319,9 @@ packages:
   human-signals@2.1.0:
     resolution: {integrity: sha512-B4FFZ6q/T2jhhksgkbEW3HBvWIfDW85snkQgawt07S7J5QXTk6BkNV+0yAeZrM5QpMAdYlocGoljn0sJ/WQkFw==}
     engines: {node: '>=10.17.0'}
+
+  humanize-ms@1.2.1:
+    resolution: {integrity: sha512-Fl70vYtsAFb/C06PTS9dZBo7ihau+Tu/DNCk/OyHhea07S+aeMWpFFkUaXRa8fI+ScZbEI8dfSxwY7gxZ9SAVQ==}
 
   iconv-lite@0.6.3:
     resolution: {integrity: sha512-4fCk79wshMdzMp2rH06qWrJE4iolqLhCUH+OiuIgU++RB0+94NlDL81atO7GX55uUKueo0txHNtvEyI6D7WdMw==}
@@ -2609,6 +2644,12 @@ packages:
     resolution: {integrity: sha512-eTIzlVOSUR+JxdDFepEYcBMtZ9Qqdef+rnzWdRZuMbOywu5tO2w2N7rqjoANZ5k9vywhL6Br1VRjUIgTQx4E8w==}
     engines: {node: '>=6'}
 
+  langchain@1.0.3:
+    resolution: {integrity: sha512-nGxI9li1yttHzLHtECgw3hGMNzEDQR+EpW4kHKy1mbWjyBXtUDI6SyHjAeOAX7c6oV1QYRlFsOlXtahPiMySpQ==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@langchain/core': ^1.0.2
+
   langsmith@0.3.77:
     resolution: {integrity: sha512-wbS/9IX/hOAsOEOtPj8kCS8H0tFHaelwQ97gTONRtIfoPPLd9MMUmhk0KQB5DdsGAI5abg966+f0dZ/B+YRRzg==}
     peerDependencies:
@@ -2793,6 +2834,20 @@ packages:
     resolution: {integrity: sha512-HbwT9OA/XBLgtUqWWqpiA3glZRHV7kS/gjizguGElVXYzCNvhF7hHOEt1nuQ6wsGNAYLmwAMtEQcnHQqSMbItQ==}
     hasBin: true
 
+  node-domexception@1.0.0:
+    resolution: {integrity: sha512-/jKZoMpw0F8GRwl4/eLROPA3cfcXtLApP0QzLmUT/HuPCZWyB7IY9ZrMeKw2O/nFIqPQB3PVM9aYm0F312AXDQ==}
+    engines: {node: '>=10.5.0'}
+    deprecated: Use your platform's native DOMException instead
+
+  node-fetch@2.7.0:
+    resolution: {integrity: sha512-c4FRfUm/dbcWZ7U+1Wq0AwCyFL+3nt2bEw05wfxSz+DWpWsitgmSgYmy2dQdWyKC1694ELPqMs/YzUSNozLt8A==}
+    engines: {node: 4.x || >=6.0.0}
+    peerDependencies:
+      encoding: ^0.1.0
+    peerDependenciesMeta:
+      encoding:
+        optional: true
+
   node-int64@0.4.0:
     resolution: {integrity: sha512-O5lz91xSOeoXP6DulyHfllpq+Eg00MWitZIbtPfoSEvqIHdl5gfcY6hYzDWnj0qD5tz52PI08u9qUvSVeUBeHw==}
 
@@ -2838,6 +2893,18 @@ packages:
   open@10.2.0:
     resolution: {integrity: sha512-YgBpdJHPyQ2UE5x+hlSXcnejzAvD0b22U2OuAP+8OnlJT+PjWPxtgmGqKKc+RgTM63U9gN0YzrYc71R2WT/hTA==}
     engines: {node: '>=18'}
+
+  openai@4.104.0:
+    resolution: {integrity: sha512-p99EFNsA/yX6UhVO93f5kJsDRLAg+CTA2RBqdHK4RtK8u5IJw32Hyb2dTGKbnnFmnuoBv5r7Z2CURI9sGZpSuA==}
+    hasBin: true
+    peerDependencies:
+      ws: ^8.18.0
+      zod: ^4.1.12
+    peerDependenciesMeta:
+      ws:
+        optional: true
+      zod:
+        optional: true
 
   openai@5.23.2:
     resolution: {integrity: sha512-MQBzmTulj+MM5O8SKEk/gL8a7s5mktS9zUtAkU257WjvobGc9nKcBuVwjyEEcb9SI8a8Y2G/mzn3vm9n1Jlleg==}
@@ -3226,6 +3293,9 @@ packages:
     resolution: {integrity: sha512-r0eojU4bI8MnHr8c5bNo7lJDdI2qXlWWJk6a9EAFG7vbhTjElYhBVS3/miuE0uOuoLdb8Mc/rVfsmm6eo5o9GA==}
     hasBin: true
 
+  tr46@0.0.3:
+    resolution: {integrity: sha512-N3WMsuqV66lT30CrXNbEjx4GEwlow3v6rr4mCcv6prnfwhS01rkgyFdjPNBYd9br7LpXV1+Emh01fHnq2Gdgrw==}
+
   ts-api-utils@1.4.3:
     resolution: {integrity: sha512-i3eMG77UTMD0hZhgRS562pv83RC6ukSAC2GMNWc+9dieh/+jDM5u5YG+NHX6VNDRHQcHwmsTHctP9LhbC3WxVw==}
     engines: {node: '>=16'}
@@ -3346,6 +3416,16 @@ packages:
 
   walker@1.0.8:
     resolution: {integrity: sha512-ts/8E8l5b7kY0vlWLewOkDXMmPdLcVV4GmOQLyxuSswIJsweeFZtAsMF7k1Nszz+TYBQrlYRmzOnr398y1JemQ==}
+
+  web-streams-polyfill@4.0.0-beta.3:
+    resolution: {integrity: sha512-QW95TCTaHmsYfHDybGMwO5IJIM93I/6vTRk+daHTWFPhwh+C8Cg7j7XyKrwrj8Ib6vYXe0ocYNrmzY4xAAN6ug==}
+    engines: {node: '>= 14'}
+
+  webidl-conversions@3.0.1:
+    resolution: {integrity: sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ==}
+
+  whatwg-url@5.0.0:
+    resolution: {integrity: sha512-saE57nupxk6v3HY35+jzBwYa0rKSy0XR8JSxZPwgLr7ys0IBzhGviA1/TUGJLmSVqs8pb9AnvICXEuOHLprYTw==}
 
   which@2.0.2:
     resolution: {integrity: sha512-BLI3Tl1TW3Pvl70l3yq3Y64i+awpwXqsGBYWkkqMtnbXgrMD+yj7rhW0kuEDxzJaYXGjEW5ogapKNMEKNMjibA==}
@@ -4167,7 +4247,7 @@ snapshots:
       - '@cfworker/json-schema'
       - supports-color
 
-  '@microsoft/agents-activity@1.1.0-alpha.58':
+  '@microsoft/agents-activity@1.1.0-alpha.85':
     dependencies:
       debug: 4.4.3(supports-color@5.5.0)
       uuid: 9.0.1
@@ -4175,11 +4255,11 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@microsoft/agents-hosting@1.1.0-alpha.58':
+  '@microsoft/agents-hosting@1.1.0-alpha.85':
     dependencies:
       '@azure/core-auth': 1.10.1
       '@azure/msal-node': 3.8.1
-      '@microsoft/agents-activity': 1.1.0-alpha.58
+      '@microsoft/agents-activity': 1.1.0-alpha.85
       axios: 1.13.1
       jsonwebtoken: 9.0.2
       jwks-rsa: 3.2.0
@@ -4703,6 +4783,11 @@ snapshots:
 
   '@types/ms@2.1.0': {}
 
+  '@types/node-fetch@2.6.13':
+    dependencies:
+      '@types/node': 20.19.24
+      form-data: 4.0.4
+
   '@types/node@20.19.24':
     dependencies:
       undici-types: 6.21.0
@@ -4840,6 +4925,10 @@ snapshots:
 
   '@ungap/structured-clone@1.3.0': {}
 
+  abort-controller@3.0.0:
+    dependencies:
+      event-target-shim: 5.0.1
+
   accepts@2.0.0:
     dependencies:
       mime-types: 3.0.1
@@ -4860,6 +4949,10 @@ snapshots:
   acorn@8.15.0: {}
 
   agent-base@7.1.4: {}
+
+  agentkeepalive@4.6.0:
+    dependencies:
+      humanize-ms: 1.2.1
 
   ajv-formats@3.0.1(ajv@8.17.1):
     optionalDependencies:
@@ -5309,6 +5402,8 @@ snapshots:
 
   etag@1.8.1: {}
 
+  event-target-shim@5.0.1: {}
+
   eventemitter3@4.0.7: {}
 
   eventsource-parser@3.0.6: {}
@@ -5446,6 +5541,8 @@ snapshots:
       cross-spawn: 7.0.6
       signal-exit: 4.1.0
 
+  form-data-encoder@1.7.2: {}
+
   form-data@4.0.4:
     dependencies:
       asynckit: 0.4.0
@@ -5453,6 +5550,11 @@ snapshots:
       es-set-tostringtag: 2.1.0
       hasown: 2.0.2
       mime-types: 2.1.35
+
+  formdata-node@4.4.1:
+    dependencies:
+      node-domexception: 1.0.0
+      web-streams-polyfill: 4.0.0-beta.3
 
   forwarded@0.2.0: {}
 
@@ -5584,6 +5686,10 @@ snapshots:
       - supports-color
 
   human-signals@2.1.0: {}
+
+  humanize-ms@1.2.1:
+    dependencies:
+      ms: 2.1.3
 
   iconv-lite@0.6.3:
     dependencies:
@@ -6091,6 +6197,23 @@ snapshots:
 
   kleur@3.0.3: {}
 
+  langchain@1.0.3(@langchain/core@1.0.2(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.207.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@5.23.2(ws@8.18.3)(zod@4.1.12)))(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.207.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@5.23.2(ws@8.18.3)(zod@4.1.12))(zod-to-json-schema@3.24.6(zod@4.1.12)):
+    dependencies:
+      '@langchain/core': 1.0.2(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.207.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@5.23.2(ws@8.18.3)(zod@4.1.12))
+      '@langchain/langgraph': 1.0.1(@langchain/core@1.0.2(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.207.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@5.23.2(ws@8.18.3)(zod@4.1.12)))(zod-to-json-schema@3.24.6(zod@4.1.12))(zod@4.1.12)
+      '@langchain/langgraph-checkpoint': 1.0.0(@langchain/core@1.0.2(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.207.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@5.23.2(ws@8.18.3)(zod@4.1.12)))
+      langsmith: 0.3.77(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.207.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@5.23.2(ws@8.18.3)(zod@4.1.12))
+      uuid: 9.0.1
+      zod: 4.1.12
+    transitivePeerDependencies:
+      - '@opentelemetry/api'
+      - '@opentelemetry/exporter-trace-otlp-proto'
+      - '@opentelemetry/sdk-trace-base'
+      - openai
+      - react
+      - react-dom
+      - zod-to-json-schema
+
   langsmith@0.3.77(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.207.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@5.23.2(ws@8.18.3)(zod@4.1.12)):
     dependencies:
       '@types/uuid': 9.0.8
@@ -6233,6 +6356,12 @@ snapshots:
 
   nerdbank-gitversioning@3.8.118: {}
 
+  node-domexception@1.0.0: {}
+
+  node-fetch@2.7.0:
+    dependencies:
+      whatwg-url: 5.0.0
+
   node-int64@0.4.0: {}
 
   node-releases@2.0.27: {}
@@ -6280,6 +6409,21 @@ snapshots:
       define-lazy-prop: 3.0.0
       is-inside-container: 1.0.0
       wsl-utils: 0.1.0
+
+  openai@4.104.0(ws@8.18.3)(zod@4.1.12):
+    dependencies:
+      '@types/node': 20.19.24
+      '@types/node-fetch': 2.6.13
+      abort-controller: 3.0.0
+      agentkeepalive: 4.6.0
+      form-data-encoder: 1.7.2
+      formdata-node: 4.4.1
+      node-fetch: 2.7.0
+    optionalDependencies:
+      ws: 8.18.3
+      zod: 4.1.12
+    transitivePeerDependencies:
+      - encoding
 
   openai@5.23.2(ws@8.18.3)(zod@4.1.12):
     optionalDependencies:
@@ -6651,6 +6795,8 @@ snapshots:
 
   touch@3.1.1: {}
 
+  tr46@0.0.3: {}
+
   ts-api-utils@1.4.3(typescript@5.9.3):
     dependencies:
       typescript: 5.9.3
@@ -6749,6 +6895,15 @@ snapshots:
   walker@1.0.8:
     dependencies:
       makeerror: 1.0.12
+
+  web-streams-polyfill@4.0.0-beta.3: {}
+
+  webidl-conversions@3.0.1: {}
+
+  whatwg-url@5.0.0:
+    dependencies:
+      tr46: 0.0.3
+      webidl-conversions: 3.0.1
 
   which@2.0.2:
     dependencies:
