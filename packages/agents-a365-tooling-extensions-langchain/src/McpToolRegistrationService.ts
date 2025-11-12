@@ -68,7 +68,7 @@ export class McpToolRegistrationService {
     mcpClientConfig.mcpServers = Object.assign(mcpClientConfig.mcpServers ?? {}, mcpServers);
     const multiServerMcpClient = new MultiServerMCPClient(mcpClientConfig);
     const mcpTools = await multiServerMcpClient.getTools();
-    
+
     // Create the agent with existing options and MCP tools
     // Note: MCP tools and LangChain tools are kept separate due to type incompatibility
     return createAgent({
