@@ -15,7 +15,7 @@ type ApplicationTurnState = TurnState<ConversationState>
 export class A365Agent extends AgentApplication<ApplicationTurnState> {
   isApplicationInstalled: boolean = false;
   termsAndConditionsAccepted: boolean = false;
-  agentName = 'A365 Agent';
+  agentName = 'Agent 365 Agent';
 
   constructor() {
     super();
