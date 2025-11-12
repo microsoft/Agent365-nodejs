@@ -12,7 +12,6 @@ interface McpServerConfig {
   serverName: string;
   serverUrl: string;
   authToken?: string;
-  environmentId?: string;
 }
 
 /**
@@ -22,12 +21,11 @@ export class LocalMcpToolRegistrationService {
   async addMcpToolServers(
     agent: Agent,
     userId: string,
-    environmentId: string,
     _turnContext: TurnContext,
     authToken: string,
   ): Promise<void> {
     try {
-      const serverConfigs = this.getServerConfigurations(userId, environmentId, authToken);
+      const serverConfigs = this.getServerConfigurations(userId, authToken);
       console.log(`🔗 Setting up ${serverConfigs.length} MCP servers...`);
 
       for (const config of serverConfigs) {
@@ -41,19 +39,17 @@ export class LocalMcpToolRegistrationService {
     }
   }
 
-  private getServerConfigurations(userId: string, environmentId: string, authToken: string): McpServerConfig[] {
+  private getServerConfigurations(userId: string, authToken: string): McpServerConfig[] {
     return [
       {
         serverName: 'mcp_MailTools',
         serverUrl: 'http://localhost:5309',
-        authToken,
-        environmentId
+        authToken
       },
       {
         serverName: 'mcp_CalendarTools',
         serverUrl: 'http://localhost:5309',
-        authToken,
-        environmentId
+        authToken
       }
     ];
   }
