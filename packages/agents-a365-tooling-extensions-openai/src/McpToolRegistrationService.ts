@@ -1,28 +1,35 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { McpToolServerConfigurationService, McpClientTool, Utility } from '@microsoft/agents-a365-tooling';
-import { AgenticAuthenticationService, Authorization } from '@microsoft/agents-a365-runtime';
+import { McpToolServerConfigurationService, Utility } from '@microsoft/agents-a365-tooling';
+import { AgenticAuthenticationService } from '@microsoft/agents-a365-runtime';
+
+// Agents SDK
+import { TurnContext, Authorization } from '@microsoft/agents-hosting';
 
 // OpenAI Agents SDK
 import { Agent, MCPServerStreamableHttp } from '@openai/agents';
-import { TurnContext } from '@microsoft/agents-hosting';
 
 /**
- * Discover MCP servers and list tools formatted for the Claude SDK.
- * Use getMcpServers to fetch server configs and getTools to enumerate tools.
+ * Discover MCP servers and list tools formatted for the OpenAI Agents SDK.
+ * Uses listToolServers to fetch server configs.
  */
 export class McpToolRegistrationService {
   private configService: McpToolServerConfigurationService  = new McpToolServerConfigurationService();
 
-  async addMcpToolServers(
+
+  /**
+   * Registers MCP tool servers and updates agent options with discovered tools and server configs.
+   * Call this to enable dynamic OpenAI tool access based on the current MCP environment.
+   */
+  async addToolServersToAgent(
     agent: Agent,
     agentUserId: string,
     environmentId: string,
     authorization: Authorization,
     turnContext: TurnContext,
     authToken: string
-  ): Promise<void> {
+  ): Promise<Agent> {
 
     if (!agent) {
       throw new Error('Agent is Required');
@@ -31,6 +38,9 @@ export class McpToolRegistrationService {
     if (!authToken) {
       authToken = await AgenticAuthenticationService.GetAgenticUserToken(authorization, turnContext);
     }
+
+    // Validate the authentication token
+    Utility.ValidateAuthToken(authToken);
 
     const servers = await this.configService.listToolServers(agentUserId, environmentId, authToken);
     const mcpServers: MCPServerStreamableHttp[] = [];
@@ -59,21 +69,7 @@ export class McpToolRegistrationService {
 
     agent.mcpServers = agent.mcpServers ?? [];
     agent.mcpServers.push(...mcpServers);
-  }
 
-  /**
-   * Connect to the MCP server and return tools with names prefixed by the server name.
-   * Throws if the server URL is missing or the client fails to list tools.
-   */
-  async getTools(mcpServerConfig: MCPServerStreamableHttp): Promise<McpClientTool[]> {
-    if (!mcpServerConfig) {
-      throw new Error('MCP Server Configuration is required');
-    }
-
-    await mcpServerConfig.connect();
-    const tools = await mcpServerConfig.listTools();
-    await mcpServerConfig.close();
-
-    return tools as McpClientTool[];
+    return agent;
   }
 }
