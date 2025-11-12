@@ -70,9 +70,8 @@ export class McpToolRegistrationService {
     const mcpTools = await multiServerMcpClient.getTools();
 
     // Merge existing agent tools with MCP tools
-    // Use type assertion to handle the union of DynamicStructuredTool and ServerTool/ClientTool
     const existingTools = agent.options.tools ?? [];
-    const allTools = [...existingTools, ...mcpTools] as any;
+    const allTools = [...existingTools, ...mcpTools];
 
     // Create the agent with existing options and combined tools
     return createAgent({
