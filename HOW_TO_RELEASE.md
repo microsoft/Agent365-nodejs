@@ -1,6 +1,6 @@
 # How to Create an Official Release
 
-This guide describes the process for creating an official release of the Agent365 SDK for Node.js using our semantic versioning system powered by Nerdbank.GitVersioning.
+This guide describes the process for creating an official release of the Agent 365 SDK for Node.js using our semantic versioning system powered by Nerdbank.GitVersioning.
 
 ## 📋 Table of Contents
 
@@ -147,7 +147,7 @@ The version will automatically be calculated as a stable release (without `-prev
 
 ```bash
 # Clone fresh to test
-git clone https://github.com/microsoft/Agent365.git test-release
+git clone https://github.com/microsoft/Agent365-nodejs.git test-release
 cd test-release/nodejs
 git checkout v1.1.0
 
@@ -176,9 +176,9 @@ grep -r "\"version\"" packages/*/package.json
 
 ### Step 7: Create GitHub Release
 
-1. Go to: https://github.com/microsoft/Agent365/releases/new
+1. Go to: https://github.com/microsoft/Agent365-nodejs/releases/new
 2. Choose the tag: `v1.1.0`
-3. Set release title: `Agent365 SDK for Node.js v1.1.0`
+3. Set release title: `Agent 365 SDK for Node.js v1.1.0`
 4. Add release notes (see template below)
 5. Attach build artifacts (if any)
 6. Check "Set as the latest release" (if applicable)
@@ -186,7 +186,7 @@ grep -r "\"version\"" packages/*/package.json
 
 **Release Notes Template:**
 ```markdown
-# Agent365 SDK for Node.js v1.1.0
+# Agent 365 SDK for Node.js v1.1.0
 
 ## 🎉 What's New
 
@@ -225,7 +225,7 @@ All packages in this release:
 npm install @microsoft/agents-a365-runtime@1.1.0
 ```
 
-**Full Changelog**: https://github.com/microsoft/Agent365/compare/v1.0.0...v1.1.0
+**Full Changelog**: https://github.com/microsoft/Agent365-nodejs/compare/v1.0.0...v1.1.0
 ```
 
 ### Step 8: Publish to NPM (Optional)
@@ -524,3 +524,4 @@ git push origin main
 **Document Version**: 1.0  
 **Last Updated**: November 2, 2025  
 **Maintained By**: DevOps Team
+
