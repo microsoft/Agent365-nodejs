@@ -1,158 +1,37 @@
-# Agent 365 Node.js Tooling SDK
+# @microsoft/agents-a365-tooling
 
-This directory contains the Node.js implementation of Agent 365 Tooling SDK for discovering and configuring MCP (Model Context Protocol) tool servers.
+[![npm](https://img.shields.io/npm/v/@microsoft/agents-a365-tooling?label=npm&logo=npm)](https://www.npmjs.com/package/@microsoft/agents-a365-tooling)
+[![npm Downloads](https://img.shields.io/npm/dm/@microsoft/agents-a365-tooling?label=Downloads&logo=npm)](https://www.npmjs.com/package/@microsoft/agents-a365-tooling)
 
-The package name is **@microsoft/agents-a365-tooling**
+Core tooling functionality for MCP (Model Context Protocol) tool server management in applications built with the Microsoft Agent 365 SDK. This package provides the foundation for discovering, registering, and managing tool servers across different AI frameworks.
 
-## Features
-
-- **Automatic Server Discovery**: Discovers MCP tool servers in development and production environments
-- **Environment-Aware Configuration**: Different behavior for development vs production environments
-- **Flexible Tool Server Sources**: Supports local manifest files and remote tooling gateway
-- **URL Generation**: Automatically builds proper MCP server URLs
-- **Error Handling**: Comprehensive error handling and fallback mechanisms
-
-## Core Components
-
-### `McpToolServerConfigurationService`
-
-The main service for discovering and configuring MCP tool servers.
-
-### `Utility`
-
-Helper class for URL construction and environment detection.
-
-## How to Retrieve Agent 365 Tools
-
-### Basic Usage
-
-```typescript
-import { McpToolServerConfigurationService } from '@microsoft/agents-a365-tooling';
-
-const configService = new McpToolServerConfigurationService();
-const servers = await configService.listToolServers(agentUserId, authToken);
-```
-
-### Understanding Tool Server Discovery
-
-The `listToolServers` method uses different strategies based on your environment:
-
-#### Development Mode (`NODE_ENV=Development`)
-
-In development, the service reads from a local `ToolingManifest.json` file:
-
-1. **Primary Location**: `[ProjectRoot]/ToolingManifest.json`
-2. **Fallback Location**: `[process.argv[1] directory]/ToolingManifest.json`
-
-#### Production Mode (any other NODE_ENV)
-
-In production, the service queries the remote tooling gateway using the provided agent user ID.
-
-## Configuration
-
-### Environment Variables
-
-Configure the service behavior using these environment variables:
+## Installation
 
 ```bash
-# Environment (determines discovery strategy)
-NODE_ENV=Development|Test|Production
-
-# For development mode with MCP Platform
-MCP_DEVELOPMENT_BASE_URL=https://agent365.svc.cloud.microsoft/mcp/environments
-
-# For development mode with mock servers
-TOOLS_MODE=MockMCPServer
-MOCK_MCP_SERVER_URL=http://localhost:5309/mcp-mock/agents/servers
-
-# For production environments
-# No additional environment variables needed - uses default endpoints
+npm install @microsoft/agents-a365-tooling
 ```
 
-### Development Setup with ToolingManifest.json
+## Usage
 
-Create a `ToolingManifest.json` file in your project root:
+For detailed usage examples and implementation guidance, see the [Microsoft Agent 365 Tooling Documentation](https://learn.microsoft.com/microsoft-agent-365/developer/tooling?tabs=nodejs).
 
-```json
-{
-  "mcpServers": [
-    {
-      "mcpServerName": "MailTools",
-      "mcpServerUniqueName": "mcp_MailTools"
-    },
-    {
-      "mcpServerName": "CalendarTools",
-      "mcpServerUniqueName": "mcp_CalendarTools"
-    },
-    {
-      "mcpServerName": "SharePointTools",
-      "mcpServerUniqueName": "mcp_SharePointTools"
-    },
-    {
-      "mcpServerName": "OneDriveTools",
-      "mcpServerUniqueName": "mcp_OneDriveServer"
-    },
-    {
-      "mcpServerName": "NLWeb",
-      "mcpServerUniqueName": "mcp_NLWeb"
-    }
-  ]
-}
-```
+## Support
 
-**Schema Explanation:**
-- `mcpServerName`: Display name for the server (used in logs and debugging)
-- `mcpServerUniqueName`: Unique identifier used to build the server URL
+For issues, questions, or feedback:
 
-### Production Setup with Tooling Gateway
+- File issues in the [GitHub Issues](https://github.com/microsoft/Agent365-nodejs/issues) section
+- See the [main documentation](../../README.md) for more information
 
-For production environments, ensure you have:
+## 📋 Telemetry
 
-1. **Valid Agent User ID**: The unique identifier for your digital worker/agent
-2. **Authentication Token**: Bearer token for accessing the tooling gateway.
+Data Collection. The software may collect information about you and your use of the software and send it to Microsoft. Microsoft may use this information to provide services and improve our products and services. You may turn off the telemetry as described in the repository. There are also some features in the software that may enable you and Microsoft to collect data from users of your applications. If you use these features, you must comply with applicable law, including providing appropriate notices to users of your applications together with a copy of Microsoft's privacy statement. Our privacy statement is located at https://go.microsoft.com/fwlink/?LinkID=824704. You can learn more about data collection and use in the help documentation and our privacy statement. Your use of the software operates as your consent to these practices.
 
-```typescript
-const agentUserId = process.env.AGENTIC_USER_ID || 'your-agent-user-id';
-const authToken = process.env.MCP_AUTH_TOKEN || await getAuthToken();
+## Trademarks
 
-const servers = await configService.listToolServers(agentUserId, authToken);
-```
+*Microsoft, Windows, Microsoft Azure and/or other Microsoft products and services referenced in the documentation may be either trademarks or registered trademarks of Microsoft in the United States and/or other countries. The licenses for this project do not grant you rights to use any Microsoft names, logos, or trademarks. Microsoft's general trademark guidelines can be found at http://go.microsoft.com/fwlink/?LinkID=254653.*
 
-## Troubleshooting Tool Discovery
+## License
 
-### Common Issues and Solutions
+Copyright (c) Microsoft Corporation. All rights reserved.
 
-#### No Tools Found in Development
-
-**Problem**: `listToolServers` returns an empty array in development.
-
-**Solutions:**
-- Verify `ToolingManifest.json` exists in your project root
-- Check the JSON syntax is valid
-- Ensure `NODE_ENV=Development` is set
-- Check console warnings for file path issues
-
-```typescript
-// Debug tool server discovery
-const configService = new McpToolServerConfigurationService();
-console.log('Environment:', process.env.NODE_ENV);
-console.log('Current working directory:', process.cwd());
-
-const servers = await configService.listToolServers(agentUserId, authToken);
-console.log('Discovered servers:', servers);
-```
-
-#### Invalid Server URLs
-
-**Problem**: Generated URLs don't work or return 404 errors.
-
-**Solutions:**
-- Check `mcpServerUniqueName` values in your manifest match available servers
-- Ensure the environment's base URL is accessible
-
-## Integration Examples
-
-For complete working implementations, see:
-
-- **Claude Integration**: [`../Claude/McpToolRegistrationService.ts`](../Claude/McpToolRegistrationService.ts)
-- **OpenAI Integration**: [`../OpenAI/McpToolRegistrationService.ts`](../OpenAI/McpToolRegistrationService.ts)
+Licensed under the MIT License - see the [LICENSE](../../LICENSE.md) file for details
