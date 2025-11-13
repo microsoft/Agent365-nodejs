@@ -7,8 +7,8 @@ settings:
 overrides:
   '@openai/agents': ^0.1.5
   '@openai/agents-core': ^0.1.5
-  '@microsoft/agents-hosting': ^1.1.0-alpha.85
-  '@microsoft/agents-activity': ^1.1.0-alpha.85
+  '@microsoft/agents-hosting': 1.1.0-alpha.58
+  '@microsoft/agents-activity': 1.1.0-alpha.58
   '@opentelemetry/core': ^2.2.0
   '@opentelemetry/api': ^1.9.0
   '@opentelemetry/exporter-trace-otlp-http': ^0.205.0
@@ -20,7 +20,6 @@ overrides:
   '@modelcontextprotocol/sdk': ^1.19.0
   '@azure/monitor-opentelemetry-exporter': ^1.0.0-beta.32
   '@azure/identity': ^4.12.0
-  langchain: ^1.0.1
   '@langchain/core': ^1.0.2
   '@langchain/mcp-adapters': ^1.0.0
   '@anthropic-ai/claude-agent-sdk': ^0.1.30
@@ -57,11 +56,11 @@ importers:
         specifier: workspace:*
         version: link:../agents-a365-runtime
       '@microsoft/agents-activity':
-        specifier: ^1.1.0-alpha.85
-        version: 1.1.0-alpha.85
+        specifier: 1.1.0-alpha.58
+        version: 1.1.0-alpha.58
       '@microsoft/agents-hosting':
-        specifier: ^1.1.0-alpha.85
-        version: 1.1.0-alpha.85
+        specifier: 1.1.0-alpha.58
+        version: 1.1.0-alpha.58
     devDependencies:
       '@types/jest':
         specifier: ^29.5.14
@@ -198,8 +197,8 @@ importers:
         specifier: ^4.12.0
         version: 4.13.0
       '@microsoft/agents-hosting':
-        specifier: ^1.1.0-alpha.85
-        version: 1.1.0-alpha.85
+        specifier: 1.1.0-alpha.58
+        version: 1.1.0-alpha.58
     devDependencies:
       '@types/jest':
         specifier: ^29.5.14
@@ -235,8 +234,8 @@ importers:
         specifier: workspace:*
         version: link:../agents-a365-runtime
       '@microsoft/agents-hosting':
-        specifier: ^1.1.0-alpha.85
-        version: 1.1.0-alpha.85
+        specifier: 1.1.0-alpha.58
+        version: 1.1.0-alpha.58
       '@modelcontextprotocol/sdk':
         specifier: ^1.19.0
         version: 1.21.1(@cfworker/json-schema@4.1.1)
@@ -284,8 +283,8 @@ importers:
         specifier: workspace:*
         version: link:../agents-a365-tooling
       '@microsoft/agents-hosting':
-        specifier: ^1.1.0-alpha.85
-        version: 1.1.0-alpha.85
+        specifier: 1.1.0-alpha.58
+        version: 1.1.0-alpha.58
       '@modelcontextprotocol/sdk':
         specifier: ^1.19.0
         version: 1.21.1(@cfworker/json-schema@4.1.1)
@@ -320,6 +319,9 @@ importers:
 
   packages/agents-a365-tooling-extensions-langchain:
     dependencies:
+      '@langchain/core':
+        specifier: ^1.0.2
+        version: 1.0.4(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@6.8.1(ws@8.18.3)(zod@4.1.12))
       '@langchain/mcp-adapters':
         specifier: ^1.0.0
         version: 1.0.0(@cfworker/json-schema@4.1.1)(@langchain/core@1.0.4(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@6.8.1(ws@8.18.3)(zod@4.1.12)))(@langchain/langgraph@1.0.2(@langchain/core@1.0.4(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@6.8.1(ws@8.18.3)(zod@4.1.12)))(zod-to-json-schema@3.24.6(zod@4.1.12))(zod@4.1.12))
@@ -330,11 +332,8 @@ importers:
         specifier: workspace:*
         version: link:../agents-a365-tooling
       '@microsoft/agents-hosting':
-        specifier: ^1.1.0-alpha.85
-        version: 1.1.0-alpha.85
-      langchain:
-        specifier: ^1.0.1
-        version: 1.0.4(@langchain/core@1.0.4(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@6.8.1(ws@8.18.3)(zod@4.1.12)))(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@6.8.1(ws@8.18.3)(zod@4.1.12))(zod-to-json-schema@3.24.6(zod@4.1.12))
+        specifier: 1.1.0-alpha.58
+        version: 1.1.0-alpha.58
     devDependencies:
       '@types/jest':
         specifier: ^29.5.14
@@ -373,8 +372,8 @@ importers:
         specifier: workspace:*
         version: link:../agents-a365-tooling
       '@microsoft/agents-hosting':
-        specifier: ^1.1.0-alpha.85
-        version: 1.1.0-alpha.85
+        specifier: 1.1.0-alpha.58
+        version: 1.1.0-alpha.58
       '@openai/agents':
         specifier: ^0.1.5
         version: 0.1.11(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.12)
@@ -495,11 +494,11 @@ importers:
         specifier: workspace:*
         version: link:../../packages/agents-a365-runtime
       '@microsoft/agents-activity':
-        specifier: ^1.1.0-alpha.85
-        version: 1.1.0-alpha.85
+        specifier: 1.1.0-alpha.58
+        version: 1.1.0-alpha.58
       '@microsoft/agents-hosting':
-        specifier: ^1.1.0-alpha.85
-        version: 1.1.0-alpha.85
+        specifier: 1.1.0-alpha.58
+        version: 1.1.0-alpha.58
       dotenv:
         specifier: ^17.2.2
         version: 17.2.3
@@ -547,11 +546,11 @@ importers:
         specifier: workspace:*
         version: link:../../packages/agents-a365-tooling-extensions-openai
       '@microsoft/agents-activity':
-        specifier: ^1.1.0-alpha.85
-        version: 1.1.0-alpha.85
+        specifier: 1.1.0-alpha.58
+        version: 1.1.0-alpha.58
       '@microsoft/agents-hosting':
-        specifier: ^1.1.0-alpha.85
-        version: 1.1.0-alpha.85
+        specifier: 1.1.0-alpha.58
+        version: 1.1.0-alpha.58
       '@openai/agents':
         specifier: ^0.1.5
         version: 0.1.11(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.12)
@@ -1130,12 +1129,12 @@ packages:
       '@langchain/core': ^1.0.2
       '@langchain/langgraph': ^1.0.0
 
-  '@microsoft/agents-activity@1.1.0-alpha.85':
-    resolution: {integrity: sha512-iMzeYFJZPSrXkhHpHesKQ1gjvCm6uyPlH0ojsNf8Z3EODCeiFsxHOahoLyzCuqzcWBYhNCcQ45aarNbeJ84HgA==}
+  '@microsoft/agents-activity@1.1.0-alpha.58':
+    resolution: {integrity: sha512-YRC9upu3WF9LFiglxA8k7Z8Hff7FZynTmioPqqhi49+qROxaQURy1435KcZcRb40axLJLWq4Nnm57PL0rsmEWw==}
     engines: {node: '>=20.0.0'}
 
-  '@microsoft/agents-hosting@1.1.0-alpha.85':
-    resolution: {integrity: sha512-1Ii92EJSaQTuqjOBWUqoioClum+6Dh82uBmzoExMi3ZDJ9UTV6Kqg4W1h4PYhUZPmqIP3HLSVNvty84Gx/mqYg==}
+  '@microsoft/agents-hosting@1.1.0-alpha.58':
+    resolution: {integrity: sha512-uv0D0lnLlRw57f51zgMviqDq1grzi8IaWqrtKzYh0K0+kbJuWxAYLk/pjbfSsoAH1ZEWVpm+UinjPczAjPHY0A==}
     engines: {node: '>=20.0.0'}
 
   '@microsoft/m365agentsplayground@0.2.20':
@@ -2620,12 +2619,6 @@ packages:
   kleur@3.0.3:
     resolution: {integrity: sha512-eTIzlVOSUR+JxdDFepEYcBMtZ9Qqdef+rnzWdRZuMbOywu5tO2w2N7rqjoANZ5k9vywhL6Br1VRjUIgTQx4E8w==}
     engines: {node: '>=6'}
-
-  langchain@1.0.4:
-    resolution: {integrity: sha512-g7z2kKvnXOecybbVGHfI2ZmdmP309mxC1FYlq6WC/7RsKgX5MwY9gBjwK16mpKOaozOD9QCo1Ia7o2UcUBRb9Q==}
-    engines: {node: '>=20'}
-    peerDependencies:
-      '@langchain/core': ^1.0.2
 
   langsmith@0.3.79:
     resolution: {integrity: sha512-j5uiAsyy90zxlxaMuGjb7EdcL51Yx61SpKfDOI1nMPBbemGju+lf47he4e59Hp5K63CY8XWgFP42WeZ+zuIU4Q==}
@@ -4236,7 +4229,7 @@ snapshots:
       - '@cfworker/json-schema'
       - supports-color
 
-  '@microsoft/agents-activity@1.1.0-alpha.85':
+  '@microsoft/agents-activity@1.1.0-alpha.58':
     dependencies:
       debug: 4.4.3(supports-color@5.5.0)
       uuid: 9.0.1
@@ -4244,11 +4237,11 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@microsoft/agents-hosting@1.1.0-alpha.85':
+  '@microsoft/agents-hosting@1.1.0-alpha.58':
     dependencies:
       '@azure/core-auth': 1.10.1
       '@azure/msal-node': 3.8.2
-      '@microsoft/agents-activity': 1.1.0-alpha.85
+      '@microsoft/agents-activity': 1.1.0-alpha.58
       axios: 1.13.2
       jsonwebtoken: 9.0.2
       jwks-rsa: 3.2.0
@@ -6154,23 +6147,6 @@ snapshots:
       json-buffer: 3.0.1
 
   kleur@3.0.3: {}
-
-  langchain@1.0.4(@langchain/core@1.0.4(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@6.8.1(ws@8.18.3)(zod@4.1.12)))(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@6.8.1(ws@8.18.3)(zod@4.1.12))(zod-to-json-schema@3.24.6(zod@4.1.12)):
-    dependencies:
-      '@langchain/core': 1.0.4(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@6.8.1(ws@8.18.3)(zod@4.1.12))
-      '@langchain/langgraph': 1.0.2(@langchain/core@1.0.4(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@6.8.1(ws@8.18.3)(zod@4.1.12)))(zod-to-json-schema@3.24.6(zod@4.1.12))(zod@4.1.12)
-      '@langchain/langgraph-checkpoint': 1.0.0(@langchain/core@1.0.4(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@6.8.1(ws@8.18.3)(zod@4.1.12)))
-      langsmith: 0.3.79(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@6.8.1(ws@8.18.3)(zod@4.1.12))
-      uuid: 9.0.1
-      zod: 4.1.12
-    transitivePeerDependencies:
-      - '@opentelemetry/api'
-      - '@opentelemetry/exporter-trace-otlp-proto'
-      - '@opentelemetry/sdk-trace-base'
-      - openai
-      - react
-      - react-dom
-      - zod-to-json-schema
 
   langsmith@0.3.79(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@6.8.1(ws@8.18.3)(zod@4.1.12)):
     dependencies:

@@ -14,10 +14,10 @@
         "varsIgnorePattern": "^_",
         "caughtErrorsIgnorePattern": "^_"
       }],
-    "@typescript-eslint/no-explicit-any": "error",
+    "@typescript-eslint/no-explicit-any": "warn",
     "prefer-const": "error",
     "no-var": "error",
-    "no-console": "off",
+    "no-console": "warn",
     "semi": ["error", "always"],
     "quotes": ["error", "single"],
     "indent": ["error", 2],

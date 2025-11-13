@@ -45,7 +45,7 @@ export interface AgentNotificationActivity {
   /**
    * Channel-specific data.
    */
-  channelData: unknown;
+  channelData: any;
 
   /**
    * The text content of the activity.

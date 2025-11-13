@@ -2,37 +2,33 @@
 // Licensed under the MIT License.
 
 // Agent365 SDK
-import { McpToolServerConfigurationService, Utility } from '@microsoft/agents-a365-tooling';
-import { AgenticAuthenticationService } from '@microsoft/agents-a365-runtime';
+import { McpToolServerConfigurationService, McpClientTool, Utility } from '@microsoft/agents-a365-tooling';
+import { AgenticAuthenticationService, Authorization } from '@microsoft/agents-a365-runtime';
 
 // Agents SDK
-import { TurnContext, Authorization } from '@microsoft/agents-hosting';
+import { TurnContext } from '@microsoft/agents-hosting';
 
 // LangChain SDKs
-import { createAgent, ReactAgent } from 'langchain';
 import { ClientConfig, Connection, MultiServerMCPClient } from '@langchain/mcp-adapters';
+import { DynamicStructuredTool } from '@langchain/core/tools';
 
 /**
- * Discover MCP servers and list tools formatted for the LangChain Orchestrator.
- * Uses listToolServers to fetch server configs and getTools to enumerate tools.
+ * Discover MCP servers and list tools formatted for the Claude SDK.
+ * Use getMcpServers to fetch server configs and getTools to enumerate tools.
  */
 export class McpToolRegistrationService {
   private configService: McpToolServerConfigurationService  = new McpToolServerConfigurationService();
 
-  /**
-   * Registers MCP tool servers and updates agent options with discovered tools and server configs.
-   * Call this to enable dynamic LangChain tool access based on the current MCP environment.
-   */
-  async addToolServersToAgent(
-    agent: ReactAgent,
+  async addMcpToolServers(
+    mcpClientConfig: ClientConfig,
     agentUserId: string,
     authorization: Authorization,
     turnContext: TurnContext,
     authToken: string
-  ): Promise<ReactAgent> {
+  ): Promise<DynamicStructuredTool[]> {
 
-    if (!agent) {
-      throw new Error('Langchain Agent is Required');
+    if (!mcpClientConfig) {
+      throw new Error('MCP Client is Required');
     }
 
     if (!authToken) {
@@ -53,7 +49,7 @@ export class McpToolRegistrationService {
         headers['Authorization'] = `Bearer ${authToken}`;
       }
 
-      // Create Connection instance for LangChain agents
+      // Create Connection instance for OpenAI agents
       mcpServers[server.mcpServerName] = {
         type: 'http',
         url: server.url,
@@ -61,7 +57,6 @@ export class McpToolRegistrationService {
       } as Connection;
     }
 
-    const mcpClientConfig = {} as ClientConfig;
     mcpClientConfig.mcpServers = Object.assign(mcpClientConfig.mcpServers ?? {}, mcpServers);
     const multiServerMcpClient = new MultiServerMCPClient(mcpClientConfig);
     const mcpTools = await multiServerMcpClient.getTools();

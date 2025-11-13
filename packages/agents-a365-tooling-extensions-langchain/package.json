@@ -37,7 +37,7 @@
     "@microsoft/agents-a365-tooling": "workspace:*",
     "@microsoft/agents-a365-runtime": "workspace:*",
     "@microsoft/agents-hosting": "*",
-    "langchain": "*",
+    "@langchain/core": "*",
     "@langchain/mcp-adapters": "*"
   },
   "devDependencies": {
