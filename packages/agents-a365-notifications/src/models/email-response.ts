@@ -41,6 +41,7 @@ export function createEmailResponseActivity(emailResponseHtmlBody: string): Acti
     entities: []
   });
 
+  workingActivity.entities = workingActivity.entities || [];
   workingActivity.entities.push(createEmailResponse(emailResponseHtmlBody));
 
   return workingActivity;
