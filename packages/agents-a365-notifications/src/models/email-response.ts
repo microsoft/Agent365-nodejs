@@ -36,10 +36,8 @@ export function createEmailResponse(htmlBody?: string): EmailResponse {
  * @returns A message activity containing the EmailResponse entity
  */
 export function createEmailResponseActivity(emailResponseHtmlBody?: string): Activity {
-  const workingActivity = Activity.fromObject({
+  return Activity.fromObject({
     type: 'message',
     entities: [createEmailResponse(emailResponseHtmlBody)]
   });
-
-  return workingActivity;
 }
