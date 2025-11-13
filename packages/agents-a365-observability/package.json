@@ -37,11 +37,8 @@
     "directory": "nodejs/packages/agents-a365-observability"
   },
   "dependencies": {
-    "@microsoft/agents-a365-runtime": "0.0.0-placeholder",
+    "@microsoft/agents-a365-runtime": "workspace:*",
     "@azure/monitor-opentelemetry-exporter": "*",
-    "@modelcontextprotocol/sdk": "*",
-    "@openai/agents": "*",
-    "@openai/agents-core": "*",
     "@opentelemetry/api": "*",
     "@opentelemetry/exporter-trace-otlp-http": "*",
     "@opentelemetry/instrumentation": "*",

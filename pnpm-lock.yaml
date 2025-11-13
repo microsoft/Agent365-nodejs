@@ -96,17 +96,8 @@ importers:
         specifier: ^1.0.0-beta.32
         version: 1.0.0-beta.32
       '@microsoft/agents-a365-runtime':
-        specifier: 0.0.0-placeholder
+        specifier: workspace:*
         version: link:../agents-a365-runtime
-      '@modelcontextprotocol/sdk':
-        specifier: ^1.19.0
-        version: 1.21.0(@cfworker/json-schema@4.1.1)
-      '@openai/agents':
-        specifier: ^0.1.5
-        version: 0.1.11(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.12)
-      '@openai/agents-core':
-        specifier: ^0.1.5
-        version: 0.1.11(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.12)
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
