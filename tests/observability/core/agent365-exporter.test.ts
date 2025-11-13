@@ -55,7 +55,7 @@ describe('Agent365Exporter', () => {
     jest.clearAllTimers();
     jest.useRealTimers();
     global.fetch = originalFetch;
-    AgenticTokenCacheInstance.clear();
+  AgenticTokenCacheInstance.invalidateAll();
   });
 
   it('returns success immediately with no spans', async () => {
@@ -102,11 +102,15 @@ describe('Agent365Exporter', () => {
 
   it('falls back to AgenticTokenCache when no custom resolver provided', async () => {
     mockFetchSequence([200]);
-    // Preload cache
+  // Preload cache via RefreshObservabilityToken API
     const tenant = tenantId;
     const agent = agentId;
-    const key = AgenticTokenCacheInstance.createCacheKey(agent, tenant);
-    AgenticTokenCacheInstance.set(key, 'cached-token');
+    const ctx = { activity: { id: 'x' } } as any; // minimal TurnContext stub
+    const auth = { exchangeToken: async () => ({ token: 'cached-token' }) } as any; // Authorization stub
+  await AgenticTokenCacheInstance.RefreshObservabilityToken(agent, tenant, ctx, auth, ['scope.read']);
+
+    // Spy on getObservabilityToken to assert fallback path uses cache retrieval
+    const getTokenSpy = jest.spyOn(AgenticTokenCacheInstance as any, 'getObservabilityToken');
 
     const opts = new Agent365ExporterOptions();
     opts.clusterCategory = 'local'; // no tokenResolver assigned -> fallback to cache
@@ -120,6 +124,9 @@ describe('Agent365Exporter', () => {
     const callback = jest.fn();
     await exporter.export(spans, callback);
     expect(callback).toHaveBeenCalledWith({ code: ExportResultCode.SUCCESS });
+    expect(getTokenSpy).toHaveBeenCalledTimes(1);
+    expect(getTokenSpy.mock.calls[0][0]).toBe(agent);
+    expect(getTokenSpy.mock.calls[0][1]).toBe(tenant);
     const fetchCalls = (global.fetch as unknown as { mock: { calls: any[] } }).mock.calls;
     expect(fetchCalls.length).toBe(1);
     const headersArg = fetchCalls[0][1].headers;

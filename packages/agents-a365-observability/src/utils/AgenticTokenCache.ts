@@ -9,15 +9,27 @@ import logger, { formatError } from './logging';
 
 // Structure stored per key
 interface CacheEntry {
-  turnContext: TurnContext;
   scopes: string[];
   token?: string;       // Cached token value
   expiresOn?: number;   // Expiration epoch millis (if provided by exchange response)
-  authorization: Authorization;
 }
 
-
-export class AgenticTokenCache {
+/**
+ * In-memory cache for observability tokens keyed by agentId and tenantId.
+ * Features:
+ *  - Stores bearer token + decoded expiration per (agentId, tenantId) key.
+ *  - Applies an early refresh skew so tokens are proactively refreshed before hard expiry.
+ *  - Retries transient exchange failures (network / HTTP 408, 429, 5xx) with linear backoff (200ms, 400ms).
+ *  - Serializes write/exchange operations per key with a Promise chain (withKeyLock) to avoid duplicate exchanges.
+ *  - Provides synchronous read access (getObservabilityToken) that never triggers network IO.
+ *
+ * Thread Safety:
+ *  Per-key serialization ensures at most one exchange updates a given entry concurrently. Reads are lock‑free.
+ *
+ * Limitations:
+ *  Process-local only; for multi-process or horizontal scaling scenarios a distributed cache/service is required.
+ */
+class AgenticTokenCache {
   private readonly _map = new Map<string, CacheEntry>();
   private readonly _defaultRefreshSkewMs = 60_000; // refresh 60s before expiry
   // Per-key promise chain to serialize mutations & exchanges
@@ -27,69 +39,125 @@ export class AgenticTokenCache {
   }
 
   /**
-   * Registers observability context for (agentId, tenantId).
-   * First registration wins; subsequent calls are ignored (idempotent, no mutation/merge).
+   * Returns the currently cached valid token for the key (no network calls).
+   * @param agentId Unique agent/application identifier.
+   * @param tenantId Tenant identifier (AAD tenant / customer context).
+   * @returns Cached bearer token string if present & not expired; otherwise null.
    */
-  registerObservability(
+  public getObservabilityToken(agentId: string, tenantId: string): string | null {
+    const key = this.makeKey(agentId, tenantId);
+    const entry = this._map.get(key);
+    if (!entry) {
+      logger.error(`[AgenticTokenCache] No cache entry found for agentId=${agentId} tenantId=${tenantId}`);
+      return null;
+    }
+    if (!entry.token) {
+      logger.error(`[AgenticTokenCache] No token cached for agentId=${agentId} tenantId=${tenantId}`);
+      return null;
+    }
+    if (this.isExpired(entry)) {
+      logger.error(`[AgenticTokenCache] Cached token expired for agentId=${agentId} tenantId=${tenantId}`);
+      return null;
+    }
+    return entry.token;
+  }
+
+  /**
+   * Ensures a valid token is cached for the (agentId, tenantId) key. Performs an exchange when:
+   *   - No token exists yet.
+   *   - Token is expired OR within the early refresh skew window.
+   * Retries transient failures up to 2 times (3 total attempts) with linear backoff (200ms, 400ms).
+   * Idempotent under the per-key lock: concurrent callers serialize and reuse the first successful result.
+   * @param agentId Unique agent identifier.
+   * @param tenantId Tenant identifier.
+   * @param turnContext TurnContext providing activity/service metadata required for exchange.
+   * @param authorization Authorization instance used to perform the token exchange.
+   * @param scopes Requested scopes; falls back to getObservabilityAuthenticationScope() if empty.
+   * @returns Promise resolved once cache updated (success or failure). Inspect using getObservabilityToken().
+   */
+  public async RefreshObservabilityToken(
     agentId: string,
     tenantId: string,
     turnContext: TurnContext,
     authorization: Authorization,
-    scopes?: string[],
-  ): void {
-    if (!authorization) {
-      throw new Error('authorization cannot be null.');
-    }
-    if (!agentId || !agentId.trim()) {
-      throw new Error('agentId cannot be null or whitespace.');
-    }
-    if (!tenantId || !tenantId.trim()) {
-      throw new Error('tenantId cannot be null or whitespace.');
-    }
-    if (!turnContext) {
-      throw new Error('turnContext cannot be null.');
-    }
-
+    scopes: string[]
+  ): Promise<void> {
     const key = this.makeKey(agentId, tenantId);
-    const effectiveScopes = (scopes && scopes.length > 0)
-      ? scopes
-      : getObservabilityAuthenticationScope();
-    if (this._map.has(key)) {
+    if (!authorization) {
+      logger.error('[AgenticTokenCache] Cannot exchange token. Authorization instance not set.');
       return;
     }
-    // Clone the TurnContext to avoid later 'Proxy has been revoked' errors when accessed asynchronously
-    const cloned = this.cloneTurnContext(turnContext);
-    this._map.set(key, {
-      turnContext: cloned,
-      scopes: effectiveScopes,
-      authorization,
-    });
-  }
 
-  /**
-   * Retrieves (and if necessary exchanges) the observability token.
-   * Returns null on failure or if not registered.
-   */
-  async getObservabilityToken(agentId: string, tenantId: string): Promise<string | null> {
-    const key = this.makeKey(agentId, tenantId);
-    const entry = this._map.get(key);
-    if (!entry) {
-      logger.error(`AgenticTokenCache: No auth registration needed is found. No exchange token will run. agentId: ${agentId}, tenantId: ${tenantId}`);
-      return null;
+    if (!turnContext) {
+      logger.error('[AgenticTokenCache] Cannot exchange token. TurnContext instance not set.');
+      return;
     }
 
-    return this.withKeyLock<string | null>(key, async () => {
-      if (entry.token && !this.isExpired(entry)) {
-        return entry.token;
+    // Acquire or return cached token under key lock
+    return this.withKeyLock<void>(key, async () => {
+      // Entry creation moved inside lock to avoid race on first initialization
+      let entry = this._map.get(key);
+      if (!entry) {
+        const effectiveScopes = (scopes && scopes.length > 0) ? scopes : getObservabilityAuthenticationScope();
+        entry = { scopes: effectiveScopes };
+        this._map.set(key, entry);
       }
-      const token = await this.exchangeToken(entry).catch(() => null);
-      entry.token = token || undefined;
-      return token;
+      try {
+        if (entry.token && !this.isExpired(entry)) {
+          return;
+        }
+
+        const maxRetries = 2;
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+          logger.info(`[AgenticTokenCache] No cached token found. Exchanging token ... attempt ${attempt + 1}/${maxRetries + 1}`);
+          try {
+            const tokenResponse = await authorization.exchangeToken(
+              turnContext,
+              'agentic1',
+              { scopes: entry.scopes }
+            );
+            if (!tokenResponse?.token) {
+              logger.error('[AgenticTokenCache] Token exchange returned undefined token, please check agent permission configuration.');
+              entry.token = undefined;
+              entry.expiresOn = undefined;
+              // Undefined token generally not transient; stop retries.
+              break;
+            }
+            entry.token = tokenResponse.token;
+            const oboExp = this.decodeExp(entry.token);
+            if (oboExp) {
+              entry.expiresOn = oboExp * 1000; // to epoch millisecond
+            }
+            logger.info('[AgenticTokenCache] Token exchange successful and cached.');
+            // success
+            return;
+          } catch (e) {
+            const retriable = this.isRetriableError(e);
+            if (retriable && attempt < maxRetries) {
+              logger.warn(`[AgenticTokenCache] Retriable token exchange failure (attempt ${attempt + 1})`, formatError(e));
+              const backoffMs = 200 * (attempt + 1);
+              await this.sleep(backoffMs);
+              continue;
+            }
+            logger.error('[AgenticTokenCache] Non-retriable token exchange failure', formatError(e));
+            entry.token = undefined;
+            entry.expiresOn = undefined;
+            break;
+          }
+        }
+      } catch (e) {
+        logger.error('[AgenticTokenCache] Token exchange failed unexpectedly', formatError(e));
+        entry.token = undefined;
+        entry.expiresOn = undefined;
+      }
+      return;
     });
   }
 
   /**
-   * Explicitly invalidates a cached token forcing re-exchange on next request.
+   * Explicitly clears token + expiration for one key forcing a fresh exchange next time.
+   * @param agentId Agent identifier.
+   * @param tenantId Tenant identifier.
    */
   invalidateToken(agentId: string, tenantId: string): void {
     const key = this.makeKey(agentId, tenantId);
@@ -100,11 +168,27 @@ export class AgenticTokenCache {
     }
   }
 
-  /** Clears all cached tokens & registrations. */
+  /**
+   * Clears all cached entries (tokens + metadata) for every key.
+   */
   invalidateAll(): void {
     this._map.clear();
   }
 
+
+  /** Decode exp from JWT (returns epoch seconds). */
+  private decodeExp(jwt: string): number | undefined {
+    try {
+      if (!jwt) { return undefined; }
+      const parts = jwt.split('.');
+      if (parts.length < 2) { return undefined; }
+      const payload = parts[1] + '='.repeat((4 - (parts[1].length % 4)) % 4); // base64 padding
+      const json = JSON.parse(Buffer.from(payload, 'base64').toString('utf8')) as { exp?: unknown };
+      return typeof json.exp === 'number' ? json.exp : undefined;
+    } catch {
+      return undefined;
+    }
+  }
   private isExpired(entry: CacheEntry): boolean {
     if (!entry.expiresOn) {
       return false; // If we don't have expiration metadata, assume still valid
@@ -113,37 +197,24 @@ export class AgenticTokenCache {
     return now >= (entry.expiresOn - this._defaultRefreshSkewMs); // Refresh early by skew
   }
 
-  private async exchangeToken(entry: CacheEntry): Promise<string | null> {
-    logger.info('AgenticTokenCache: Exchanging token via Authorization.exchangeToken...');
-    if(!entry.authorization) {
-      throw new Error('Authorization instance not set.');
+  /** Basic transient error classification for retry logic */
+  private isRetriableError(err: unknown): boolean {
+    const e = err as { code?: string; status?: number; message?: string } | undefined;
+    if (!e) return false;
+    // Network / timeout style codes
+    const msg = (e.message || '').toLowerCase();
+    if (msg.includes('timeout') || msg.includes('ecconnreset') || msg.includes('network')) return true;
+    // HTTP status heuristics
+    if (typeof e.status === 'number') {
+      if (e.status === 408 || e.status === 429) return true;
+      if (e.status >= 500 && e.status < 600) return true;
     }
-    try {
-      const tokenResponse = await entry.authorization.exchangeToken(
-        entry.turnContext,
-        'agentic',
-        { scopes: entry.scopes }
-      );
-      if (!tokenResponse?.token) {
-        logger.error('AgenticTokenCache: Token exchange returned undefined token');
-        return null;
-      }
-      const expiresOn = (tokenResponse as { expiresOn?: number | Date | string }).expiresOn;
-      if (expiresOn instanceof Date) {
-        entry.expiresOn = expiresOn.getTime();
-      } else if (typeof expiresOn === 'number') {
-        entry.expiresOn = expiresOn;
-      } else if (typeof expiresOn === 'string') {
-        const parsed = Date.parse(expiresOn);
-        if (!isNaN(parsed)) {
-          entry.expiresOn = parsed;
-        }
-      }
-      return tokenResponse.token;
-    } catch (e) {
-      logger.error('AgenticTokenCache: Token exchange failed with', formatError(e));
-      return null; // Silent failure
-    }
+    return false;
+  }
+
+  /** Simple sleep helper for retry backoff */
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   private async withKeyLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
@@ -159,41 +230,14 @@ export class AgenticTokenCache {
     this._keyLocks.set(key, currentPromise);
     return currentPromise;
   }
-
-  /**
-   * Creates a shallow clone of the TurnContext preserving activity and services.
-   * Falls back gracefully if a native clone() exists.
-   */
-  private cloneTurnContext(ctx: TurnContext): TurnContext {
-    // Prefer native implementation if available
-    const possibleClone = (ctx as unknown as { clone?: () => TurnContext }).clone;
-    if (typeof possibleClone === 'function') {
-      try {
-        return possibleClone.call(ctx);
-      } catch {
-        // Ignore and fallback
-      }
-    }
-
-    // Derive a typed helper interface to avoid 'any'
-    interface TurnContextLike {
-      activity: Record<string, unknown>;
-      [key: string]: unknown;
-    }
-    const original = ctx as unknown as TurnContextLike;
-
-    const proto = Object.getPrototypeOf(ctx);
-    const shallow: TurnContextLike = Object.create(proto);
-    for (const k of Object.keys(original)) {
-      shallow[k] = original[k];
-    }
-    // Shallow copy activity object
-    shallow.activity = { ...original.activity };
-    return shallow as unknown as TurnContext;
-  }
 }
 
-// Helper for external callers to build a cache key if needed
+/**
+ * Helper for external callers to build a cache key string (agentId:tenantId) consistent with internal usage.
+ * @param agentId Agent identifier.
+ * @param tenantId Tenant identifier.
+ * @returns Combined cache key string in format "agentId:tenantId".
+ */
 export function createAgenticTokenCacheKey(agentId: string, tenantId: string): string {
   return `${agentId}:${tenantId}`;
 }
