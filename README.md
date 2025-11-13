@@ -75,7 +75,7 @@ For more detailed build instructions, see the [HOW_TO_BUILD.md](HOW_TO_BUILD.md)
 - **packages/agents-a365-tooling-extensions-claude**: Claude/Anthropic tooling extensions
 - **packages/agents-a365-tooling-extensions-langchain**: LangChain tooling extensions
 - **packages/agents-a365-tooling-extensions-openai**: OpenAI tooling extensions
-For sample applications, see the [Microsoft Agent 365 SDK Samples repository](https://github.com/microsoft/Agent365-Samples)
+- For sample applications, see the [Microsoft Agent 365 SDK Samples repository](https://github.com/microsoft/Agent365-Samples)
 - **tests/**: Unit and integration tests
 
 ## Support
