@@ -420,6 +420,9 @@ importers:
       '@azure/monitor-opentelemetry-exporter':
         specifier: ^1.0.0-beta.32
         version: 1.0.0-beta.32
+      '@microsoft/agents-a365-notifications':
+        specifier: '*'
+        version: link:../packages/agents-a365-notifications
       '@microsoft/agents-a365-observability':
         specifier: '*'
         version: link:../packages/agents-a365-observability
@@ -429,6 +432,18 @@ importers:
       '@microsoft/agents-a365-runtime':
         specifier: '*'
         version: link:../packages/agents-a365-runtime
+      '@microsoft/agents-a365-tooling':
+        specifier: '*'
+        version: link:../packages/agents-a365-tooling
+      '@microsoft/agents-a365-tooling-extensions-claude':
+        specifier: '*'
+        version: link:../packages/agents-a365-tooling-extensions-claude
+      '@microsoft/agents-a365-tooling-extensions-langchain':
+        specifier: '*'
+        version: link:../packages/agents-a365-tooling-extensions-langchain
+      '@microsoft/agents-a365-tooling-extensions-openai':
+        specifier: '*'
+        version: link:../packages/agents-a365-tooling-extensions-openai
       '@modelcontextprotocol/sdk':
         specifier: ^1.19.0
         version: 1.21.0(@cfworker/json-schema@4.1.1)
