@@ -30,14 +30,19 @@ export function createEmailResponse(htmlBody?: string): EmailResponse {
   };
 }
 
+/**
+ * Creates an activity with an EmailResponse entity
+ * @param emailResponseHtmlBody - The HTML body content for the email response
+ * @returns A message activity containing the EmailResponse entity
+ */
 export function createEmailResponseActivity(emailResponseHtmlBody: string): Activity {
   const workingActivity = Activity.fromObject({
-        type: 'message',
-        entities: []
-      });
-      
+    type: 'message',
+    entities: []
+  });
+
   workingActivity.entities = workingActivity.entities || [];
   workingActivity.entities.push(createEmailResponse(emailResponseHtmlBody));
-      
+
   return workingActivity;
 }
