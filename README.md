@@ -1,4 +1,4 @@
-# Microsoft Agent 365 SDK - Node.js
+# Microsoft Agent 365 SDK - Node.js/TypeScript
 
 [![npm](https://img.shields.io/npm/v/@microsoft/agents-a365-observability?label=npm&logo=npm)](https://www.npmjs.com/search?q=%40microsoft%2Fagents-a365)
 [![npm Downloads](https://img.shields.io/npm/dm/@microsoft/agents-a365-observability?label=Downloads&logo=npm)](https://www.npmjs.com/search?q=%40microsoft%2Fagents-a365)
@@ -75,7 +75,7 @@ For more detailed build instructions, see the [HOW_TO_BUILD.md](HOW_TO_BUILD.md)
 - **packages/agents-a365-tooling-extensions-claude**: Claude/Anthropic tooling extensions
 - **packages/agents-a365-tooling-extensions-langchain**: LangChain tooling extensions
 - **packages/agents-a365-tooling-extensions-openai**: OpenAI tooling extensions
-- **samples/**: For sample applications, see the [Agent365-Samples repository](https://github.com/microsoft/Agent365-Samples/tree/main/nodejs)
+For sample applications, see the [Microsoft Agent 365 SDK Samples repository](https://github.com/microsoft/Agent365-Samples)
 - **tests/**: Unit and integration tests
 
 ## Support
@@ -111,7 +111,7 @@ Enterprise-grade extensions for observability, notifications, runtime utilities,
 
 - [Microsoft Agent 365 SDK - C# /.NET  repository](https://github.com/microsoft/Agent365-dotnet)
 - [Microsoft Agent 365 SDK - Python repository](https://github.com/microsoft/Agent365-python)
-- [Microsoft Agent 365 SDK - NodeJS/TypeScript repository](https://github.com/microsoft/Agent365-nodejs) - You are here
+- [Microsoft Agent 365 SDK - Node.js/TypeScript repository](https://github.com/microsoft/Agent365-nodejs) - You are here
 - [Microsoft Agent 365 SDK Samples repository](https://github.com/microsoft/Agent365-Samples)
 - [Microsoft Agent 365 developer documentation](https://learn.microsoft.com/microsoft-agent-365/developer/)
 
