@@ -22,7 +22,6 @@ export class McpToolRegistrationService {
   async addMcpToolServers(
     mcpClientConfig: ClientConfig,
     agentUserId: string,
-    environmentId: string,
     authorization: Authorization,
     turnContext: TurnContext,
     authToken: string
@@ -36,7 +35,11 @@ export class McpToolRegistrationService {
       authToken = await AgenticAuthenticationService.GetAgenticUserToken(authorization, turnContext);
     }
 
-    const servers = await this.configService.listToolServers(agentUserId, environmentId, authToken);
+    // Validate the authentication token
+    Utility.ValidateAuthToken(authToken);
+
+    const servers = await this.configService.listToolServers(agentUserId, authToken);
+
     const mcpServers: Record<string, Connection> = {};
 
     for (const server of servers) {
@@ -44,9 +47,6 @@ export class McpToolRegistrationService {
       const headers: Record<string, string> = {};
       if (authToken) {
         headers['Authorization'] = `Bearer ${authToken}`;
-      }
-      if (Utility.GetUseEnvironmentId() && environmentId) {
-        headers['x-ms-environment-id'] = environmentId;
       }
 
       // Create Connection instance for OpenAI agents
@@ -59,30 +59,16 @@ export class McpToolRegistrationService {
 
     mcpClientConfig.mcpServers = Object.assign(mcpClientConfig.mcpServers ?? {}, mcpServers);
     const multiServerMcpClient = new MultiServerMCPClient(mcpClientConfig);
+    const mcpTools = await multiServerMcpClient.getTools();
 
-    return multiServerMcpClient.getTools();
-  }
+    // Merge existing agent tools with MCP tools
+    const existingTools = agent.options.tools ?? [];
+    const allTools = [...existingTools, ...mcpTools];
 
-  /**
-   * Connect to the MCP server and return tools with names prefixed by the server name.
-   * Throws if the server URL is missing or the client fails to list tools.
-   */
-  async getTools(mcpServerName: string, mcpServerConnection: Connection): Promise<McpClientTool[]> {
-    if (!mcpServerConnection) {
-      throw new Error('MCP Server Connection is required');
-    }
-
-    const mcpClientConfig: ClientConfig = {
-      mcpServers: {
-        [mcpServerName]: mcpServerConnection
-      }
-    };
-
-    const multiServerMcpClient = new MultiServerMCPClient(mcpClientConfig);
-    return (await multiServerMcpClient.getTools()).map((tool: DynamicStructuredTool) => ({
-      name: tool.name,
-      description: tool.description,
-      inputSchema: tool.schema
-    })) as McpClientTool[];
+    // Create the agent with existing options and combined tools
+    return createAgent({
+      ...agent.options,
+      tools: allTools,
+    });
   }
 }

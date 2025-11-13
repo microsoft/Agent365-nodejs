@@ -38,36 +38,22 @@ export class Utility {
       }
     }
 
-    if (!this.GetUseEnvironmentId()) {
-      return `${this.getMcpPlatformBaseUrl()}/agents/servers`;
-    }
-
-    return `${this.getMcpPlatformBaseUrl()}/mcp/environments`;
+    return `${this.getMcpPlatformBaseUrl()}/agents/servers`;
   }
 
   /**
-   * Build the full URL for accessing a specific MCP server in a given environment.
-   * This appends the environment id and server name to the base MCP environments URL.
+   * Build the full URL for accessing a specific MCP server.
    *
    * Example:
-   *   Utility.BuildMcpServerUrl('default-abc', 'MyServer')
-   *   // => "https://agent365.svc.cloud.microsoft/mcp/environments/default-abc/servers/MyServer/"
+   *   Utility.BuildMcpServerUrl('MyServer')
+   *   // => "https://agent365.svc.cloud.microsoft/agents/servers/MyServer/"
    *
-   * @param environmentId - The environment identifier (for example 'default-...').
    * @param serverName - The MCP server resource name.
    * @returns The fully-qualified MCP server URL including trailing slash.
   */
-  public static BuildMcpServerUrl(environmentId: string, serverName: string) : string {
+  public static BuildMcpServerUrl(serverName: string) : string {
     const baseUrl = this.GetMcpBaseUrl();
-    if (
-      !this.GetUseEnvironmentId() ||
-      (this.getCurrentEnvironment().toLowerCase() === 'development' &&
-      baseUrl.endsWith('servers'))
-    ) {
-      return `${baseUrl}/${serverName}`;
-    } else {
-      return `${baseUrl}/${environmentId}/servers/${serverName}`;
-    }
+    return `${baseUrl}/${serverName}`;
   }
 
   public static GetToolsMode(): ToolsMode {
@@ -105,17 +91,5 @@ export class Utility {
     }
 
     return MCP_PLATFORM_PROD_BASE_URL;
-  }
-
-  /**
-   * Determines whether to use the environment ID in MCP server URLs.
-   * Reads the USE_ENVIRONMENT_ID environment variable (case-insensitive).
-   * If not set, defaults to 'true'.
-   *
-   * @returns {boolean} True if environment ID should be used in URLs; otherwise, false.
-   */
-  public static GetUseEnvironmentId(): boolean {
-    const useEnvId = process.env.USE_ENVIRONMENT_ID || 'true';
-    return useEnvId.toLowerCase() === 'true';
   }
 }

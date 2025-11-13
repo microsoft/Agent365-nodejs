@@ -32,9 +32,10 @@
   ],
   "scripts": {
     "build": "npm run build:cjs && npm run build:esm",
-    "build:cjs": "tsc --project tsconfig.cjs.json",
-    "build:esm": "tsc --project tsconfig.esm.json",
-    "clean": "rimraf dist",
+    "build:cjs": "npx tsc --project tsconfig.cjs.json",
+    "build:esm": "npx tsc --project tsconfig.esm.json",
+    "build:watch": "npx tsc --watch",
+    "clean": "npx rimraf dist",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "test": "jest",
@@ -43,7 +44,7 @@
     "pack": "npm pack --pack-destination=../"
   },
   "dependencies": {
-    "@microsoft/agents-a365-observability": "0.0.0-placeholder",
+    "@microsoft/agents-a365-observability": "workspace:*",
     "@openai/agents": "*",
     "@opentelemetry/api": "*",
     "@opentelemetry/instrumentation": "*"
