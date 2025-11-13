@@ -9,8 +9,8 @@ overrides:
   "@openai/agents-core": "^0.1.5"
 
   # Microsoft Agent packages
-  "@microsoft/agents-hosting": "^1.1.0-alpha.85"
-  "@microsoft/agents-activity": "^1.1.0-alpha.85"
+  "@microsoft/agents-hosting": "1.1.0-alpha.58"
+  "@microsoft/agents-activity": "1.1.0-alpha.58"
 
   # OpenTelemetry packages - align versions
   "@opentelemetry/core": "^2.2.0"
@@ -30,7 +30,6 @@ overrides:
   "@azure/identity": "^4.12.0"
 
   # LangChain packages - use latest stable
-  "langchain": "^1.0.1"
   "@langchain/core": "^1.0.2"
   "@langchain/mcp-adapters": "^1.0.0"
 

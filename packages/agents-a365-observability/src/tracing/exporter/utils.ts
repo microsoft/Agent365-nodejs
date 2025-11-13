@@ -5,7 +5,6 @@
 import { ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import { SpanKind, SpanStatusCode } from '@opentelemetry/api';
 import { OpenTelemetryConstants } from '../constants';
-import logger from '../../utils/logging';
 
 /**
  * Convert trace ID to hex string format
@@ -86,15 +85,12 @@ export function partitionByIdentity(
 ): Map<string, ReadableSpan[]> {
   const groups = new Map<string, ReadableSpan[]>();
 
-  let skippedCount = 0;
   for (const span of spans) {
     const attrs = span.attributes || {};
     const tenant = asStr(attrs[OpenTelemetryConstants.TENANT_ID_KEY]);
     const agent = asStr(attrs[OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]);
 
     if (!tenant || !agent) {
-      skippedCount++;
-      logger.warn(`[Agent365Exporter] Skipping span without tenant or agent ID. Span name: ${span.name}`);
       continue;
     }
 
@@ -104,7 +100,6 @@ export function partitionByIdentity(
     groups.set(key, existing);
   }
 
-  logger.info(`[Agent365Exporter] Partitioned into ${groups.size} identity groups (${skippedCount} spans skipped)`);
   return groups;
 }
 
@@ -114,9 +109,7 @@ export function partitionByIdentity(
 export function isAgent365ExporterEnabled(): boolean {
   const a365Env = process.env[OpenTelemetryConstants.ENABLE_A365_OBSERVABILITY_EXPORTER]?.toLowerCase() || '';
   const validValues = ['true', '1', 'yes', 'on'];
-  const enabled: boolean = validValues.includes(a365Env);
-  logger.info(`[Agent365Exporter] Agent365 exporter enabled: ${enabled}`);
-  return enabled;
+  return validValues.includes(a365Env);
 }
 
 
@@ -127,5 +120,3 @@ export function parseIdentityKey(key: string): { tenantId: string; agentId: stri
   const [tenantId, agentId] = key.split(':');
   return { tenantId, agentId };
 }
-
-

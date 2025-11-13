@@ -1,6 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-
 export enum ToolsMode {
   MockMCPServer = 'MockMCPServer',
   MCPPlatform = 'MCPPlatform'
@@ -10,61 +7,6 @@ export enum ToolsMode {
 const MCP_PLATFORM_PROD_BASE_URL = 'https://agent365.svc.cloud.microsoft';
 
 export class Utility {
-  /**
-   * Validates a JWT authentication token.
-   * Checks that the token is a valid JWT and is not expired.
-   *
-   * @param authToken - The JWT token to validate.
-   * @throws Error if the token is invalid or expired.
-   */
-  public static ValidateAuthToken(authToken: string | undefined): void {
-    return Utility.validateAuthToken(authToken);
-  }
-
-  /**
-   * Private helper to validate a JWT authentication token.
-   * Checks that the token is a valid JWT and is not expired.
-   *
-   * @param authToken - The JWT token to validate.
-   * @throws Error if the token is invalid or expired.
-   */
-  private static validateAuthToken(authToken: string | undefined): void {
-    if (!authToken) {
-      throw new Error('Authentication token is required');
-    }
-
-    // Parse JWT token (format: header.payload.signature)
-    const parts = authToken.split('.');
-    if (parts.length !== 3) {
-      throw new Error('Invalid JWT token format');
-    }
-
-    let payload: {
-      exp?: number;
-    };
-
-    try {
-      // Decode the payload (second part of the JWT)
-      const payloadBase64 = parts[1];
-      // Handle URL-safe base64
-      const paddedBase64 = payloadBase64.padEnd(payloadBase64.length + (4 - payloadBase64.length % 4) % 4, '=');
-      const payloadJson = Buffer.from(paddedBase64.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8');
-      payload = JSON.parse(payloadJson);
-    } catch (error) {
-      throw new Error('Failed to decode JWT token payload');
-    }
-
-    // Check expiration
-    if (payload.exp) {
-      const currentTimestamp = Math.floor(Date.now() / 1000);
-      if (payload.exp < currentTimestamp) {
-        throw new Error('Authentication token has expired');
-      }
-    } else {
-      throw new Error('Authentication token does not contain expiration claim');
-    }
-  }
-
   /**
    * Construct the tooling gateway URL for a given digital worker (agent user).
    * This endpoint is used to discover MCP servers associated with the specified agent user.
