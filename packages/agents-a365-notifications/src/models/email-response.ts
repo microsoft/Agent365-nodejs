@@ -1,4 +1,4 @@
-import { Entity } from '@microsoft/agents-activity';
+import { Activity, Entity } from '@microsoft/agents-activity';
 
 /**
  * Represents an email response entity to be sent back.
@@ -28,4 +28,16 @@ export function createEmailResponse(htmlBody?: string): EmailResponse {
     type: 'emailResponse',
     htmlBody: htmlBody ?? '',
   };
+}
+
+export function createEmailResponseActivity(emailResponseHtmlBody: string): Activity {
+  const workingActivity = Activity.fromObject({
+        type: 'message',
+        entities: []
+      });
+      
+  workingActivity.entities = workingActivity.entities || [];
+  workingActivity.entities.push(createEmailResponse(emailResponseHtmlBody));
+      
+  return workingActivity;
 }
