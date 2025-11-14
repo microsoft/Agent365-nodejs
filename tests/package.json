@@ -30,8 +30,8 @@
   "license": "See license file",
   "repository": {
     "type": "git",
-    "url": "https://github.com/microsoft/Agent365.git",
-    "directory": "nodejs/tests"
+    "url": "https://github.com/microsoft/Agent365-nodejs.git",
+    "directory": "tests"
   },
   "dependencies": {
     "@microsoft/agents-a365-observability": "workspace:*",
