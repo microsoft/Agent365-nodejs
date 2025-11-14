@@ -30,8 +30,8 @@
   "license": "See license file",
   "repository": {
     "type": "git",
-    "url": "https://github.com/microsoft/Agent365.git",
-    "directory": "nodejs/packages/agents-a365-tooling-extensions-openai"
+    "url": "https://github.com/microsoft/Agent365-nodejs.git",
+    "directory": "packages/agents-a365-tooling-extensions-openai"
   },
   "dependencies": {
     "@microsoft/agents-a365-tooling": "workspace:*",

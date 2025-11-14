@@ -12,7 +12,7 @@ import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
 import { trace } from '@opentelemetry/api';
 import { ClusterCategory } from '@microsoft/agents-a365-runtime';
 /**
- * Configuration options for Agent365 Observability Builder
+ * Configuration options for Agent 365 Observability Builder
  */
 export interface BuilderOptions {
   /** Custom service name for telemetry */
@@ -28,7 +28,7 @@ export interface BuilderOptions {
 }
 
 /**
- * Builder for configuring Agent365 with OpenTelemetry tracing
+ * Builder for configuring Agent 365 with OpenTelemetry tracing
  */
 export class ObservabilityBuilder {
   private options: BuilderOptions = {};
@@ -48,7 +48,7 @@ export class ObservabilityBuilder {
   }
 
   /**
-   * Configures the token resolver for Agent365 exporter
+   * Configures the token resolver for Agent 365 exporter
    * @param tokenResolver Function to resolve authentication tokens
    * @returns The builder instance for method chaining
    */
@@ -58,7 +58,7 @@ export class ObservabilityBuilder {
   }
 
   /**
-   * Configures the cluster category for Agent365 exporter
+   * Configures the cluster category for Agent 365 exporter
    * @param clusterCategory The cluster category (e.g., "preprod", "prod")
    * @returns The builder instance for method chaining
    */
@@ -70,7 +70,7 @@ export class ObservabilityBuilder {
   private getTraceExporter() {
     if (isAgent365ExporterEnabled()){
       if (!this.options.tokenResolver) {
-        throw new Error('tokenResolver must be provided when Agent365 exporter is enabled');
+        throw new Error('tokenResolver must be provided when Agent 365 exporter is enabled');
       }
       return new Agent365Exporter(
         this.options.tokenResolver,
@@ -92,7 +92,7 @@ export class ObservabilityBuilder {
   }
 
   /**
-   * Builds and initializes the Agent365 configuration
+   * Builds and initializes the Agent 365 configuration
    * @returns The configured NodeSDK instance
    */
   public build(): boolean {
