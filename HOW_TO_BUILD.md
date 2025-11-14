@@ -1,6 +1,6 @@
-# How to Build Agent 365 Node.js SDK
+# How to Build Microsoft Agent 365 Node.js SDK
 
-This guide provides instructions for building and developing the Agent 365 Node.js SDK packages.
+This guide provides instructions for building and developing the Microsoft Agent 365 Node.js SDK packages.
 
 ## Prerequisites
 
@@ -10,7 +10,7 @@ This guide provides instructions for building and developing the Agent 365 Node.
 
 ## Project Structure
 
-The Agent 365 Node.js SDK is organized as a monorepo with the following structure:
+The Microsoft Agent 365 Node.js SDK is organized as a monorepo with the following structure:
 
 ```
 nodejs/
@@ -216,6 +216,6 @@ When ready to publish packages:
 
 ## Additional Resources
 
-- [Agent 365 Documentation](../../README.md)
+- [Microsoft Agent 365 Documentation](../../README.md)
 - [Contributing Guidelines](../../CONTRIBUTING.md)
 - [Security Policy](../../SECURITY.md)
