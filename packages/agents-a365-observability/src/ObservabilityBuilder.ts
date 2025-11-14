@@ -74,7 +74,6 @@ export class ObservabilityBuilder {
       return new BatchSpanProcessor(new ConsoleSpanExporter());
     }
     const opts = new Agent365ExporterOptions();
-    opts.clusterCategory = this.options.clusterCategory || 'prod';
     if (this.options.tokenResolver) {
       opts.tokenResolver = this.options.tokenResolver;
     }
