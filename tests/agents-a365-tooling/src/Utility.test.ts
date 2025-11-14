@@ -3,19 +3,16 @@
 
 import { Utility, ToolsMode } from '@microsoft/agents-a365-tooling';
 
-// Mock process.env for testing
 declare const global: any;
 
 describe('Utility Class', () => {
   let originalEnv: any;
 
   beforeEach(() => {
-    // Save original environment
     originalEnv = { ...global.process.env };
   });
 
   afterEach(() => {
-    // Restore original environment
     global.process.env = originalEnv;
   });
 
@@ -95,10 +92,9 @@ describe('Utility Class', () => {
   describe('BuildMcpServerUrl Method', () => {
     it('should build correct server URL with environment and server name', () => {
       // Act
-      const url = Utility.BuildMcpServerUrl('test-env', 'MyServer');
+      const url = Utility.BuildMcpServerUrl('MyServer');
 
       // Assert
-      expect(url).toContain('test-env');
       expect(url).toContain('MyServer');
       expect(typeof url).toBe('string');
     });
@@ -106,16 +102,15 @@ describe('Utility Class', () => {
     it('should handle different environment and server name combinations', () => {
       // Arrange & Act
       const testCases = [
-        { env: 'production', server: 'api-server' },
-        { env: 'development', server: 'test-server' },
-        { env: 'staging', server: 'staging-server' }
+        { server: 'api-server' },
+        { server: 'test-server' },
+        { server: 'staging-server' }
       ];
 
       testCases.forEach(testCase => {
-        const url = Utility.BuildMcpServerUrl(testCase.env, testCase.server);
+        const url = Utility.BuildMcpServerUrl(testCase.server);
         
         // Assert
-        expect(url).toContain(testCase.env);
         expect(url).toContain(testCase.server);
         expect(typeof url).toBe('string');
       });
@@ -126,7 +121,7 @@ describe('Utility Class', () => {
       const serverNames = ['server-with-dashes', 'server_with_underscores', 'server123'];
       
       serverNames.forEach(serverName => {
-        const url = Utility.BuildMcpServerUrl('test-env', serverName);
+        const url = Utility.BuildMcpServerUrl(serverName);
         expect(url).toContain(serverName);
       });
     });
@@ -161,31 +156,12 @@ describe('Utility Class', () => {
     });
   });
 
-  describe('GetUseEnvironmentId Method', () => {
-    it('should return boolean value', () => {
-      // Act
-      const useEnvId = Utility.GetUseEnvironmentId();
-
-      // Assert
-      expect(typeof useEnvId).toBe('boolean');
-    });
-
-    it('should have consistent behavior', () => {
-      // Act
-      const result1 = Utility.GetUseEnvironmentId();
-      const result2 = Utility.GetUseEnvironmentId();
-
-      // Assert
-      expect(result1).toBe(result2);
-    });
-  });
-
   describe('Method Integration', () => {
     it('should use consistent base URLs across methods', () => {
       // Act
       const baseUrl = Utility.GetMcpBaseUrl();
       const gatewayUrl = Utility.GetToolingGatewayForDigitalWorker('test-agent');
-      const serverUrl = Utility.BuildMcpServerUrl('test-env', 'test-server');
+      const serverUrl = Utility.BuildMcpServerUrl('test-server');
 
       // Assert - All should use the same domain
       const baseUrlDomain = baseUrl.match(/https?:\/\/[^\/]+/)?.[0];
@@ -198,7 +174,7 @@ describe('Utility Class', () => {
       const urls = [
         Utility.GetMcpBaseUrl(),
         Utility.GetToolingGatewayForDigitalWorker('agent'),
-        Utility.BuildMcpServerUrl('env', 'server')
+        Utility.BuildMcpServerUrl('server')
       ];
 
       // Assert

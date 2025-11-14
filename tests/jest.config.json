@@ -9,14 +9,24 @@
     "**/?(*.)+(spec|test).ts"
   ],
   "transform": {
-    "^.+\\.ts$": "ts-jest"
+    "^.+\\.ts$": ["ts-jest", {
+      "isolatedModules": true
+    }]
   },
   "collectCoverageFrom": [
     "src/**/*.ts",
     "!src/**/*.d.ts"
   ],
    "moduleNameMapper": {
-    "^@opentelemetry/api$": "<rootDir>/../node_modules/@opentelemetry/api"
+    "^@opentelemetry/api$": "<rootDir>/../node_modules/@opentelemetry/api",
+    "^@microsoft/agents-a365-notifications$": "<rootDir>/../packages/agents-a365-notifications/src",
+    "^@microsoft/agents-a365-observability$": "<rootDir>/../packages/agents-a365-observability/src",
+    "^@microsoft/agents-a365-observability-extensions-openai$": "<rootDir>/../packages/agents-a365-observability-extensions-openai/src",
+    "^@microsoft/agents-a365-runtime$": "<rootDir>/../packages/agents-a365-runtime/src",
+    "^@microsoft/agents-a365-tooling$": "<rootDir>/../packages/agents-a365-tooling/src",
+    "^@microsoft/agents-a365-tooling-extensions-claude$": "<rootDir>/../packages/agents-a365-tooling-extensions-claude/src",
+    "^@microsoft/agents-a365-tooling-extensions-langchain$": "<rootDir>/../packages/agents-a365-tooling-extensions-langchain/src",
+    "^@microsoft/agents-a365-tooling-extensions-openai$": "<rootDir>/../packages/agents-a365-tooling-extensions-openai/src"
   },
   "moduleDirectories": ["node_modules", "<rootDir>/../node_modules"]
 }
