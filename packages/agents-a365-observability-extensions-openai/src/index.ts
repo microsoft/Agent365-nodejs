@@ -3,7 +3,7 @@
 // ------------------------------------------------------------------------------
 
 /**
- * Wraps the OpenAI Agents SDK tracer to integrate with Agent365 Observability.
+ * Wraps the OpenAI Agents SDK tracer to integrate with Agent 365 Observability.
  */
 
 export { OpenAIAgentsTraceInstrumentor, OpenAIAgentsInstrumentationConfig } from './OpenAIAgentsTraceInstrumentor';
