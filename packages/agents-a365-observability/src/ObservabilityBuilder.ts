@@ -73,8 +73,7 @@ export class ObservabilityBuilder {
         throw new Error('tokenResolver must be provided when Agent 365 exporter is enabled');
       }
       return new Agent365Exporter(
-        this.options.tokenResolver,
-        this.options.clusterCategory || 'prod'
+        this.options.tokenResolver
       );
     } else {
       return new ConsoleSpanExporter();
