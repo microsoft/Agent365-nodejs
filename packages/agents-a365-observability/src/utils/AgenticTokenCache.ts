@@ -225,7 +225,7 @@ class AgenticTokenCache {
     if (!e) return false;
     // Network / timeout style codes
     const msg = (e.message || '').toLowerCase();
-    if (msg.includes('timeout') || msg.includes('ECONNRESET') || msg.includes('network')) return true;
+    if (msg.includes('timeout') || msg.includes('econnreset') || msg.includes('network')) return true;
     // HTTP status heuristics
     if (typeof e.status === 'number') {
       if (e.status === 408 || e.status === 429) return true;
