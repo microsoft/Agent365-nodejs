@@ -1,10 +1,10 @@
 # Sample Agent - Node.js OpenAI
 
-This directory contains a sample OpenAI agent implementation using the Agent365 framework with Node.js and Agent365 OpenAI Agents SDK instrumentation extensions.
+This directory contains a sample OpenAI agent implementation using the Microsoft Agent 365 SDK with Node.js and OpenAI Agents SDK instrumentation extensions.
 
 ## Demonstrates
 
-This sample demonstrates how to build auto instrument for Agent365 using  OpenAI Agents SDK instrumentation extensions for telemetry and observability.
+This sample demonstrates how to build auto instrument for Agent 365 using OpenAI Agents SDK instrumentation extensions for telemetry and observability.
 
 
 
@@ -36,7 +36,7 @@ $ npm run build
 
 Create the required `.env` file out of the provided example `.env.example`. Just copying it as-is should be enough.
 
-If you'd like to use Agentic authentication, you should set the values under Agent365 Authentication Configuration.
+If you'd like to use Agentic authentication, you should set the values under Agent 365 Authentication Configuration.
 Otherwise, you can set the value `MCP_AUTH_TOKEN` to authentication against your MCP servers.
 
 `NODE_ENV` should be set to `Development` if you'd like to use your tooling manifest. Otherwise, the tooling sdk will
@@ -144,7 +144,7 @@ This sample includes a VS Code debug configuration. To debug:
    - You can get an API key from: https://platform.openai.com/api-keys
 
 2. **Launch the debugger**:
-   - Open VS Code in the root Agent365 directory
+   - Open VS Code in the root Agent 365 directory
    - Go to Run and Debug (Ctrl+Shift+D)
    - Select "Debug OpenAI Agent with Instrumentation" from the dropdown
    - Press F5 or click the green play button
