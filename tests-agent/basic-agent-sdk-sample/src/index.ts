@@ -19,17 +19,15 @@ a365Observability.start();
 // Mock authentication middleware for development
 // This is only required when running from agents playground
 try {
-app.use((req: Request, res: Response, next: NextFunction) => {
-  // Create a mock identity when JWT is disabled
-  req.user = {
-    aud: authConfig.clientId || 'mock-client-id',
-    appid: authConfig.clientId || 'mock-client-id',
-    azp: authConfig.clientId || 'mock-client-id'
-  }
-  next()
-}) 
-
-//app.use(authorizeJWT(authConfig));
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    // Create a mock identity when JWT is disabled
+    req.user = {
+      aud: authConfig.clientId || 'mock-client-id',
+      appid: authConfig.clientId || 'mock-client-id',
+      azp: authConfig.clientId || 'mock-client-id'
+    };  
+    next();
+  });
 } catch (err) {
   console.warn('Skipping mock authentication middleware:', err);
 }

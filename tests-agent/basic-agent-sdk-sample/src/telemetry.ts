@@ -33,12 +33,15 @@ const getClusterCategory = (): ClusterCategory => {
   return 'dev' as ClusterCategory; // Safe fallback
 };
 
-export const a365Observability = ObservabilityManager.configure(
-  (builder: Builder) =>
-    builder            
-      .withService('TypeScript Sample Agent', '1.0.0')
-      //.withTokenResolver(tokenResolver) // specify a custom token resolver. When the custom token resolver is not specified, the default resolver AgenticTokenCache will be used.
-      .withClusterCategory(getClusterCategory())
-);
+// Configure observability builder (conditionally adding token resolver based on env flag)
+export const a365Observability = ObservabilityManager.configure((builder: Builder) => {
+  builder
+    .withService('TypeScript Sample Agent', '1.0.0')
+    .withClusterCategory(getClusterCategory());
+  // Opt-in custom token resolver via env flag `Use_Custom_Resolver=true`
+  if (process.env.Use_Custom_Resolver === 'true') {
+    builder.withTokenResolver(tokenResolver);
+  }
+});
 
 

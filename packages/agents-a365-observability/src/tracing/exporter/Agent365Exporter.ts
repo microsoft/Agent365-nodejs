@@ -11,7 +11,6 @@ import { partitionByIdentity, parseIdentityKey, hexTraceId, hexSpanId, kindName,
 import logger, { formatError } from '../../utils/logging';
 import { AgenticTokenCacheInstance } from '../../utils/AgenticTokenCache';
 import { Agent365ExporterOptions } from './Agent365ExporterOptions';
-
 const DEFAULT_HTTP_TIMEOUT_SECONDS = 30000; // 30 seconds in ms
 const DEFAULT_MAX_RETRIES = 3;
 
@@ -65,10 +64,6 @@ interface OTLPStatus {
   message?: string;
 }
 
-/**
- * Token resolver function type - supports both sync and async implementations
- */
-export type TokenResolver = (agentId: string, tenantId: string) => string | null | Promise<string | null>;
 
 /**
  * Observability span exporter for Agent365:
@@ -161,7 +156,7 @@ export class Agent365Exporter implements SpanExporter {
       'content-type': 'application/json'
     };
 
-    const tokenResult = this.options.tokenResolver!(agentId, tenantId,);
+    const tokenResult = this.options.tokenResolver!(agentId, tenantId);
     const token = tokenResult instanceof Promise ? await tokenResult : tokenResult;
     if (token) {
       headers['authorization'] = `Bearer ${token}`;

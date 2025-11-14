@@ -86,26 +86,26 @@ agentApplication.onActivity(
       await context.sendActivity(Activity.fromObject({
         type: 'typing',
       }));
-
-      /*
-      // Cache the agentic token for observability token resolver, only needed for custom token resolver example
-      // const aauToken = await agentApplication.authorization.exchangeToken(context, ['https://api.powerplatform.com/.default'],'agentic')
-      const aauToken = await agentApplication.authorization.exchangeToken(context,'agentic', {
-        scopes: getObservabilityAuthenticationScope() 
-      } )
-      const cacheKey = createAgenticTokenCacheKey(agentInfo.agentId, tenantInfo.tenantId);
-      tokenCache.set(cacheKey, aauToken?.token || ''); 
-      */
-
-      // Preload/refresh the observability token into the shared AgenticTokenCache. Comment the code out if using custom token resolver example.
-      // We don't immediately need the token here, and if acquisition fails we continue (non-fatal for this demo sample).      
-      await AgenticTokenCacheInstance.RefreshObservabilityToken(
-        agentInfo.agentId,
-        tenantInfo.tenantId,
-        context,
-        agentApplication.authorization,
-        getObservabilityAuthenticationScope()
-      );
+    
+      // Set Use_Custom_Resolver === 'true' to use custom tokenResolver and custom token cache(see example in telemetry.ts and token-cache.ts)
+      // Otherwise: we use the default AgenticTokenCache RefreshObservabilityToken path.
+      if (process.env.Use_Custom_Resolver === 'true') {
+        const aauToken = await agentApplication.authorization.exchangeToken(context,'agentic', {
+          scopes: getObservabilityAuthenticationScope() 
+        });
+        const cacheKey = createAgenticTokenCacheKey(agentInfo.agentId, tenantInfo.tenantId);
+        tokenCache.set(cacheKey, aauToken?.token || '');
+      } else {
+        // Preload/refresh the observability token into the shared AgenticTokenCache.
+        // We don't immediately need the token here, and if acquisition fails we continue (non-fatal for this demo sample).
+        await AgenticTokenCacheInstance.RefreshObservabilityToken(
+          agentInfo.agentId,
+          tenantInfo.tenantId,
+          context,
+          agentApplication.authorization,
+          getObservabilityAuthenticationScope()
+        );
+      }
       
       const llmResponse = await performInference(
         context.activity.text ?? 'Unknown text',

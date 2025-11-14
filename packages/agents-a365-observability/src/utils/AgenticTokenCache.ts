@@ -113,7 +113,7 @@ class AgenticTokenCache {
           try {
             const tokenResponse = await authorization.exchangeToken(
               turnContext,
-              'agentic1',
+              'agentic',
               { scopes: entry.scopes }
             );
             if (!tokenResponse?.token) {
@@ -242,6 +242,5 @@ export function createAgenticTokenCacheKey(agentId: string, tenantId: string): s
   return `${agentId}:${tenantId}`;
 }
 
-export type TokenResolver = (agentId: string, tenantId: string) => string | null | Promise<string | null>;
 
 export const AgenticTokenCacheInstance = new AgenticTokenCache();
