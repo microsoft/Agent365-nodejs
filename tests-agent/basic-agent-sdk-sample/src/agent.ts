@@ -87,9 +87,26 @@ agentApplication.onActivity(
         type: 'typing',
       }));
 
+      /*
+      // Cache the agentic token for observability token resolver, only needed for custom token resolver example
+      // const aauToken = await agentApplication.authorization.exchangeToken(context, ['https://api.powerplatform.com/.default'],'agentic')
+      const aauToken = await agentApplication.authorization.exchangeToken(context,'agentic', {
+        scopes: getObservabilityAuthenticationScope() 
+      } )
+      const cacheKey = createAgenticTokenCacheKey(agentInfo.agentId, tenantInfo.tenantId);
+      tokenCache.set(cacheKey, aauToken?.token || ''); 
+      */
 
-      AgenticTokenCacheInstance.registerObservability(agentInfo.agentId, tenantInfo.tenantId, context, agentApplication.authorization, getObservabilityAuthenticationScope());      
-
+      // Preload/refresh the observability token into the shared AgenticTokenCache. Comment the code out if using custom token resolver example.
+      // We don't immediately need the token here, and if acquisition fails we continue (non-fatal for this demo sample).      
+      await AgenticTokenCacheInstance.RefreshObservabilityToken(
+        agentInfo.agentId,
+        tenantInfo.tenantId,
+        context,
+        agentApplication.authorization,
+        getObservabilityAuthenticationScope()
+      );
+      
       const llmResponse = await performInference(
         context.activity.text ?? 'Unknown text',
         context

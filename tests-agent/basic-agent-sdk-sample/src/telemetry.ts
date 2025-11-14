@@ -37,7 +37,7 @@ export const a365Observability = ObservabilityManager.configure(
   (builder: Builder) =>
     builder            
       .withService('TypeScript Sample Agent', '1.0.0')
-      //.withTokenResolver(tokenResolver)
+      //.withTokenResolver(tokenResolver) // specify a custom token resolver. When the custom token resolver is not specified, the default resolver AgenticTokenCache will be used.
       .withClusterCategory(getClusterCategory())
 );
 
