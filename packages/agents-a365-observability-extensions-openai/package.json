@@ -1,7 +1,7 @@
 {
   "name": "@microsoft/agents-a365-observability-extensions-openai",
   "version": "0.0.0-placeholder",
-  "description": "Agent365 SDK OpenAI Agents instrumentation extensions for telemetry and observability",
+  "description": "Agent 365 SDK OpenAI Agents instrumentation extensions for telemetry and observability",
   "keywords": [
     "agent365",
     "openai",
