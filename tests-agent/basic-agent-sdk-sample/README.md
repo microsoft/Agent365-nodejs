@@ -1,8 +1,8 @@
-# Basic Agent 365 SDK Sample
+# Basic Microsoft Agent 365 SDK Sample
 
-This project shows how a simple agent can be created using Agents SDK and Agent 365 SDK in Node.js.
+This project shows how a simple agent can be created using Microsoft 365 Agents SDK and Microsoft Agent 365 SDK in Node.js.
 
-To try it out, make sure the Agent 365 Node.js SDK has been built:
+To try it out, make sure the Microsoft Agent 365 Node.js SDK has been built:
 
 ```sh
 $ cd nodejs/src
