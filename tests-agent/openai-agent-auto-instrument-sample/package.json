@@ -25,7 +25,7 @@
   ],
   "author": "Microsoft Corporation",
   "license": "MIT",
-  "description": "Sample OpenAI agent with instrumentation using Agent365 SDK",
+  "description": "Sample OpenAI agent with instrumentation using Agent 365 SDK",
   "dependencies": {
     "@microsoft/agents-hosting": "*",
     "@microsoft/agents-activity": "*",
