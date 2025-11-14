@@ -1,6 +1,6 @@
 # How to Create an Official Release
 
-This guide describes the process for creating an official release of the Agent 365 SDK for Node.js using our semantic versioning system powered by Nerdbank.GitVersioning.
+This guide describes the process for creating an official release of the Microsoft Agent 365 SDK for Node.js using our semantic versioning system powered by Nerdbank.GitVersioning.
 
 ## 📋 Table of Contents
 
@@ -178,7 +178,7 @@ grep -r "\"version\"" packages/*/package.json
 
 1. Go to: https://github.com/microsoft/Agent365-nodejs/releases/new
 2. Choose the tag: `v1.1.0`
-3. Set release title: `Agent 365 SDK for Node.js v1.1.0`
+3. Set release title: `Microsoft Agent 365 SDK for Node.js v1.1.0`
 4. Add release notes (see template below)
 5. Attach build artifacts (if any)
 6. Check "Set as the latest release" (if applicable)
@@ -186,7 +186,7 @@ grep -r "\"version\"" packages/*/package.json
 
 **Release Notes Template:**
 ```markdown
-# Agent 365 SDK for Node.js v1.1.0
+# Microsoft Agent 365 SDK for Node.js v1.1.0
 
 ## 🎉 What's New
 
@@ -524,4 +524,5 @@ git push origin main
 **Document Version**: 1.0  
 **Last Updated**: November 2, 2025  
 **Maintained By**: DevOps Team
+
 
