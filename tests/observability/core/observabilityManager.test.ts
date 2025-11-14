@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from '@jest/globals';
 import { ObservabilityManager, Builder } from '@microsoft/agents-a365-observability';
 
-describe('Agent365 SDK', () => {
+describe('Agent 365 SDK', () => {
   afterEach(async () => {
     // Clean up after each test
     await ObservabilityManager.shutdown();
