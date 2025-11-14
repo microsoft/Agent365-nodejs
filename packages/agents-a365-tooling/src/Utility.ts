@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 export enum ToolsMode {
   MockMCPServer = 'MockMCPServer',
   MCPPlatform = 'MCPPlatform'
@@ -7,6 +10,61 @@ export enum ToolsMode {
 const MCP_PLATFORM_PROD_BASE_URL = 'https://agent365.svc.cloud.microsoft';
 
 export class Utility {
+  /**
+   * Validates a JWT authentication token.
+   * Checks that the token is a valid JWT and is not expired.
+   *
+   * @param authToken - The JWT token to validate.
+   * @throws Error if the token is invalid or expired.
+   */
+  public static ValidateAuthToken(authToken: string | undefined): void {
+    return Utility.validateAuthToken(authToken);
+  }
+
+  /**
+   * Private helper to validate a JWT authentication token.
+   * Checks that the token is a valid JWT and is not expired.
+   *
+   * @param authToken - The JWT token to validate.
+   * @throws Error if the token is invalid or expired.
+   */
+  private static validateAuthToken(authToken: string | undefined): void {
+    if (!authToken) {
+      throw new Error('Authentication token is required');
+    }
+
+    // Parse JWT token (format: header.payload.signature)
+    const parts = authToken.split('.');
+    if (parts.length !== 3) {
+      throw new Error('Invalid JWT token format');
+    }
+
+    let payload: {
+      exp?: number;
+    };
+
+    try {
+      // Decode the payload (second part of the JWT)
+      const payloadBase64 = parts[1];
+      // Handle URL-safe base64
+      const paddedBase64 = payloadBase64.padEnd(payloadBase64.length + (4 - payloadBase64.length % 4) % 4, '=');
+      const payloadJson = Buffer.from(paddedBase64.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8');
+      payload = JSON.parse(payloadJson);
+    } catch (error) {
+      throw new Error('Failed to decode JWT token payload');
+    }
+
+    // Check expiration
+    if (payload.exp) {
+      const currentTimestamp = Math.floor(Date.now() / 1000);
+      if (payload.exp < currentTimestamp) {
+        throw new Error('Authentication token has expired');
+      }
+    } else {
+      throw new Error('Authentication token does not contain expiration claim');
+    }
+  }
+
   /**
    * Construct the tooling gateway URL for a given digital worker (agent user).
    * This endpoint is used to discover MCP servers associated with the specified agent user.
@@ -38,36 +96,22 @@ export class Utility {
       }
     }
 
-    if (!this.GetUseEnvironmentId()) {
-      return `${this.getMcpPlatformBaseUrl()}/agents/servers`;
-    }
-
-    return `${this.getMcpPlatformBaseUrl()}/mcp/environments`;
+    return `${this.getMcpPlatformBaseUrl()}/agents/servers`;
   }
 
   /**
-   * Build the full URL for accessing a specific MCP server in a given environment.
-   * This appends the environment id and server name to the base MCP environments URL.
+   * Build the full URL for accessing a specific MCP server.
    *
    * Example:
-   *   Utility.BuildMcpServerUrl('default-abc', 'MyServer')
-   *   // => "https://agent365.svc.cloud.microsoft/mcp/environments/default-abc/servers/MyServer/"
+   *   Utility.BuildMcpServerUrl('MyServer')
+   *   // => "https://agent365.svc.cloud.microsoft/agents/servers/MyServer/"
    *
-   * @param environmentId - The environment identifier (for example 'default-...').
    * @param serverName - The MCP server resource name.
    * @returns The fully-qualified MCP server URL including trailing slash.
   */
-  public static BuildMcpServerUrl(environmentId: string, serverName: string) : string {
+  public static BuildMcpServerUrl(serverName: string) : string {
     const baseUrl = this.GetMcpBaseUrl();
-    if (
-      !this.GetUseEnvironmentId() ||
-      (this.getCurrentEnvironment().toLowerCase() === 'development' &&
-      baseUrl.endsWith('servers'))
-    ) {
-      return `${baseUrl}/${serverName}`;
-    } else {
-      return `${baseUrl}/${environmentId}/servers/${serverName}`;
-    }
+    return `${baseUrl}/${serverName}`;
   }
 
   public static GetToolsMode(): ToolsMode {
@@ -105,17 +149,5 @@ export class Utility {
     }
 
     return MCP_PLATFORM_PROD_BASE_URL;
-  }
-
-  /**
-   * Determines whether to use the environment ID in MCP server URLs.
-   * Reads the USE_ENVIRONMENT_ID environment variable (case-insensitive).
-   * If not set, defaults to 'true'.
-   *
-   * @returns {boolean} True if environment ID should be used in URLs; otherwise, false.
-   */
-  public static GetUseEnvironmentId(): boolean {
-    const useEnvId = process.env.USE_ENVIRONMENT_ID || 'true';
-    return useEnvId.toLowerCase() === 'true';
   }
 }

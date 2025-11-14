@@ -109,13 +109,13 @@ export function partitionByIdentity(
 }
 
 /**
- * Check if agent365 exporter is enabled via environment variable
+ * Check if Agent 365 exporter is enabled via environment variable
  */
 export function isAgent365ExporterEnabled(): boolean {
   const a365Env = process.env[OpenTelemetryConstants.ENABLE_A365_OBSERVABILITY_EXPORTER]?.toLowerCase() || '';
   const validValues = ['true', '1', 'yes', 'on'];
   const enabled: boolean = validValues.includes(a365Env);
-  logger.info(`[Agent365Exporter] Agent365 exporter enabled: ${enabled}`);
+  logger.info(`[Agent365Exporter] Agent 365 exporter enabled: ${enabled}`);
   return enabled;
 }
 

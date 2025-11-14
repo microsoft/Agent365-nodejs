@@ -3,7 +3,7 @@
 // ------------------------------------------------------------------------------
 
 /**
- * OpenTelemetry constants for Agent365
+ * OpenTelemetry constants for Agent 365
  */
 export class OpenTelemetryConstants {
   // Span operation names

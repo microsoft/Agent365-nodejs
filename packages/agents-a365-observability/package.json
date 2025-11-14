@@ -6,11 +6,11 @@
   "module": "dist/esm/index.js",
   "types": "dist/esm/index.d.ts",
   "scripts": {
-    "build:cjs": "tsc --project tsconfig.cjs.json",
-    "build:esm": "tsc --project tsconfig.esm.json",
+    "build:cjs": "npx tsc --project tsconfig.cjs.json",
+    "build:esm": "npx tsc --project tsconfig.esm.json",
     "build": "npm run build:cjs && npm run build:esm",
-    "build:watch": "tsc --watch",
-    "clean": "rimraf dist",
+    "build:watch": "npx tsc --watch",
+    "clean": "npx rimraf dist",
     "test": "jest --passWithNoTests",
     "test:watch": "jest --watch",
     "lint": "eslint src/**/*.ts",
@@ -33,12 +33,12 @@
   "license": "See license file",
   "repository": {
     "type": "git",
-    "url": "https://github.com/microsoft/Agent365.git",
-    "directory": "nodejs/packages/agents-a365-observability"
+    "url": "https://github.com/microsoft/Agent365-nodejs.git",
+    "directory": "packages/agents-a365-observability"
   },
   "dependencies": {
     "@azure/monitor-opentelemetry-exporter": "*",
-    "@microsoft/agents-a365-runtime": "*",
+    "@microsoft/agents-a365-runtime": "workspace:*",
     "@opentelemetry/api": "*",
     "@opentelemetry/exporter-trace-otlp-http": "*",
     "@opentelemetry/instrumentation": "*",

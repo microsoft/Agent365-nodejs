@@ -3,11 +3,10 @@
 // ------------------------------------------------------------------------------
 
 import { Agent, run } from '@openai/agents';
-import { TurnContext } from '@microsoft/agents-hosting';
+import { TurnContext, Authorization } from '@microsoft/agents-hosting';
 
 import { McpToolRegistrationService } from '@microsoft/agents-a365-tooling-extensions-openai';
 import { LocalMcpToolRegistrationService } from './LocalMcpToolRegistrationService';
-import { Authorization } from '@microsoft/agents-a365-runtime';
 
 export interface Client {
   invokeAgent(prompt: string): Promise<string>;
@@ -31,16 +30,14 @@ export async function getClient(authorization: Authorization | undefined, turnCo
       await localMcpService.addMcpToolServers(
         agent,
         process.env.AGENTIC_USER_ID || 'dev-user-id',
-        process.env.MCP_ENVIRONMENT_ID || 'dev-environment',
         turnContext,
         process.env.MCP_AUTH_TOKEN || 'dev-token',
       );
     } else if (authorization) {
       // Use production MCP service (auth required)
-      await toolService.addMcpToolServers(
+      await toolService.addToolServersToAgent(
         agent,
         process.env.AGENTIC_USER_ID || '',
-        process.env.MCP_ENVIRONMENT_ID || '',
         authorization,
         turnContext,
         process.env.MCP_AUTH_TOKEN || '',

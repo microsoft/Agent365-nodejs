@@ -44,6 +44,8 @@ jobs:
     name: Node.js SDK
     needs: [changed-sdks]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: ./

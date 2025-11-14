@@ -13,7 +13,7 @@ export function formatError(error: unknown): string {
 }
 
 /**
- * Simple logger for Agent365 observability
+ * Simple logger for Agent 365 observability
  *
  * Usage:
  *   import logger from './logging';

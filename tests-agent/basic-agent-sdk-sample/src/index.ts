@@ -64,8 +64,8 @@ const server = app.listen(port, () => {
   await a365Observability.shutdown();
   process.exit(1);
 }).on('close', async () => {
-  console.log('Agent365 observability is shutting down...');
-  await a365Observability.shutdown();
+  console.log('Agent 365 observability is shutting down...');
+    await a365Observability.shutdown();
 });
 
 process.on('SIGINT', () => {

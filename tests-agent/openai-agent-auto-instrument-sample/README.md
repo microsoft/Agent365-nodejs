@@ -1,10 +1,10 @@
 # Sample Agent - Node.js OpenAI
 
-This directory contains a sample OpenAI agent implementation using the Agent365 framework with Node.js and Agent365 OpenAI Agents SDK instrumentation extensions.
+This directory contains a sample OpenAI agent implementation using the Microsoft Agent 365 SDK with Node.js and OpenAI Agents SDK instrumentation extensions.
 
 ## Demonstrates
 
-This sample demonstrates how to build auto instrument for Agent365 using  OpenAI Agents SDK instrumentation extensions for telemetry and observability.
+This sample demonstrates how to build auto instrument for Microsoft Agent 365 using OpenAI Agents SDK instrumentation extensions for telemetry and observability.
 
 
 
@@ -36,14 +36,11 @@ $ npm run build
 
 Create the required `.env` file out of the provided example `.env.example`. Just copying it as-is should be enough.
 
-If you'd like to use Agentic authentication, you should set the values under Agent365 Authentication Configuration.
+If you'd like to use Agentic authentication, you should set the values under Agent 365 Authentication Configuration.
 Otherwise, you can set the value `MCP_AUTH_TOKEN` to authentication against your MCP servers.
 
 `NODE_ENV` should be set to `Development` if you'd like to use your tooling manifest. Otherwise, the tooling sdk will
-default to retrieving MCP servers from the agent's tooling gateway, in which case you will need to set `AGENTIC_USER_ID`
-and `MCP_ENVIRONMENT_ID`.
-
-**Note** If you are using servers from the MCPPlatform but don't want to use the tooling gateway, you only need to set `MCP_ENVIRONMENT_ID`.
+default to retrieving MCP servers from the agent's tooling gateway, in which case you will need to set `AGENTIC_USER_ID`.
 
 ### Interacting with your Agent
 Start the agent application:
@@ -147,7 +144,7 @@ This sample includes a VS Code debug configuration. To debug:
    - You can get an API key from: https://platform.openai.com/api-keys
 
 2. **Launch the debugger**:
-   - Open VS Code in the root Agent365 directory
+   - Open VS Code in the root Agent 365 directory
    - Go to Run and Debug (Ctrl+Shift+D)
    - Select "Debug OpenAI Agent with Instrumentation" from the dropdown
    - Press F5 or click the green play button
@@ -179,3 +176,17 @@ Mail:
 ```
 Error: 400 Invalid schema for function 'mcp_MailTools_graph_mail_createMessage': In context=('properties', 'toRecipients', 'items'), 'additionalProperties' is required to be supplied and to be false.
 ```
+
+## 📋 Telemetry
+
+Data Collection. The software may collect information about you and your use of the software and send it to Microsoft. Microsoft may use this information to provide services and improve our products and services. You may turn off the telemetry as described in the repository. There are also some features in the software that may enable you and Microsoft to collect data from users of your applications. If you use these features, you must comply with applicable law, including providing appropriate notices to users of your applications together with a copy of Microsoft's privacy statement. Our privacy statement is located at https://go.microsoft.com/fwlink/?LinkID=824704. You can learn more about data collection and use in the help documentation and our privacy statement. Your use of the software operates as your consent to these practices.
+
+## Trademarks
+
+*Microsoft, Windows, Microsoft Azure and/or other Microsoft products and services referenced in the documentation may be either trademarks or registered trademarks of Microsoft in the United States and/or other countries. The licenses for this project do not grant you rights to use any Microsoft names, logos, or trademarks. Microsoft's general trademark guidelines can be found at http://go.microsoft.com/fwlink/?LinkID=254653.*
+
+## License
+
+Copyright (c) Microsoft Corporation. All rights reserved.
+
+Licensed under the MIT License - see the [LICENSE](../../LICENSE.md) file for details.
