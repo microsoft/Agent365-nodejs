@@ -10,8 +10,9 @@ import logger, { formatError } from './logging';
 // Structure stored per key
 interface CacheEntry {
   scopes: string[];
-  token?: string;       // Cached token value
-  expiresOn?: number;   // Expiration epoch millis (if provided by exchange response)
+  token?: string;        // Cached token value
+  expiresOn?: number;    // Expiration epoch millis (if provided by exchange response)
+  acquiredOn?: number;   // Epoch millis when token was acquired (fallback TTL when expiresOn missing)
 }
 
 /**
@@ -22,6 +23,7 @@ interface CacheEntry {
  *  - Retries transient exchange failures (network / HTTP 408, 429, 5xx) with linear backoff (200ms, 400ms).
  *  - Serializes write/exchange operations per key with a Promise chain (withKeyLock) to avoid duplicate exchanges.
  *  - Provides synchronous read access (getObservabilityToken) that never triggers network IO.
+ *  - Applies a fallback max age (1h) for tokens that lack embedded expiration metadata (exp claim).
  *
  * Thread Safety:
  *  Per-key serialization ensures at most one exchange updates a given entry concurrently. Reads are lock‑free.
@@ -32,6 +34,7 @@ interface CacheEntry {
 class AgenticTokenCache {
   private readonly _map = new Map<string, CacheEntry>();
   private readonly _defaultRefreshSkewMs = 60_000; // refresh 60s before expiry
+  private readonly _defaultMaxTokenAgeMs = 3_600_000; // 1 hour fallback TTL if exp not provided
   // Per-key promise chain to serialize mutations & exchanges
   private readonly _keyLocks = new Map<string, Promise<unknown>>();
   private makeKey(agentId: string, tenantId: string): string {
@@ -99,8 +102,18 @@ class AgenticTokenCache {
       let entry = this._map.get(key);
       if (!entry) {
         const effectiveScopes = (scopes && scopes.length > 0) ? scopes : getObservabilityAuthenticationScope();
+        if (!Array.isArray(effectiveScopes) || effectiveScopes.length === 0) {
+          logger.error('[AgenticTokenCache] Cannot exchange token. No valid scopes provided or available from fallback.');
+          return; // abort early; entry not created
+        }
         entry = { scopes: effectiveScopes };
         this._map.set(key, entry);
+      }
+
+      // Validate existing entry scopes (in case previously created with empty array before fix)
+      if (!Array.isArray(entry.scopes) || entry.scopes.length === 0) {
+        logger.error('[AgenticTokenCache] Cannot exchange token. Cache entry has invalid/empty scopes.');
+        return;
       }
       try {
         if (entry.token && !this.isExpired(entry)) {
@@ -124,9 +137,13 @@ class AgenticTokenCache {
               break;
             }
             entry.token = tokenResponse.token;
+            entry.acquiredOn = Date.now();
             const oboExp = this.decodeExp(entry.token);
             if (oboExp) {
               entry.expiresOn = oboExp * 1000; // to epoch millisecond
+            } else {
+              // No exp claim present; will rely on fallback TTL.
+              logger.warn('[AgenticTokenCache] Token has no exp claim. Applying fallback TTL (1h).');
             }
             logger.info('[AgenticTokenCache] Token exchange successful and cached.');
             // success
@@ -190,11 +207,16 @@ class AgenticTokenCache {
     }
   }
   private isExpired(entry: CacheEntry): boolean {
-    if (!entry.expiresOn) {
-      return false; // If we don't have expiration metadata, assume still valid
-    }
     const now = Date.now();
-    return now >= (entry.expiresOn - this._defaultRefreshSkewMs); // Refresh early by skew
+    if (entry.expiresOn) {
+      return now >= (entry.expiresOn - this._defaultRefreshSkewMs); // Refresh early by skew
+    }
+    // Fallback: if no explicit expiration, treat as expired after max age.
+    if (entry.acquiredOn) {
+      return now >= (entry.acquiredOn + this._defaultMaxTokenAgeMs);
+    }
+    // No timing metadata at all; force refresh immediately.
+    return true;
   }
 
   /** Basic transient error classification for retry logic */
@@ -203,7 +225,7 @@ class AgenticTokenCache {
     if (!e) return false;
     // Network / timeout style codes
     const msg = (e.message || '').toLowerCase();
-    if (msg.includes('timeout') || msg.includes('ecconnreset') || msg.includes('network')) return true;
+    if (msg.includes('timeout') || msg.includes('ECONNRESET') || msg.includes('network')) return true;
     // HTTP status heuristics
     if (typeof e.status === 'number') {
       if (e.status === 408 || e.status === 429) return true;
@@ -220,7 +242,12 @@ class AgenticTokenCache {
   private async withKeyLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
     const previous = this._keyLocks.get(key);
     if (previous) {
-      try { await previous; } catch { /* empty */ }
+      try {
+        await previous;
+      } catch (err) {
+        // Previous locked operation failed; log at warn level for visibility without throwing.
+        logger.warn(`[AgenticTokenCache] withKeyLock: previous promise for key "${key}" rejected:`, formatError(err));
+      }
     }
     const currentPromise: Promise<T> = fn().finally(() => {
       if (this._keyLocks.get(key) === currentPromise) {

@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------------------------
 
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { AgenticTokenCacheInstance } from '@microsoft/agents-a365-observability/src/utils/AgenticTokenCache';
 import type { Authorization, TurnContext } from '@microsoft/agents-hosting';
 
@@ -68,7 +68,7 @@ describe('AgenticTokenCacheInstance', () => {
   it('exchanges and caches token on first call', async () => {
     const token = makeJwtWithExp(300);
     const auth = makeAuthorizationMock([{ token }]);
-  await AgenticTokenCacheInstance.RefreshObservabilityToken('agentA', 'tenantA', makeTurnContext(), auth, ['scope.read']);
+    await AgenticTokenCacheInstance.RefreshObservabilityToken('agentA', 'tenantA', makeTurnContext(), auth, ['scope.read']);
     const tokenReturned = AgenticTokenCacheInstance.getObservabilityToken('agentA', 'tenantA');
     expect(tokenReturned).not.toBeNull();
     expect(tokenReturned).toBe(token);
@@ -95,7 +95,7 @@ describe('AgenticTokenCacheInstance', () => {
       onSignInSuccess: () => {},
       onSignInFailure: () => {}
     } as unknown as Authorization;
-  const p = AgenticTokenCacheInstance.RefreshObservabilityToken('agentB', 'tenantB', makeTurnContext(), auth, ['scope.read']);
+    const p = AgenticTokenCacheInstance.RefreshObservabilityToken('agentB', 'tenantB', makeTurnContext(), auth, ['scope.read']);
     // Fast-forward timers to allow retry backoff sleeps (200ms + 400ms linear)
     await jest.advanceTimersByTimeAsync(1000);
     await p;
@@ -111,7 +111,7 @@ describe('AgenticTokenCacheInstance', () => {
       { error: nonRetriableErr },
       { token: makeJwtWithExp(300) } // should not be used
     ]);
-  await AgenticTokenCacheInstance.RefreshObservabilityToken('agentC', 'tenantC', makeTurnContext(), auth, ['scope.read']);
+    await AgenticTokenCacheInstance.RefreshObservabilityToken('agentC', 'tenantC', makeTurnContext(), auth, ['scope.read']);
     const token = AgenticTokenCacheInstance.getObservabilityToken('agentC', 'tenantC');
     expect(token).toBeNull();
   });
@@ -119,14 +119,14 @@ describe('AgenticTokenCacheInstance', () => {
   it('treats near-expiry token as expired (skew refresh)', async () => {
     // exp in 30s, skew is 60s -> considered expired immediately
     const auth = makeAuthorizationMock([{ token: makeJwtWithExp(30) }]);
-  await AgenticTokenCacheInstance.RefreshObservabilityToken('agentD', 'tenantD', makeTurnContext(), auth, ['scope.read']);
+    await AgenticTokenCacheInstance.RefreshObservabilityToken('agentD', 'tenantD', makeTurnContext(), auth, ['scope.read']);
     const token = AgenticTokenCacheInstance.getObservabilityToken('agentD', 'tenantD');
     expect(token).toBeNull(); // because isExpired returned true and retrieval logs expiration
   });
 
   it('returns cached token before expiry then invalid after advancing time', async () => {
     const auth = makeAuthorizationMock([{ token: makeJwtWithExp(120) }]); // 2 minutes
-  await AgenticTokenCacheInstance.RefreshObservabilityToken('agentE', 'tenantE', makeTurnContext(), auth, ['scope.read']);
+    await AgenticTokenCacheInstance.RefreshObservabilityToken('agentE', 'tenantE', makeTurnContext(), auth, ['scope.read']);
     const tokenBefore = AgenticTokenCacheInstance.getObservabilityToken('agentE', 'tenantE');
     expect(tokenBefore).not.toBeNull();
     // Advance time just before skew boundary (expire - skew + 1000ms)

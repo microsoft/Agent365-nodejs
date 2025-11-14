@@ -156,7 +156,11 @@ export class Agent365Exporter implements SpanExporter {
       'content-type': 'application/json'
     };
 
-    const tokenResult = this.options.tokenResolver!(agentId, tenantId);
+    if (!this.options.tokenResolver) {
+      logger.error('[Agent365Exporter] tokenResolver is undefined, skip exporting');
+      return;
+    }
+    const tokenResult = this.options.tokenResolver(agentId, tenantId);
     const token = tokenResult instanceof Promise ? await tokenResult : tokenResult;
     if (token) {
       headers['authorization'] = `Bearer ${token}`;
