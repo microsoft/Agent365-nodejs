@@ -4,7 +4,7 @@ This directory contains a sample OpenAI agent implementation using the Microsoft
 
 ## Demonstrates
 
-This sample demonstrates how to build auto instrument for Agent 365 using OpenAI Agents SDK instrumentation extensions for telemetry and observability.
+This sample demonstrates how to build auto instrument for Microsoft Agent 365 using OpenAI Agents SDK instrumentation extensions for telemetry and observability.
 
 
 
