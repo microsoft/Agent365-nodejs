@@ -29,7 +29,7 @@ export interface AzureOpenAIConfig {
 }
 
 /**
- * Agent365 configuration interface
+ * Agent 365 configuration interface
  */
 export interface Agent365Config {
   tenantId?: string;
@@ -58,7 +58,7 @@ export function getAzureOpenAIConfig(): AzureOpenAIConfig | null {
 }
 
 /**
- * Get Agent365 configuration from environment variables
+ * Get Agent 365 configuration from environment variables
  */
 export function getAgent365Config(): Agent365Config {
   return {
