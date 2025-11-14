@@ -1,7 +1,7 @@
 import { ExportResult,ExportResultCode } from '@opentelemetry/core';
 import { ReadableSpan, SpanExporter } from '@opentelemetry/sdk-trace-base';
 
-import { PowerPlatformApiDiscovery } from '@microsoft/agents-a365-runtime';
+import { PowerPlatformApiDiscovery, ClusterCategory } from '@microsoft/agents-a365-runtime';
 import { partitionByIdentity, parseIdentityKey, hexTraceId, hexSpanId, kindName, statusName } from './utils';
 import logger, {formatError} from '../../utils/logging';
 
@@ -72,16 +72,19 @@ export type TokenResolver = (agentId: string, tenantId: string) => string | null
  */
 export class Agent365Exporter implements SpanExporter {
   private readonly tokenResolver: TokenResolver;
+  private readonly clusterCategory: ClusterCategory;
   private closed = false;
 
   constructor(
     tokenResolver: TokenResolver,
+    clusterCategory: ClusterCategory = 'prod'
   ) {
     if (!tokenResolver) {
       logger.error('[Agent365Exporter] token_resolver is not provided');
       throw new Error('token_resolver must be provided.');
     }
     this.tokenResolver = tokenResolver;
+    this.clusterCategory = clusterCategory;
   }
 
   /**
@@ -136,8 +139,8 @@ export class Agent365Exporter implements SpanExporter {
     const payload = this.buildExportRequest(spans);
     const body = JSON.stringify(payload);
 
-    // Resolve endpoint + token (hardcoded to production cluster 'prod')
-    const discovery = new PowerPlatformApiDiscovery('prod');
+    // Resolve endpoint + token based on cluster category (defaults to 'prod')
+    const discovery = new PowerPlatformApiDiscovery(this.clusterCategory);
     const endpoint = discovery.getTenantIslandClusterEndpoint(tenantId);
     const url = `https://${endpoint}/maven/agent365/agents/${agentId}/traces?api-version=1`;
     logger.info(`[Agent365Exporter] Resolved endpoint: ${endpoint}`);
