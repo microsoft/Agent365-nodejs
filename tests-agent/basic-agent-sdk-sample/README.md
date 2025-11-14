@@ -1,8 +1,8 @@
-# Basic Agent365 SDK Sample
+# Basic Agent 365 SDK Sample
 
-This project shows how a simple agent can be created using Agents SDK and Agent365 SDK in Node.js.
+This project shows how a simple agent can be created using Agents SDK and Agent 365 SDK in Node.js.
 
-To try it out, make sure the Agent365 Node.js SDK has been built:
+To try it out, make sure the Agent 365 Node.js SDK has been built:
 
 ```sh
 $ cd nodejs/src
@@ -47,14 +47,14 @@ In the first terminal, where you are running the agent application, you should s
       'process.executable.name': 'C:\\WINDOWS\\system32\\cmd.exe ',
       'process.executable.path': 'C:\\Program Files\\nodejs\\node.exe',
       'process.command_args': [
-        'D:\\Agent365\\nodejs\\node_modules\\ts-node\\dist\\bin.js',
-        'D:\\Agent365\\nodejs\\node_modules\\ts-node\\dist\\bin.js',
-        'D:\\Agent365\\nodejs\\samples\\basic-agent-sdk-sample\\src\\index.ts'
+        'D:\\Agent365-nodejs\\node_modules\\ts-node\\dist\\bin.js',
+        'D:\\Agent365-nodejs\\node_modules\\ts-node\\dist\\bin.js',
+        'D:\\Agent365-nodejs\\tests-agent\\basic-agent-sdk-sample\\src\\index.ts'
       ],
       'process.runtime.version': '20.12.2',
       'process.runtime.name': 'nodejs',
       'process.runtime.description': 'Node.js',
-      'process.command': 'D:\\Agent365\\nodejs\\samples\\basic-agent-sdk-sample\\src\\index.ts',
+      'process.command': 'D:\\Agent365-nodejs\\tests-agent\\basic-agent-sdk-sample\\src\\index.ts',
       'process.owner': 'XXXX',
       'telemetry.sdk.language': 'nodejs',
       'telemetry.sdk.name': 'opentelemetry',
