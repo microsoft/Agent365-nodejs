@@ -6,15 +6,8 @@
  * Utility logic for environment-related operations.
  */
 
-// Authentication scopes for different environments
-export const TEST_OBSERVABILITY_SCOPE = 'https://api.test.powerplatform.com/.default';
-export const PREPROD_OBSERVABILITY_SCOPE = 'https://api.preprod.powerplatform.com/.default';
 export const PROD_OBSERVABILITY_SCOPE = 'https://api.powerplatform.com/.default';
 export const PROD_MCP_PLATFORM_AUTHENTICATION_SCOPE = 'ea9ffc3e-8a23-4a7d-836d-234d7c7565c1/.default';
-
-// Cluster categories for different environments
-export const TEST_OBSERVABILITY_CLUSTER_CATEGORY = 'test';
-export const PREPROD_OBSERVABILITY_CLUSTER_CATEGORY = 'preprod';
 export const PROD_OBSERVABILITY_CLUSTER_CATEGORY = 'prod';
 
 // Default environment names
@@ -22,19 +15,13 @@ export const PRODUCTION_ENVIRONMENT_NAME = 'production';
 export const DEVELOPMENT_ENVIRONMENT_NAME = 'Development';
 
 /**
- * Returns the scope for authenticating to the observability service based on the current environment.
+ * Returns the scope for authenticating to the observability service
  *
  * @returns The authentication scope for the current environment.
  */
 export function getObservabilityAuthenticationScope(): string[] {
-  const clusterCategory = getClusterCategory();
-
-  if (['local', 'dev', 'test', 'preprod'].includes(clusterCategory)) {
-    return [PREPROD_OBSERVABILITY_SCOPE];
-  } else {
-    // Default to production scope for 'prod' and any other values
-    return [PROD_OBSERVABILITY_SCOPE];
-  }
+  // Always return production scope
+  return [PROD_OBSERVABILITY_SCOPE];
 }
 
 /**
