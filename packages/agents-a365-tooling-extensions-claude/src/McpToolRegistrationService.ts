@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 import { McpToolServerConfigurationService, McpClientTool, Utility, MCPServerConfig } from '@microsoft/agents-a365-tooling';
-import { AgenticAuthenticationService } from '@microsoft/agents-a365-runtime';
+import { AgenticAuthenticationService, Utility as RuntimeUtility } from '@microsoft/agents-a365-runtime';
 
 // Agents SDK
 import { TurnContext, Authorization } from '@microsoft/agents-hosting';
@@ -20,10 +20,14 @@ export class McpToolRegistrationService {
   /**
    * Registers MCP tool servers and updates agent options with discovered tools and server configs.
    * Call this to enable dynamic Claude tool access.
+   * @param agentOptions The Claude Agent options to which MCP servers will be added.
+   * @param authorization Authorization object for token exchange.
+   * @param authHandlerName The name of the auth handler to use for token exchange.
+   * @param turnContext The TurnContext of the current request.
+   * @param authToken Optional bearer token for MCP server access.
    */
   async addToolServersToAgent(
     agentOptions: Options,
-    agentUserId: string,
     authorization: Authorization,
     authHandlerName: string,
     turnContext: TurnContext,
@@ -41,8 +45,8 @@ export class McpToolRegistrationService {
     // Validate the authentication token
     Utility.ValidateAuthToken(authToken);
 
-    const servers = await this.configService.listToolServers(agentUserId, authToken);
-
+    const agenticAppId = RuntimeUtility.ResolveAgentIdentity(turnContext, authToken);
+    const servers = await this.configService.listToolServers(agenticAppId, authToken);
     const mcpServers: Record<string, McpServerConfig> = {};
     const tools: McpClientTool[] = [];
 

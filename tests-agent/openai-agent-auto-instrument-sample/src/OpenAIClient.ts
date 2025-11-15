@@ -37,7 +37,6 @@ export async function getClient(authorization: Authorization | undefined, authHa
       // Use production MCP service (auth required)
       await toolService.addToolServersToAgent(
         agent,
-        process.env.AGENTIC_USER_ID || '',
         authorization,
         authHandlerName,
         turnContext,

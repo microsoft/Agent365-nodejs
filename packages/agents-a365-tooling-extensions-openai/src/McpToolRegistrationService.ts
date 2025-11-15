@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 import { McpToolServerConfigurationService, Utility } from '@microsoft/agents-a365-tooling';
-import { AgenticAuthenticationService } from '@microsoft/agents-a365-runtime';
+import { AgenticAuthenticationService, Utility as RuntimeUtility } from '@microsoft/agents-a365-runtime';
 
 // Agents SDK
 import { TurnContext, Authorization } from '@microsoft/agents-hosting';
@@ -21,10 +21,15 @@ export class McpToolRegistrationService {
   /**
    * Registers MCP tool servers and updates agent options with discovered tools and server configs.
    * Call this to enable dynamic OpenAI tool access based on the current MCP environment.
+   * @param agent The OpenAI Agent instance to which MCP servers will be added.
+   * @param authorization Authorization object for token exchange.
+   * @param authHandlerName The name of the auth handler to use for token exchange.
+   * @param turnContext The TurnContext of the current request.
+   * @param authToken Optional bearer token for MCP server access.
+   * @returns The updated Agent instance with registered MCP servers.
    */
   async addToolServersToAgent(
     agent: Agent,
-    agentUserId: string,
     authorization: Authorization,
     authHandlerName: string,
     turnContext: TurnContext,
@@ -42,7 +47,8 @@ export class McpToolRegistrationService {
     // Validate the authentication token
     Utility.ValidateAuthToken(authToken);
 
-    const servers = await this.configService.listToolServers(agentUserId, authToken);
+    const agenticAppId = RuntimeUtility.ResolveAgentIdentity(turnContext, authToken);
+    const servers = await this.configService.listToolServers(agenticAppId, authToken);
     const mcpServers: MCPServerStreamableHttp[] = [];
 
     for (const server of servers) {
