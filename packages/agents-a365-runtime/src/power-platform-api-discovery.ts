@@ -82,9 +82,9 @@ export class PowerPlatformApiDiscovery {
   private _getEnvironmentApiHostNameSuffix(): string {
     const apiHostNameSuffixMap: Readonly<Record<ClusterCategory, string>> = {
       local: 'api.powerplatform.localhost',
-      dev: 'api.dev.powerplatform.com',
-      test: 'api.test.powerplatform.com',
-      preprod: 'api.preprod.powerplatform.com',
+      dev: 'api.powerplatform.com', //default to prod
+      test: 'api.powerplatform.com', //default to prod
+      preprod: 'api.powerplatform.com', //default to prod
       firstrelease: 'api.powerplatform.com',
       prod: 'api.powerplatform.com',
       gov: 'api.gov.powerplatform.microsoft.us',
