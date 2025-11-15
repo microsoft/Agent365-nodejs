@@ -17,7 +17,7 @@ export type TokenResolver = (agentId: string, tenantId: string) => string | null
  * These values tune batching, timeouts, token acquisition and endpoint shape. All properties have sensible
  * defaults so callers can usually construct without arguments and override selectively.
  *
- * @property {ClusterCategory | string} clusterCategory Environment / cluster category (e.g. "preprod", "prod").
+ * @property {ClusterCategory | string} clusterCategory Environment / cluster category (e.g. "preprod", "prod", default to "prod").
  * @property {TokenResolver} [tokenResolver] Optional delegate to obtain an auth token. If omitted the exporter will
  *           fall back to reading the cached token (AgenticTokenCacheInstance.getObservabilityToken).
  * @property {boolean} useS2SEndpoint When true uses service-to-service path (/maven/agent365/service/agents/{agentId}/traces);
@@ -29,7 +29,7 @@ export type TokenResolver = (agentId: string, tenantId: string) => string | null
  */
 export class Agent365ExporterOptions {
   /** Environment / cluster category (e.g. "preprod", "prod"). */
-  public clusterCategory: ClusterCategory | string = 'preprod';
+  public clusterCategory: ClusterCategory | string = 'prod';
 
   /** Optional delegate to resolve auth token; falls back to AgenticTokenCache when absent. */
   public tokenResolver?: TokenResolver;
