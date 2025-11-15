@@ -139,7 +139,7 @@ export class Agent365Exporter implements SpanExporter {
     const payload = this.buildExportRequest(spans);
     const body = JSON.stringify(payload);
 
-    // Resolve endpoint + token
+    // Resolve endpoint + token based on cluster category (defaults to 'prod')
     const discovery = new PowerPlatformApiDiscovery(this.clusterCategory);
     const endpoint = discovery.getTenantIslandClusterEndpoint(tenantId);
     const url = `https://${endpoint}/maven/agent365/agents/${agentId}/traces?api-version=1`;
