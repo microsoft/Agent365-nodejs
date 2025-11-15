@@ -27,6 +27,7 @@ export class McpToolRegistrationService {
     agent: ReactAgent,
     agentUserId: string,
     authorization: Authorization,
+    authHandlerName: string,
     turnContext: TurnContext,
     authToken: string
   ): Promise<ReactAgent> {
@@ -36,7 +37,7 @@ export class McpToolRegistrationService {
     }
 
     if (!authToken) {
-      authToken = await AgenticAuthenticationService.GetAgenticUserToken(authorization, turnContext);
+      authToken = await AgenticAuthenticationService.GetAgenticUserToken(authorization, authHandlerName, turnContext);
     }
 
     // Validate the authentication token
