@@ -3,6 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------------------------
 
+import { ClusterCategory } from '@microsoft/agents-a365-runtime';
 /**
  * A function that resolves and returns an authentication token for the given agent and tenant.
  * Implementations may perform synchronous lookup (e.g., in-memory cache) or asynchronous network calls.
@@ -16,6 +17,7 @@ export type TokenResolver = (agentId: string, tenantId: string) => string | null
  * These values tune batching, timeouts, token acquisition and endpoint shape. All properties have sensible
  * defaults so callers can usually construct without arguments and override selectively.
  *
+ * @property {ClusterCategory | string} clusterCategory Environment / cluster category (e.g. "preprod", "prod").
  * @property {TokenResolver} [tokenResolver] Optional delegate to obtain an auth token. If omitted the exporter will
  *           fall back to reading the cached token (AgenticTokenCacheInstance.getObservabilityToken).
  * @property {boolean} useS2SEndpoint When true uses service-to-service path (/maven/agent365/service/agents/{agentId}/traces);
@@ -26,6 +28,8 @@ export type TokenResolver = (agentId: string, tenantId: string) => string | null
  * @property {number} maxExportBatchSize Maximum number of spans per export batch.
  */
 export class Agent365ExporterOptions {
+  /** Environment / cluster category (e.g. "preprod", "prod"). */
+  public clusterCategory: ClusterCategory | string = 'preprod';
 
   /** Optional delegate to resolve auth token; falls back to AgenticTokenCache when absent. */
   public tokenResolver?: TokenResolver;

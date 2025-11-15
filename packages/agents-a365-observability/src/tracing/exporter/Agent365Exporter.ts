@@ -87,9 +87,9 @@ export class Agent365Exporter implements SpanExporter {
 
     if (!options.tokenResolver) {
       options.tokenResolver = AgenticTokenCacheInstance.getObservabilityToken.bind(AgenticTokenCacheInstance);
-      logger.info('Agent365Exporter initialized with agentic resolver');
+      logger.info('Agent365Exporter initialized with agentic resolver', `clusterCategory=${options.clusterCategory}`);
     } else {
-      logger.info('Agent365Exporter initialized with custom tokenResolver');
+      logger.info('Agent365Exporter initialized with custom tokenResolver', `clusterCategory=${options.clusterCategory}`);
     }
     this.options = options;
   }
@@ -147,7 +147,7 @@ export class Agent365Exporter implements SpanExporter {
     const body = JSON.stringify(payload);
 
     // Resolve endpoint + token
-    const discovery = new PowerPlatformApiDiscovery('prod');
+    const discovery = new PowerPlatformApiDiscovery(this.options.clusterCategory as ClusterCategory);
     const endpoint = discovery.getTenantIslandClusterEndpoint(tenantId);
     const url = `https://${endpoint}/maven/agent365/agents/${agentId}/traces?api-version=1`;
     logger.info(`[Agent365Exporter] Resolved endpoint: ${endpoint}`);

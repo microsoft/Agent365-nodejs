@@ -59,7 +59,8 @@ describe('Agent365Exporter', () => {
   });
 
   it('returns success immediately with no spans', async () => {
-  const opts = new Agent365ExporterOptions();
+    const opts = new Agent365ExporterOptions();
+    opts.clusterCategory = 'local';
     opts.tokenResolver = () => null;
     const exporter = new Agent365Exporter(opts);
     const callback = jest.fn();
@@ -70,7 +71,8 @@ describe('Agent365Exporter', () => {
   it('uses provided token resolver and sets authorization header', async () => {
     const token = 'abc123';
     mockFetchSequence([200]);
-  const opts = new Agent365ExporterOptions();
+    const opts = new Agent365ExporterOptions();
+    opts.clusterCategory = 'local';
     opts.tokenResolver = () => token;
     const exporter = new Agent365Exporter(opts);
 
@@ -110,7 +112,8 @@ describe('Agent365Exporter', () => {
     // Spy on getObservabilityToken to assert fallback path uses cache retrieval
     const getTokenSpy = jest.spyOn(AgenticTokenCacheInstance as any, 'getObservabilityToken');
 
-  const opts = new Agent365ExporterOptions(); // no tokenResolver assigned -> fallback to cache
+    const opts = new Agent365ExporterOptions();
+    opts.clusterCategory = 'local'; // no tokenResolver assigned -> fallback to cache
     const exporter = new Agent365Exporter(opts); // no resolver provided
     const spans = [
       makeSpan({
@@ -148,5 +151,8 @@ describe('Agent365Exporter', () => {
     expect(span.attributes).toBeDefined();
     expect(span.attributes[OpenTelemetryConstants.TENANT_ID_KEY]).toBe(tenant);
     expect(span.attributes[OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]).toBe(agent);
+    // Validate local cluster endpoint format
+    const urlArg = fetchCalls[0][0] as string;
+    expect(urlArg).toContain('localhost');
   });
 });
