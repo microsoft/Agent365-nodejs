@@ -31,7 +31,8 @@ describe('SpanProcessor', () => {
       const baggageEntries = {
         [OpenTelemetryConstants.TENANT_ID_KEY]: 'tenant-123',
         [OpenTelemetryConstants.CORRELATION_ID_KEY]: 'corr-456',
-        [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]: 'agent-789'
+        [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]: 'agent-789',
+        [OpenTelemetryConstants.SESSION_ID_KEY]: 'session-001'
       };
 
       let baggage = propagation.createBaggage();
@@ -52,8 +53,29 @@ describe('SpanProcessor', () => {
         }
       });
 
-      // The span processor should have copied baggage to attributes
       expect(testSpan).toBeDefined();
+      const attrs = (testSpan as any).attributes || {};
+      expect(attrs[OpenTelemetryConstants.SESSION_ID_KEY]).toBe('session-001');
+    });
+
+    it('should copy sessionId from baggage to span', () => {
+      let baggage = propagation.createBaggage();
+      baggage = baggage.setEntry(OpenTelemetryConstants.SESSION_ID_KEY, { value: 'session-abc' });
+
+      const ctx = propagation.setBaggage(context.active(), baggage);
+
+      const tracer = provider.getTracer('test');
+      let testSpan: Span | undefined;
+      context.with(ctx, () => {
+        testSpan = tracer.startSpan('test-span', { kind: SpanKind.CLIENT });
+        if (testSpan) {
+          testSpan.end();
+        }
+      });
+
+      expect(testSpan).toBeDefined();
+      const attrs = (testSpan as any).attributes || {};
+      expect(attrs[OpenTelemetryConstants.SESSION_ID_KEY]).toBe('session-abc');
     });
 
     it('should copy invoke agent attributes for invoke_agent operations', () => {
@@ -139,6 +161,7 @@ describe('SpanProcessor', () => {
       expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.TENANT_ID_KEY);
       expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.CORRELATION_ID_KEY);
       expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY);
+      expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.SESSION_ID_KEY);
     });
 
     it('should apply invoke agent specific attributes', () => {

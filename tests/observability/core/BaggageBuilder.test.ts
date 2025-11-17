@@ -2,7 +2,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // ------------------------------------------------------------------------------
 
-import { context } from '@opentelemetry/api';
+import { context, propagation } from '@opentelemetry/api';
 import { BaggageBuilder, BaggageScope } from '@microsoft/agents-a365-observability/dist/cjs/tracing/middleware/BaggageBuilder';
 import { OpenTelemetryConstants } from '@microsoft/agents-a365-observability/dist/cjs/tracing/constants';
 
@@ -130,6 +130,38 @@ describe('BaggageBuilder', () => {
       );
 
       expect(scope).toBeInstanceOf(BaggageScope);
+    });
+  });
+
+  describe('sessionId support', () => {
+    it('should set sessionId via fluent API', () => {
+      const scope = new BaggageBuilder()
+        .tenantId('tenant-123')
+        .agentId('agent-456')
+        .correlationId('corr-789')
+        .sessionId('session-0001')
+        .build();
+      const bag = propagation.getBaggage((scope as any).contextWithBaggage);
+      expect(bag?.getEntry(OpenTelemetryConstants.SESSION_ID_KEY)?.value).toBe('session-0001');
+    });
+
+    it('should set sessionId via static setRequestContext', () => {
+      const scope = BaggageBuilder.setRequestContext(
+        'tenant-123',
+        'agent-456',
+        'corr-789',
+        'session-0002'
+      );
+      const bag = propagation.getBaggage((scope as any).contextWithBaggage);
+      expect(bag?.getEntry(OpenTelemetryConstants.SESSION_ID_KEY)?.value).toBe('session-0002');
+    });
+
+    it('should omit empty sessionId value', () => {
+      const scope = new BaggageBuilder()
+        .sessionId('   ')
+        .build();
+      const bag = propagation.getBaggage((scope as any).contextWithBaggage);
+      expect(bag?.getEntry(OpenTelemetryConstants.SESSION_ID_KEY)).toBeUndefined();
     });
   });
 
