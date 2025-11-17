@@ -280,7 +280,7 @@ export class BaggageBuilder {
     tenantId?: string | null,
     agentId?: string | null,
     correlationId?: string | null,
-    sessionId?: string | null
+    sessionId?: string
   ): BaggageScope {
     return new BaggageBuilder()
       .tenantId(tenantId)
