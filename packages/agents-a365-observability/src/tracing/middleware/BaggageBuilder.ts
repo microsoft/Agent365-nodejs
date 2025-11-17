@@ -105,7 +105,7 @@ export class BaggageBuilder {
    * @param value The session ID
    * @returns Self for method chaining
    */
-  sessionId(value: string | null | undefined): BaggageBuilder {
+  sessionId(value: string | undefined): BaggageBuilder {
     this.set(OpenTelemetryConstants.SESSION_ID_KEY, value);
     return this;
   }
