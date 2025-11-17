@@ -1,4 +1,4 @@
-import { Entity } from '@microsoft/agents-activity';
+import { Activity, Entity } from '@microsoft/agents-activity';
 
 /**
  * Represents an email response entity to be sent back.
@@ -28,4 +28,16 @@ export function createEmailResponse(htmlBody?: string): EmailResponse {
     type: 'emailResponse',
     htmlBody: htmlBody ?? '',
   };
+}
+
+/**
+ * Creates an activity with an EmailResponse entity
+ * @param emailResponseHtmlBody - (Optional) The HTML body content for the email response
+ * @returns A message activity containing the EmailResponse entity
+ */
+export function createEmailResponseActivity(emailResponseHtmlBody?: string): Activity {
+  return Activity.fromObject({
+    type: 'message',
+    entities: [createEmailResponse(emailResponseHtmlBody)]
+  });
 }
