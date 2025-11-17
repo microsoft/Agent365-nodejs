@@ -45,17 +45,16 @@ describe('SpanProcessor', () => {
       // Create a span in this context
       const tracer = provider.getTracer('test');
       let testSpan: Span | undefined;
-
-      context.with(ctx, () => {
-        testSpan = tracer.startSpan('test-span', { kind: SpanKind.CLIENT });
-        if (testSpan) {
-          testSpan.end();
-        }
-      });
+      // Pass baggage context explicitly to ensure processor receives parentContext
+      testSpan = tracer.startSpan('test-span', { kind: SpanKind.CLIENT }, ctx as any);
+      (testSpan as Span).end();
 
       expect(testSpan).toBeDefined();
-      const attrs = (testSpan as any).attributes || {};
+      const attrs = (testSpan as any)._attributes || {};
       expect(attrs[OpenTelemetryConstants.SESSION_ID_KEY]).toBe('session-001');
+      expect(attrs[OpenTelemetryConstants.TENANT_ID_KEY]).toBe('tenant-123');
+      expect(attrs[OpenTelemetryConstants.CORRELATION_ID_KEY]).toBe('corr-456');
+      expect(attrs[OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]).toBe('agent-789');
     });
 
     it('should copy sessionId from baggage to span', () => {
@@ -66,15 +65,11 @@ describe('SpanProcessor', () => {
 
       const tracer = provider.getTracer('test');
       let testSpan: Span | undefined;
-      context.with(ctx, () => {
-        testSpan = tracer.startSpan('test-span', { kind: SpanKind.CLIENT });
-        if (testSpan) {
-          testSpan.end();
-        }
-      });
+      testSpan = tracer.startSpan('test-span', { kind: SpanKind.CLIENT }, ctx as any);
+      (testSpan as Span).end();
 
       expect(testSpan).toBeDefined();
-      const attrs = (testSpan as any).attributes || {};
+      const attrs = (testSpan as any)._attributes || {};
       expect(attrs[OpenTelemetryConstants.SESSION_ID_KEY]).toBe('session-abc');
     });
 
