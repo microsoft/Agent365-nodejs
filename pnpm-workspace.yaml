@@ -2,6 +2,7 @@ packages:
   - 'packages/agents-a365-*'
   - 'tests-agent/*'
   - 'tests'
+  - 'nodejs/samples/openai/sample_agent'
 
 overrides:
   # OpenAI Agents packages
