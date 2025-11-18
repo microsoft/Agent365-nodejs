@@ -100,6 +100,16 @@ export class BaggageBuilder {
   }
 
   /**
+   * Set the session ID baggage value.
+   * @param value The session ID
+   * @returns Self for method chaining
+   */
+  sessionId(value: string): BaggageBuilder {
+    this.set(OpenTelemetryConstants.SESSION_ID_KEY, value);
+    return this;
+  }
+
+  /**
    * Set the caller ID baggage value.
    * @param value The caller ID
    * @returns Self for method chaining
@@ -267,7 +277,7 @@ export class BaggageBuilder {
   static setRequestContext(
     tenantId?: string | null,
     agentId?: string | null,
-    correlationId?: string | null
+    correlationId?: string | null,
   ): BaggageScope {
     return new BaggageBuilder()
       .tenantId(tenantId)
