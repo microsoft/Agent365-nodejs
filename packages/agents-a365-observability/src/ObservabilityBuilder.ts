@@ -26,6 +26,14 @@ export interface BuilderOptions {
   tokenResolver?: TokenResolver;
   /** Environment / cluster category (e.g., "preprod", "prod"). */
   clusterCategory?: ClusterCategory;
+  /**
+   * Optional partial set of exporter options allowing agent developers to customize.
+   *  Any values omitted will fall back to the defaults defined in Agent365ExporterOptions.
+   * Values provided here take precedence over those inferred from other builder methods (except that an
+   * explicitly provided tokenResolver / clusterCategory via dedicated builder
+   * methods will override this object).
+   */
+  exporterOptions?: Partial<Agent365ExporterOptions>;
 
 }
 
@@ -69,12 +77,30 @@ export class ObservabilityBuilder {
     return this;
   }
 
+  /**
+   * Provide a partial set of Agent365ExporterOptions. These will be merged with
+   * defaults and any explicitly configured clusterCategory/tokenResolver.
+   * @param exporterOptions Partial exporter options
+   * @returns The builder instance for chaining
+   */
+  public withExporterOptions(exporterOptions: Partial<Agent365ExporterOptions>): ObservabilityBuilder {
+    this.options.exporterOptions = {
+      ...(this.options.exporterOptions || {}),
+      ...exporterOptions
+    };
+    return this;
+  }
+
   private createBatchProcessor(): BatchSpanProcessor {
     if (!isAgent365ExporterEnabled()) {
       return new BatchSpanProcessor(new ConsoleSpanExporter());
     }
+
     const opts = new Agent365ExporterOptions();
-    opts.clusterCategory = this.options.clusterCategory || 'prod';
+    if (this.options.exporterOptions) {
+      Object.assign(opts, this.options.exporterOptions);
+    }
+    opts.clusterCategory = this.options.clusterCategory||opts.clusterCategory || 'prod';
     if (this.options.tokenResolver) {
       opts.tokenResolver = this.options.tokenResolver;
     }
@@ -179,4 +205,3 @@ export class ObservabilityBuilder {
     }
   }
 }
-
