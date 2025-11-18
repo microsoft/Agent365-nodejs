@@ -145,17 +145,6 @@ describe('BaggageBuilder', () => {
       expect(bag?.getEntry(OpenTelemetryConstants.SESSION_ID_KEY)?.value).toBe('session-0001');
     });
 
-    it('should set sessionId via static setRequestContext', () => {
-      const scope = BaggageBuilder.setRequestContext(
-        'tenant-123',
-        'agent-456',
-        'corr-789',
-        'session-0002'
-      );
-      const bag = propagation.getBaggage((scope as any).contextWithBaggage);
-      expect(bag?.getEntry(OpenTelemetryConstants.SESSION_ID_KEY)?.value).toBe('session-0002');
-    });
-
     it('should omit empty sessionId value', () => {
       const scope = new BaggageBuilder()
         .sessionId('   ')

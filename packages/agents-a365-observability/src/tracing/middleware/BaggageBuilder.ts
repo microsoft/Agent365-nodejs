@@ -17,7 +17,6 @@ import { OpenTelemetryConstants } from '../constants';
  *   .tenantId("tenant-123")
  *   .agentId("agent-456")
  *   .correlationId("corr-789")
- *   .sessionId("session-0001")
  *   .build();
  *
  * scope.enter();
@@ -105,7 +104,7 @@ export class BaggageBuilder {
    * @param value The session ID
    * @returns Self for method chaining
    */
-  sessionId(value: string | undefined): BaggageBuilder {
+  sessionId(value: string): BaggageBuilder {
     this.set(OpenTelemetryConstants.SESSION_ID_KEY, value);
     return this;
   }
@@ -273,20 +272,17 @@ export class BaggageBuilder {
    * @param tenantId The tenant ID
    * @param agentId The agent ID
    * @param correlationId The correlation ID
-   * @param sessionId Optional session ID
    * @returns A context manager that restores the previous baggage on exit
    */
   static setRequestContext(
     tenantId?: string | null,
     agentId?: string | null,
     correlationId?: string | null,
-    sessionId?: string
   ): BaggageScope {
     return new BaggageBuilder()
       .tenantId(tenantId)
       .agentId(agentId)
       .correlationId(correlationId)
-      .sessionId(sessionId)
       .build();
   }
 }
