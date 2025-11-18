@@ -34,7 +34,7 @@
   },
   "dependencies": {
     "@microsoft/agents-hosting": "*",
-    "@azure/identity": "*",
+    "@azure/identity": "^4.2.1",
     "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {

@@ -36,7 +36,7 @@
     "@microsoft/agents-a365-runtime": "workspace:*",
     "@microsoft/agents-hosting": "*",
     "@modelcontextprotocol/sdk": "*",
-    "express": "*"
+    "express": "^5.1.0"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",

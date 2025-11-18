@@ -27,7 +27,7 @@ overrides:
 
   # Azure packages
   "@azure/monitor-opentelemetry-exporter": "^1.0.0-beta.32"
-  "@azure/identity": "^4.12.0"
+  "@azure/identity": "^4.2.1"
 
   # LangChain packages - use latest stable
   "langchain": "^1.0.1"
@@ -63,6 +63,7 @@ overrides:
   "ts-node": "^10.9.2"
   "dotenv": "^17.2.2"
   "uuid": "^9.0.0"
+  "js-yaml": "^4.1.1"
 
 # Workspace settings
 linkWorkspacePackages: true
