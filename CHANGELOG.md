@@ -1,43 +1,23 @@
-# Changelog
+# Microsoft Agents 365 SDK - NodeJS - Release Notes v0.1.0
 
-All notable changes to the Agent365 TypeScript SDK will be documented in this file.
+**Release Date:** November 17, 2025
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## What's new in v0.1.0
+- Introducing Agent 365 Tooling SDK
+- Introducing Agent 365 Observability SDK
+- Introducing Agent 365 Notification SDK
 
-## [1.0.0] - 2025-01-03
 
-### Added
-- Initial release of Agent365 TypeScript SDK
-- OpenTelemetry integration for comprehensive observability
-- Multi-agent support with context propagation
-- Agent execution tracking with `ExecuteAgentScope`
-- Tool execution tracking with `ExecuteToolScope`
-- Agent invocation tracking with `InvokeAgentScope`
-- Azure Monitor integration for cloud-based monitoring
-- Fluent builder pattern for SDK configuration
-- Complete TypeScript type definitions
-- Sample TypeScript agent demonstrating usage
-- Comprehensive test suite
-- Full documentation and README
+## 🙏 Acknowledgments
 
-### Features
-- **Agent Monitoring**: Specialized tracing scopes for AI agent invocations
-- **Tool Execution Tracking**: Monitor tool executions with detailed telemetry
-- **Azure Monitor Support**: Seamless integration with Azure Monitor
-- **Builder Pattern**: Fluent configuration API similar to .NET SDK
-- **Error Tracking**: Comprehensive error recording and propagation
-- **Context Propagation**: Agent context automatically propagates via OpenTelemetry
-- **Environment Configuration**: Support for environment-based configuration
+Special thanks to all contributors who made this release possible, including the Microsoft Agents 365 team and the open source community for their valuable feedback and contributions.
 
-### Supported Telemetry
-- Custom agent and tool executions
-- Agent-to-agent invocations
-- Error tracking and performance metrics
-- Request/response content (configurable)
-- Source metadata and execution context
+---
 
-### Requirements
-- Node.js 18.0 or later
-- TypeScript 5.0 or later (for development)
-- OpenTelemetry 1.8.0 or later
+## 📞 Support & Resources
+
+- **Issues:** [GitHub Issues](https://github.com/microsoft/Agents365-nodejs/issues)
+- **Samples:** [Agent Samples Repository](https://github.com/microsoft/Agents-Samples)
+- **Community:** Join our developer community discussions
+
+For technical support and questions, please use the GitHub Issues page or refer to our comprehensive documentation and samples.
