@@ -28,10 +28,9 @@ export interface BuilderOptions {
   clusterCategory?: ClusterCategory;
   /**
    * Optional partial set of exporter options allowing agent developers to customize.
-   *  Any values omitted will fall back to the defaults defined in Agent365ExporterOptions.
-   * Values provided here take precedence over those inferred from other builder methods (except that an
-   * explicitly provided tokenResolver / clusterCategory via dedicated builder
-   * methods will override this object).
+   * Any values omitted will fall back to the defaults defined in Agent365ExporterOptions.
+   * Values provided here will be overridden by explicitly configured tokenResolver or clusterCategory
+   * from dedicated builder methods.
    */
   exporterOptions?: Partial<Agent365ExporterOptions>;
 
@@ -100,7 +99,7 @@ export class ObservabilityBuilder {
     if (this.options.exporterOptions) {
       Object.assign(opts, this.options.exporterOptions);
     }
-    opts.clusterCategory = this.options.clusterCategory||opts.clusterCategory || 'prod';
+    opts.clusterCategory = this.options.clusterCategory || opts.clusterCategory || 'prod';
     if (this.options.tokenResolver) {
       opts.tokenResolver = this.options.tokenResolver;
     }

@@ -55,7 +55,7 @@ describe('Agent365Exporter', () => {
     jest.clearAllTimers();
     jest.useRealTimers();
     global.fetch = originalFetch;
-  AgenticTokenCacheInstance.invalidateAll();
+    AgenticTokenCacheInstance.invalidateAll();
   });
 
   it('returns success immediately with no spans', async () => {

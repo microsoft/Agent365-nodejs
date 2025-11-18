@@ -1,6 +1,7 @@
 import {
   Builder,
-  ObservabilityManager
+  ObservabilityManager,
+  Agent365ExporterOptions
 } from '@microsoft/agents-a365-observability';
 
 import { createAgenticTokenCacheKey } from './agent';
@@ -30,14 +31,18 @@ const getClusterCategory = (): ClusterCategory => {
   if (category) {
     return category as ClusterCategory;
   }
-  return 'dev' as ClusterCategory; // Safe fallback
+  return 'prod' as ClusterCategory; // Safe fallback
 };
 
 // Configure observability builder (conditionally adding token resolver based on env flag)
 export const a365Observability = ObservabilityManager.configure((builder: Builder) => {
+  const exporterOptions = new Agent365ExporterOptions();
+  exporterOptions.maxQueueSize = 10; // customized per request
+
   builder
     .withService('TypeScript Sample Agent', '1.0.0')
-    .withClusterCategory(getClusterCategory());
+    .withClusterCategory(getClusterCategory())
+    .withExporterOptions(exporterOptions);
   // Opt-in custom token resolver via env flag `Use_Custom_Resolver=true`
   if (process.env.Use_Custom_Resolver === 'true') {
     builder.withTokenResolver(tokenResolver);
