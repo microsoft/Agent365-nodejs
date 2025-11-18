@@ -1,10 +1,10 @@
 # Sample Agent - Node.js OpenAI
 
-This directory contains a sample OpenAI agent implementation using the Agent365 framework with Node.js and Agent365 OpenAI Agents SDK instrumentation extensions.
+This directory contains a sample OpenAI agent implementation using the Microsoft Agent 365 SDK with Node.js and OpenAI Agents SDK instrumentation extensions.
 
 ## Demonstrates
 
-This sample demonstrates how to build auto instrument for Agent365 using  OpenAI Agents SDK instrumentation extensions for telemetry and observability.
+This sample demonstrates how to build auto instrument for Microsoft Agent 365 using OpenAI Agents SDK instrumentation extensions for telemetry and observability.
 
 
 
@@ -36,7 +36,7 @@ $ npm run build
 
 Create the required `.env` file out of the provided example `.env.example`. Just copying it as-is should be enough.
 
-If you'd like to use Agentic authentication, you should set the values under Agent365 Authentication Configuration.
+If you'd like to use Agentic authentication, you should set the values under Agent 365 Authentication Configuration.
 Otherwise, you can set the value `MCP_AUTH_TOKEN` to authentication against your MCP servers.
 
 `NODE_ENV` should be set to `Development` if you'd like to use your tooling manifest. Otherwise, the tooling sdk will
@@ -144,7 +144,7 @@ This sample includes a VS Code debug configuration. To debug:
    - You can get an API key from: https://platform.openai.com/api-keys
 
 2. **Launch the debugger**:
-   - Open VS Code in the root Agent365 directory
+   - Open VS Code in the root Agent 365 directory
    - Go to Run and Debug (Ctrl+Shift+D)
    - Select "Debug OpenAI Agent with Instrumentation" from the dropdown
    - Press F5 or click the green play button
@@ -176,10 +176,6 @@ Mail:
 ```
 Error: 400 Invalid schema for function 'mcp_MailTools_graph_mail_createMessage': In context=('properties', 'toRecipients', 'items'), 'additionalProperties' is required to be supplied and to be false.
 ```
-
-## 📋 Telemetry
-
-Data Collection. The software may collect information about you and your use of the software and send it to Microsoft. Microsoft may use this information to provide services and improve our products and services. You may turn off the telemetry as described in the repository. There are also some features in the software that may enable you and Microsoft to collect data from users of your applications. If you use these features, you must comply with applicable law, including providing appropriate notices to users of your applications together with a copy of Microsoft's privacy statement. Our privacy statement is located at https://go.microsoft.com/fwlink/?LinkID=824704. You can learn more about data collection and use in the help documentation and our privacy statement. Your use of the software operates as your consent to these practices.
 
 ## Trademarks
 

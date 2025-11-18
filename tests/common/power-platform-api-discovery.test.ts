@@ -8,14 +8,15 @@ describe('getTokenAudience gets the correct token audiences for the environment'
     expect(new PowerPlatformApiDiscovery('local').getTokenAudience()).toEqual(
       'https://api.powerplatform.localhost'
     );
+    // Non-production categories now default to production domain
     expect(new PowerPlatformApiDiscovery('dev').getTokenAudience()).toEqual(
-      'https://api.dev.powerplatform.com'
+      'https://api.powerplatform.com'
     );
     expect(new PowerPlatformApiDiscovery('test').getTokenAudience()).toEqual(
-      'https://api.test.powerplatform.com'
+      'https://api.powerplatform.com'
     );
     expect(new PowerPlatformApiDiscovery('preprod').getTokenAudience()).toEqual(
-      'https://api.preprod.powerplatform.com'
+      'https://api.powerplatform.com'
     );
     expect(new PowerPlatformApiDiscovery('firstrelease').getTokenAudience()).toEqual(
       'https://api.powerplatform.com'
@@ -45,12 +46,13 @@ describe('getTokenEndpointHost gets the correct host for the environment', () =>
     expect(new PowerPlatformApiDiscovery('local').getTokenEndpointHost()).toEqual(
       'api.powerplatform.localhost'
     );
-    expect(new PowerPlatformApiDiscovery('dev').getTokenEndpointHost()).toEqual('api.dev.powerplatform.com');
+    // Non-production categories now default to production domain
+    expect(new PowerPlatformApiDiscovery('dev').getTokenEndpointHost()).toEqual('api.powerplatform.com');
     expect(new PowerPlatformApiDiscovery('test').getTokenEndpointHost()).toEqual(
-      'api.test.powerplatform.com'
+      'api.powerplatform.com'
     );
     expect(new PowerPlatformApiDiscovery('preprod').getTokenEndpointHost()).toEqual(
-      'api.preprod.powerplatform.com'
+      'api.powerplatform.com'
     );
     expect(new PowerPlatformApiDiscovery('firstrelease').getTokenEndpointHost()).toEqual(
       'api.powerplatform.com'
@@ -80,14 +82,15 @@ describe('getTenantEndpoint generates the expected tenant endpoint', () => {
     expect(new PowerPlatformApiDiscovery('local').getTenantEndpoint(tenantId)).toEqual(
       'e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.powerplatform.localhost'
     );
+    // Non-production categories now default to production domain
     expect(new PowerPlatformApiDiscovery('dev').getTenantEndpoint(tenantId)).toEqual(
-      'e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.dev.powerplatform.com'
+      'e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.powerplatform.com'
     );
     expect(new PowerPlatformApiDiscovery('test').getTenantEndpoint(tenantId)).toEqual(
-      'e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.test.powerplatform.com'
+      'e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.powerplatform.com'
     );
     expect(new PowerPlatformApiDiscovery('preprod').getTenantEndpoint(tenantId)).toEqual(
-      'e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.preprod.powerplatform.com'
+      'e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.powerplatform.com'
     );
     expect(new PowerPlatformApiDiscovery('firstrelease').getTenantEndpoint(tenantId)).toEqual(
       'e3064512cc6d4703be71a2ecaecaa9.8a.tenant.api.powerplatform.com'
@@ -142,14 +145,15 @@ describe('getTenantIslandClusterEndpoint generates the expected tenant island cl
     expect(new PowerPlatformApiDiscovery('local').getTenantIslandClusterEndpoint(tenantId)).toEqual(
       'il-e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.powerplatform.localhost'
     );
+    // Non-production categories now default to production domain
     expect(new PowerPlatformApiDiscovery('dev').getTenantIslandClusterEndpoint(tenantId)).toEqual(
-      'il-e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.dev.powerplatform.com'
+      'il-e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.powerplatform.com'
     );
     expect(new PowerPlatformApiDiscovery('test').getTenantIslandClusterEndpoint(tenantId)).toEqual(
-      'il-e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.test.powerplatform.com'
+      'il-e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.powerplatform.com'
     );
     expect(new PowerPlatformApiDiscovery('preprod').getTenantIslandClusterEndpoint(tenantId)).toEqual(
-      'il-e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.preprod.powerplatform.com'
+      'il-e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.powerplatform.com'
     );
     expect(new PowerPlatformApiDiscovery('firstrelease').getTenantIslandClusterEndpoint(tenantId)).toEqual(
       'il-e3064512cc6d4703be71a2ecaecaa9.8a.tenant.api.powerplatform.com'
