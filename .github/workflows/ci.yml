@@ -81,6 +81,11 @@ jobs:
     - name: Set version with Nerdbank.GitVersioning
       run: node setVersion.js
 
+    - name: Copy CHANGELOG.md and LICENSE.md to project folder
+      run: |
+        cp CHANGELOG.md packages/agents-a365-notifications/CHANGELOG.md
+        cp LICENSE.md packages/agents-a365-notifications/LICENSE.md
+
     - name: Build package
       run: npm run build
 
