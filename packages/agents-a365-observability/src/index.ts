@@ -5,7 +5,7 @@
 // Main SDK classes
 export { ObservabilityManager } from './ObservabilityManager';
 export { ObservabilityBuilder as Builder, BuilderOptions } from './ObservabilityBuilder';
-
+export { Agent365ExporterOptions } from './tracing/exporter/Agent365ExporterOptions';
 // Tracing constants
 export { OpenTelemetryConstants } from './tracing/constants';
 
@@ -35,3 +35,4 @@ export { OpenTelemetryScope } from './tracing/scopes/OpenTelemetryScope';
 export { ExecuteToolScope } from './tracing/scopes/ExecuteToolScope';
 export { InvokeAgentScope } from './tracing/scopes/InvokeAgentScope';
 export { InferenceScope} from './tracing/scopes/InferenceScope';
+export { logger, formatError } from './utils/logging';
