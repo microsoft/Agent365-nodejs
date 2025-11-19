@@ -26,7 +26,7 @@
     "typescript"
   ],
   "author": "Microsoft Corporation",
-  "license": "See license file",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/microsoft/Agent365-nodejs.git",
@@ -55,6 +55,7 @@
   "files": [
     "dist/**/*",
     "README.md",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "LICENSE.md"
   ]
 }
