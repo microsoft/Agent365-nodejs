@@ -28,7 +28,8 @@
   "files": [
     "dist",
     "README.md",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "LICENSE.md"
   ],
   "scripts": {
     "build": "npm run build:cjs && npm run build:esm",
