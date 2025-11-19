@@ -2,7 +2,7 @@
 
 [![npm](https://img.shields.io/npm/v/@microsoft/agents-a365-observability?label=npm&logo=npm)](https://www.npmjs.com/search?q=%40microsoft%2Fagents-a365)
 [![npm Downloads](https://img.shields.io/npm/dm/@microsoft/agents-a365-observability?label=Downloads&logo=npm)](https://www.npmjs.com/search?q=%40microsoft%2Fagents-a365)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/microsoft/Agent365-nodejs/build.yml?branch=main&label=Build&logo=github)](https://github.com/microsoft/Agent365-nodejs/actions)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/microsoft/Agent365-nodejs/.github/workflows/ci.yml?branch=main&label=Build&logo=github)](https://github.com/microsoft/Agent365-nodejs/actions)
 [![License](https://img.shields.io/github/license/microsoft/Agent365-nodejs?label=License)](LICENSE.md)
 [![Node.js Version](https://img.shields.io/badge/Node.js-18%2B-339933?logo=node.js)](https://nodejs.org/)
 [![Contributors](https://img.shields.io/github/contributors/microsoft/Agent365-nodejs?label=Contributors&logo=github)](https://github.com/microsoft/Agent365-nodejs/graphs/contributors)
