@@ -8,8 +8,6 @@ Observability token cache utilities for the Agent365 SDK. This package provides:
 - Linear retry on transient failures (timeouts, 5xx, 408, 429) during token exchange
 - Per key (agent + tenant) serialization to avoid thundering herds
 
-> Note: This cache is intentionally lightweight and console‑logged to avoid any circular dependency on the broader observability logging utilities.
-
 ## Installation
 
 ```bash
@@ -20,7 +18,7 @@ pnpm add @microsoft/agents-a365-observability-tokencache
 
 ```ts
 import { AgenticTokenCacheInstance } from '@microsoft/agents-a365-observability-tokencache';
-
+```
 
 ## Using With Observability Builder (Telemetry Exporter)
 

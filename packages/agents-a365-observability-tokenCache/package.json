@@ -16,7 +16,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/microsoft/Agent365-nodejs.git",
-    "directory": "packages/agents-a365-observability-tokenCache"
+    "directory": "packages/agents-a365-observability-tokencache"
   },
   "license": "MIT",
   "author": "Microsoft",

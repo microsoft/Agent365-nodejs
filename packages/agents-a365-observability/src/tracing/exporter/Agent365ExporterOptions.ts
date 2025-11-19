@@ -31,11 +31,8 @@ export class Agent365ExporterOptions {
   /** Environment / cluster category (e.g. "preprod", "prod"). */
   public clusterCategory: ClusterCategory | string = 'prod';
 
-  /** Optional delegate to resolve auth token; falls back to AgenticTokenCache when absent. */
-  public tokenResolver?: TokenResolver; // A tokenResolver MUST be provided by callers.
-
-  /** Use service-to-service endpoint variant when true; standard endpoint when false. */
-  public useS2SEndpoint: boolean = false;
+  /** Optional delegate to resolve auth token used by exporter */
+  public tokenResolver?: TokenResolver; // Optional if ENABLE_A365_OBSERVABILITY_EXPORTER is false
 
   /** Maximum span queue size before new spans are dropped. */
   public maxQueueSize: number = 2048;

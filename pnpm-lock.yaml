@@ -193,7 +193,7 @@ importers:
         specifier: ^5.6.0
         version: 5.9.3
 
-  packages/agents-a365-observability-tokenCache:
+  packages/agents-a365-observability-tokencache:
     dependencies:
       '@microsoft/agents-a365-observability':
         specifier: workspace:*

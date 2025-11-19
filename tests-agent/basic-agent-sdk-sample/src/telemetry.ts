@@ -53,7 +53,7 @@ export const a365Observability = ObservabilityManager.configure((builder: Builde
     builder.withTokenResolver(tokenResolver);
   }
   else {
-    // use resolver from azure token package
+    // use resolver from observability token cache package
     builder.withTokenResolver((agentId: string, tenantId: string) => AgenticTokenCacheInstance.getObservabilityToken(agentId, tenantId));
   }
 });

@@ -51,13 +51,11 @@ class AgenticTokenCache {
     ): Promise<void> {
         const key = AgenticTokenCache.makeKey(agentId, tenantId);
         if (!authorization) {
-            logger.error('[AgenticTokenCache] Authorization not set');
-            return;
+            throw new Error('[AgenticTokenCache] Authorization not set');
         }
         if (!turnContext) {
-            logger.error('[AgenticTokenCache] TurnContext not set');
-            return;
-        }
+            throw new Error('[AgenticTokenCache] TurnContext not set');
+        }		
         return this.withKeyLock<void>(key, async () => {
             let entry = this._map.get(key);
             if (!entry) {

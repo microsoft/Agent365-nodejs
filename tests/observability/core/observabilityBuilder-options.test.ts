@@ -12,7 +12,7 @@ jest.mock('@microsoft/agents-a365-observability/dist/cjs/tracing/exporter/Agent3
       constructor(opts: any) {
         // Capture the options passed from ObservabilityBuilder
         (global as any).__capturedExporterOptions = opts;
-        ;(global as any).__capturedExporterOptionsCallCount = ((global as any).__capturedExporterOptionsCallCount || 0) + 1;
+        (global as any).__capturedExporterOptionsCallCount = ((global as any).__capturedExporterOptionsCallCount || 0) + 1;
         (this.constructor as any).lastOptions = opts;
       }
       export() {/* no-op */}
