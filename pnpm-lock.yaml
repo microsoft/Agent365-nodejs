@@ -467,7 +467,7 @@ importers:
         version: link:../packages/agents-a365-observability-extensions-openai
       '@microsoft/agents-a365-observability-tokencache':
         specifier: workspace:*
-        version: link:../packages/agents-a365-observability-tokenCache
+        version: link:../packages/agents-a365-observability-tokencache
       '@microsoft/agents-a365-runtime':
         specifier: workspace:*
         version: link:../packages/agents-a365-runtime
@@ -546,7 +546,7 @@ importers:
         version: link:../../packages/agents-a365-observability
       '@microsoft/agents-a365-observability-tokencache':
         specifier: workspace:*
-        version: link:../../packages/agents-a365-observability-tokenCache
+        version: link:../../packages/agents-a365-observability-tokencache
       '@microsoft/agents-a365-runtime':
         specifier: workspace:*
         version: link:../../packages/agents-a365-runtime
