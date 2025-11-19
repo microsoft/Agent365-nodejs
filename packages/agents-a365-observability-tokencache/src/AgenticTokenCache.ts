@@ -55,7 +55,7 @@ class AgenticTokenCache {
         }
         if (!turnContext) {
             throw new Error('[AgenticTokenCache] TurnContext not set');
-        }		
+        }
         return this.withKeyLock<void>(key, async () => {
             let entry = this._map.get(key);
             if (!entry) {
