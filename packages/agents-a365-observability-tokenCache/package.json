@@ -43,7 +43,8 @@
   },
   "dependencies": {
     "@microsoft/agents-hosting": "workspace:*",
-    "@microsoft/agents-a365-runtime": "workspace:*"
+    "@microsoft/agents-a365-runtime": "workspace:*",
+    "@microsoft/agents-a365-observability": "workspace:*"
   },
   "devDependencies": {
     "@types/jest": "^29.5.12",

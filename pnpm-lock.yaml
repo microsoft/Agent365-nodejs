@@ -195,6 +195,9 @@ importers:
 
   packages/agents-a365-observability-tokenCache:
     dependencies:
+      '@microsoft/agents-a365-observability':
+        specifier: workspace:*
+        version: link:../agents-a365-observability
       '@microsoft/agents-a365-runtime':
         specifier: workspace:*
         version: link:../agents-a365-runtime

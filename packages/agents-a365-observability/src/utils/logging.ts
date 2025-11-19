@@ -69,7 +69,7 @@ function parseLogLevel(level: string): Set<number> {
 
 const enabledLogLevels = parseLogLevel(process.env.A365_OBSERVABILITY_LOG_LEVEL || 'none');
 
-const logger = {
+export const logger = {
   info: (message: string, ...args: unknown[]) => {
     if (enabledLogLevels.has(LOG_LEVELS.info)) {
       // eslint-disable-next-line no-console
