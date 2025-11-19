@@ -1,3 +1,8 @@
+// ------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------------------------
+
 import {
   TurnState,
   AgentApplication,
@@ -18,10 +23,9 @@ import {
   ExecutionType,
   EnhancedAgentDetails,
   ServiceEndpoint,
-  AgenticTokenCacheInstance,
 } from '@microsoft/agents-a365-observability';
 import { getObservabilityAuthenticationScope } from '@microsoft/agents-a365-runtime';
-
+import { AgenticTokenCacheInstance } from '@microsoft/agents-a365-observability-tokencache';
 import tokenCache from './token-cache'; 
 interface ConversationState {
   count: number;

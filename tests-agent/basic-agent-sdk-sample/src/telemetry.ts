@@ -1,12 +1,17 @@
+// ------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------------------------
+
 import {
   Builder,
   ObservabilityManager,
   Agent365ExporterOptions
 } from '@microsoft/agents-a365-observability';
-
 import { createAgenticTokenCacheKey } from './agent';
 import tokenCache from './token-cache';
 import { ClusterCategory } from '@microsoft/agents-a365-runtime';
+import { AgenticTokenCacheInstance } from '@microsoft/agents-a365-observability-tokencache';
 
 // Configure observability with token resolver (like Python's token_resolver function)  
 const tokenResolver = (agentId: string, tenantId: string): string | null => {
@@ -46,6 +51,10 @@ export const a365Observability = ObservabilityManager.configure((builder: Builde
   // Opt-in custom token resolver via env flag `Use_Custom_Resolver=true`
   if (process.env.Use_Custom_Resolver === 'true') {
     builder.withTokenResolver(tokenResolver);
+  }
+  else {
+    // use resolver from azure token package
+    builder.withTokenResolver((agentId: string, tenantId: string) => AgenticTokenCacheInstance.getObservabilityToken(agentId, tenantId));
   }
 });
 

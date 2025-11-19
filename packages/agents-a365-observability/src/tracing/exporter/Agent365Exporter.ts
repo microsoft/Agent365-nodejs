@@ -9,7 +9,6 @@ import { ReadableSpan, SpanExporter } from '@opentelemetry/sdk-trace-base';
 import { PowerPlatformApiDiscovery, ClusterCategory } from '@microsoft/agents-a365-runtime';
 import { partitionByIdentity, parseIdentityKey, hexTraceId, hexSpanId, kindName, statusName } from './utils';
 import logger, { formatError } from '../../utils/logging';
-import { AgenticTokenCacheInstance } from '../../utils/AgenticTokenCache';
 import { Agent365ExporterOptions } from './Agent365ExporterOptions';
 const DEFAULT_HTTP_TIMEOUT_SECONDS = 30000; // 30 seconds in ms
 const DEFAULT_MAX_RETRIES = 3;
@@ -86,10 +85,7 @@ export class Agent365Exporter implements SpanExporter {
     }
 
     if (!options.tokenResolver) {
-      options.tokenResolver = AgenticTokenCacheInstance.getObservabilityToken.bind(AgenticTokenCacheInstance);
-      logger.info('Agent365Exporter initialized with agentic resolver', `clusterCategory=${options.clusterCategory}`);
-    } else {
-      logger.info('Agent365Exporter initialized with custom tokenResolver', `clusterCategory=${options.clusterCategory}`);
+      throw new Error('Agent365Exporter tokenResolver must be provided');
     }
     this.options = options;
   }
@@ -118,8 +114,9 @@ export class Agent365Exporter implements SpanExporter {
       const promises: Promise<void>[] = [];
 
       for (const [identityKey, activities] of groups) {
-        const promise = this.exportGroup(identityKey, activities).catch(() => {
+        const promise = this.exportGroup(identityKey, activities).catch((err) => {
           anyFailure = true;
+          logger.error(`[Agent365Exporter] Error exporting group ${identityKey}: ${formatError(err)}`);
         });
         promises.push(promise);
       }

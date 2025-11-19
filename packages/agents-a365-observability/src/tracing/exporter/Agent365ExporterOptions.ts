@@ -32,7 +32,7 @@ export class Agent365ExporterOptions {
   public clusterCategory: ClusterCategory | string = 'prod';
 
   /** Optional delegate to resolve auth token; falls back to AgenticTokenCache when absent. */
-  public tokenResolver?: TokenResolver;
+  public tokenResolver?: TokenResolver; // A tokenResolver MUST be provided by callers.
 
   /** Use service-to-service endpoint variant when true; standard endpoint when false. */
   public useS2SEndpoint: boolean = false;

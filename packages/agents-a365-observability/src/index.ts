@@ -35,4 +35,3 @@ export { OpenTelemetryScope } from './tracing/scopes/OpenTelemetryScope';
 export { ExecuteToolScope } from './tracing/scopes/ExecuteToolScope';
 export { InvokeAgentScope } from './tracing/scopes/InvokeAgentScope';
 export { InferenceScope} from './tracing/scopes/InferenceScope';
-export { AgenticTokenCacheInstance } from './utils/AgenticTokenCache';

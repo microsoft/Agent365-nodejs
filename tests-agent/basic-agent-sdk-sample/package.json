@@ -18,6 +18,7 @@
     "@microsoft/agents-activity": "*",
     "@microsoft/agents-a365-observability": "workspace:*",
     "@microsoft/agents-a365-runtime": "workspace:*",
+    "@microsoft/agents-a365-observability-tokencache": "workspace:*",
     "dotenv": "*",
     "express": "*",
     "uuid": "*"

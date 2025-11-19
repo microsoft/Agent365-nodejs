@@ -6,7 +6,6 @@
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { Agent365Exporter } from '@microsoft/agents-a365-observability/src/tracing/exporter/Agent365Exporter';
 import { Agent365ExporterOptions } from '@microsoft/agents-a365-observability/src/tracing/exporter/Agent365ExporterOptions';
-import { AgenticTokenCacheInstance } from '@microsoft/agents-a365-observability/src/utils/AgenticTokenCache';
 // Using standard import instead of 'import type' to avoid Babel/Jest transform issues in this workspace
 import { ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import { ExportResultCode } from '@opentelemetry/core';
@@ -55,7 +54,6 @@ describe('Agent365Exporter', () => {
     jest.clearAllTimers();
     jest.useRealTimers();
     global.fetch = originalFetch;
-    AgenticTokenCacheInstance.invalidateAll();
   });
 
   it('returns success immediately with no spans', async () => {
@@ -100,59 +98,10 @@ describe('Agent365Exporter', () => {
     expect(exportedSpan.attributes[OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]).toBe(agentId);
   });
 
-  it('falls back to AgenticTokenCache when no custom resolver provided', async () => {
-    mockFetchSequence([200]);
-  // Preload cache via RefreshObservabilityToken API
-    const tenant = tenantId;
-    const agent = agentId;
-    const ctx = { activity: { id: 'x' } } as any; // minimal TurnContext stub
-    const auth = { exchangeToken: async () => ({ token: 'cached-token' }) } as any; // Authorization stub
-  await AgenticTokenCacheInstance.RefreshObservabilityToken(agent, tenant, ctx, auth, ['scope.read']);
-
-    // Spy on getObservabilityToken to assert fallback path uses cache retrieval
-    const getTokenSpy = jest.spyOn(AgenticTokenCacheInstance as any, 'getObservabilityToken');
-
+  it('requires a tokenResolver and fails export when missing', async () => {
     const opts = new Agent365ExporterOptions();
-    opts.clusterCategory = 'local'; // no tokenResolver assigned -> fallback to cache
-    const exporter = new Agent365Exporter(opts); // no resolver provided
-    const spans = [
-      makeSpan({
-        [OpenTelemetryConstants.TENANT_ID_KEY]: tenant,
-        [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]: agent
-      })
-    ];
-    const callback = jest.fn();
-    await exporter.export(spans, callback);
-    expect(callback).toHaveBeenCalledWith({ code: ExportResultCode.SUCCESS });
-    expect(getTokenSpy).toHaveBeenCalledTimes(1);
-    expect(getTokenSpy.mock.calls[0][0]).toBe(agent);
-    expect(getTokenSpy.mock.calls[0][1]).toBe(tenant);
-    const fetchCalls = (global.fetch as unknown as { mock: { calls: any[] } }).mock.calls;
-    expect(fetchCalls.length).toBe(1);
-    const headersArg = fetchCalls[0][1].headers;
-    expect(headersArg['authorization']).toBe('Bearer cached-token');
-    // Validate payload structure
-    const bodyStr = fetchCalls[0][1].body as string;
-    expect(typeof bodyStr).toBe('string');
-    const bodyJson = JSON.parse(bodyStr);
-    expect(Array.isArray(bodyJson.resourceSpans)).toBe(true);
-    expect(bodyJson.resourceSpans.length).toBe(1);
-    // console.log('[test] resourceSpans:', JSON.stringify(bodyJson.resourceSpans, null, 2));
-    const rs = bodyJson.resourceSpans[0];
-    expect(Array.isArray(rs.scopeSpans)).toBe(true);
-    expect(rs.scopeSpans.length).toBe(1);
-    const scopeSpan = rs.scopeSpans[0];
-    expect(Array.isArray(scopeSpan.spans)).toBe(true);
-    expect(scopeSpan.spans.length).toBe(1);
-    const span = scopeSpan.spans[0];
-    expect(span.name).toBe('test');
-    expect(span.traceId).toEqual('00000000000000000000000000000001');
-    expect(span.spanId).toEqual('0000000000000002');
-    expect(span.attributes).toBeDefined();
-    expect(span.attributes[OpenTelemetryConstants.TENANT_ID_KEY]).toBe(tenant);
-    expect(span.attributes[OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]).toBe(agent);
-    // Validate local cluster endpoint format
-    const urlArg = fetchCalls[0][0] as string;
-    expect(urlArg).toContain('localhost');
+    opts.clusterCategory = 'local';
+    // Intentionally omit tokenResolver
+    expect(() => new Agent365Exporter(opts)).toThrow(/tokenResolver must be provided/);
   });
 });
