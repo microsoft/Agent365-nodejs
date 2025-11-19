@@ -3,4 +3,4 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------------------------
 
-export { AgenticTokenCacheInstance, createAgenticTokenCacheKey } from './AgenticTokenCache';
+export { AgenticTokenCacheInstance } from './AgenticTokenCache';

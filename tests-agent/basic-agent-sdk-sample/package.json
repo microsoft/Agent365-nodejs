@@ -21,10 +21,7 @@
     "dotenv": "^17.2.2",
     "express": "^5.1.0",
     "uuid": "^9.0.0",
-    "@microsoft/agents-a365-observability-tokencache": "workspace:*",
-    "dotenv": "*",
-    "express": "*",
-    "uuid": "*"
+    "@microsoft/agents-a365-observability-tokencache": "workspace:*"
   },
   "devDependencies": {
     "@microsoft/m365agentsplayground": "^0.2.18",

@@ -20,12 +20,12 @@ class AgenticTokenCache {
     private readonly _defaultMaxTokenAgeMs = 3_600_000;
     private readonly _keyLocks = new Map<string, Promise<unknown>>();
 
-    private makeKey(agentId: string, tenantId: string): string {
+    public static makeKey(agentId: string, tenantId: string): string {
         return `${agentId}:${tenantId}`;
     }
 
     public getObservabilityToken(agentId: string, tenantId: string): string | null {
-        const key = this.makeKey(agentId, tenantId);
+        const key = AgenticTokenCache.makeKey(agentId, tenantId);
         const entry = this._map.get(key);
         if (!entry) {
             logger.error(`[AgenticTokenCache] No cache entry for ${key}`);
@@ -49,7 +49,7 @@ class AgenticTokenCache {
         authorization: Authorization,
         scopes: string[]
     ): Promise<void> {
-        const key = this.makeKey(agentId, tenantId);
+        const key = AgenticTokenCache.makeKey(agentId, tenantId);
         if (!authorization) {
             logger.error('[AgenticTokenCache] Authorization not set');
             return;
@@ -116,7 +116,7 @@ class AgenticTokenCache {
     }
 
     public invalidateToken(agentId: string, tenantId: string): void {
-        const entry = this._map.get(this.makeKey(agentId, tenantId));
+        const entry = this._map.get(AgenticTokenCache.makeKey(agentId, tenantId));
         if (entry) {
             entry.token = undefined;
             entry.expiresOn = undefined;
@@ -199,8 +199,5 @@ class AgenticTokenCache {
     }
 }
 
-export function createAgenticTokenCacheKey(agentId: string, tenantId: string): string {
-    return `${agentId}:${tenantId}`;
-}
 export const AgenticTokenCacheInstance = new AgenticTokenCache();
 export default AgenticTokenCacheInstance;
