@@ -17,7 +17,7 @@
     "lint:fix": "eslint src/**/*.ts --fix",
     "prepublishOnly": "npm run clean && npm run build",
     "ci": "npm ci",
-    "pack": "npm pack --pack-destination=../"
+    "pack": "cp ../../CHANGELOG.md . && cp ../../LICENSE.md . && npm pack --pack-destination=../"
   },
   "keywords": [
     "Agent365",
@@ -30,7 +30,7 @@
     "typescript"
   ],
   "author": "Microsoft Corporation",
-  "license": "See license file",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/microsoft/Agent365-nodejs.git",
@@ -64,6 +64,7 @@
   "files": [
     "dist/**/*",
     "README.md",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "LICENSE.md"
   ]
 }
