@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------------------------
 
-const { AgenticTokenCacheInstance } = require('@microsoft/agents-a365-observability-tokencache') as { AgenticTokenCacheInstance: any };
+import { AgenticTokenCacheInstance } from '@microsoft/agents-a365-observability-tokencache';
 
 interface TurnContextStub { activity: { id: string } }
 interface AuthorizationStub {
@@ -16,6 +16,11 @@ interface AuthorizationStub {
 interface SequenceStep { token?: string; error?: unknown }
 
 const makeTurnContext = (): TurnContextStub => ({ activity: { id: 'a1' } });
+
+// Helper to cast our minimal stub to the SDK TurnContext type expected by the cache
+const asTurnContext = (stub: TurnContextStub): import('@microsoft/agents-hosting').TurnContext => {
+  return stub as unknown as import('@microsoft/agents-hosting').TurnContext;
+};
 
 function makeJwtWithExp(expSecondsFromNow: number): string {
   const header = Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url');
@@ -58,7 +63,13 @@ describe('AgenticTokenCacheInstance', () => {
   it('exchanges and caches token on first call', async () => {
     const token = makeJwtWithExp(300);
     const auth = makeAuthorizationMock([{ token }]);
-    await AgenticTokenCacheInstance.RefreshObservabilityToken('agentA', 'tenantA', makeTurnContext(), auth as any, ['scope.read']);
+    await AgenticTokenCacheInstance.RefreshObservabilityToken(
+      'agentA',
+      'tenantA',
+      asTurnContext(makeTurnContext()),
+      auth as any,
+      ['scope.read']
+    );
     const tokenReturned = AgenticTokenCacheInstance.getObservabilityToken('agentA', 'tenantA');
     expect(tokenReturned).not.toBeNull();
     expect(tokenReturned).toBe(token);
@@ -85,7 +96,13 @@ describe('AgenticTokenCacheInstance', () => {
       onSignInSuccess: () => {},
       onSignInFailure: () => {}
     };
-    const p = AgenticTokenCacheInstance.RefreshObservabilityToken('agentB', 'tenantB', makeTurnContext() as any, auth as any, ['scope.read']);
+    const p = AgenticTokenCacheInstance.RefreshObservabilityToken(
+      'agentB',
+      'tenantB',
+      asTurnContext(makeTurnContext()),
+      auth as any,
+      ['scope.read']
+    );
     await (jest as any).advanceTimersByTimeAsync?.(1000) || jest.advanceTimersByTime(1000);
     await p;
     const tokenReturned = AgenticTokenCacheInstance.getObservabilityToken('agentB', 'tenantB');
@@ -100,21 +117,39 @@ describe('AgenticTokenCacheInstance', () => {
       { error: nonRetriableErr },
       { token: makeJwtWithExp(300) } // should not be used
     ]);
-    await AgenticTokenCacheInstance.RefreshObservabilityToken('agentC', 'tenantC', makeTurnContext(), auth as any, ['scope.read']);
+    await AgenticTokenCacheInstance.RefreshObservabilityToken(
+      'agentC',
+      'tenantC',
+      asTurnContext(makeTurnContext()),
+      auth as any,
+      ['scope.read']
+    );
     const token = AgenticTokenCacheInstance.getObservabilityToken('agentC', 'tenantC');
     expect(token).toBeNull();
   });
 
   it('treats near-expiry token as expired (skew refresh)', async () => {
     const auth = makeAuthorizationMock([{ token: makeJwtWithExp(30) }]);
-    await AgenticTokenCacheInstance.RefreshObservabilityToken('agentD', 'tenantD', makeTurnContext(), auth as any, ['scope.read']);
+    await AgenticTokenCacheInstance.RefreshObservabilityToken(
+      'agentD',
+      'tenantD',
+      asTurnContext(makeTurnContext()),
+      auth as any,
+      ['scope.read']
+    );
     const token = AgenticTokenCacheInstance.getObservabilityToken('agentD', 'tenantD');
     expect(token).toBeNull();
   });
 
   it('returns cached token before expiry then invalid after advancing time', async () => {
     const auth = makeAuthorizationMock([{ token: makeJwtWithExp(120) }]);
-    await AgenticTokenCacheInstance.RefreshObservabilityToken('agentE', 'tenantE', makeTurnContext(), auth as any, ['scope.read']);
+    await AgenticTokenCacheInstance.RefreshObservabilityToken(
+      'agentE',
+      'tenantE',
+      asTurnContext(makeTurnContext()),
+      auth as any,
+      ['scope.read']
+    );
     const tokenBefore = AgenticTokenCacheInstance.getObservabilityToken('agentE', 'tenantE');
     expect(tokenBefore).not.toBeNull();
     jest.advanceTimersByTime(61_000);

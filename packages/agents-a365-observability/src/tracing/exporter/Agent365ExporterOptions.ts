@@ -20,8 +20,6 @@ export type TokenResolver = (agentId: string, tenantId: string) => string | null
  * @property {ClusterCategory | string} clusterCategory Environment / cluster category (e.g. "preprod", "prod", default to "prod").
  * @property {TokenResolver} [tokenResolver] Optional delegate to obtain an auth token. If omitted the exporter will
  *           fall back to reading the cached token (AgenticTokenCacheInstance.getObservabilityToken).
- * @property {boolean} useS2SEndpoint When true uses service-to-service path (/maven/agent365/service/agents/{agentId}/traces);
- *           when false uses the standard path (/maven/agent365/agents/{agentId}/traces).
  * @property {number} maxQueueSize Maximum span queue size before drops occur (passed to BatchSpanProcessor).
  * @property {number} scheduledDelayMilliseconds Delay between automatic batch flush attempts.
  * @property {number} exporterTimeoutMilliseconds Per-export timeout (abort if exceeded).

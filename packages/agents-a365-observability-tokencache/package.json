@@ -42,7 +42,7 @@
     "pack": "npm pack --pack-destination=../"
   },
   "dependencies": {
-    "@microsoft/agents-hosting": "workspace:*",
+    "@microsoft/agents-hosting": "^1.1.0-alpha.85",
     "@microsoft/agents-a365-runtime": "workspace:*",
     "@microsoft/agents-a365-observability": "workspace:*"
   },
