@@ -54,7 +54,7 @@
   "files": [
     "dist/**/*",
     "README.md",
-    "../../CHANGELOG.md",
-    "../../LICENSE.md"
+    "CHANGELOG.md",
+    "LICENSE.md"
   ]
 }
