@@ -9,6 +9,8 @@ on:
 jobs:
   changed-sdks:
     name: Determine Changed SDKs
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     outputs:
       nodejs-sdk: ${{ steps.check_nodejs_sdk.outputs.changed }}
