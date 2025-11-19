@@ -42,7 +42,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "pack": "npm pack --pack-destination=../"
+    "pack": "cp ../../CHANGELOG.md . && cp ../../LICENSE.md . && npm pack --pack-destination=../"
   },
   "dependencies": {
     "@microsoft/agents-a365-observability": "workspace:*",
