@@ -26,12 +26,12 @@ export class McpToolServerConfigurationService {
   /**
    * Return MCP server definitions for the given agent. In development (NODE_ENV=Development) this reads the local ToolingManifest.json; otherwise it queries the remote tooling gateway.
    *
-   * @param agentUserId The unique identifier of the digital worker/agent user for which to discover servers.
+   * @param agenticAppId The agentic app id for which to discover servers.
    * @param authToken Optional bearer token used when querying the remote tooling gateway.
    * @returns A promise resolving to an array of normalized MCP server configuration objects.
    */
-  async listToolServers(agentUserId: string, authToken: string): Promise<MCPServerConfig[]> {
-    return await (this.isDevScenario() ? this.getMCPServerConfigsFromManifest() : this.getMCPServerConfigsFromToolingGateway(agentUserId, authToken));
+  async listToolServers(agenticAppId: string, authToken: string): Promise<MCPServerConfig[]> {
+    return await (this.isDevScenario() ? this.getMCPServerConfigsFromManifest() : this.getMCPServerConfigsFromToolingGateway(agenticAppId, authToken));
   }
 
   /**
@@ -72,15 +72,15 @@ export class McpToolServerConfigurationService {
    * Query the tooling gateway for MCP servers for the specified agent and normalize each entry's mcpServerUniqueName into a full URL using Utility.BuildMcpServerUrl.
    * Throws an error if the gateway call fails.
    *
-   * @param agentId The digital worker/agent id used by the tooling gateway to scope results.
+   * @param agenticAppId The agentic app id used by the tooling gateway to scope results.
    * @param authToken Optional Bearer token to include in the Authorization header when calling the gateway.
    * @throws Error when the gateway call fails or returns an unexpected payload.
    */
-  private async getMCPServerConfigsFromToolingGateway(agentUserId: string, authToken: string): Promise<MCPServerConfig[]> {
+  private async getMCPServerConfigsFromToolingGateway(agenticAppId: string, authToken: string): Promise<MCPServerConfig[]> {
     // Validate the authentication token
     Utility.ValidateAuthToken(authToken);
 
-    const configEndpoint = Utility.GetToolingGatewayForDigitalWorker(agentUserId);
+    const configEndpoint = Utility.GetToolingGatewayForDigitalWorker(agenticAppId);
 
     try {
       const response = await axios.get(

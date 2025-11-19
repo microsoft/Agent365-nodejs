@@ -43,6 +43,9 @@ overrides:
   # Zod
   "zod": "^4.1.12"
 
+  # JSON Web Token
+  "jsonwebtoken": "^9.0.2"
+
   # Development dependencies - align versions
   "@microsoft/m365agentsplayground": "^0.2.18"
   "typescript": "^5.6.0"

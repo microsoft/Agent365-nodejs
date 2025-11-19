@@ -66,19 +66,19 @@ export class Utility {
   }
 
   /**
-   * Construct the tooling gateway URL for a given digital worker (agent user).
-   * This endpoint is used to discover MCP servers associated with the specified agent user.
+   * Construct the tooling gateway URL for a given agent identity.
+   * This endpoint is used to discover MCP servers associated with the specified agent identity.
    *
    * Example:
-   *   Utility.GetToolingGatewayForDigitalWorker('agent-123')
-   *   // => "https://agent365.svc.cloud.microsoft/agentGateway/agentApplicationInstances/agent-123/mcpServers"
+   *   Utility.GetToolingGatewayForDigitalWorker(agenticAppId)
+   *   // => "https://agent365.svc.cloud.microsoft/agents/{agenticAppId}/mcpServers"
    *
-   * @param agentUserId - The unique identifier of the digital worker (agent user).
-   * @returns A fully-qualified URL pointing at the tooling gateway for the agent user.
+   * @param agenticAppId - The unique identifier for the agent identity.
+   * @returns A fully-qualified URL pointing at the tooling gateway for the agent.
    */
-  public static GetToolingGatewayForDigitalWorker(agentUserId: string): string {
+  public static GetToolingGatewayForDigitalWorker(agenticAppId: string): string {
     // The endpoint needs to be updated based on the environment (prod, dev, etc.)
-    return `${this.getMcpPlatformBaseUrl()}/agents/${agentUserId}/mcpServers`;
+    return `${this.getMcpPlatformBaseUrl()}/agents/${agenticAppId}/mcpServers`;
   }
 
   /**

@@ -5,8 +5,8 @@ import { TurnContext, Authorization } from '@microsoft/agents-hosting';
 import { getMcpPlatformAuthenticationScope } from './environment-utils';
 
 export class AgenticAuthenticationService {
-  public static async GetAgenticUserToken(authorization: Authorization, turnContext: TurnContext) {
+  public static async GetAgenticUserToken(authorization: Authorization, authHandlerName: string, turnContext: TurnContext) {
     const scope = getMcpPlatformAuthenticationScope();
-    return (await authorization.exchangeToken(turnContext, 'agentic', { scopes: [scope] })).token || '';
+    return (await authorization.exchangeToken(turnContext, authHandlerName, { scopes: [scope] })).token || '';
   }
 }
