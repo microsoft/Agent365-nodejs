@@ -154,6 +154,16 @@ describe('BaggageBuilder', () => {
     });
   });
 
+  describe('metadata support', () => {
+    it('should set source metadata subchannel', () => {
+      const scope = new BaggageBuilder()
+        .sourceMetadataSubchannel('sub-A')
+        .build();
+      const bag = propagation.getBaggage((scope as any).contextWithBaggage);
+      expect(bag?.getEntry(OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_SUBCHANNEL_KEY)?.value).toBe('sub-A');
+    });
+  });
+
 });
 
 describe('BaggageScope', () => {

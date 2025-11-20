@@ -71,6 +71,7 @@ export class InvokeAgentScope extends OpenTelemetryScope {
         this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_ID_KEY, requestToUse.sourceMetadata.id);
         this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY, requestToUse.sourceMetadata.name);
         this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY, requestToUse.sourceMetadata.description);
+        this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_SUBCHANNEL_KEY, requestToUse.sourceMetadata.subchannel);
       }
     }
 

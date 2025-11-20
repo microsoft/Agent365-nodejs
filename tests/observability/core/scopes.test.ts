@@ -122,6 +122,25 @@ describe('Scopes', () => {
       expect(() => scope?.recordError(error)).not.toThrow();
       scope?.dispose();
     });
+
+    it('should accept sourceMetadata attributes without error', () => {
+      const invokeAgentDetails: InvokeAgentDetails = {
+        agentId: 'test-agent',
+        request: {
+          content: 'hello',
+          sourceMetadata: {
+            id: 'chan-123',
+            name: 'RootChannel',
+            description: 'Primary channel',
+            subchannel: 'thread-7'
+          }
+        }
+      };
+      expect(() => {
+        const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
+        scope?.dispose();
+      }).not.toThrow();
+    });
   });
 
   describe('ExecuteToolScope', () => {
