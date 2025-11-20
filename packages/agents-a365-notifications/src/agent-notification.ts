@@ -46,6 +46,7 @@ function addAgenticRoute(
 function onAgentNotificationInternal(
   app: AgentApplication<TurnState>,
   channelId: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   handler: any,
   rank = 32767,
   autoSignInHandlers?: string[]) {
@@ -86,6 +87,7 @@ function onAgentNotificationInternal(
 function onLifecycleNotificationInternal(
   app: AgentApplication<TurnState>,
   lifecycleEvent: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   handler: any,
   rank = 32767,
   autoSignInHandlers?: string[]) {

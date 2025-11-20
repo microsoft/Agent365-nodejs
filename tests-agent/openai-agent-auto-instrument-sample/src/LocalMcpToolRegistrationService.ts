@@ -20,12 +20,11 @@ interface McpServerConfig {
 export class LocalMcpToolRegistrationService {
   async addMcpToolServers(
     agent: Agent,
-    userId: string,
     _turnContext: TurnContext,
     authToken: string,
   ): Promise<void> {
     try {
-      const serverConfigs = this.getServerConfigurations(userId, authToken);
+      const serverConfigs = this.getServerConfigurations(authToken);
       console.log(`🔗 Setting up ${serverConfigs.length} MCP servers...`);
 
       for (const config of serverConfigs) {
@@ -39,7 +38,7 @@ export class LocalMcpToolRegistrationService {
     }
   }
 
-  private getServerConfigurations(userId: string, authToken: string): McpServerConfig[] {
+  private getServerConfigurations(authToken: string): McpServerConfig[] {
     return [
       {
         serverName: 'mcp_MailTools',

@@ -27,18 +27,19 @@
   "license": "MIT",
   "description": "Sample OpenAI agent with instrumentation using Microsoft Agent 365 SDK",
   "dependencies": {
-    "@microsoft/agents-hosting": "^1.1.0-alpha.85",
-    "@microsoft/agents-activity": "^1.1.0-alpha.85",
-    "@microsoft/agents-a365-runtime": "workspace:*",
     "@microsoft/agents-a365-observability": "workspace:*",
     "@microsoft/agents-a365-observability-extensions-openai": "workspace:*",
+    "@microsoft/agents-a365-runtime": "workspace:*",
     "@microsoft/agents-a365-tooling-extensions-openai": "workspace:*",
+    "@microsoft/agents-activity": "^1.1.0-alpha.85",
+    "@microsoft/agents-hosting": "^1.1.0-alpha.85",
     "@openai/agents": "^0.1.5",
     "@openai/agents-core": "^0.1.5",
     "dotenv": "^17.2.2",
     "express": "^5.1.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.1",
     "@jest/globals": "^29.7.0",
     "@microsoft/m365agentsplayground": "^0.2.18",
     "@types/express": "^5.0.0",
@@ -51,7 +52,8 @@
     "rimraf": "^5.0.0",
     "ts-jest": "^29.1.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.0.0"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.47.0"
   },
   "engines": {
     "node": ">=18.0.0"

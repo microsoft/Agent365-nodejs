@@ -33,21 +33,23 @@
     "directory": "packages/agents-a365-runtime"
   },
   "dependencies": {
-    "@microsoft/agents-hosting": "*",
     "@azure/identity": "^4.12.1",
+    "@microsoft/agents-hosting": "*",
     "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.1",
     "@types/jest": "^29.5.14",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.0.0",
-    "@typescript-eslint/eslint-plugin": "^6.0.0",
-    "@typescript-eslint/parser": "^6.0.0",
-    "eslint": "^8.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.47.0",
+    "@typescript-eslint/parser": "^8.47.0",
+    "eslint": "^9.39.1",
     "jest": "^29.0.0",
     "rimraf": "^5.0.0",
     "ts-jest": "^29.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.47.0"
   },
   "engines": {
     "node": ">=18.0.0"

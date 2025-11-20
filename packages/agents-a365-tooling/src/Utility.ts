@@ -50,7 +50,7 @@ export class Utility {
       const paddedBase64 = payloadBase64.padEnd(payloadBase64.length + (4 - payloadBase64.length % 4) % 4, '=');
       const payloadJson = Buffer.from(paddedBase64.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8');
       payload = JSON.parse(payloadJson);
-    } catch (error) {
+    } catch (_error) {
       throw new Error('Failed to decode JWT token payload');
     }
 
