@@ -64,6 +64,9 @@ export interface SourceMetadata {
 
   /** Optional description providing additional context about the source */
   description?: string;
+
+  /** Optional subchannel identifier */
+  subchannel?: string;
 }
 
 /**

@@ -169,5 +169,4 @@ export abstract class OpenTelemetryScope implements Disposable {
   public dispose(): void {
     this[Symbol.dispose]();
   }
-
 }

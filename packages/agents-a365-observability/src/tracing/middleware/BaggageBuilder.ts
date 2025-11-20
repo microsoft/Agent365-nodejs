@@ -220,6 +220,16 @@ export class BaggageBuilder {
   }
 
   /**
+   * Set the execution source metadata subchannel.
+   * @param value The source metadata subchannel
+   * @returns Self for method chaining
+   */
+  sourceMetadataSubchannel(value: string | null | undefined): BaggageBuilder {
+    this.set(OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_SUBCHANNEL_KEY, value);
+    return this;
+  }
+
+  /**
    * Set multiple baggage pairs from a dictionary or iterable.
    * @param pairs Dictionary or iterable of key-value pairs
    * @returns Self for method chaining

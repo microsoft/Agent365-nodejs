@@ -102,6 +102,7 @@ export class OpenTelemetryConstants {
   public static readonly GEN_AI_EXECUTION_SOURCE_ID_KEY = 'gen_ai.execution.sourceMetadata.id';
   public static readonly GEN_AI_EXECUTION_SOURCE_NAME_KEY = 'gen_ai.channel.name';
   public static readonly GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY = 'gen_ai.channel.link';
+  public static readonly GEN_AI_EXECUTION_SOURCE_SUBCHANNEL_KEY = 'gen_ai.channel.subchannel';
 
   // Custom parent id and parent name key
   public static readonly CUSTOM_PARENT_SPAN_ID_KEY = 'custom.parent.span.id';
