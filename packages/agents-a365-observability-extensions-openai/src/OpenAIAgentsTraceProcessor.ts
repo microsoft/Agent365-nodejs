@@ -338,7 +338,7 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
   /**
    * Process handoff span data
    */
-  private processHandoffSpanData(otelSpan: OtelSpan, data: SpanData, traceId: string): void {
+  private processHandoffSpanData(_otelSpan: OtelSpan, data: SpanData, traceId: string): void {
     const handoffData = data as Record<string, unknown>;
     if (handoffData.to_agent && handoffData.from_agent) {
       const key = `${handoffData.to_agent}:${traceId}`;

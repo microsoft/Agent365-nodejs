@@ -136,6 +136,7 @@ export class ObservabilityBuilder {
     // 2. batch processor that actually ships spans out
     const batchProcessor = this.createBatchProcessor();
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const globalProvider: any = trace.getTracerProvider();
 
     const canAddProcessors =
@@ -194,9 +195,11 @@ export class ObservabilityBuilder {
   /**
    * Helper to avoid double-registering same processor type.
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private attachProcessorIfMissing(provider: any, processor: any) {
     const active = provider._activeSpanProcessor?._spanProcessors;
     const alreadyAdded = Array.isArray(active) &&
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       active.some((p: any) => p?.constructor?.name === processor.constructor.name);
 
     if (!alreadyAdded) {

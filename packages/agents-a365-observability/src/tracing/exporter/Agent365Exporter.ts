@@ -127,7 +127,7 @@ export class Agent365Exporter implements SpanExporter {
         code: anyFailure ? ExportResultCode.FAILED : ExportResultCode.SUCCESS
       });
 
-    } catch (error) {
+    } catch (_error) {
       // Exporters should not raise; signal failure
       resultCallback({ code: ExportResultCode.FAILED });
     }

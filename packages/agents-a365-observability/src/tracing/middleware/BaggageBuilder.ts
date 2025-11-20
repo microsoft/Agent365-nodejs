@@ -224,13 +224,16 @@ export class BaggageBuilder {
    * @param pairs Dictionary or iterable of key-value pairs
    * @returns Self for method chaining
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   setPairs(pairs: Record<string, any> | Iterable<[string, any]> | null | undefined): BaggageBuilder {
     if (!pairs) {
       return this;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let entries: Iterable<[string, any]>;
     if (Symbol.iterator in Object(pairs)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       entries = pairs as Iterable<[string, any]>;
     } else {
       entries = Object.entries(pairs);
