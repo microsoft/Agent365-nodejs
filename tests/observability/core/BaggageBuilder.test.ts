@@ -154,6 +154,24 @@ describe('BaggageBuilder', () => {
     });
   });
 
+  describe('sessionDescription support', () => {
+    it('should set sessionDescription via fluent API', () => {
+      const scope = new BaggageBuilder()
+        .sessionDescription('My session desc')
+        .build();
+      const bag = propagation.getBaggage((scope as any).contextWithBaggage);
+      expect(bag?.getEntry(OpenTelemetryConstants.GEN_AI_SESSION_DESCRIPTION_KEY)?.value).toBe('My session desc');
+    });
+
+    it('should omit null sessionDescription value', () => {
+      const scope = new BaggageBuilder()
+        .sessionDescription(null)
+        .build();
+      const bag = propagation.getBaggage((scope as any).contextWithBaggage);
+      expect(bag?.getEntry(OpenTelemetryConstants.GEN_AI_SESSION_DESCRIPTION_KEY)).toBeUndefined();
+    });
+  });
+
 });
 
 describe('BaggageScope', () => {

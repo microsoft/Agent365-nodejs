@@ -61,6 +61,7 @@ agentApplication.onActivity(
       .agentId(agentInfo.agentId)
       .correlationId("7ff6dca0-917c-4bb0-b31a-794e533d8aad")
       .agentName(agentInfo.agentName)
+      .sessionDescription('Initial onboarding session')
       .conversationId(context.activity.conversation?.id)
       .callerId(context.activity.from?.aadObjectId)
       .callerUpn(context.activity.from?.id)
