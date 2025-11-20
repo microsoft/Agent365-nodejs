@@ -155,7 +155,7 @@ export class BaggageBuilder {
    * @returns Self for method chaining
    */
   sessionDescription(value: string | null | undefined): BaggageBuilder {
-    this.set(OpenTelemetryConstants.GEN_AI_SESSION_DESCRIPTION_KEY, value);
+    this.set(OpenTelemetryConstants.SESSION_DESCRIPTION_KEY, value);
     return this;
   }
 

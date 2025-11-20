@@ -70,7 +70,7 @@ describe('SpanProcessor', () => {
 
     it('should copy sessionDescription from baggage to span', () => {
       let baggage = propagation.createBaggage();
-      baggage = baggage.setEntry(OpenTelemetryConstants.GEN_AI_SESSION_DESCRIPTION_KEY, { value: 'Test session description' });
+      baggage = baggage.setEntry(OpenTelemetryConstants.SESSION_DESCRIPTION_KEY, { value: 'Test session description' });
 
       const ctx = propagation.setBaggage(context.active(), baggage);
       const tracer = provider.getTracer('test');
@@ -78,7 +78,7 @@ describe('SpanProcessor', () => {
       testSpan.end();
 
       const attrs = (testSpan as any)._attributes ?? (testSpan as any).attributes ?? {};
-      expect(attrs[OpenTelemetryConstants.GEN_AI_SESSION_DESCRIPTION_KEY]).toBe('Test session description');
+      expect(attrs[OpenTelemetryConstants.SESSION_DESCRIPTION_KEY]).toBe('Test session description');
     });
 
     it('should copy invoke agent attributes for invoke_agent operations', () => {

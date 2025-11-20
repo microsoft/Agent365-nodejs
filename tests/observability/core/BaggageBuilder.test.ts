@@ -144,7 +144,7 @@ describe('BaggageBuilder', () => {
         .build();
       const bag = propagation.getBaggage((scope as any).contextWithBaggage);
       expect(bag?.getEntry(OpenTelemetryConstants.SESSION_ID_KEY)?.value).toBe('session-0001');
-      expect(bag?.getEntry(OpenTelemetryConstants.GEN_AI_SESSION_DESCRIPTION_KEY)?.value).toBe('My session desc');
+      expect(bag?.getEntry(OpenTelemetryConstants.SESSION_DESCRIPTION_KEY)?.value).toBe('My session desc');
     });
 
     it('should omit empty sessionId value', () => {
@@ -160,7 +160,7 @@ describe('BaggageBuilder', () => {
         .sessionDescription(null)
         .build();
       const bag = propagation.getBaggage((scope as any).contextWithBaggage);
-      expect(bag?.getEntry(OpenTelemetryConstants.GEN_AI_SESSION_DESCRIPTION_KEY)).toBeUndefined();
+      expect(bag?.getEntry(OpenTelemetryConstants.SESSION_DESCRIPTION_KEY)).toBeUndefined();
     });
   });
 });
