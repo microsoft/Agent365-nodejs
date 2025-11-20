@@ -234,14 +234,14 @@ export class BaggageBuilder {
    * @param pairs Dictionary or iterable of key-value pairs
    * @returns Self for method chaining
    */
-  setPairs(pairs: Record<string, any> | Iterable<[string, any]> | null | undefined): BaggageBuilder {
+  setPairs(pairs: Record<string, unknown> | Iterable<[string, unknown]> | null | undefined): BaggageBuilder {
     if (!pairs) {
       return this;
     }
 
-    let entries: Iterable<[string, any]>;
+    let entries: Iterable<[string, unknown]>;
     if (Symbol.iterator in Object(pairs)) {
-      entries = pairs as Iterable<[string, any]>;
+      entries = pairs as Iterable<[string, unknown]>;
     } else {
       entries = Object.entries(pairs);
     }
