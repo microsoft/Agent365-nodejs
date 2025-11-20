@@ -29,7 +29,6 @@ export async function getClient(authorization: Authorization | undefined, authHa
       // Use local mock MCP servers
       await localMcpService.addMcpToolServers(
         agent,
-        process.env.AGENTIC_USER_ID || 'dev-user-id',
         turnContext,
         process.env.MCP_AUTH_TOKEN || 'dev-token',
       );
