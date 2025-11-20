@@ -123,25 +123,7 @@ describe('Scopes', () => {
       scope?.dispose();
     });
 
-    it('should accept sourceMetadata subchannel', () => {
-      const invokeAgentDetails: InvokeAgentDetails = {
-        agentId: 'test-agent',
-        request: {
-          content: 'hello',
-          sourceMetadata: {
-            id: 'channel-1',
-            name: 'MainChannel',
-            subchannel: 'thread-42'
-          }
-        }
-      };
-      const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
-      expect(scope).toBeInstanceOf(InvokeAgentScope);
-      // We cannot rely on internal exporter state here; basic construction is sufficient.
-      scope?.dispose();
-    });
-
-    it('should accept sourceMetadata attributes (id, name, description, subchannel) without error', () => {
+    it('should accept sourceMetadata attributes without error', () => {
       const invokeAgentDetails: InvokeAgentDetails = {
         agentId: 'test-agent',
         request: {
