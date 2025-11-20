@@ -155,7 +155,7 @@ describe('BaggageBuilder', () => {
       expect(bag?.getEntry(OpenTelemetryConstants.SESSION_ID_KEY)).toBeUndefined();
     });
 
-     it('should omit null sessionDescription value', () => {
+    it('should omit null sessionDescription value', () => {
       const scope = new BaggageBuilder()
         .sessionDescription(null)
         .build();
