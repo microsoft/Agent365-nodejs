@@ -83,6 +83,7 @@ export class OpenTelemetryConstants {
   public static readonly AGENT_ID_KEY = 'gen_ai.agent.id';
   public static readonly GEN_AI_TASK_ID_KEY = 'gen_ai.task.id';
   public static readonly SESSION_ID_KEY = 'session.id';
+  public static readonly SESSION_DESCRIPTION_KEY = 'session.description';
   public static readonly GEN_AI_ICON_URI_KEY = 'gen_ai.agent365.icon_uri';
   public static readonly TENANT_ID_KEY = 'tenant.id';
 

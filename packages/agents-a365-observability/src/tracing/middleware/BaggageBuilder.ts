@@ -150,6 +150,16 @@ export class BaggageBuilder {
   }
 
   /**
+   * Set the session description baggage value.
+   * @param value The session description
+   * @returns Self for method chaining
+   */
+  sessionDescription(value: string | null | undefined): BaggageBuilder {
+    this.set(OpenTelemetryConstants.SESSION_DESCRIPTION_KEY, value);
+    return this;
+  }
+
+  /**
    * Set the caller name baggage value.
    * @param value The caller name
    * @returns Self for method chaining
