@@ -140,9 +140,11 @@ describe('BaggageBuilder', () => {
         .agentId('agent-456')
         .correlationId('corr-789')
         .sessionId('session-0001')
+        .sessionDescription('My session desc')
         .build();
       const bag = propagation.getBaggage((scope as any).contextWithBaggage);
       expect(bag?.getEntry(OpenTelemetryConstants.SESSION_ID_KEY)?.value).toBe('session-0001');
+      expect(bag?.getEntry(OpenTelemetryConstants.SESSION_DESCRIPTION_KEY)?.value).toBe('My session desc');
     });
 
     it('should omit empty sessionId value', () => {
@@ -152,8 +154,15 @@ describe('BaggageBuilder', () => {
       const bag = propagation.getBaggage((scope as any).contextWithBaggage);
       expect(bag?.getEntry(OpenTelemetryConstants.SESSION_ID_KEY)).toBeUndefined();
     });
-  });
 
+    it('should omit null sessionDescription value', () => {
+      const scope = new BaggageBuilder()
+        .sessionDescription(null)
+        .build();
+      const bag = propagation.getBaggage((scope as any).contextWithBaggage);
+      expect(bag?.getEntry(OpenTelemetryConstants.SESSION_DESCRIPTION_KEY)).toBeUndefined();
+    });
+  });
 });
 
 describe('BaggageScope', () => {
