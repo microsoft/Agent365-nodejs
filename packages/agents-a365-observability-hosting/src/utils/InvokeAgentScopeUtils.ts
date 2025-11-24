@@ -25,7 +25,7 @@ export class InvokeAgentScopeUtils {
 	 * @param turnContext The TurnContext containing activity information.
 	 * @returns The updated InvokeAgentScope instance.
 	 */
-	static populateFromTurnContext(scope: InvokeAgentScope, turnContext: TurnContext): any {
+	static populateFromTurnContext(scope: InvokeAgentScope, turnContext: TurnContext): InvokeAgentScope {
 		if (!turnContext) {
 			throw new Error('turnContext is required');
 		}
@@ -44,7 +44,7 @@ export class InvokeAgentScopeUtils {
 	 * @param turnContext The TurnContext containing activity information.
 	 * @returns The updated InvokeAgentScope instance.
 	 */
-	static setCallerTags(scope: InvokeAgentScope, turnContext: TurnContext): any {
+	static setCallerTags(scope: InvokeAgentScope, turnContext: TurnContext): InvokeAgentScope {
 		scope.recordAttributes(getCallerBaggagePairs(turnContext));
 		return scope;
 	}
@@ -55,7 +55,7 @@ export class InvokeAgentScopeUtils {
 	 * @param turnContext The TurnContext containing activity information.
 	 * @returns The updated InvokeAgentScope instance.
 	 */
-	static setExecutionTypeTags(scope: InvokeAgentScope, turnContext: TurnContext): any {
+	static setExecutionTypeTags(scope: InvokeAgentScope, turnContext: TurnContext): InvokeAgentScope {
 		scope.recordAttributes(getExecutionTypePair(turnContext));
 		return scope;
 	}
@@ -66,7 +66,7 @@ export class InvokeAgentScopeUtils {
 	 * @param turnContext The TurnContext containing activity information.
 	 * @returns The updated InvokeAgentScope instance.
 	 */
-	static setTargetAgentTags(scope: InvokeAgentScope, turnContext: TurnContext): any {
+	static setTargetAgentTags(scope: InvokeAgentScope, turnContext: TurnContext): InvokeAgentScope {
 		scope.recordAttributes(getTargetAgentBaggagePairs(turnContext));
 		return scope;
 	}
@@ -77,7 +77,7 @@ export class InvokeAgentScopeUtils {
 	 * @param turnContext The TurnContext containing activity information.
 	 * @returns The updated InvokeAgentScope instance.
 	 */
-	static setTenantIdTags(scope: InvokeAgentScope, turnContext: TurnContext): any {
+	static setTenantIdTags(scope: InvokeAgentScope, turnContext: TurnContext): InvokeAgentScope {
 		scope.recordAttributes(getTenantIdPair(turnContext));
 		return scope;
 	}
@@ -88,7 +88,7 @@ export class InvokeAgentScopeUtils {
 	 * @param turnContext The TurnContext containing activity information.
 	 * @returns The updated InvokeAgentScope instance.
 	 */
-	static setSourceMetadataTags(scope: InvokeAgentScope, turnContext: TurnContext): any {
+	static setSourceMetadataTags(scope: InvokeAgentScope, turnContext: TurnContext): InvokeAgentScope {
 		scope.recordAttributes(getSourceMetadataBaggagePairs(turnContext));
 		return scope;
 	}
@@ -99,7 +99,7 @@ export class InvokeAgentScopeUtils {
 	 * @param turnContext The TurnContext containing activity information.
 	 * @returns The updated InvokeAgentScope instance.
 	 */
-	static setConversationIdTags(scope: any, turnContext: TurnContext): any {
+	static setConversationIdTags(scope: InvokeAgentScope, turnContext: TurnContext): InvokeAgentScope {
 		scope.recordAttributes(getConversationIdAndItemLinkPairs(turnContext));
 		return scope;
 	}
@@ -110,8 +110,10 @@ export class InvokeAgentScopeUtils {
 	 * @param turnContext The TurnContext containing activity information.
 	 * @returns The updated InvokeAgentScope instance.
 	 */
-	static setInputMessageTags(scope: any, turnContext: TurnContext): any {
-		scope.setTagMaybe(OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, turnContext?.activity?.text);
+	static setInputMessageTags(scope: InvokeAgentScope, turnContext: TurnContext): InvokeAgentScope {
+		if(turnContext?.activity?.text) {
+		scope.recordInputMessages([turnContext?.activity?.text]);
+		}
 		return scope;
 	}
 }

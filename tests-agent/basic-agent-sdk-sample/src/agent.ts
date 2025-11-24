@@ -25,7 +25,7 @@ import {
   ServiceEndpoint,
 } from '@microsoft/agents-a365-observability';
 import { getObservabilityAuthenticationScope } from '@microsoft/agents-a365-runtime';
-import { AgenticTokenCacheInstance } from '@microsoft/agents-a365-observability-hosting';
+import { AgenticTokenCacheInstance, BaggageBuilderUtils, InvokeAgentScopeUtils } from '@microsoft/agents-a365-observability-hosting';
 import tokenCache from './token-cache'; 
 interface ConversationState {
   count: number;
@@ -51,30 +51,22 @@ agentApplication.onActivity(
     let count = state.conversation.count ?? 0;
     state.conversation.count = ++count;
 
-    // Extract agent and tenant details from context
-    const agentInfo = createAgentDetails(context);
-    const tenantInfo = createTenantDetails(context);
 
     // Create BaggageBuilder scope
-    const baggageScope = new BaggageBuilder()
-      .tenantId(tenantInfo.tenantId)
-      .agentId(agentInfo.agentId)
+    const baggageScope = BaggageBuilderUtils.fromTurnContext(
+      new BaggageBuilder(),
+      context
+    ).sessionDescription('Initial onboarding session')
       .correlationId("7ff6dca0-917c-4bb0-b31a-794e533d8aad")
-      .agentName(agentInfo.agentName)
-      .sessionDescription('Initial onboarding session')
-      .conversationId(context.activity.conversation?.id)
-      .callerId(context.activity.from?.aadObjectId)
-      .callerUpn(context.activity.from?.id)
       .build();
 
+    const agentInfo = createAgentDetails(context);
+    const tenantInfo = createTenantDetails(context);
     // Run the rest of the logic within the baggage scope
     await baggageScope.run(async () => {
       const invokeAgentDetails: InvokeAgentDetails = {
         ...agentInfo,
-        conversationId: context.activity.conversation?.id,
         request: {
-          content: context.activity.text || 'Unknown text',
-          executionType: ExecutionType.HumanToAgent,
           sessionId: context.activity.conversation?.id,
         },
         endpoint: {host:context.activity.serviceUrl, port:56150} as ServiceEndpoint,
@@ -82,6 +74,7 @@ agentApplication.onActivity(
       
       const invokeAgentScope = InvokeAgentScope.start(invokeAgentDetails, tenantInfo);
 
+      InvokeAgentScopeUtils.populateFromTurnContext(invokeAgentScope, context);
       await invokeAgentScope.withActiveSpanAsync(async () => {
         // Record input message
         invokeAgentScope.recordInputMessages([context.activity.text ?? 'Unknown text']);
@@ -204,11 +197,7 @@ function createAgentDetails(context: TurnContext): { agentId: string; agentName?
   
   return {
     agentId: agentId,
-    agentName: (context.activity.recipient as any)?.name || process.env.AGENT_NAME || 'Basic Agent Sample',
-    agentAUID: (context.activity.recipient as any)?.agenticUserId,
-    agentUPN: (context.activity.recipient as any)?.id,
-    conversationId: context.activity.conversation?.id,
-  } as EnhancedAgentDetails;
+  }
 }
 
 function createTenantDetails(context: TurnContext): { tenantId: string } {

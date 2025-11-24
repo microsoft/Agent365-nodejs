@@ -23,9 +23,20 @@ export function getCallerBaggagePairs(turnContext: TurnContext): Array<[string, 
   if (!turnContext) { 
     return [];
   }
-  const from = turnContext.activity?.from as any || {};
+  const from = (turnContext.activity?.from ?? {}) as {
+    Id?: string;
+    id?: string;
+    Name?: string;
+    name?: string;
+    AgenticUserId?: string;
+    AadObjectId?: string;
+    TenantId?: string;
+    tenantId?: string;
+    Role?: string;
+    role?: string;
+  };
   const userId = from.AgenticUserId ?? from.AadObjectId;
-  const pairs: Array<[string, any]> = [
+  const pairs: Array<[string, string | undefined]> = [
     [OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY, from.Id ?? from.id],
     [OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY, from.Name ?? from.name],
     [OpenTelemetryConstants.GEN_AI_CALLER_UPN_KEY, from.Name ?? from.name],
@@ -45,8 +56,13 @@ export function getExecutionTypePair(turnContext: TurnContext): Array<[string, s
   if (!turnContext) { 
     return [];
   }
-  const from = turnContext.activity?.from as any || {};
-  const recipient = turnContext.activity?.recipient as any || {};
+  type Participant = {
+    AgenticUserId?: string;
+    Role?: string;
+    role?: string;
+  };
+  const from: Participant = (turnContext.activity?.from ?? {});
+  const recipient: Participant = (turnContext.activity?.recipient ?? {});
   const isAgenticCaller = !!from.AgenticUserId
     || (from.Role && typeof from.Role === 'string' && from.Role.toLowerCase() === AGENT_ROLE)
     || (from.role && typeof from.role === 'string' && from.role.toLowerCase() === AGENT_ROLE);
@@ -68,13 +84,24 @@ export function getTargetAgentBaggagePairs(turnContext: TurnContext): Array<[str
   if (!turnContext) { 
     return [];
   }
-  const recipient: any = turnContext.activity?.recipient || turnContext.activity?.Recipient || {};
+  const recipient = (turnContext.activity?.recipient || turnContext.activity?.Recipient || {}) as {
+    AgenticAppId?: string;
+    Id?: string;
+    id?: string;
+    Name?: string;
+    name?: string;
+    AgenticUserId?: string;
+    AadObjectId?: string;
+    Role?: string;
+    role?: string;
+    tenantId?: string;
+  };
   const agentId = recipient.AgenticAppId ?? recipient.Id ?? recipient.id;
   const agentName = recipient.Name ?? recipient.name;
   const agentUserId = recipient.AgenticUserId ?? recipient.AadObjectId;
   const agentUpn = recipient.Name ?? recipient.name;
   const agentDescription = recipient.Role ?? recipient.role;
-  const pairs: Array<[string, any]> = [
+  const pairs: Array<[string, string | undefined]> = [
     [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY, agentId],
     [OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY, agentName],
     [OpenTelemetryConstants.GEN_AI_AGENT_AUID_KEY, agentUserId],
@@ -97,14 +124,24 @@ export function getTenantIdPair(turnContext: TurnContext): Array<[string, string
   // If not found, try to extract from channelData. Accepts both object and JSON string.
   if (!tenantId && turnContext.activity?.channelData) {
     try {
-      let channelData = turnContext.activity.channelData;
+      let channelData: unknown = turnContext.activity.channelData;
       if (typeof channelData === 'string') {
         channelData = JSON.parse(channelData);
       }
-      if (typeof channelData === 'object' && channelData.tenant && typeof channelData.tenant.id === 'string') {
-        tenantId = channelData.tenant.id;
+      if (
+        typeof channelData === 'object' &&
+        channelData !== null &&
+        'tenant' in channelData &&
+        typeof (channelData as { tenant?: { id?: string } }).tenant === 'object' &&
+        (channelData as { tenant?: { id?: string } }).tenant !== null &&
+        'id' in (channelData as { tenant: { id?: string } }).tenant &&
+        typeof (channelData as { tenant: { id?: string } }).tenant.id === 'string'
+      ) {
+        tenantId = (channelData as { tenant: { id: string } }).tenant.id;
       }
-    } catch {}
+    } catch (_err) {
+      // ignore JSON parse errors
+    }
   }
   return [[OpenTelemetryConstants.TENANT_ID_KEY, tenantId ?? '']];
 }
@@ -118,14 +155,24 @@ export function getSourceMetadataBaggagePairs(turnContext: TurnContext): Array<[
   if (!turnContext) { 
     return [];
   }
-  const channelId = turnContext.activity?.channelId as any || {};    
+  type ChannelId = {
+    Channel?: string;
+    channel?: string;
+    SubChannel?: string;
+    subChannel?: string;
+  };
+  let channelId: ChannelId = {};
+  const rawChannelId = turnContext.activity?.channelId;
+  if (typeof rawChannelId === 'object' && rawChannelId !== null) {
+    channelId = rawChannelId as ChannelId;
+  }
   const channel = channelId.Channel ?? channelId.channel;
   if(!channel) {
     return [];
   }
 
   const subChannel = channelId.SubChannel ?? channelId.subChannel;    
-  const pairs: Array<[string, any]> = [
+  const pairs: Array<[string, string | undefined]> = [
     [OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY, channel],
     [OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY, subChannel]
   ];
@@ -143,7 +190,7 @@ export function getConversationIdAndItemLinkPairs(turnContext: TurnContext): Arr
   }
   const conversationId = turnContext.activity?.conversation?.id;
   const itemLink = turnContext.activity?.serviceUrl;
-  const pairs: Array<[string, any]> = [
+  const pairs: Array<[string, string | undefined]> = [
     [OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, conversationId],
     [OpenTelemetryConstants.GEN_AI_CONVERSATION_ITEM_LINK_KEY, itemLink]
   ];
@@ -160,9 +207,11 @@ export function getConversationIdAndItemLinkPairs(turnContext: TurnContext): Arr
 export function injectObservabilityContext(turnContext: any, observabilityScope: { Id: string; TraceId: string }): void {
   if (!turnContext || !observabilityScope) return;
   // Use a state bag on the context, create if missing
-  if (!turnContext.stackState) { 
-    turnContext.stackState = {};
+  type StackStateContext = { stackState: Record<string, unknown> };
+  const ctx = turnContext as StackStateContext;
+  if (!('stackState' in ctx) || typeof ctx.stackState !== 'object' || ctx.stackState === null) {
+    ctx.stackState = {};
   }
-  turnContext.stackState[O11ySpanIdKey] = observabilityScope.Id;
-  turnContext.stackState[O11yTraceIdKey] = observabilityScope.TraceId;
+  ctx.stackState[O11ySpanIdKey] = observabilityScope.Id;
+  ctx.stackState[O11yTraceIdKey] = observabilityScope.TraceId;
 }
