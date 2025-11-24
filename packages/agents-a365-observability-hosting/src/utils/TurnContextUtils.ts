@@ -196,22 +196,3 @@ export function getConversationIdAndItemLinkPairs(turnContext: TurnContext): Arr
   ];
   return pairs.filter(([, v]) => v != null && v !== '').map(([k, v]) => [k, String(v)]);
 }
-
-  
-
-/**
- * Injects observability context (span and trace IDs) into the turn context.
- * @param turnContext The current TurnContext (activity context)
- * @param observabilityScope An object with Id and TraceId properties (OpenTelemetryScope)
- */
-export function injectObservabilityContext(turnContext: any, observabilityScope: { Id: string; TraceId: string }): void {
-  if (!turnContext || !observabilityScope) return;
-  // Use a state bag on the context, create if missing
-  type StackStateContext = { stackState: Record<string, unknown> };
-  const ctx = turnContext as StackStateContext;
-  if (!('stackState' in ctx) || typeof ctx.stackState !== 'object' || ctx.stackState === null) {
-    ctx.stackState = {};
-  }
-  ctx.stackState[O11ySpanIdKey] = observabilityScope.Id;
-  ctx.stackState[O11yTraceIdKey] = observabilityScope.TraceId;
-}

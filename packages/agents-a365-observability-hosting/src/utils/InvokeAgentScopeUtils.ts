@@ -4,7 +4,7 @@
 // ------------------------------------------------------------------------------
 
 import { TurnContext } from '@microsoft/agents-hosting';
-import { InvokeAgentScope, OpenTelemetryConstants } from '@microsoft/agents-a365-observability';
+import { InvokeAgentScope } from '@microsoft/agents-a365-observability';
 import {
 	getCallerBaggagePairs,
 	getExecutionTypePair,
