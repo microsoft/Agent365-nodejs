@@ -12,9 +12,23 @@ describe('InvokeAgentScopeUtils', () => {
     },
   } as any;
 
-  function createScope() {
-    // Provide minimal required details for InvokeAgentScope.start
-    return InvokeAgentScope.start(
+  // Helper to create a scope with a mock span that captures attributes
+  class MockSpan {
+    public attributes: Record<string, any> = {};
+    setAttribute(key: string, value: any) {
+      this.attributes[key] = value;
+    }
+    setAttributes(attrs: Record<string, any>) {
+      Object.assign(this.attributes, attrs);
+    }
+    spanContext() { return { spanId: 'mockSpanId' }; }
+    setStatus() {}
+    recordException() {}
+    end() {}
+  }
+
+  function createScopeWithMockSpan() {
+    const scope = InvokeAgentScope.start(
       {
         agentName: 'Agent One',
         sessionId: 'session1',
@@ -24,23 +38,24 @@ describe('InvokeAgentScopeUtils', () => {
       } as any,
       { tenantId: 'tenant1' } as any
     );
+    // Patch the protected readonly span property using a type cast
+    (scope as any).span = new MockSpan();
+    return scope;
+  }
+
+  function getTestAttributes(scope: any): Record<string, any> {
+    return scope.span && scope.span.attributes ? scope.span.attributes : {};
   }
 
   it('should populate all tags from TurnContext', () => {
-    const scope = createScope();
+    const scope = createScopeWithMockSpan();
     const result = InvokeAgentScopeUtils.populateFromTurnContext(scope, mockTurnContext);
     expect(result).toBe(scope);
     // Should have at least one attribute set
     expect(typeof (result as any).recordAttributes).toBe('function');
 
-    // Access the internal span for attribute validation
-    const span = (scope as any).span;
-    expect(span).toBeDefined();
-    // Validate a subset of expected attributes
-    const attributes = span.attributes || span._attributes || {};
-    // Debug: print attributes to see what is set
-    // eslint-disable-next-line no-console
-    console.log('DEBUG span.attributes:', attributes);
+    // Validate a subset of expected attributes using the mock
+    const attributes = getTestAttributes(scope);
     expect(attributes[OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY]).toBe('Agent One');
     expect(attributes[OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY]).toBe('user1');
     expect(attributes[OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY]).toBe('User One');
@@ -51,7 +66,7 @@ describe('InvokeAgentScopeUtils', () => {
   });
 
   it('should throw if turnContext is missing', () => {
-    const scope = createScope();
+    const scope = createScopeWithMockSpan();
     expect(() => InvokeAgentScopeUtils.populateFromTurnContext(scope, undefined as any)).toThrow();
   });
 });
