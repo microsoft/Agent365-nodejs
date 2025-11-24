@@ -8,11 +8,15 @@ import { AgentSettingsTemplate, AgentSettings } from './models';
 // Default MCP Platform base URL for production
 const MCP_PLATFORM_PROD_BASE_URL = 'https://agent365.svc.cloud.microsoft';
 
+// Default timeout for HTTP requests (30 seconds)
+const DEFAULT_REQUEST_TIMEOUT_MS = 30000;
+
 /**
  * Service for managing agent settings templates and instance settings.
  */
 export class AgentSettingsService implements IAgentSettingsService {
   private readonly baseUrl: string;
+  private readonly requestTimeoutMs: number;
 
   /**
    * Creates a new instance of the AgentSettingsService.
@@ -22,6 +26,7 @@ export class AgentSettingsService implements IAgentSettingsService {
    */
   constructor() {
     this.baseUrl = this.getMcpPlatformBaseUrl();
+    this.requestTimeoutMs = DEFAULT_REQUEST_TIMEOUT_MS;
   }
 
   /**
@@ -47,7 +52,7 @@ export class AgentSettingsService implements IAgentSettingsService {
           Authorization: `Bearer ${authToken}`,
           'Content-Type': 'application/json',
         },
-        timeout: 30000,
+        timeout: this.requestTimeoutMs,
       });
 
       return response.data;
@@ -81,7 +86,7 @@ export class AgentSettingsService implements IAgentSettingsService {
           Authorization: `Bearer ${authToken}`,
           'Content-Type': 'application/json',
         },
-        timeout: 30000,
+        timeout: this.requestTimeoutMs,
       });
     } catch (error) {
       throw this.handleError(error, `Failed to set settings template for agent type '${agentType}'`);
@@ -111,7 +116,7 @@ export class AgentSettingsService implements IAgentSettingsService {
           Authorization: `Bearer ${authToken}`,
           'Content-Type': 'application/json',
         },
-        timeout: 30000,
+        timeout: this.requestTimeoutMs,
       });
 
       return response.data;
@@ -145,7 +150,7 @@ export class AgentSettingsService implements IAgentSettingsService {
           Authorization: `Bearer ${authToken}`,
           'Content-Type': 'application/json',
         },
-        timeout: 30000,
+        timeout: this.requestTimeoutMs,
       });
     } catch (error) {
       throw this.handleError(error, `Failed to set settings for agent instance '${agentInstanceId}'`);
