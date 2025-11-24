@@ -25,7 +25,7 @@ import {
   ServiceEndpoint,
 } from '@microsoft/agents-a365-observability';
 import { getObservabilityAuthenticationScope } from '@microsoft/agents-a365-runtime';
-import { AgenticTokenCacheInstance } from '@microsoft/agents-a365-observability-tokencache';
+import { AgenticTokenCacheInstance } from '@microsoft/agents-a365-observability-hosting';
 import tokenCache from './token-cache'; 
 interface ConversationState {
   count: number;

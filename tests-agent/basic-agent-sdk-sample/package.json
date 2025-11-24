@@ -15,7 +15,7 @@
   "description": "",
   "dependencies": {
     "@microsoft/agents-a365-observability": "workspace:*",
-    "@microsoft/agents-a365-observability-tokencache": "workspace:*",
+    "@microsoft/agents-a365-observability-hosting": "workspace:*",
     "@microsoft/agents-a365-runtime": "workspace:*",
     "@microsoft/agents-activity": "^1.1.0-alpha.85",
     "@microsoft/agents-hosting": "^1.1.0-alpha.85",
