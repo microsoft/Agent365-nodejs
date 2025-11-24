@@ -10,10 +10,6 @@ import { ExecutionType, OpenTelemetryConstants } from '@microsoft/agents-a365-ob
  * TurnContext utility methods.
  */
 
-// Internal keys for observability context injection
-const O11ySpanIdKey = 'O11ySpanId';
-const O11yTraceIdKey = 'O11yTraceId';
-
 /**
  * Extracts caller-related OpenTelemetry baggage pairs from the TurnContext.
  * @param turnContext The current TurnContext (activity context)
