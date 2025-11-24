@@ -1,0 +1,61 @@
+{
+  "name": "@microsoft/agents-a365-settings",
+  "version": "0.0.0-placeholder",
+  "description": "Microsoft Agent 365 Settings SDK for managing agent settings templates and instance settings",
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/esm/index.d.ts",
+  "scripts": {
+    "build:cjs": "npx tsc --project tsconfig.cjs.json",
+    "build:esm": "npx tsc --project tsconfig.esm.json",
+    "build": "npm run build:cjs && npm run build:esm",
+    "build:watch": "npx tsc --watch",
+    "clean": "npx rimraf dist",
+    "test": "jest --passWithNoTests",
+    "test:watch": "jest --watch",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "prepublishOnly": "npm run clean && npm run build",
+    "ci": "npm ci",
+    "pack": "cp ../../CHANGELOG.md . && cp ../../LICENSE.md . && npm pack --pack-destination=../"
+  },
+  "keywords": [
+    "ai",
+    "agents",
+    "azure",
+    "typescript",
+    "settings"
+  ],
+  "author": "Microsoft Corporation",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/microsoft/Agent365-nodejs.git",
+    "directory": "packages/agents-a365-settings"
+  },
+  "dependencies": {
+    "axios": "^1.9.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/jest": "workspace:*",
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.47.0",
+    "@typescript-eslint/parser": "^8.47.0",
+    "eslint": "^9.39.1",
+    "jest": "workspace:*",
+    "rimraf": "^5.0.0",
+    "ts-jest": "workspace:*",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.47.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE.md"
+  ]
+}
