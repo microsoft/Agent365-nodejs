@@ -113,9 +113,8 @@ export function getTargetAgentBaggagePairs(turnContext: TurnContext): Array<[str
  * @returns Array of [key, value] for tenant ID
  */
 export function getTenantIdPair(turnContext: TurnContext): Array<[string, string]> {
-  if (!turnContext) return [];
-  let tenantId = turnContext.activity?.recipient?.tenantId
-    ?? turnContext.activity?.recipient?.tenantId;
+   let tenantId = turnContext.activity?.recipient?.tenantId;
+
 
   // If not found, try to extract from channelData. Accepts both object and JSON string.
   if (!tenantId && turnContext.activity?.channelData) {
@@ -125,22 +124,14 @@ export function getTenantIdPair(turnContext: TurnContext): Array<[string, string
         channelData = JSON.parse(channelData);
       }
       if (
-        typeof channelData === 'object' &&
-        channelData !== null &&
-        'tenant' in channelData &&
-        typeof (channelData as { tenant?: { id?: string } }).tenant === 'object' &&
-        (channelData as { tenant?: { id?: string } }).tenant !== null &&
-        'id' in (channelData as { tenant: { id?: string } }).tenant &&
-        typeof (channelData as { tenant: { id?: string } }).tenant.id === 'string'
-      ) {
-        tenantId = (channelData as { tenant: { id: string } }).tenant.id;
+        typeof channelData === 'object' && channelData !== null) { 
+        tenantId = (channelData as { tenant: { id?: string } })?.tenant?.id;
       }
     } catch (_err) {
       // ignore JSON parse errors
     }
   }
-  return [[OpenTelemetryConstants.TENANT_ID_KEY, tenantId ?? '']];
-}
+  return [[OpenTelemetryConstants.TENANT_ID_KEY, tenantId ?? '']];}
 
 /**
  * Extracts source metadata baggage pairs from the TurnContext.
@@ -150,27 +141,10 @@ export function getTenantIdPair(turnContext: TurnContext): Array<[string, string
 export function getSourceMetadataBaggagePairs(turnContext: TurnContext): Array<[string, string]> {
   if (!turnContext) { 
     return [];
-  }
-  type ChannelId = {
-    Channel?: string;
-    channel?: string;
-    SubChannel?: string;
-    subChannel?: string;
-  };
-  let channelId: ChannelId = {};
-  const rawChannelId = turnContext.activity?.channelId;
-  if (typeof rawChannelId === 'object' && rawChannelId !== null) {
-    channelId = rawChannelId as ChannelId;
-  }
-  const channel = channelId.Channel ?? channelId.channel;
-  if(!channel) {
-    return [];
-  }
-
-  const subChannel = channelId.SubChannel ?? channelId.subChannel;    
+  }  
   const pairs: Array<[string, string | undefined]> = [
-    [OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY, channel],
-    [OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY, subChannel]
+    [OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY, turnContext.activity?.channelId],
+    [OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY, turnContext?.activity?.channelIdSubChannel as string | undefined]
   ];
   return pairs.filter(([, v]) => v != null && v !== '').map(([k, v]) => [k, String(v)]);
 }
