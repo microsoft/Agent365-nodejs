@@ -105,6 +105,26 @@ export abstract class OpenTelemetryScope implements Disposable {
   }
 
   /**
+   * Records multiple attribute key/value pairs for telemetry tracking.
+   * @param attributes Collection of attribute key/value pairs (array or iterable of [key, value] or object map).
+   */
+  public recordAttributes(attributes: Iterable<[string, any]> | Record<string, any> | null | undefined): void {
+    if (!attributes) return;
+    // Support both array/iterable of pairs and object maps
+    if (Array.isArray(attributes) || (typeof (attributes as any)[Symbol.iterator] === 'function' && typeof attributes !== 'string')) {
+      for (const [key, value] of attributes as Iterable<[string, any]>) {
+        if (!key || typeof key !== 'string' || !key.trim()) continue;
+        this.span.setAttribute(key, value);
+      }
+    } else if (typeof attributes === 'object') {
+      for (const key of Object.keys(attributes)) {
+        if (!key || typeof key !== 'string' || !key.trim()) continue;
+        this.span.setAttribute(key, (attributes as Record<string, any>)[key]);
+      }
+    }
+  }
+
+  /**
    * Sets a tag on the span if telemetry is enabled
    * @param name The tag name
    * @param value The tag value

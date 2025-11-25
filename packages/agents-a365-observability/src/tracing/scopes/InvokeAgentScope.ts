@@ -12,11 +12,8 @@ import {
 } from '../contracts';
 import { OpenTelemetryConstants } from '../constants';
 
-/**
- * Provides OpenTelemetry tracing scope for AI agent invocation operations.
- */
 export class InvokeAgentScope extends OpenTelemetryScope {
-
+  
   /**
    * Creates and starts a new scope for agent invocation tracing.
    * @param invokeAgentDetails The details of the agent invocation including endpoint, agent information, and conversation context.
@@ -123,24 +120,4 @@ export class InvokeAgentScope extends OpenTelemetryScope {
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY, messages.join(','));
     }
   }
-
-  /**
-   * Records multiple attribute key/value pairs for telemetry tracking.
-   * @param attributes Collection of attribute key/value pairs (array or iterable of [key, value] or object map).
-   */
-  public recordAttributes(attributes: Iterable<[string, any]> | Record<string, any> | null | undefined): void {
-    if (!attributes) return;
-    // Support both array/iterable of pairs and object maps
-    if (Array.isArray(attributes) || (typeof (attributes as any)[Symbol.iterator] === 'function' && typeof attributes !== 'string')) {
-      for (const [key, value] of attributes as Iterable<[string, any]>) {
-        if (!key || typeof key !== 'string' || !key.trim()) continue;
-        this.span.setAttribute(key, value);
-      }
-    } else if (typeof attributes === 'object') {
-      for (const key of Object.keys(attributes)) {
-        if (!key || typeof key !== 'string' || !key.trim()) continue;
-        this.span.setAttribute(key, (attributes as Record<string, any>)[key]);
-      }
-    }
-  }  
 }

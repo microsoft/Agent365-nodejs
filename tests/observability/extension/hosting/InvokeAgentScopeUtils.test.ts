@@ -1,3 +1,7 @@
+// ------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------------------------
 
 import { InvokeAgentScopeUtils } from '@microsoft/agents-a365-observability-hosting';
 import { InvokeAgentScope, OpenTelemetryConstants } from '@microsoft/agents-a365-observability';
@@ -5,8 +9,8 @@ import { InvokeAgentScope, OpenTelemetryConstants } from '@microsoft/agents-a365
 describe('InvokeAgentScopeUtils', () => {
   const mockTurnContext = {
     activity: {
-      from: { id: 'user1', name: 'User One', AgenticUserId: 'agentic-user-1', TenantId: 'tenant1' },
-      recipient: { id: 'agent1', name: 'Agent One', AgenticAppId: 'agent-app-1', AgenticUserId: 'agentic-agent-1', tenantId: 'tenant1' },
+      from: { id: 'user1', name: 'User One', agenticUserId: 'agentic-user-1', tenantId: 'tenant1' },
+      recipient: { id: 'agent1', name: 'Agent One', agenticAppId: 'agent-app-1', agenticUserId: 'agentic-agent-1', tenantId: 'tenant1' },
       channelData: {},
       text: 'Hello world',
     },

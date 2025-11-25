@@ -4,8 +4,8 @@ import { BaggageBuilder, OpenTelemetryConstants } from '@microsoft/agents-a365-o
 describe('BaggageBuilderUtils', () => {
   const mockTurnContext = {
     activity: {
-      from: { id: 'user1', name: 'User One', AgenticUserId: 'agentic-user-1', TenantId: 'tenant1' },
-      recipient: { id: 'agent1', name: 'Agent One', AgenticAppId: 'agent-app-1', AgenticUserId: 'agentic-agent-1', tenantId: 'tenant1' },
+      from: { id: 'user1', name: 'User One', agenticUserId: 'agentic-user-1', tenantId: 'tenant1' },
+      recipient: { id: 'agent1', name: 'Agent One', agenticAppId: 'agent-app-1', agenticUserId: 'agentic-agent-1', tenantId: 'tenant1' },
       channelData: {},
     },
   } as any;
@@ -44,7 +44,7 @@ describe('BaggageBuilderUtils', () => {
     expect(asObj[OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]).toBe('agent-app-1');
     expect(asObj[OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY]).toBe('Agent One');
     expect(asObj[OpenTelemetryConstants.GEN_AI_AGENT_AUID_KEY]).toBe('agentic-agent-1');
-    expect(asObj[OpenTelemetryConstants.GEN_AI_AGENT_UPN_KEY]).toBe('Agent One');
+    expect(asObj[OpenTelemetryConstants.GEN_AI_AGENT_UPN_KEY]).toBe(undefined);
     expect(asObj[OpenTelemetryConstants.TENANT_ID_KEY]).toBe('tenant1');
   });
 

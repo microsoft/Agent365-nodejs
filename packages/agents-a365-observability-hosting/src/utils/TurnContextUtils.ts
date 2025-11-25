@@ -16,28 +16,18 @@ import { ExecutionType, OpenTelemetryConstants } from '@microsoft/agents-a365-ob
  * @returns Array of [key, value] pairs for caller identity and tenant
  */
 export function getCallerBaggagePairs(turnContext: TurnContext): Array<[string, string]> {
-  if (!turnContext) { 
+  if (!turnContext|| !turnContext.activity?.from) { 
     return [];
   }
-  const from = (turnContext.activity?.from ?? {}) as {
-    Id?: string;
-    id?: string;
-    Name?: string;
-    name?: string;
-    AgenticUserId?: string;
-    AadObjectId?: string;
-    TenantId?: string;
-    tenantId?: string;
-    Role?: string;
-    role?: string;
-  };
-  const userId = from.AgenticUserId ?? from.AadObjectId;
+  const from = turnContext.activity.from;
+    
+  const userId = from.agenticUserId ?? from.aadObjectId;
   const pairs: Array<[string, string | undefined]> = [
-    [OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY, from.Id ?? from.id],
-    [OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY, from.Name ?? from.name],
-    [OpenTelemetryConstants.GEN_AI_CALLER_UPN_KEY, from.Name ?? from.name],
+    [OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY, from.id],
+    [OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY, from.name],
+    [OpenTelemetryConstants.GEN_AI_CALLER_UPN_KEY, from.name],
     [OpenTelemetryConstants.GEN_AI_CALLER_USER_ID_KEY, userId],
-    [OpenTelemetryConstants.GEN_AI_CALLER_TENANT_ID_KEY, from.TenantId ?? from.tenantId]
+    [OpenTelemetryConstants.GEN_AI_CALLER_TENANT_ID_KEY, from.tenantId]
   ];
   return pairs.filter(([, v]) => v != null && v !== '').map(([k, v]) => [k, String(v)]);
 }
@@ -49,22 +39,14 @@ export function getCallerBaggagePairs(turnContext: TurnContext): Array<[string, 
  */
 export function getExecutionTypePair(turnContext: TurnContext): Array<[string, string]> {
   const AGENT_ROLE = 'agenticuser';
-  if (!turnContext) { 
+  if (!turnContext || !turnContext.activity?.from || !turnContext.activity?.recipient) { 
     return [];
   }
-  type Participant = {
-    AgenticUserId?: string;
-    Role?: string;
-    role?: string;
-  };
-  const from: Participant = (turnContext.activity?.from ?? {});
-  const recipient: Participant = (turnContext.activity?.recipient ?? {});
-  const isAgenticCaller = !!from.AgenticUserId
-    || (from.Role && typeof from.Role === 'string' && from.Role.toLowerCase() === AGENT_ROLE)
-    || (from.role && typeof from.role === 'string' && from.role.toLowerCase() === AGENT_ROLE);
-  const isAgenticRecipient = !!recipient.AgenticUserId
-    || (recipient.Role && typeof recipient.Role === 'string' && recipient.Role.toLowerCase() === AGENT_ROLE)
-    || (recipient.role && typeof recipient.role === 'string' && recipient.role.toLowerCase() === AGENT_ROLE);
+  const from = turnContext.activity.from;
+  const recipient = turnContext.activity.recipient;
+  const isAgenticCaller = !!from.agenticUserId || (from.role && from.role.toLowerCase() === AGENT_ROLE);
+  const isAgenticRecipient = !!recipient.agenticUserId
+    || (recipient.role && recipient.role.toLowerCase() === AGENT_ROLE)
   const executionType = (isAgenticRecipient && isAgenticCaller)
     ? ExecutionType.Agent2Agent
     : ExecutionType.HumanToAgent;
@@ -77,31 +59,18 @@ export function getExecutionTypePair(turnContext: TurnContext): Array<[string, s
  * @returns Array of [key, value] pairs for agent identity and description
  */
 export function getTargetAgentBaggagePairs(turnContext: TurnContext): Array<[string, string]> {
-  if (!turnContext) { 
+  if (!turnContext || !turnContext.activity?.recipient) { 
     return [];
   }
-  const recipient = (turnContext.activity?.recipient || turnContext.activity?.Recipient || {}) as {
-    AgenticAppId?: string;
-    Id?: string;
-    id?: string;
-    Name?: string;
-    name?: string;
-    AgenticUserId?: string;
-    AadObjectId?: string;
-    Role?: string;
-    role?: string;
-    tenantId?: string;
-  };
-  const agentId = recipient.AgenticAppId ?? recipient.Id ?? recipient.id;
-  const agentName = recipient.Name ?? recipient.name;
-  const agentUserId = recipient.AgenticUserId ?? recipient.AadObjectId;
-  const agentUpn = recipient.Name ?? recipient.name;
-  const agentDescription = recipient.Role ?? recipient.role;
+  const recipient = turnContext.activity.recipient; 
+  const agentId = recipient.agenticAppId ?? recipient.id;
+  const agentName = recipient.name;
+  const agentUserId = recipient.agenticUserId ?? recipient.aadObjectId;
+  const agentDescription = recipient.role;
   const pairs: Array<[string, string | undefined]> = [
     [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY, agentId],
     [OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY, agentName],
     [OpenTelemetryConstants.GEN_AI_AGENT_AUID_KEY, agentUserId],
-    [OpenTelemetryConstants.GEN_AI_AGENT_UPN_KEY, agentUpn],
     [OpenTelemetryConstants.GEN_AI_AGENT_DESCRIPTION_KEY, agentDescription]
   ];
   return pairs.filter(([, v]) => v != null && v !== '').map(([k, v]) => [k, String(v)]);
@@ -124,7 +93,7 @@ export function getTenantIdPair(turnContext: TurnContext): Array<[string, string
         channelData = JSON.parse(channelData);
       }
       if (
-        typeof channelData === 'object' && channelData !== null) { 
+        typeof channelData === 'object' && channelData !== null) {
         tenantId = (channelData as { tenant: { id?: string } })?.tenant?.id;
       }
     } catch (_err) {
@@ -144,7 +113,7 @@ export function getSourceMetadataBaggagePairs(turnContext: TurnContext): Array<[
   }  
   const pairs: Array<[string, string | undefined]> = [
     [OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY, turnContext.activity?.channelId],
-    [OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY, turnContext?.activity?.channelIdSubChannel as string | undefined]
+    [OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY, turnContext.activity?.channelIdSubChannel as string | undefined]
   ];
   return pairs.filter(([, v]) => v != null && v !== '').map(([k, v]) => [k, String(v)]);
 }
