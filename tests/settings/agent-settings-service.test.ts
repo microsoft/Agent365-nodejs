@@ -347,7 +347,8 @@ describe('AgentSettingsService', () => {
         value: 'testValue',
         type: 'string',
         required: true,
-        description: 'A test setting'
+        description: 'A test setting',
+        defaultValue: 'defaultTestValue'
       };
 
       expect(property.name).toBe('testSetting');
@@ -355,33 +356,52 @@ describe('AgentSettingsService', () => {
       expect(property.type).toBe('string');
       expect(property.required).toBe(true);
       expect(property.description).toBe('A test setting');
+      expect(property.defaultValue).toBe('defaultTestValue');
     });
 
     it('should correctly serialize AgentSettingsTemplate', () => {
       const template: AgentSettingsTemplate = {
+        id: 'template-123',
         agentType: 'custom-agent',
+        name: 'Custom Agent Template',
+        description: 'Template for custom agents',
+        version: '2.0',
         properties: [
           { name: 'setting1', value: 'value1', type: 'string', required: true },
           { name: 'setting2', value: 'value2', type: 'integer', required: false }
         ]
       };
 
+      expect(template.id).toBe('template-123');
       expect(template.agentType).toBe('custom-agent');
+      expect(template.name).toBe('Custom Agent Template');
+      expect(template.description).toBe('Template for custom agents');
+      expect(template.version).toBe('2.0');
       expect(template.properties.length).toBe(2);
       expect(template.properties[0].name).toBe('setting1');
     });
 
     it('should correctly serialize AgentSettings', () => {
       const settings: AgentSettings = {
+        id: 'settings-789',
         agentInstanceId: 'instance-456',
+        templateId: 'template-123',
+        agentType: 'custom-agent',
         properties: [
           { name: 'maxRetries', value: '5', type: 'integer', required: true }
-        ]
+        ],
+        createdAt: '2024-01-15T10:30:00Z',
+        modifiedAt: '2024-01-16T14:45:00Z'
       };
 
+      expect(settings.id).toBe('settings-789');
       expect(settings.agentInstanceId).toBe('instance-456');
+      expect(settings.templateId).toBe('template-123');
+      expect(settings.agentType).toBe('custom-agent');
       expect(settings.properties.length).toBe(1);
       expect(settings.properties[0].name).toBe('maxRetries');
+      expect(settings.createdAt).toBe('2024-01-15T10:30:00Z');
+      expect(settings.modifiedAt).toBe('2024-01-16T14:45:00Z');
     });
   });
 

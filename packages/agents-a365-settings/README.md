@@ -34,9 +34,42 @@ await settingsService.setSettingsByAgentInstance('instance-123', settings, authT
 
 ## Models
 
-- `AgentSettingsTemplate` - Settings template for an agent type
-- `AgentSettings` - Settings for a specific agent instance
-- `AgentSettingProperty` - Individual setting with name, value, type, required flag, description
+### AgentSettingsTemplate
+Represents a settings template for a specific agent type.
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | string? | Unique identifier of the template |
+| `agentType` | string | The agent type this template applies to |
+| `name` | string? | Display name of the template |
+| `description` | string? | Optional description |
+| `version` | string? | Template version (default: "1.0") |
+| `properties` | AgentSettingProperty[] | Collection of setting properties |
+
+### AgentSettings
+Represents settings for a specific agent instance.
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | string? | Unique identifier of the settings |
+| `agentInstanceId` | string | The agent instance these settings belong to |
+| `templateId` | string? | Optional reference to the template |
+| `agentType` | string? | The agent type |
+| `properties` | AgentSettingProperty[] | Collection of setting values |
+| `createdAt` | string? | Creation timestamp (ISO 8601) |
+| `modifiedAt` | string? | Last modification timestamp (ISO 8601) |
+
+### AgentSettingProperty
+Represents a single setting property.
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `name` | string | Name of the setting |
+| `value` | string | Current value |
+| `type` | string | Value type (default: "string") |
+| `required` | boolean | Whether the setting is required |
+| `description` | string? | Optional description |
+| `defaultValue` | string? | Optional default value |
 
 ## Service Interface
 

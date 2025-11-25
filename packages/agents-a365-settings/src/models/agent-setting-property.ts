@@ -29,4 +29,9 @@ export interface AgentSettingProperty {
    * Optional description of the setting property.
    */
   description?: string;
+
+  /**
+   * Optional default value of the setting property.
+   */
+  defaultValue?: string;
 }
