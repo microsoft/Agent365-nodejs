@@ -1,204 +1,132 @@
 import { describe, it, expect } from '@jest/globals';
-import { PowerPlatformApiDiscovery } from '@microsoft/agents-a365-runtime';
+import { PowerPlatformApiDiscovery, ClusterCategory } from '@microsoft/agents-a365-runtime';
 
 const tenantId = 'e3064512-cc6d-4703-be71-a2ecaecaa98a';
 
-describe('getTokenAudience gets the correct token audiences for the environment', () => {
-  it('should give the correct token audience in each cluster category', () => {
-    expect(new PowerPlatformApiDiscovery('local').getTokenAudience()).toEqual(
-      'https://api.powerplatform.localhost'
-    );
-    // Non-production categories now default to production domain
-    expect(new PowerPlatformApiDiscovery('dev').getTokenAudience()).toEqual(
-      'https://api.powerplatform.com'
-    );
-    expect(new PowerPlatformApiDiscovery('test').getTokenAudience()).toEqual(
-      'https://api.powerplatform.com'
-    );
-    expect(new PowerPlatformApiDiscovery('preprod').getTokenAudience()).toEqual(
-      'https://api.powerplatform.com'
-    );
-    expect(new PowerPlatformApiDiscovery('firstrelease').getTokenAudience()).toEqual(
-      'https://api.powerplatform.com'
-    );
-    expect(new PowerPlatformApiDiscovery('prod').getTokenAudience()).toEqual('https://api.powerplatform.com');
-    expect(new PowerPlatformApiDiscovery('gov').getTokenAudience()).toEqual(
-      'https://api.gov.powerplatform.microsoft.us'
-    );
-    expect(new PowerPlatformApiDiscovery('high').getTokenAudience()).toEqual(
-      'https://api.high.powerplatform.microsoft.us'
-    );
-    expect(new PowerPlatformApiDiscovery('dod').getTokenAudience()).toEqual('https://api.appsplatform.us');
-    expect(new PowerPlatformApiDiscovery('mooncake').getTokenAudience()).toEqual(
-      'https://api.powerplatform.partner.microsoftonline.cn'
-    );
-    expect(new PowerPlatformApiDiscovery('ex').getTokenAudience()).toEqual(
-      'https://api.powerplatform.eaglex.ic.gov'
-    );
-    expect(new PowerPlatformApiDiscovery('rx').getTokenAudience()).toEqual(
-      'https://api.powerplatform.microsoft.scloud'
-    );
-  });
-});
+// Test data - all cluster configurations in one place
+const clusterTestData: Array<{ cluster: ClusterCategory; audience: string; host: string }> = [
+  { cluster: 'local', audience: 'https://api.powerplatform.localhost', host: 'api.powerplatform.localhost' },
+  { cluster: 'dev', audience: 'https://api.powerplatform.com', host: 'api.powerplatform.com' },
+  { cluster: 'test', audience: 'https://api.powerplatform.com', host: 'api.powerplatform.com' },
+  { cluster: 'preprod', audience: 'https://api.powerplatform.com', host: 'api.powerplatform.com' },
+  { cluster: 'firstrelease', audience: 'https://api.powerplatform.com', host: 'api.powerplatform.com' },
+  { cluster: 'prod', audience: 'https://api.powerplatform.com', host: 'api.powerplatform.com' },
+  { cluster: 'gov', audience: 'https://api.gov.powerplatform.microsoft.us', host: 'api.gov.powerplatform.microsoft.us' },
+  { cluster: 'high', audience: 'https://api.high.powerplatform.microsoft.us', host: 'api.high.powerplatform.microsoft.us' },
+  { cluster: 'dod', audience: 'https://api.appsplatform.us', host: 'api.appsplatform.us' },
+  { cluster: 'mooncake', audience: 'https://api.powerplatform.partner.microsoftonline.cn', host: 'api.powerplatform.partner.microsoftonline.cn' },
+  { cluster: 'ex', audience: 'https://api.powerplatform.eaglex.ic.gov', host: 'api.powerplatform.eaglex.ic.gov' },
+  { cluster: 'rx', audience: 'https://api.powerplatform.microsoft.scloud', host: 'api.powerplatform.microsoft.scloud' },
+];
 
-describe('getTokenEndpointHost gets the correct host for the environment', () => {
-  it('should give the correct token audience in each cluster category', () => {
-    expect(new PowerPlatformApiDiscovery('local').getTokenEndpointHost()).toEqual(
-      'api.powerplatform.localhost'
-    );
-    // Non-production categories now default to production domain
-    expect(new PowerPlatformApiDiscovery('dev').getTokenEndpointHost()).toEqual('api.powerplatform.com');
-    expect(new PowerPlatformApiDiscovery('test').getTokenEndpointHost()).toEqual(
-      'api.powerplatform.com'
-    );
-    expect(new PowerPlatformApiDiscovery('preprod').getTokenEndpointHost()).toEqual(
-      'api.powerplatform.com'
-    );
-    expect(new PowerPlatformApiDiscovery('firstrelease').getTokenEndpointHost()).toEqual(
-      'api.powerplatform.com'
-    );
-    expect(new PowerPlatformApiDiscovery('prod').getTokenEndpointHost()).toEqual('api.powerplatform.com');
-    expect(new PowerPlatformApiDiscovery('gov').getTokenEndpointHost()).toEqual(
-      'api.gov.powerplatform.microsoft.us'
-    );
-    expect(new PowerPlatformApiDiscovery('high').getTokenEndpointHost()).toEqual(
-      'api.high.powerplatform.microsoft.us'
-    );
-    expect(new PowerPlatformApiDiscovery('dod').getTokenEndpointHost()).toEqual('api.appsplatform.us');
-    expect(new PowerPlatformApiDiscovery('mooncake').getTokenEndpointHost()).toEqual(
-      'api.powerplatform.partner.microsoftonline.cn'
-    );
-    expect(new PowerPlatformApiDiscovery('ex').getTokenEndpointHost()).toEqual(
-      'api.powerplatform.eaglex.ic.gov'
-    );
-    expect(new PowerPlatformApiDiscovery('rx').getTokenEndpointHost()).toEqual(
-      'api.powerplatform.microsoft.scloud'
-    );
-  });
-});
+const tenantEndpointTestData: Array<{ cluster: ClusterCategory; endpoint: string }> = [
+  { cluster: 'local', endpoint: 'e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.powerplatform.localhost' },
+  { cluster: 'dev', endpoint: 'e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.powerplatform.com' },
+  { cluster: 'test', endpoint: 'e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.powerplatform.com' },
+  { cluster: 'preprod', endpoint: 'e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.powerplatform.com' },
+  { cluster: 'firstrelease', endpoint: 'e3064512cc6d4703be71a2ecaecaa9.8a.tenant.api.powerplatform.com' },
+  { cluster: 'prod', endpoint: 'e3064512cc6d4703be71a2ecaecaa9.8a.tenant.api.powerplatform.com' },
+  { cluster: 'gov', endpoint: 'e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.gov.powerplatform.microsoft.us' },
+  { cluster: 'high', endpoint: 'e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.high.powerplatform.microsoft.us' },
+  { cluster: 'dod', endpoint: 'e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.appsplatform.us' },
+  { cluster: 'mooncake', endpoint: 'e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.powerplatform.partner.microsoftonline.cn' },
+  { cluster: 'ex', endpoint: 'e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.powerplatform.eaglex.ic.gov' },
+  { cluster: 'rx', endpoint: 'e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.powerplatform.microsoft.scloud' },
+];
 
-describe('getTenantEndpoint generates the expected tenant endpoint', () => {
-  it('should give the correct tenant endpoint in each cluster category', () => {
-    expect(new PowerPlatformApiDiscovery('local').getTenantEndpoint(tenantId)).toEqual(
-      'e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.powerplatform.localhost'
-    );
-    // Non-production categories now default to production domain
-    expect(new PowerPlatformApiDiscovery('dev').getTenantEndpoint(tenantId)).toEqual(
-      'e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.powerplatform.com'
-    );
-    expect(new PowerPlatformApiDiscovery('test').getTenantEndpoint(tenantId)).toEqual(
-      'e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.powerplatform.com'
-    );
-    expect(new PowerPlatformApiDiscovery('preprod').getTenantEndpoint(tenantId)).toEqual(
-      'e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.powerplatform.com'
-    );
-    expect(new PowerPlatformApiDiscovery('firstrelease').getTenantEndpoint(tenantId)).toEqual(
-      'e3064512cc6d4703be71a2ecaecaa9.8a.tenant.api.powerplatform.com'
-    );
-    expect(new PowerPlatformApiDiscovery('prod').getTenantEndpoint(tenantId)).toEqual(
-      'e3064512cc6d4703be71a2ecaecaa9.8a.tenant.api.powerplatform.com'
-    );
-    expect(new PowerPlatformApiDiscovery('gov').getTenantEndpoint(tenantId)).toEqual(
-      'e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.gov.powerplatform.microsoft.us'
-    );
-    expect(new PowerPlatformApiDiscovery('high').getTenantEndpoint(tenantId)).toEqual(
-      'e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.high.powerplatform.microsoft.us'
-    );
-    expect(new PowerPlatformApiDiscovery('dod').getTenantEndpoint(tenantId)).toEqual(
-      'e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.appsplatform.us'
-    );
-    expect(new PowerPlatformApiDiscovery('mooncake').getTenantEndpoint(tenantId)).toEqual(
-      'e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.powerplatform.partner.microsoftonline.cn'
-    );
-    expect(new PowerPlatformApiDiscovery('ex').getTenantEndpoint(tenantId)).toEqual(
-      'e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.powerplatform.eaglex.ic.gov'
-    );
-    expect(new PowerPlatformApiDiscovery('rx').getTenantEndpoint(tenantId)).toEqual(
-      'e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.powerplatform.microsoft.scloud'
+const tenantIslandEndpointTestData: Array<{ cluster: ClusterCategory; endpoint: string }> = [
+  { cluster: 'local', endpoint: 'il-e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.powerplatform.localhost' },
+  { cluster: 'dev', endpoint: 'il-e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.powerplatform.com' },
+  { cluster: 'test', endpoint: 'il-e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.powerplatform.com' },
+  { cluster: 'preprod', endpoint: 'il-e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.powerplatform.com' },
+  { cluster: 'firstrelease', endpoint: 'il-e3064512cc6d4703be71a2ecaecaa9.8a.tenant.api.powerplatform.com' },
+  { cluster: 'prod', endpoint: 'il-e3064512cc6d4703be71a2ecaecaa9.8a.tenant.api.powerplatform.com' },
+  { cluster: 'gov', endpoint: 'il-e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.gov.powerplatform.microsoft.us' },
+  { cluster: 'high', endpoint: 'il-e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.high.powerplatform.microsoft.us' },
+  { cluster: 'dod', endpoint: 'il-e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.appsplatform.us' },
+  { cluster: 'mooncake', endpoint: 'il-e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.powerplatform.partner.microsoftonline.cn' },
+  { cluster: 'ex', endpoint: 'il-e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.powerplatform.eaglex.ic.gov' },
+  { cluster: 'rx', endpoint: 'il-e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.powerplatform.microsoft.scloud' },
+];
+
+describe('PowerPlatformApiDiscovery', () => {
+  describe('getTokenAudience', () => {
+    it.each(clusterTestData)(
+      'should return correct audience for $cluster cluster',
+      ({ cluster, audience }) => {
+        expect(new PowerPlatformApiDiscovery(cluster).getTokenAudience()).toEqual(audience);
+      }
     );
   });
 
-  it('should reject tenant ids with invalid host name characters', () => {
-    expect(() => new PowerPlatformApiDiscovery('local').getTenantEndpoint('invalid?')).toThrow(
-      'Cannot generate Power Platform API endpoint because the tenant identifier contains invalid host name characters, only alphanumeric and dash characters are expected: invalid?'
+  describe('getTokenEndpointHost', () => {
+    it.each(clusterTestData)(
+      'should return correct host for $cluster cluster',
+      ({ cluster, host }) => {
+        expect(new PowerPlatformApiDiscovery(cluster).getTokenEndpointHost()).toEqual(host);
+      }
     );
   });
 
-  it('should reject tenant ids of insufficient length', () => {
-    expect(() => new PowerPlatformApiDiscovery('local').getTenantEndpoint('a')).toThrow(
-      'Cannot generate Power Platform API endpoint because the normalized tenant identifier must be at least 2 characters in length: a'
+  describe('getTenantEndpoint', () => {
+    it.each(tenantEndpointTestData)(
+      'should return correct tenant endpoint for $cluster cluster',
+      ({ cluster, endpoint }) => {
+        expect(new PowerPlatformApiDiscovery(cluster).getTenantEndpoint(tenantId)).toEqual(endpoint);
+      }
     );
-    expect(() => new PowerPlatformApiDiscovery('local').getTenantEndpoint('a-')).toThrow(
-      'Cannot generate Power Platform API endpoint because the normalized tenant identifier must be at least 2 characters in length: a'
-    );
-    expect(() => new PowerPlatformApiDiscovery('prod').getTenantEndpoint('aa')).toThrow(
-      'Cannot generate Power Platform API endpoint because the normalized tenant identifier must be at least 3 characters in length: aa'
-    );
-    expect(() => new PowerPlatformApiDiscovery('prod').getTenantEndpoint('a-a')).toThrow(
-      'Cannot generate Power Platform API endpoint because the normalized tenant identifier must be at least 3 characters in length: aa'
-    );
-  });
-});
 
-describe('getTenantIslandClusterEndpoint generates the expected tenant island cluster endpoint', () => {
-  it('should give the correct tenant endpoint in each cluster category', () => {
-    expect(new PowerPlatformApiDiscovery('local').getTenantIslandClusterEndpoint(tenantId)).toEqual(
-      'il-e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.powerplatform.localhost'
-    );
-    // Non-production categories now default to production domain
-    expect(new PowerPlatformApiDiscovery('dev').getTenantIslandClusterEndpoint(tenantId)).toEqual(
-      'il-e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.powerplatform.com'
-    );
-    expect(new PowerPlatformApiDiscovery('test').getTenantIslandClusterEndpoint(tenantId)).toEqual(
-      'il-e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.powerplatform.com'
-    );
-    expect(new PowerPlatformApiDiscovery('preprod').getTenantIslandClusterEndpoint(tenantId)).toEqual(
-      'il-e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.powerplatform.com'
-    );
-    expect(new PowerPlatformApiDiscovery('firstrelease').getTenantIslandClusterEndpoint(tenantId)).toEqual(
-      'il-e3064512cc6d4703be71a2ecaecaa9.8a.tenant.api.powerplatform.com'
-    );
-    expect(new PowerPlatformApiDiscovery('prod').getTenantIslandClusterEndpoint(tenantId)).toEqual(
-      'il-e3064512cc6d4703be71a2ecaecaa9.8a.tenant.api.powerplatform.com'
-    );
-    expect(new PowerPlatformApiDiscovery('gov').getTenantIslandClusterEndpoint(tenantId)).toEqual(
-      'il-e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.gov.powerplatform.microsoft.us'
-    );
-    expect(new PowerPlatformApiDiscovery('high').getTenantIslandClusterEndpoint(tenantId)).toEqual(
-      'il-e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.high.powerplatform.microsoft.us'
-    );
-    expect(new PowerPlatformApiDiscovery('dod').getTenantIslandClusterEndpoint(tenantId)).toEqual(
-      'il-e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.appsplatform.us'
-    );
-    expect(new PowerPlatformApiDiscovery('mooncake').getTenantIslandClusterEndpoint(tenantId)).toEqual(
-      'il-e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.powerplatform.partner.microsoftonline.cn'
-    );
-    expect(new PowerPlatformApiDiscovery('ex').getTenantIslandClusterEndpoint(tenantId)).toEqual(
-      'il-e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.powerplatform.eaglex.ic.gov'
-    );
-    expect(new PowerPlatformApiDiscovery('rx').getTenantIslandClusterEndpoint(tenantId)).toEqual(
-      'il-e3064512cc6d4703be71a2ecaecaa98.a.tenant.api.powerplatform.microsoft.scloud'
-    );
+    it('should reject tenant ids with invalid host name characters', () => {
+      expect(() => new PowerPlatformApiDiscovery('local').getTenantEndpoint('invalid?')).toThrow(
+        'Cannot generate Power Platform API endpoint because the tenant identifier contains invalid host name characters, only alphanumeric and dash characters are expected: invalid?'
+      );
+    });
+
+    describe('should reject tenant ids of insufficient length', () => {
+      it.each<{ tenantId: string; cluster: ClusterCategory; minLength: number; normalized: string }>([
+        { tenantId: 'a', cluster: 'local', minLength: 2, normalized: 'a' },
+        { tenantId: 'a-', cluster: 'local', minLength: 2, normalized: 'a' },
+        { tenantId: 'aa', cluster: 'prod', minLength: 3, normalized: 'aa' },
+        { tenantId: 'a-a', cluster: 'prod', minLength: 3, normalized: 'aa' },
+      ])(
+        'should throw error for tenantId "$tenantId" in $cluster cluster',
+        ({ tenantId, cluster, minLength, normalized }) => {
+          expect(() => new PowerPlatformApiDiscovery(cluster).getTenantEndpoint(tenantId)).toThrow(
+            `Cannot generate Power Platform API endpoint because the normalized tenant identifier must be at least ${minLength} characters in length: ${normalized}`
+          );
+        }
+      );
+    });
   });
 
-  it('should reject tenant ids with invalid host name characters', () => {
-    expect(() => new PowerPlatformApiDiscovery('local').getTenantIslandClusterEndpoint('invalid?')).toThrow(
-      'Cannot generate Power Platform API endpoint because the tenant identifier contains invalid host name characters, only alphanumeric and dash characters are expected: invalid?'
+  describe('getTenantIslandClusterEndpoint', () => {
+    it.each(tenantIslandEndpointTestData)(
+      'should return correct tenant island endpoint for $cluster cluster',
+      ({ cluster, endpoint }) => {
+        expect(new PowerPlatformApiDiscovery(cluster).getTenantIslandClusterEndpoint(tenantId)).toEqual(endpoint);
+      }
     );
-  });
 
-  it('should reject tenant ids of insufficient length', () => {
-    expect(() => new PowerPlatformApiDiscovery('local').getTenantIslandClusterEndpoint('a')).toThrow(
-      'Cannot generate Power Platform API endpoint because the normalized tenant identifier must be at least 2 characters in length: a'
-    );
-    expect(() => new PowerPlatformApiDiscovery('local').getTenantIslandClusterEndpoint('a-')).toThrow(
-      'Cannot generate Power Platform API endpoint because the normalized tenant identifier must be at least 2 characters in length: a'
-    );
-    expect(() => new PowerPlatformApiDiscovery('prod').getTenantIslandClusterEndpoint('aa')).toThrow(
-      'Cannot generate Power Platform API endpoint because the normalized tenant identifier must be at least 3 characters in length: aa'
-    );
-    expect(() => new PowerPlatformApiDiscovery('prod').getTenantIslandClusterEndpoint('a-a')).toThrow(
-      'Cannot generate Power Platform API endpoint because the normalized tenant identifier must be at least 3 characters in length: aa'
-    );
+    it('should reject tenant ids with invalid host name characters', () => {
+      expect(() => new PowerPlatformApiDiscovery('local').getTenantIslandClusterEndpoint('invalid?')).toThrow(
+        'Cannot generate Power Platform API endpoint because the tenant identifier contains invalid host name characters, only alphanumeric and dash characters are expected: invalid?'
+      );
+    });
+
+    describe('should reject tenant ids of insufficient length', () => {
+      it.each<{ tenantId: string; cluster: ClusterCategory; minLength: number; normalized: string }>([
+        { tenantId: 'a', cluster: 'local', minLength: 2, normalized: 'a' },
+        { tenantId: 'a-', cluster: 'local', minLength: 2, normalized: 'a' },
+        { tenantId: 'aa', cluster: 'prod', minLength: 3, normalized: 'aa' },
+        { tenantId: 'a-a', cluster: 'prod', minLength: 3, normalized: 'aa' },
+      ])(
+        'should throw error for tenantId "$tenantId" in $cluster cluster',
+        ({ tenantId, cluster, minLength, normalized }) => {
+          expect(() => new PowerPlatformApiDiscovery(cluster).getTenantIslandClusterEndpoint(tenantId)).toThrow(
+            `Cannot generate Power Platform API endpoint because the normalized tenant identifier must be at least ${minLength} characters in length: ${normalized}`
+          );
+        }
+      );
+    });
   });
 });
