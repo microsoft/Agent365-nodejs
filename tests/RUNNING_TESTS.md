@@ -70,22 +70,25 @@ tests/
 ## Running Tests from Command Line
 
 ```powershell
-# Run all tests
+# Run all tests (from repository root)
+pnpm test
+
+# Or run from tests directory
 cd tests
-npm test
+pnpm test
 
 # Run specific test file
-npm test -- runtime/power-platform-api-discovery.test.ts
+pnpm test -- runtime/power-platform-api-discovery.test.ts
 
 # Run tests matching pattern
-npm test -- --testPathPattern=observability
+pnpm test -- --testPathPattern=observability
 
 # Run with options
-npm test -- --verbose                  # Verbose output
-npm test -- --bail                     # Stop on first failure
-npm test -- --testNamePattern="should return"  # Pattern matching
-npm test -- --onlyFailures             # Re-run only failed tests
-npm test -- --watch                    # Watch mode
+pnpm test -- --verbose                  # Verbose output
+pnpm test -- --bail                     # Stop on first failure
+pnpm test -- --testNamePattern="should return"  # Pattern matching
+pnpm test -- --onlyFailures             # Re-run only failed tests
+pnpm test -- --watch                    # Watch mode
 ```
 
 ---
@@ -95,26 +98,28 @@ npm test -- --watch                    # Watch mode
 ### Coverage Reports
 
 ```powershell
-# Generate coverage report
+# Generate coverage report (from repository root)
+pnpm test -- --coverage
+
+# Or from tests directory
 cd tests
-npm test -- --coverage
+pnpm test -- --coverage
 
 # Generate HTML coverage report
-npm test -- --coverage --coverageReporters=html
+pnpm test -- --coverage --coverageReporters=html
 
 # View HTML report
 start coverage\index.html
 
 # Generate multiple report formats
-npm test -- --coverage --coverageReporters=html --coverageReporters=text --coverageReporters=lcov
+pnpm test -- --coverage --coverageReporters=html --coverageReporters=text --coverageReporters=lcov
 ```
 
 ### CI/CD Reports
 
 ```powershell
 # XML reports for CI/CD pipelines
-cd tests
-npm test -- --coverage --coverageReporters=cobertura --coverageReporters=json
+pnpm test -- --coverage --coverageReporters=cobertura --coverageReporters=json
 
 # View reports
 start coverage\cobertura-coverage.xml
@@ -131,7 +136,7 @@ start coverage\coverage-final.json
 |-------|----------|
 | **Test loading failed** | Run `pnpm install` and `pnpm build`, restart VS Code |
 | **Error: Cannot find module** | Run `pnpm build` from repository root |
-| **'jest' is not recognized** | Run tests from `tests/` directory using `npm test` |
+| **'jest' is not recognized** | Run tests using `pnpm test` instead |
 | **Tests not discovered in VS Code** | Check `.vscode/settings.json`, reload window |
 | **TypeScript errors in tests** | Ensure all packages are built: `pnpm build` |
 
@@ -157,8 +162,7 @@ pnpm build
 **3. Clear Jest cache**
 
 ```powershell
-cd tests
-npm test -- --clearCache
+pnpm test -- --clearCache
 ```
 
 **4. Restart VS Code**
@@ -175,7 +179,7 @@ If Test Explorer doesn't work, ensure `.vscode/settings.json` exists:
 ```json
 {
   "jest.rootPath": "tests",
-  "jest.jestCommandLine": "npm test --",
+  "jest.jestCommandLine": "pnpm test --",
   "jest.autoRun": {
     "watch": true,
     "onStartup": ["all-tests"]

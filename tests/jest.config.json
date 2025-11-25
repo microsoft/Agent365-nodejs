@@ -5,17 +5,23 @@
     "<rootDir>"
   ],
   "testMatch": [
-    "**/*.ts",
     "**/?(*.)+(spec|test).ts"
   ],
   "transform": {
     "^.+\\.ts$": "ts-jest"
   },
   "collectCoverageFrom": [
-    "src/**/*.ts",
-    "!src/**/*.d.ts"
+    "<rootDir>/../packages/*/src/**/*.ts",
+    "!<rootDir>/../packages/*/src/**/*.d.ts",
+    "!<rootDir>/../packages/*/src/**/index.ts"
   ],
-   "moduleNameMapper": {
+  "coverageDirectory": "coverage",
+  "coverageReporters": [
+    "text",
+    "lcov",
+    "html"
+  ],
+  "moduleNameMapper": {
     "^@opentelemetry/api$": "<rootDir>/../node_modules/@opentelemetry/api"
   },
   "moduleDirectories": ["node_modules", "<rootDir>/../node_modules"]
