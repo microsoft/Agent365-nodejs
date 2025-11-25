@@ -42,7 +42,7 @@ pnpm build
 
 ```plaintext
 tests/
-├── common/                            # Runtime tests
+├── runtime/                           # Runtime tests
 ├── observability/                     # Observability tests
 ├── tooling/                           # Tooling tests
 └── notifications/                     # Notifications tests
@@ -75,7 +75,7 @@ cd tests
 npm test
 
 # Run specific test file
-npm test -- common/power-platform-api-discovery.test.ts
+npm test -- runtime/power-platform-api-discovery.test.ts
 
 # Run tests matching pattern
 npm test -- --testPathPattern=observability

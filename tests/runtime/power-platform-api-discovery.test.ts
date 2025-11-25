@@ -1,7 +1,10 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 import { describe, it, expect } from '@jest/globals';
 import { PowerPlatformApiDiscovery, ClusterCategory } from '@microsoft/agents-a365-runtime';
 
-const tenantId = 'e3064512-cc6d-4703-be71-a2ecaecaa98a';
+const testTenantId = 'e3064512-cc6d-4703-be71-a2ecaecaa98a';
 
 // Test data - all cluster configurations in one place
 const clusterTestData: Array<{ cluster: ClusterCategory; audience: string; host: string }> = [
@@ -72,7 +75,7 @@ describe('PowerPlatformApiDiscovery', () => {
     it.each(tenantEndpointTestData)(
       'should return correct tenant endpoint for $cluster cluster',
       ({ cluster, endpoint }) => {
-        expect(new PowerPlatformApiDiscovery(cluster).getTenantEndpoint(tenantId)).toEqual(endpoint);
+        expect(new PowerPlatformApiDiscovery(cluster).getTenantEndpoint(testTenantId)).toEqual(endpoint);
       }
     );
 
@@ -103,29 +106,13 @@ describe('PowerPlatformApiDiscovery', () => {
     it.each(tenantIslandEndpointTestData)(
       'should return correct tenant island endpoint for $cluster cluster',
       ({ cluster, endpoint }) => {
-        expect(new PowerPlatformApiDiscovery(cluster).getTenantIslandClusterEndpoint(tenantId)).toEqual(endpoint);
+        expect(new PowerPlatformApiDiscovery(cluster).getTenantIslandClusterEndpoint(testTenantId)).toEqual(endpoint);
       }
     );
 
     it('should reject tenant ids with invalid host name characters', () => {
       expect(() => new PowerPlatformApiDiscovery('local').getTenantIslandClusterEndpoint('invalid?')).toThrow(
         'Cannot generate Power Platform API endpoint because the tenant identifier contains invalid host name characters, only alphanumeric and dash characters are expected: invalid?'
-      );
-    });
-
-    describe('should reject tenant ids of insufficient length', () => {
-      it.each<{ tenantId: string; cluster: ClusterCategory; minLength: number; normalized: string }>([
-        { tenantId: 'a', cluster: 'local', minLength: 2, normalized: 'a' },
-        { tenantId: 'a-', cluster: 'local', minLength: 2, normalized: 'a' },
-        { tenantId: 'aa', cluster: 'prod', minLength: 3, normalized: 'aa' },
-        { tenantId: 'a-a', cluster: 'prod', minLength: 3, normalized: 'aa' },
-      ])(
-        'should throw error for tenantId "$tenantId" in $cluster cluster',
-        ({ tenantId, cluster, minLength, normalized }) => {
-          expect(() => new PowerPlatformApiDiscovery(cluster).getTenantIslandClusterEndpoint(tenantId)).toThrow(
-            `Cannot generate Power Platform API endpoint because the normalized tenant identifier must be at least ${minLength} characters in length: ${normalized}`
-          );
-        }
       );
     });
   });

@@ -30,7 +30,8 @@
 **Async:** Native async/await
 
 **Test Pattern:** AAA (Arrange → Act → Assert)  
-**Naming Convention:** `'should <expected_result> when <condition>'`
+**Test File Naming:** `<filename>.test.ts` (e.g., `power-platform-api-discovery.test.ts`)
+**Test Naming Convention:** `'should <expected_result> when <condition>'`  
 
 ---
 
@@ -57,9 +58,9 @@
 | Module | Test File | Status |
 |--------|-----------|--------|
 | `power-platform-api-discovery.ts` | `power-platform-api-discovery.test.ts` | ✅ Complete |
-| `utility.ts` | `utility.test.ts` | ❌ Missing |
-| `environment-utils.ts` | `environment-utils.test.ts` | ❌ Missing |
-| `agentic-authorization-service.ts` | `agentic-authorization-service.test.ts` | ❌ Missing |
+| `utility.ts` | `utility.test.ts` | ✅ Complete |
+| `environment-utils.ts` | `environment-utils.test.ts` | ✅ Complete |
+| `agentic-authorization-service.ts` | `agentic-authorization-service.test.ts` | ✅ Complete |
 
 ---
 
