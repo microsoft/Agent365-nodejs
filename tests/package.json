@@ -39,6 +39,7 @@
     "@microsoft/agents-a365-observability-extensions-openai": "workspace:*",
     "@microsoft/agents-a365-observability-tokencache": "workspace:*",
     "@microsoft/agents-a365-runtime": "workspace:*",
+    "@microsoft/agents-a365-settings": "workspace:*",
     "@microsoft/agents-hosting": "workspace:*",
     "@modelcontextprotocol/sdk": "*",
     "@openai/agents": "*",
