@@ -12,6 +12,9 @@ import {
 } from '../contracts';
 import { OpenTelemetryConstants } from '../constants';
 
+/**
+ * Provides OpenTelemetry tracing scope for AI agent invocation operations.
+ */  
 export class InvokeAgentScope extends OpenTelemetryScope {
   
   /**
