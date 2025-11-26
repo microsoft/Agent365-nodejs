@@ -48,6 +48,11 @@ export class OpenAIAgentsTraceInstrumentor extends InstrumentationBase<OpenAIAge
       '1.0.0',
       configWithDefaults
     );
+
+    // If enabled is true in config, explicitly enable the instrumentation
+    if (configWithDefaults.enabled) {
+      this.enable();
+    }
   }
 
   /**
