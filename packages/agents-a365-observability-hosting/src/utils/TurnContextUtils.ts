@@ -23,7 +23,7 @@ export function getCallerBaggagePairs(turnContext: TurnContext): Array<[string, 
     
   const userId = from.agenticUserId ?? from.aadObjectId;
   const pairs: Array<[string, string | undefined]> = [
-    [OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY, from.id],
+    [OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY, from.aadObjectId],
     [OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY, from.name],
     [OpenTelemetryConstants.GEN_AI_CALLER_UPN_KEY, from.name],
     [OpenTelemetryConstants.GEN_AI_CALLER_USER_ID_KEY, userId],
