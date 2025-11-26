@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------------------------
 
-import { AgenticTokenCacheInstance } from '@microsoft/agents-a365-observability-tokencache';
+import { AgenticTokenCacheInstance } from '@microsoft/agents-a365-observability-hosting';
 
 interface TurnContextStub { activity: { id: string } }
 interface AuthorizationStub {

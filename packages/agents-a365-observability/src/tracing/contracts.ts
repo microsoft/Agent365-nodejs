@@ -71,7 +71,7 @@ export interface SourceMetadata {
  */
 export interface AgentRequest {
   /** The content of the request */
-  content: string;
+  content?: string;
 
   /** The type of invocation (how the agent was called) */
   executionType?: ExecutionType;

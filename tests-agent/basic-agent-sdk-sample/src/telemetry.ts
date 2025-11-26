@@ -11,7 +11,7 @@ import {
 import { createAgenticTokenCacheKey } from './agent';
 import tokenCache from './token-cache';
 import { ClusterCategory } from '@microsoft/agents-a365-runtime';
-import { AgenticTokenCacheInstance } from '@microsoft/agents-a365-observability-tokencache';
+import { AgenticTokenCacheInstance } from '@microsoft/agents-a365-observability-hosting';
 
 // Configure observability with token resolver (like Python's token_resolver function)  
 const tokenResolver = (agentId: string, tenantId: string): string | null => {
