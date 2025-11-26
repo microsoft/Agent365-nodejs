@@ -157,7 +157,7 @@ export class McpToolServerConfigurationService {
    * @returns {boolean} True when running in a development environment.
    */
   private isDevScenario(): boolean {
-    const environment = process.env.NODE_ENV || 'Development';
+    const environment = process.env.NODE_ENV || '';
     return environment.toLowerCase() === 'development';
   }
 }
