@@ -4,9 +4,9 @@
 
 import { context, propagation, Span, SpanKind } from '@opentelemetry/api';
 import { tracing } from '@opentelemetry/sdk-node';
-import { SpanProcessor } from '@microsoft/agents-a365-observability/dist/cjs/tracing/processors/SpanProcessor';
-import { OpenTelemetryConstants } from '@microsoft/agents-a365-observability/dist/cjs/tracing/constants';
-import { GENERIC_ATTRIBUTES, INVOKE_AGENT_ATTRIBUTES } from '@microsoft/agents-a365-observability/dist/cjs/tracing/processors/util';
+import { SpanProcessor } from '@microsoft/agents-a365-observability/src/tracing/processors/SpanProcessor';
+import { OpenTelemetryConstants } from '@microsoft/agents-a365-observability/src/tracing/constants';
+import { GENERIC_ATTRIBUTES, INVOKE_AGENT_ATTRIBUTES } from '@microsoft/agents-a365-observability/src/tracing/processors/util';
 
 const { BasicTracerProvider } = tracing;
 

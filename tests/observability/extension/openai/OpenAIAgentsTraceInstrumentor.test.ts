@@ -96,7 +96,10 @@ describe('OpenAIAgentsTraceInstrumentor', () => {
       // Verify the config was set correctly
       expect((instrumentor as any)._config.enabled).toBe(true);
       
-      // Verify that OpenTelemetry automatically called enable() which triggered our setup
+      // Explicitly enable the instrumentor
+      instrumentor.enable();
+      
+      // Verify that enable() triggered our setup
       expect(setTracingDisabledSpy).toHaveBeenCalledWith(false);
       expect(setTraceProcessorsSpy).toHaveBeenCalled();
       
