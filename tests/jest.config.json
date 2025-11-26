@@ -2,26 +2,39 @@
   "preset": "ts-jest",
   "testEnvironment": "node",
   "roots": [
-    "<rootDir>"
+    "<rootDir>",
+    "<rootDir>/../packages"
   ],
   "testMatch": [
     "**/?(*.)+(spec|test).ts"
   ],
   "transform": {
-    "^.+\\.ts$": "ts-jest"
+    "^.+\\.ts$": ["ts-jest", {
+      "tsconfig": {
+        "skipLibCheck": true
+      },
+      "diagnostics": {
+        "ignoreCodes": [6059]
+      }
+    }]
   },
   "collectCoverageFrom": [
     "<rootDir>/../packages/*/src/**/*.ts",
     "!<rootDir>/../packages/*/src/**/*.d.ts",
     "!<rootDir>/../packages/*/src/**/index.ts"
   ],
-  "coverageDirectory": "coverage",
+  "coverageDirectory": "<rootDir>/../coverage",
   "coverageReporters": [
     "text",
     "lcov",
-    "html"
+    "html",
+    "cobertura"
   ],
   "moduleNameMapper": {
+    "^@microsoft/agents-a365-runtime$": "<rootDir>/../packages/agents-a365-runtime/src",
+    "^@microsoft/agents-a365-observability$": "<rootDir>/../packages/agents-a365-observability/src",
+    "^@microsoft/agents-a365-observability-extensions-openai$": "<rootDir>/../packages/agents-a365-observability-extensions-openai/src",
+    "^@microsoft/agents-a365-observability-tokencache$": "<rootDir>/../packages/agents-a365-observability-tokencache/src",
     "^@opentelemetry/api$": "<rootDir>/../node_modules/@opentelemetry/api"
   },
   "moduleDirectories": ["node_modules", "<rootDir>/../node_modules"]
