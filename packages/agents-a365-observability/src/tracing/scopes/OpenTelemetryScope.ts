@@ -109,7 +109,7 @@ export abstract class OpenTelemetryScope implements Disposable {
    * @param attributes Collection of attribute key/value pairs (array or iterable of [key, value] or object map).
    */
   public recordAttributes(attributes: Iterable<[string, any]> | Record<string, any> | null | undefined): void {
-    if (!attributes) return;
+    if (!OpenTelemetryScope.enableTelemetry || !attributes) return;
     // Support both array/iterable of pairs and object maps
     if (Array.isArray(attributes) || (typeof (attributes as any)[Symbol.iterator] === 'function' && typeof attributes !== 'string')) {
       for (const [key, value] of attributes as Iterable<[string, any]>) {

@@ -1,3 +1,8 @@
+// ------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------------------------
+
 import { BaggageBuilderUtils } from '@microsoft/agents-a365-observability-hosting';
 import { BaggageBuilder, OpenTelemetryConstants } from '@microsoft/agents-a365-observability';
 

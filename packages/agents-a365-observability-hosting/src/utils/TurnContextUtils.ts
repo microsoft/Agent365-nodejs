@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------------------------
 
-import { TurnContext } from '@microsoft/agents-hosting'
+import { TurnContext } from '@microsoft/agents-hosting';
 import { ExecutionType, OpenTelemetryConstants } from '@microsoft/agents-a365-observability';
 
 /**
@@ -46,7 +46,7 @@ export function getExecutionTypePair(turnContext: TurnContext): Array<[string, s
   const recipient = turnContext.activity.recipient;
   const isAgenticCaller = !!from.agenticUserId || (from.role && from.role.toLowerCase() === AGENT_ROLE);
   const isAgenticRecipient = !!recipient.agenticUserId
-    || (recipient.role && recipient.role.toLowerCase() === AGENT_ROLE)
+    || (recipient.role && recipient.role.toLowerCase() === AGENT_ROLE);
   const executionType = (isAgenticRecipient && isAgenticCaller)
     ? ExecutionType.Agent2Agent
     : ExecutionType.HumanToAgent;
