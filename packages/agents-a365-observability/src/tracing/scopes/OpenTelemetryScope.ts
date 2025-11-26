@@ -129,9 +129,7 @@ export abstract class OpenTelemetryScope implements Disposable {
       }
     } else if (
       typeof attributes === 'object' &&
-      attributes !== null &&
-      !Array.isArray(attributes)
-    ) {
+      attributes !== null) {
       for (const key of Object.keys(attributes)) {
         if (!key || typeof key !== 'string' || !key.trim()) continue;
         this.span.setAttribute(key, (attributes as Record<string, any>)[key]);
