@@ -179,6 +179,11 @@ export class BaggageBuilder {
     return this;
   }
 
+  callerClientIp(value: string | null | undefined): BaggageBuilder {
+    this.set(OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY, value);
+    return this;
+  }
+ 
   /**
    * Set the conversation ID baggage value.
    * @param value The conversation ID
