@@ -3,7 +3,6 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------------------------
 
-import logger from '../utils/logging';
 import { OpenTelemetryConstants } from './constants';
 import { ClusterCategory } from '@microsoft/agents-a365-runtime';
 /**
