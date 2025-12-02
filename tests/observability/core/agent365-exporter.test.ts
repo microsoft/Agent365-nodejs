@@ -54,6 +54,7 @@ describe('Agent365Exporter', () => {
     jest.clearAllTimers();
     jest.useRealTimers();
     global.fetch = originalFetch;
+    delete process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN;
   });
 
   it('returns success immediately with no spans', async () => {
@@ -128,7 +129,6 @@ describe('Agent365Exporter', () => {
     expect(urlArg).toBe(expectedUrl);
     expect(headersArg['x-ms-tenant-id']).toBe(tenantId);
     expect(headersArg['authorization']).toBe(`Bearer ${token}`);
-    delete process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN;
   });
 
   it('exports to discovery endpoint when custom domain disabled', async () => {

@@ -51,14 +51,12 @@ export const useCustomDomainForObservability = (): boolean => {
 };
 
 /**
- * Resolve the Agent365 service endpoint base URI for a given cluster category. 
+ * Resolve the Agent365 service endpoint base URI for a given cluster category.
  */
 export function resolveAgent365Endpoint(clusterCategory: ClusterCategory): string {
   switch (clusterCategory) {
   case 'prod':
-    return 'https://agent365.svc.cloud.microsoft';
   default:
-    logger.info(`[Agent365Exporter] Using custom prod Agent365 service endpoint for cluster category: ${clusterCategory}`);
     return 'https://agent365.svc.cloud.microsoft';
   }
 }

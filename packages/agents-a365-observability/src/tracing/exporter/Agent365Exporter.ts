@@ -149,7 +149,7 @@ export class Agent365Exporter implements SpanExporter {
 
     let url: string;
     if (usingCustomServiceEndpoint) {
-      url = resolveAgent365Endpoint(this.options.clusterCategory as ClusterCategory);    
+      url = resolveAgent365Endpoint(this.options.clusterCategory as ClusterCategory);
       logger.info(`[Agent365Exporter] Using custom domain endpoint: ${url}`);
     } else {
       // Default behavior: discover PPAPI gateway endpoint per-tenant
