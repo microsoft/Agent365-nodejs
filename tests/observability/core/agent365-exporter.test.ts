@@ -104,7 +104,7 @@ describe('Agent365Exporter', () => {
 
   it.each([
     { cluster: 'prod', customDomainEnabled: true, expectedCustomDomainUrl: 'https://agent365.svc.cloud.microsoft', token: 'tok-prod' },
-    { cluster: 'preprod', customDomainEnabled: true, expectedCustomDomainUrl: 'https://preprod.agent365.svc.cloud.dev.microsoft', token: 'tok-preprod' },
+    { cluster: 'preprod', customDomainEnabled: true, expectedCustomDomainUrl: 'https://agent365.svc.cloud.microsoft', token: 'tok-preprod' },
     { cluster: 'prod', customDomainEnabled: false, expectedCustomDomainUrl: 'https://${endpoint}/maven/agent365/agents/${agentId}/traces?api-version=1', token: 'tok-prod-disabled' }
   ])('exports with custom domain flag=%s cluster=%s', async ({ cluster, customDomainEnabled, expectedCustomDomainUrl, token }) => {
     mockFetchSequence([200]);
