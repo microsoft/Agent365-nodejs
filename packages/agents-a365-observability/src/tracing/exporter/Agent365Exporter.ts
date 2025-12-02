@@ -145,11 +145,10 @@ export class Agent365Exporter implements SpanExporter {
     const payload = this.buildExportRequest(spans);
     const body = JSON.stringify(payload);
 
-    const isCustom = useCustomDomainForObservability();
-    const isProd = String(this.options.clusterCategory || '').toLowerCase() === 'prod';
+    const usingCustomServiceEndpoint = useCustomDomainForObservability();
 
     let url: string;
-    if (isCustom) {
+    if (usingCustomServiceEndpoint) {
       url = resolveAgent365Endpoint(this.options.clusterCategory as ClusterCategory);    
       logger.info(`[Agent365Exporter] Using custom domain endpoint: ${url}`);
     } else {
@@ -159,7 +158,6 @@ export class Agent365Exporter implements SpanExporter {
       url = `https://${endpoint}/maven/agent365/agents/${agentId}/traces?api-version=1`;
       logger.info(`[Agent365Exporter] Resolved endpoint: ${endpoint}`);
     }
-    console.log(`[Agent365Exporter] Export URL: ${url}`);
 
     const headers: Record<string, string> = {
       'content-type': 'application/json'
@@ -178,8 +176,8 @@ export class Agent365Exporter implements SpanExporter {
       logger.error('[Agent365Exporter] No token resolved');
     }
 
-    // Add tenant id to headers when using custom domain (prod only)
-    if (isCustom) {
+    // Add tenant id to headers when using custom domain
+    if (usingCustomServiceEndpoint) {
       headers['x-ms-tenant-id'] = tenantId;
     }
 

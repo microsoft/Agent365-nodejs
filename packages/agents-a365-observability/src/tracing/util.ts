@@ -1,3 +1,8 @@
+// ------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------------------------
+
 import { OpenTelemetryConstants } from './constants';
 import { ClusterCategory } from '@microsoft/agents-a365-runtime';
 /**
