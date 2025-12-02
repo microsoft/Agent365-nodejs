@@ -37,7 +37,7 @@ export const isAgent365TelemetryEnabled: () => boolean = (): boolean => {
 
 /**
  * Single toggle to use custom domain for observability export.
- * When true and clusterCategory is 'prod', exporter will send traces to agent365.svc.cloud.microsoft
+ * When true exporter will send traces to custom Agent365 service endpoint
  * and include x-ms-tenant-id in headers.
  */
 export const useCustomDomainForObservability = (): boolean => {
