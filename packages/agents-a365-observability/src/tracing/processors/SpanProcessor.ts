@@ -29,6 +29,7 @@ export class SpanProcessor implements BaseSpanProcessor {
     // Get existing span attributes
     const existingAttrs = new Set<string>();
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const spanRecord = span as any;
       if (spanRecord.attributes) {
         Object.keys(spanRecord.attributes).forEach(key => existingAttrs.add(key));
@@ -53,8 +54,10 @@ export class SpanProcessor implements BaseSpanProcessor {
     // Determine if this is an invoke_agent operation
     const operationName =
       baggageMap.get(OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY) ||
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (span as any).attributes?.[OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY];
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const spanName = (span as any).name || '';
     const isInvokeAgent =
       operationName === OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME ||

@@ -6,13 +6,15 @@ import { NodeSDK } from '@opentelemetry/sdk-node';
 import { ConsoleSpanExporter, BatchSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import { SpanProcessor } from './tracing/processors/SpanProcessor';
 import { isAgent365ExporterEnabled } from './tracing/util';
-import { Agent365Exporter, TokenResolver } from './tracing/exporter/Agent365Exporter';
+import { Agent365Exporter } from './tracing/exporter/Agent365Exporter';
+import type { TokenResolver } from './tracing/exporter/Agent365ExporterOptions';
+import { Agent365ExporterOptions } from './tracing/exporter/Agent365ExporterOptions';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
 import { trace } from '@opentelemetry/api';
 import { ClusterCategory } from '@microsoft/agents-a365-runtime';
 /**
- * Configuration options for Agent365 Observability Builder
+ * Configuration options for Agent 365 Observability Builder
  */
 export interface BuilderOptions {
   /** Custom service name for telemetry */
@@ -24,11 +26,18 @@ export interface BuilderOptions {
   tokenResolver?: TokenResolver;
   /** Environment / cluster category (e.g., "preprod", "prod"). */
   clusterCategory?: ClusterCategory;
+  /**
+   * Optional partial set of exporter options allowing agent developers to customize.
+   * Any values omitted will fall back to the defaults defined in Agent365ExporterOptions.
+   * Values provided here will be overridden by explicitly configured tokenResolver or clusterCategory
+   * from dedicated builder methods.
+   */
+  exporterOptions?: Partial<Agent365ExporterOptions>;
 
 }
 
 /**
- * Builder for configuring Agent365 with OpenTelemetry tracing
+ * Builder for configuring Agent 365 with OpenTelemetry tracing
  */
 export class ObservabilityBuilder {
   private options: BuilderOptions = {};
@@ -48,7 +57,7 @@ export class ObservabilityBuilder {
   }
 
   /**
-   * Configures the token resolver for Agent365 exporter
+   * Configures the token resolver for Agent 365 exporter
    * @param tokenResolver Function to resolve authentication tokens
    * @returns The builder instance for method chaining
    */
@@ -58,7 +67,7 @@ export class ObservabilityBuilder {
   }
 
   /**
-   * Configures the cluster category for Agent365 exporter
+   * Configures the cluster category for Agent 365 exporter
    * @param clusterCategory The cluster category (e.g., "preprod", "prod")
    * @returns The builder instance for method chaining
    */
@@ -67,18 +76,39 @@ export class ObservabilityBuilder {
     return this;
   }
 
-  private getTraceExporter() {
-    if (isAgent365ExporterEnabled()){
-      if (!this.options.tokenResolver) {
-        throw new Error('tokenResolver must be provided when Agent365 exporter is enabled');
-      }
-      return new Agent365Exporter(
-        this.options.tokenResolver,
-        this.options.clusterCategory || 'prod'
-      );
-    } else {
-      return new ConsoleSpanExporter();
+  /**
+   * Provide a partial set of Agent365ExporterOptions. These will be merged with
+   * defaults and any explicitly configured clusterCategory/tokenResolver.
+   * @param exporterOptions Partial exporter options
+   * @returns The builder instance for chaining
+   */
+  public withExporterOptions(exporterOptions: Partial<Agent365ExporterOptions>): ObservabilityBuilder {
+    this.options.exporterOptions = {
+      ...(this.options.exporterOptions || {}),
+      ...exporterOptions
+    };
+    return this;
+  }
+
+  private createBatchProcessor(): BatchSpanProcessor {
+    if (!isAgent365ExporterEnabled()) {
+      return new BatchSpanProcessor(new ConsoleSpanExporter());
     }
+
+    const opts = new Agent365ExporterOptions();
+    if (this.options.exporterOptions) {
+      Object.assign(opts, this.options.exporterOptions);
+    }
+    opts.clusterCategory = this.options.clusterCategory || opts.clusterCategory || 'prod';
+    if (this.options.tokenResolver) {
+      opts.tokenResolver = this.options.tokenResolver;
+    }
+    return new BatchSpanProcessor(new Agent365Exporter(opts), {
+      maxQueueSize: opts.maxQueueSize,
+      scheduledDelayMillis: opts.scheduledDelayMilliseconds,
+      exportTimeoutMillis: opts.exporterTimeoutMilliseconds,
+      maxExportBatchSize: opts.maxExportBatchSize
+    });
   }
 
   private createResource() {
@@ -92,7 +122,7 @@ export class ObservabilityBuilder {
   }
 
   /**
-   * Builds and initializes the Agent365 configuration
+   * Builds and initializes the Agent 365 configuration
    * @returns The configured NodeSDK instance
    */
   public build(): boolean {
@@ -104,8 +134,9 @@ export class ObservabilityBuilder {
     const spanProcessor = new SpanProcessor();
 
     // 2. batch processor that actually ships spans out
-    const batchProcessor = new BatchSpanProcessor(this.getTraceExporter());
+    const batchProcessor = this.createBatchProcessor();
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const globalProvider: any = trace.getTracerProvider();
 
     const canAddProcessors =
@@ -164,9 +195,11 @@ export class ObservabilityBuilder {
   /**
    * Helper to avoid double-registering same processor type.
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private attachProcessorIfMissing(provider: any, processor: any) {
     const active = provider._activeSpanProcessor?._spanProcessors;
     const alreadyAdded = Array.isArray(active) &&
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       active.some((p: any) => p?.constructor?.name === processor.constructor.name);
 
     if (!alreadyAdded) {
@@ -174,4 +207,3 @@ export class ObservabilityBuilder {
     }
   }
 }
-

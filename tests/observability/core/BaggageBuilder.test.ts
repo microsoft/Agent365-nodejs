@@ -2,7 +2,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // ------------------------------------------------------------------------------
 
-import { context } from '@opentelemetry/api';
+import { context, propagation } from '@opentelemetry/api';
 import { BaggageBuilder, BaggageScope } from '@microsoft/agents-a365-observability/dist/cjs/tracing/middleware/BaggageBuilder';
 import { OpenTelemetryConstants } from '@microsoft/agents-a365-observability/dist/cjs/tracing/constants';
 
@@ -62,12 +62,18 @@ describe('BaggageBuilder', () => {
       const builder = new BaggageBuilder();
       const pairs: Array<[string, string]> = [
         [OpenTelemetryConstants.TENANT_ID_KEY, 'tenant-123'],
-        [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY, 'agent-456']
+        [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY, 'agent-456'],
+        [OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY, '10.0.0.5']
       ];
       builder.setPairs(pairs);
 
       const scope = builder.build();
       expect(scope).toBeInstanceOf(BaggageScope);
+
+      const bag = propagation.getBaggage((scope as any).contextWithBaggage);
+      expect(bag?.getEntry(OpenTelemetryConstants.TENANT_ID_KEY)?.value).toBe('tenant-123');
+      expect(bag?.getEntry(OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY)?.value).toBe('agent-456');
+      expect(bag?.getEntry(OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY)?.value).toBe('10.0.0.5');
     });
 
     it('should ignore null values', () => {
@@ -133,6 +139,36 @@ describe('BaggageBuilder', () => {
     });
   });
 
+  describe('sessionId support', () => {
+    it('should set sessionId via fluent API', () => {
+      const scope = new BaggageBuilder()
+        .tenantId('tenant-123')
+        .agentId('agent-456')
+        .correlationId('corr-789')
+        .sessionId('session-0001')
+        .sessionDescription('My session desc')
+        .build();
+      const bag = propagation.getBaggage((scope as any).contextWithBaggage);
+      expect(bag?.getEntry(OpenTelemetryConstants.SESSION_ID_KEY)?.value).toBe('session-0001');
+      expect(bag?.getEntry(OpenTelemetryConstants.SESSION_DESCRIPTION_KEY)?.value).toBe('My session desc');
+    });
+
+    it('should omit empty sessionId value', () => {
+      const scope = new BaggageBuilder()
+        .sessionId('   ')
+        .build();
+      const bag = propagation.getBaggage((scope as any).contextWithBaggage);
+      expect(bag?.getEntry(OpenTelemetryConstants.SESSION_ID_KEY)).toBeUndefined();
+    });
+
+    it('should omit null sessionDescription value', () => {
+      const scope = new BaggageBuilder()
+        .sessionDescription(null)
+        .build();
+      const bag = propagation.getBaggage((scope as any).contextWithBaggage);
+      expect(bag?.getEntry(OpenTelemetryConstants.SESSION_DESCRIPTION_KEY)).toBeUndefined();
+    });
+  });
 });
 
 describe('BaggageScope', () => {

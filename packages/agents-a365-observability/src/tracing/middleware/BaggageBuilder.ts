@@ -100,6 +100,16 @@ export class BaggageBuilder {
   }
 
   /**
+   * Set the session ID baggage value.
+   * @param value The session ID
+   * @returns Self for method chaining
+   */
+  sessionId(value: string): BaggageBuilder {
+    this.set(OpenTelemetryConstants.SESSION_ID_KEY, value);
+    return this;
+  }
+
+  /**
    * Set the caller ID baggage value.
    * @param value The caller ID
    * @returns Self for method chaining
@@ -140,6 +150,16 @@ export class BaggageBuilder {
   }
 
   /**
+   * Set the session description baggage value.
+   * @param value The session description
+   * @returns Self for method chaining
+   */
+  sessionDescription(value: string | null | undefined): BaggageBuilder {
+    this.set(OpenTelemetryConstants.SESSION_DESCRIPTION_KEY, value);
+    return this;
+  }
+
+  /**
    * Set the caller name baggage value.
    * @param value The caller name
    * @returns Self for method chaining
@@ -156,6 +176,11 @@ export class BaggageBuilder {
    */
   callerUpn(value: string | null | undefined): BaggageBuilder {
     this.set(OpenTelemetryConstants.GEN_AI_CALLER_UPN_KEY, value);
+    return this;
+  }
+
+  callerClientIp(value: string | null | undefined): BaggageBuilder {
+    this.set(OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY, value);
     return this;
   }
 
@@ -214,13 +239,16 @@ export class BaggageBuilder {
    * @param pairs Dictionary or iterable of key-value pairs
    * @returns Self for method chaining
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   setPairs(pairs: Record<string, any> | Iterable<[string, any]> | null | undefined): BaggageBuilder {
     if (!pairs) {
       return this;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let entries: Iterable<[string, any]>;
     if (Symbol.iterator in Object(pairs)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       entries = pairs as Iterable<[string, any]>;
     } else {
       entries = Object.entries(pairs);
@@ -267,7 +295,7 @@ export class BaggageBuilder {
   static setRequestContext(
     tenantId?: string | null,
     agentId?: string | null,
-    correlationId?: string | null
+    correlationId?: string | null,
   ): BaggageScope {
     return new BaggageBuilder()
       .tenantId(tenantId)

@@ -12,6 +12,8 @@ import {
   InferenceOperationType,
   CallerDetails,
 } from '@microsoft/agents-a365-observability';
+import { OpenTelemetryConstants } from '@microsoft/agents-a365-observability/dist/cjs/tracing/constants';
+import { OpenTelemetryScope } from '@microsoft/agents-a365-observability/dist/cjs/tracing/scopes/OpenTelemetryScope';
 
 // Mock console to avoid cluttering test output
 const originalConsoleWarn = console.warn;
@@ -122,6 +124,41 @@ describe('Scopes', () => {
       expect(() => scope?.recordError(error)).not.toThrow();
       scope?.dispose();
     });
+
+    it('should set caller and caller-agent IP tags', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const invokeAgentDetails: InvokeAgentDetails = {
+        agentId: 'test-agent',
+        agentName: 'Test Agent'
+      };
+      const callerDetails: CallerDetails = {
+        callerId: 'user-123',
+        tenantId: 'test-tenant',
+        callerClientIp: '10.0.0.5'
+      };
+      const callerAgentDetails: AgentDetails = {
+        agentId: 'caller-agent',
+        agentName: 'Caller Agent',
+        agentDescription: 'desc',
+        conversationId: 'conv',
+        agentClientIP: '192.168.1.100'
+      } as any;
+
+      const scope1 = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails, undefined, callerDetails);
+      expect(scope1).toBeInstanceOf(InvokeAgentScope);
+      const scope2 = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails, callerAgentDetails, undefined);
+      expect(scope2).toBeInstanceOf(InvokeAgentScope);
+
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY, val: '10.0.0.5' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CALLER_AGENT_CLIENT_IP_KEY, val: '192.168.1.100' })
+      ]));
+
+      scope1?.dispose();
+      scope2?.dispose();
+      spy.mockRestore();
+    });
   });
 
   describe('ExecuteToolScope', () => {
@@ -194,6 +231,7 @@ describe('Scopes', () => {
       expect(() => scope?.recordFinishReasons(['stop', 'length'])).not.toThrow();
       scope?.dispose();
     });
+
   });
 
   describe('Dispose pattern', () => {

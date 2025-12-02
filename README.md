@@ -2,7 +2,7 @@
 
 [![npm](https://img.shields.io/npm/v/@microsoft/agents-a365-observability?label=npm&logo=npm)](https://www.npmjs.com/search?q=%40microsoft%2Fagents-a365)
 [![npm Downloads](https://img.shields.io/npm/dm/@microsoft/agents-a365-observability?label=Downloads&logo=npm)](https://www.npmjs.com/search?q=%40microsoft%2Fagents-a365)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/microsoft/Agent365-nodejs/build.yml?branch=main&label=Build&logo=github)](https://github.com/microsoft/Agent365-nodejs/actions)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/microsoft/Agent365-nodejs/.github/workflows/ci.yml?branch=main&label=Build&logo=github)](https://github.com/microsoft/Agent365-nodejs/actions)
 [![License](https://img.shields.io/github/license/microsoft/Agent365-nodejs?label=License)](LICENSE.md)
 [![Node.js Version](https://img.shields.io/badge/Node.js-18%2B-339933?logo=node.js)](https://nodejs.org/)
 [![Contributors](https://img.shields.io/github/contributors/microsoft/Agent365-nodejs?label=Contributors&logo=github)](https://github.com/microsoft/Agent365-nodejs/graphs/contributors)
@@ -118,10 +118,6 @@ Enterprise-grade extensions for observability, notifications, runtime utilities,
 ### Additional Resources
 
 - [Node.js documentation](https://learn.microsoft.com/javascript/api/?view=m365-agents-sdk&preserve-view=true)
-
-## 📋 Telemetry
-
-Data Collection. The software may collect information about you and your use of the software and send it to Microsoft. Microsoft may use this information to provide services and improve our products and services. You may turn off the telemetry as described in the repository. There are also some features in the software that may enable you and Microsoft to collect data from users of your applications. If you use these features, you must comply with applicable law, including providing appropriate notices to users of your applications together with a copy of Microsoft's privacy statement. Our privacy statement is located at https://go.microsoft.com/fwlink/?LinkID=824704. You can learn more about data collection and use in the help documentation and our privacy statement. Your use of the software operates as your consent to these practices.
 
 ## Trademarks
 

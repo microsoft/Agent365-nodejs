@@ -1,3 +1,8 @@
+// ------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------------------------
+
 import {
   TurnState,
   AgentApplication,
@@ -20,7 +25,7 @@ import {
   ServiceEndpoint,
 } from '@microsoft/agents-a365-observability';
 import { getObservabilityAuthenticationScope } from '@microsoft/agents-a365-runtime';
-
+import { AgenticTokenCacheInstance } from '@microsoft/agents-a365-observability-tokencache';
 import tokenCache from './token-cache'; 
 interface ConversationState {
   count: number;
@@ -33,8 +38,8 @@ const storage = new MemoryStorage();
 
 export const agentApplication = new AgentApplication<ApplicationTurnState>({
   authorization: {
-        agentic: { } // We have the type and scopes set in the .env file
-      },
+    agentic: {} // We have the type and scopes set in the .env file
+  },
   storage,
   fileDownloaders: [downloader],
 });
@@ -56,6 +61,7 @@ agentApplication.onActivity(
       .agentId(agentInfo.agentId)
       .correlationId("7ff6dca0-917c-4bb0-b31a-794e533d8aad")
       .agentName(agentInfo.agentName)
+      .sessionDescription('Initial onboarding session')
       .conversationId(context.activity.conversation?.id)
       .callerId(context.activity.from?.aadObjectId)
       .callerUpn(context.activity.from?.id)
@@ -74,54 +80,63 @@ agentApplication.onActivity(
         endpoint: {host:context.activity.serviceUrl, port:56150} as ServiceEndpoint,
       };      
       
-    const invokeAgentScope = InvokeAgentScope.start(invokeAgentDetails, tenantInfo);
+      const invokeAgentScope = InvokeAgentScope.start(invokeAgentDetails, tenantInfo);
 
-    await invokeAgentScope.withActiveSpanAsync(async () => {
-      // Record input message
-      invokeAgentScope.recordInputMessages([context.activity.text ?? 'Unknown text']);
-      
-      await context.sendActivity(`Preparing a response to your query (message #${state.conversation.count})...`);
+      await invokeAgentScope.withActiveSpanAsync(async () => {
+        // Record input message
+        invokeAgentScope.recordInputMessages([context.activity.text ?? 'Unknown text']);
 
-      await context.sendActivity(Activity.fromObject({
-        type: 'typing',
-      }));
+        await context.sendActivity(`Preparing a response to your query (message #${state.conversation.count})...`);
 
+        await context.sendActivity(Activity.fromObject({
+          type: 'typing',
+        }));
 
-        // Cache the agentic token for observability token resolver
-      // const aauToken = await agentApplication.authorization.exchangeToken(context, ['https://api.powerplatform.com/.default'],'agentic')
-      const aauToken = await agentApplication.authorization.exchangeToken(context,'agentic', {
-        scopes: getObservabilityAuthenticationScope() 
-      } )
-      const cacheKey = createAgenticTokenCacheKey(agentInfo.agentId, tenantInfo.tenantId);
-      tokenCache.set(cacheKey, aauToken?.token || '');
+        // Set Use_Custom_Resolver === 'true' to use a custom token resolver (see telemetry.ts) and a custom token cache (see token-cache.ts).
+        // Otherwise: use the default AgenticTokenCache via RefreshObservabilityToken.
+        if (process.env.Use_Custom_Resolver === 'true') {
+          const aauToken = await agentApplication.authorization.exchangeToken(context, 'agentic', {
+            scopes: getObservabilityAuthenticationScope()
+          });
+          const cacheKey = createAgenticTokenCacheKey(agentInfo.agentId, tenantInfo.tenantId);
+          tokenCache.set(cacheKey, aauToken?.token || '');
+        } else {
+          // Preload/refresh the observability token into the shared AgenticTokenCache.
+          // We don't immediately need the token here, and if acquisition fails we continue (non-fatal for this demo sample).
+          await AgenticTokenCacheInstance.RefreshObservabilityToken(
+            agentInfo.agentId,
+            tenantInfo.tenantId,
+            context,
+            agentApplication.authorization,
+            getObservabilityAuthenticationScope()
+          );
+        }
 
-      await context.sendActivity(`(Agentic) You said: ${context.activity.text}, user token length=${aauToken.token?.length ?? 0}`);
+        const llmResponse = await performInference(
+          context.activity.text ?? 'Unknown text',
+          context
+        );
 
-      const llmResponse = await performInference(
-        context.activity.text ?? 'Unknown text',
-        context
-      );
+        await context.sendActivity(`LLM Response: ${llmResponse}`);
 
-      await context.sendActivity(`LLM Response: ${llmResponse}`);
+        await context.sendActivity('Now performing a tool call...');
 
-      await context.sendActivity('Now performing a tool call...');
+        await context.sendActivity(Activity.fromObject({
+          type: 'typing',
+        }));
 
-      await context.sendActivity(Activity.fromObject({
-        type: 'typing',
-      }));
+        const toolResponse = await performToolCall(context);
 
-      const toolResponse = await performToolCall(context);
+        await context.sendActivity(`Tool Response: ${toolResponse}`);
 
-      await context.sendActivity(`Tool Response: ${toolResponse}`);
-      
-      // Record output messages
-      invokeAgentScope.recordOutputMessages([
-        `LLM Response: ${llmResponse}`,
-        `Tool Response: ${toolResponse}`
-      ]);
-    });
+        // Record output messages
+        invokeAgentScope.recordOutputMessages([
+          `LLM Response: ${llmResponse}`,
+          `Tool Response: ${toolResponse}`
+        ]);
+      });
 
-    invokeAgentScope.dispose();
+      invokeAgentScope.dispose();
     }); // Close the baggage scope run
   }
 );

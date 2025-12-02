@@ -13,7 +13,7 @@ export function formatError(error: unknown): string {
 }
 
 /**
- * Simple logger for Agent365 observability
+ * Simple logger for Agent 365 observability
  *
  * Usage:
  *   import logger from './logging';
@@ -69,24 +69,21 @@ function parseLogLevel(level: string): Set<number> {
 
 const enabledLogLevels = parseLogLevel(process.env.A365_OBSERVABILITY_LOG_LEVEL || 'none');
 
-const logger = {
+export const logger = {
   info: (message: string, ...args: unknown[]) => {
     if (enabledLogLevels.has(LOG_LEVELS.info)) {
-      // eslint-disable-next-line no-console
       console.log('[INFO]', message, ...args);
     }
   },
 
   warn: (message: string, ...args: unknown[]) => {
     if (enabledLogLevels.has(LOG_LEVELS.warn)) {
-      // eslint-disable-next-line no-console
       console.warn('[WARN]', message, ...args);
     }
   },
 
   error: (message: string, ...args: unknown[]) => {
     if (enabledLogLevels.has(LOG_LEVELS.error)) {
-      // eslint-disable-next-line no-console
       console.error('[ERROR]', message, ...args);
     }
   }

@@ -98,9 +98,8 @@ export class OpenAIAgentsTraceInstrumentor extends InstrumentationBase<OpenAIAge
     // Register the processor directly using the imported setTraceProcessors function
     // This bypasses the OpenTelemetry instrumentation patching mechanism
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setTraceProcessors([this.processor as TracingProcessor]);
-    } catch (error) {
+    } catch (_error) {
       // Silent failure - processor registration failed
     }
 
@@ -123,7 +122,7 @@ export class OpenAIAgentsTraceInstrumentor extends InstrumentationBase<OpenAIAge
     // Reset trace processors using direct import
     try {
       setTraceProcessors([]);
-    } catch (error) {
+    } catch (_error) {
       // Silent failure - processor cleanup failed
     }
 

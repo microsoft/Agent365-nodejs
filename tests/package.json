@@ -1,6 +1,6 @@
 {
   "name": "@microsoft/agents-a365-observability-tests",
-  "version": "2025.10.10",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "description": "OpenTelemetry tracing and monitoring SDK for AI agents built with TypeScript/Node.js",
@@ -30,14 +30,16 @@
   "license": "See license file",
   "repository": {
     "type": "git",
-    "url": "https://github.com/microsoft/Agent365.git",
-    "directory": "nodejs/tests"
+    "url": "https://github.com/microsoft/Agent365-nodejs.git",
+    "directory": "tests"
   },
   "dependencies": {
+    "@azure/monitor-opentelemetry-exporter": "*",
     "@microsoft/agents-a365-observability": "workspace:*",
     "@microsoft/agents-a365-observability-extensions-openai": "workspace:*",
+    "@microsoft/agents-a365-observability-tokencache": "workspace:*",
     "@microsoft/agents-a365-runtime": "workspace:*",
-    "@azure/monitor-opentelemetry-exporter": "*",
+    "@microsoft/agents-hosting": "workspace:*",
     "@modelcontextprotocol/sdk": "*",
     "@openai/agents": "*",
     "@openai/agents-openai": "*",
@@ -52,15 +54,18 @@
   },
   "devDependencies": {
     "@babel/preset-typescript": "^7.27.1",
-    "@types/jest": "^29.5.14",
+    "@eslint/js": "^9.39.1",
+    "@types/jest": "workspace:*",
     "@types/node": "^20.0.0",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
-    "eslint": "^8.0.0",
-    "jest": "^29.0.0",
+    "eslint": "^9.39.1",
+    "jest": "workspace:*",
+    "js-yaml": "^4.1.1",
     "rimraf": "^5.0.0",
-    "ts-jest": "^29.0.0",
-    "typescript": "^5.0.0"
+    "ts-jest": "workspace:*",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.47.0"
   },
   "engines": {
     "node": ">=18.0.0"

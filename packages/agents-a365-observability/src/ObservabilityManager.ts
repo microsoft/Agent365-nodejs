@@ -5,14 +5,14 @@
 import { ObservabilityBuilder, BuilderOptions } from './ObservabilityBuilder';
 
 /**
- * Main entry point for Agent365 providing OpenTelemetry tracing for AI agents and tools
+ * Main entry point for Agent 365 providing OpenTelemetry tracing for AI agents and tools
  */
 export class ObservabilityManager {
   private static instance?: ObservabilityBuilder;
 
 
   /**
-   * Configures Agent365 with OpenTelemetry tracing for AI agents and tools
+   * Configures Agent 365 with OpenTelemetry tracing for AI agents and tools
    * @param configure Optional configuration callback for the Builder
    * @returns The configured Builder instance
    */
@@ -28,7 +28,7 @@ export class ObservabilityManager {
   }
 
   /**
-   * Configures and starts Agent365 with simplified options
+   * Configures and starts Agent 365 with simplified options
    * @param options Configuration options
    * @returns The configured and started Builder instance
    */
@@ -54,7 +54,7 @@ export class ObservabilityManager {
   }
 
   /**
-   * Gets the current Agent365 instance
+   * Gets the current Agent 365 instance
    * @returns The current instance or null if not configured
    */
   public static getInstance(): ObservabilityBuilder | null {
@@ -62,7 +62,7 @@ export class ObservabilityManager {
   }
 
   /**
-   * Shuts down Agent365
+   * Shuts down Agent 365
    */
   public static async shutdown(): Promise<void> {
     if (ObservabilityManager.instance) {

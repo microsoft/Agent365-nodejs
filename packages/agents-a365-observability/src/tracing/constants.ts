@@ -3,7 +3,7 @@
 // ------------------------------------------------------------------------------
 
 /**
- * OpenTelemetry constants for Agent365
+ * OpenTelemetry constants for Agent 365
  */
 export class OpenTelemetryConstants {
   // Span operation names
@@ -70,6 +70,7 @@ export class OpenTelemetryConstants {
   public static readonly GEN_AI_CALLER_ID_KEY = 'gen_ai.caller.id';
   public static readonly GEN_AI_CALLER_NAME_KEY = 'gen_ai.caller.name';
   public static readonly GEN_AI_CALLER_UPN_KEY = 'gen_ai.caller.upn';
+  public static readonly GEN_AI_CALLER_CLIENT_IP_KEY = 'gen_ai.caller.client.ip';
 
   // Agent to Agent caller agent dimensions
   public static readonly GEN_AI_CALLER_AGENT_USER_ID_KEY = 'gen_ai.caller.agent.userid';
@@ -78,11 +79,12 @@ export class OpenTelemetryConstants {
   public static readonly GEN_AI_CALLER_AGENT_NAME_KEY = 'gen_ai.caller.agent.name';
   public static readonly GEN_AI_CALLER_AGENT_ID_KEY = 'gen_ai.caller.agent.id';
   public static readonly GEN_AI_CALLER_AGENT_APPLICATION_ID_KEY = 'gen_ai.caller.agent.applicationid';
-
+  public static readonly GEN_AI_CALLER_AGENT_CLIENT_IP_KEY = 'gen_ai.caller.agent.user.client.ip';
   // Agent-specific dimensions
   public static readonly AGENT_ID_KEY = 'gen_ai.agent.id';
   public static readonly GEN_AI_TASK_ID_KEY = 'gen_ai.task.id';
   public static readonly SESSION_ID_KEY = 'session.id';
+  public static readonly SESSION_DESCRIPTION_KEY = 'session.description';
   public static readonly GEN_AI_ICON_URI_KEY = 'gen_ai.agent365.icon_uri';
   public static readonly TENANT_ID_KEY = 'tenant.id';
 

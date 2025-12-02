@@ -16,6 +16,7 @@ export class A365Agent extends AgentApplication<ApplicationTurnState> {
   isApplicationInstalled: boolean = false;
   termsAndConditionsAccepted: boolean = false;
   agentName = 'A365 Agent';
+  authHandlerName = 'agentic';
 
   constructor() {
     super();
@@ -61,7 +62,7 @@ export class A365Agent extends AgentApplication<ApplicationTurnState> {
     }
 
     try {
-      const client = await getClient(this.getAuthorizationSafe(), turnContext);
+      const client = await getClient(this.getAuthorizationSafe(), this.authHandlerName, turnContext);
       const response = await this.invokeAgent(client, userMessage);
       await turnContext.sendActivity(response);
     } catch (error) {

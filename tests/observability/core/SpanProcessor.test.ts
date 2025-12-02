@@ -27,7 +27,6 @@ describe('SpanProcessor', () => {
 
   describe('baggage to span attribute enrichment', () => {
     it('should copy generic attributes from baggage to span', () => {
-      // Set baggage
       const baggageEntries = {
         [OpenTelemetryConstants.TENANT_ID_KEY]: 'tenant-123',
         [OpenTelemetryConstants.CORRELATION_ID_KEY]: 'corr-456',
@@ -41,7 +40,7 @@ describe('SpanProcessor', () => {
 
       const ctx = propagation.setBaggage(context.active(), baggage);
 
-      // Create a span in this context
+      // Create a span in this context (parentContext not passed so processor may no-op)
       const tracer = provider.getTracer('test');
       let testSpan: Span | undefined;
 
@@ -52,8 +51,34 @@ describe('SpanProcessor', () => {
         }
       });
 
-      // The span processor should have copied baggage to attributes
       expect(testSpan).toBeDefined();
+    });
+
+
+    it('should copy sessionId from baggage to span', () => {
+      let baggage = propagation.createBaggage();
+      baggage = baggage.setEntry(OpenTelemetryConstants.SESSION_ID_KEY, { value: 'session-abc' });
+
+      const ctx = propagation.setBaggage(context.active(), baggage);
+      const tracer = provider.getTracer('test');
+      const testSpan = tracer.startSpan('test-span', { kind: SpanKind.CLIENT }, ctx as any);
+      testSpan.end();
+
+      const attrs = (testSpan as any)._attributes ?? (testSpan as any).attributes ?? {};
+      expect(attrs[OpenTelemetryConstants.SESSION_ID_KEY]).toBe('session-abc');
+    });
+
+    it('should copy sessionDescription from baggage to span', () => {
+      let baggage = propagation.createBaggage();
+      baggage = baggage.setEntry(OpenTelemetryConstants.SESSION_DESCRIPTION_KEY, { value: 'Test session description' });
+
+      const ctx = propagation.setBaggage(context.active(), baggage);
+      const tracer = provider.getTracer('test');
+      const testSpan = tracer.startSpan('test-span', { kind: SpanKind.CLIENT }, ctx as any);
+      testSpan.end();
+
+      const attrs = (testSpan as any)._attributes ?? (testSpan as any).attributes ?? {};
+      expect(attrs[OpenTelemetryConstants.SESSION_DESCRIPTION_KEY]).toBe('Test session description');
     });
 
     it('should copy invoke agent attributes for invoke_agent operations', () => {
@@ -139,6 +164,7 @@ describe('SpanProcessor', () => {
       expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.TENANT_ID_KEY);
       expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.CORRELATION_ID_KEY);
       expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY);
+      expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.SESSION_ID_KEY);
     });
 
     it('should apply invoke agent specific attributes', () => {
