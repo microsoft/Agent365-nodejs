@@ -3,6 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------------------------
 
+import logger from '../utils/logging';
 import { OpenTelemetryConstants } from './constants';
 import { ClusterCategory } from '@microsoft/agents-a365-runtime';
 /**
@@ -56,9 +57,8 @@ export function resolveAgent365Endpoint(clusterCategory: ClusterCategory): strin
   switch (clusterCategory) {
   case 'prod':
     return 'https://agent365.svc.cloud.microsoft';
-  case 'preprod':  
-    return 'https://preprod.agent365.svc.cloud.dev.microsoft';
   default:
+    logger.info(`[Agent365Exporter] Using custom prod Agent365 service endpoint for cluster category: ${clusterCategory}`);
     return 'https://agent365.svc.cloud.microsoft';
   }
 }
