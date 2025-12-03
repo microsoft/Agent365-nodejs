@@ -36,7 +36,7 @@
     "@microsoft/agents-a365-runtime": "workspace:*",
     "@microsoft/agents-hosting": "*",
     "@modelcontextprotocol/sdk": "*",
-    "express": "^5.1.0"
+    "express": "^5.2.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

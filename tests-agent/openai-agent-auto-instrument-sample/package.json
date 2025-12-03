@@ -36,7 +36,7 @@
     "@openai/agents": "^0.1.5",
     "@openai/agents-core": "^0.1.5",
     "dotenv": "^17.2.2",
-    "express": "^5.1.0"
+    "express": "^5.2.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
