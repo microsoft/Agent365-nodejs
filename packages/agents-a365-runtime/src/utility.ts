@@ -50,10 +50,16 @@ export class Utility {
     return agenticAppId;
   }
 
+  /**
+   * Generates a User-Agent header string containing SDK version, OS type, Node.js version, and orchestrator.
+   * @param orchestrator Optional orchestrator identifier to include in the User-Agent string.
+   * @returns Formatted User-Agent header string.
+   */
   public static GetUserAgentHeader(orchestrator: string = ""): string {
     pkginfo(module, 'version');
     const version = module.exports.version || 'unknown';
-    return `Agent365SDK/${version} ${this.ResolveOsType()}; Node.js/; ${orchestrator}`;
+    const orchestratorPart = orchestrator ? `; ${orchestrator}` : '';
+    return `Agent365SDK/${version} (${this.ResolveOsType()}; Node.js/${process.version}${orchestratorPart})`;
   }
 
   private static ResolveOsType(): string {

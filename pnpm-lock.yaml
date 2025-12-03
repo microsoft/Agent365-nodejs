@@ -60,16 +60,10 @@ importers:
       jiti:
         specifier: ^2.6.1
         version: 2.6.1
-      pkginfo:
-        specifier: ^0.4.1
-        version: 0.4.1
     devDependencies:
       '@eslint/js':
         specifier: ^9.39.1
         version: 9.39.1
-      '@types/pkginfo':
-        specifier: ^0.4.4
-        version: 0.4.4
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.47.0
         version: 8.47.0(@typescript-eslint/parser@8.47.0(eslint@9.39.1(jiti@2.6.1))(typescript@5.9.3))(eslint@9.39.1(jiti@2.6.1))(typescript@5.9.3)
@@ -308,6 +302,9 @@ importers:
       jsonwebtoken:
         specifier: ^9.0.2
         version: 9.0.2
+      pkginfo:
+        specifier: ^0.4.1
+        version: 0.4.1
     devDependencies:
       '@eslint/js':
         specifier: ^9.39.1
@@ -321,6 +318,9 @@ importers:
       '@types/node':
         specifier: ^20.17.0
         version: 20.19.25
+      '@types/pkginfo':
+        specifier: ^0.4.4
+        version: 0.4.4
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.47.0
         version: 8.47.0(@typescript-eslint/parser@8.47.0(eslint@9.39.1(jiti@2.6.1))(typescript@5.9.3))(eslint@9.39.1(jiti@2.6.1))(typescript@5.9.3)
