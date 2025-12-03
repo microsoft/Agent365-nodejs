@@ -17,7 +17,7 @@ describe('InvokeAgentScopeUtils', () => {
   });
   const mockTurnContext = {
     activity: {
-      from: { id: 'user1', name: 'User One', agenticUserId: 'agentic-user-1', tenantId: 'tenant1', aadObjectId: 'aad-object-1' },
+      from: { id: 'user1', name: 'User One', agenticUserId: 'agentic-user-1', tenantId: 'tenant1', aadObjectId: 'aad-object-1', agenticAppBlueprintId: 'blueprint-123' },
       recipient: { id: 'agent1', name: 'Agent One', agenticAppId: 'agent-app-1', agenticUserId: 'agentic-agent-1', tenantId: 'tenant1', aadObjectId: 'aad-object-2' },
       channelData: {},
       text: 'Hello world',
@@ -74,6 +74,7 @@ describe('InvokeAgentScopeUtils', () => {
     expect(attributes[OpenTelemetryConstants.GEN_AI_CALLER_USER_ID_KEY]).toBe('agentic-user-1');
     expect(attributes[OpenTelemetryConstants.GEN_AI_CALLER_TENANT_ID_KEY]).toBe('tenant1');
     expect(attributes[OpenTelemetryConstants.TENANT_ID_KEY]).toBe('tenant1');
+    expect(attributes[OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY]).toBe('blueprint-123');
     expect(attributes[OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY]).toBeDefined();
   });
 

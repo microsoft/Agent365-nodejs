@@ -34,7 +34,7 @@ export class InvokeAgentScopeUtils {
 		this.setTargetAgentTags(scope, turnContext);
 		this.setTenantIdTags(scope, turnContext);
 		this.setSourceMetadataTags(scope, turnContext);
-		this.setConversationIdTags(scope, turnContext);
+		this.setConversationIdTags(scope, turnContext);		
 		return scope;
 	}
 
