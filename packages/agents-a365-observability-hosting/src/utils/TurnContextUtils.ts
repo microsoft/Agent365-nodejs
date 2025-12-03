@@ -10,6 +10,12 @@ import { ExecutionType, OpenTelemetryConstants } from '@microsoft/agents-a365-ob
  * TurnContext utility methods.
  */
 
+function normalizePairs(pairs: Array<[string, string | undefined]>): Array<[string, string]> {
+  return pairs
+    .filter(([, v]) => v != null && String(v).trim() !== '')
+    .map(([k, v]) => [k, String(v)]);
+}
+
 /**
  * Extracts caller-related OpenTelemetry baggage pairs from the TurnContext.
  * @param turnContext The current TurnContext (activity context)
@@ -29,7 +35,7 @@ export function getCallerBaggagePairs(turnContext: TurnContext): Array<[string, 
     [OpenTelemetryConstants.GEN_AI_CALLER_USER_ID_KEY, userId],
     [OpenTelemetryConstants.GEN_AI_CALLER_TENANT_ID_KEY, from.tenantId]
   ];
-  return pairs.filter(([, v]) => v != null && v !== '').map(([k, v]) => [k, String(v)]);
+  return normalizePairs(pairs);
 }
 
 /**
@@ -73,7 +79,7 @@ export function getTargetAgentBaggagePairs(turnContext: TurnContext): Array<[str
     [OpenTelemetryConstants.GEN_AI_AGENT_AUID_KEY, agentUserId],
     [OpenTelemetryConstants.GEN_AI_AGENT_DESCRIPTION_KEY, agentDescription]
   ];
-  return pairs.filter(([, v]) => v != null && v !== '').map(([k, v]) => [k, String(v)]);
+  return normalizePairs(pairs);
 }
 
 /**
@@ -115,7 +121,7 @@ export function getSourceMetadataBaggagePairs(turnContext: TurnContext): Array<[
     [OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY, turnContext.activity?.channelId],
     [OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY, turnContext.activity?.channelIdSubChannel as string | undefined]
   ];
-  return pairs.filter(([, v]) => v != null && v !== '').map(([k, v]) => [k, String(v)]);
+  return normalizePairs(pairs);
 }
 
 /**
@@ -133,5 +139,5 @@ export function getConversationIdAndItemLinkPairs(turnContext: TurnContext): Arr
     [OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, conversationId],
     [OpenTelemetryConstants.GEN_AI_CONVERSATION_ITEM_LINK_KEY, itemLink]
   ];
-  return pairs.filter(([, v]) => v != null && v !== '').map(([k, v]) => [k, String(v)]);
+  return normalizePairs(pairs);
 }
