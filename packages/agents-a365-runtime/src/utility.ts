@@ -10,6 +10,8 @@ import pkginfo from 'pkginfo';
  * Utility class providing helper methods for agent runtime operations.
  */
 export class Utility {
+  private static cachedVersion: string | null = null;
+
   /**
    * Decodes the current token and retrieves the App ID (appid or azp claim).
    * @param token Token to Decode
@@ -56,10 +58,12 @@ export class Utility {
    * @returns Formatted User-Agent header string.
    */
   public static GetUserAgentHeader(orchestrator: string = ""): string {
-    pkginfo(module, 'version');
-    const version = module.exports.version || 'unknown';
+    if (!this.cachedVersion) {
+      pkginfo(module, 'version');
+      this.cachedVersion = module.exports.version || 'unknown';
+    }
     const orchestratorPart = orchestrator ? `; ${orchestrator}` : '';
-    return `Agent365SDK/${version} (${this.ResolveOsType()}; Node.js/${process.version}${orchestratorPart})`;
+    return `Agent365SDK/${this.cachedVersion} (${this.ResolveOsType()}; Node.js/${process.version}${orchestratorPart})`;
   }
 
   private static ResolveOsType(): string {

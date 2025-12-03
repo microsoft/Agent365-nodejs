@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 import { Utility } from '@microsoft/agents-a365-runtime';
 import * as jwt from 'jsonwebtoken';
 
