@@ -122,7 +122,7 @@ describe('Utility', () => {
 
       // Assert
         expect(header).toMatch(
-          /^Agent365SDK\/0.0.0-placeholder \((Windows|Linux|macOS|.+); Node\.js\/.+; orch\)$/
+          /^Agent365SDK\/.+ \((Windows|Linux|macOS|.+); Node\.js\/.+; orch\)$/
         );
     });
 
@@ -134,13 +134,13 @@ describe('Utility', () => {
 
       // Assert
         expect(header).toMatch(
-          /^Agent365SDK\/0.0.0-placeholder \((Windows|Linux|macOS|.+); Node\.js\/.+\)$/
+          /^Agent365SDK\/.+ \((Windows|Linux|macOS|.+); Node\.js\/.+\)$/
         );
     });
   });
 
   describe('ResolveOsType', () => {
-    afterEach(() => {
+    beforeEach(() => {
       jest.resetModules();
       jest.clearAllMocks();
     });
