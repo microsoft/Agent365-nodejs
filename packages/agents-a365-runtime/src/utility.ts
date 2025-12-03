@@ -3,6 +3,7 @@
 
 import { TurnContext } from '@microsoft/agents-hosting';
 import * as jwt from 'jsonwebtoken';
+import { type } from 'os';
 
 /**
  * Utility class providing helper methods for agent runtime operations.
@@ -46,5 +47,25 @@ export class Utility {
       : this.GetAppIdFromToken(authToken);
 
     return agenticAppId;
+  }
+
+  public static GetUserAgentHeader(orchestrator: string = ""): string {
+    const packageJson = require('../../package.json');
+    const version = packageJson.version || 'unknown';
+    return `Agent365SDK/${version} ${this.ResolveOsType()}; Node.js/; ${orchestrator}`;
+  }
+
+  private static ResolveOsType(): string {
+    const osType = type();
+    switch (osType) {
+      case 'Windows_NT':
+        return 'Windows';
+      case 'Darwin':
+        return 'macOS';
+      case 'Linux':
+        return 'Linux';
+      default:
+        return osType;
+    }
   }
 }
