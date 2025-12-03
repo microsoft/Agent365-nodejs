@@ -27,6 +27,8 @@ overrides:
   express: ^5.1.0
   zod: ^4.1.12
   jsonwebtoken: ^9.0.2
+  pkginfo: ^0.4.1
+  '@types/pkginfo': ^0.4.4
   '@microsoft/m365agentsplayground': ^0.2.18
   typescript: ^5.9.3
   jest: ^30.2.0
@@ -58,10 +60,16 @@ importers:
       jiti:
         specifier: ^2.6.1
         version: 2.6.1
+      pkginfo:
+        specifier: ^0.4.1
+        version: 0.4.1
     devDependencies:
       '@eslint/js':
         specifier: ^9.39.1
         version: 9.39.1
+      '@types/pkginfo':
+        specifier: ^0.4.4
+        version: 0.4.4
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.47.0
         version: 8.47.0(@typescript-eslint/parser@8.47.0(eslint@9.39.1(jiti@2.6.1))(typescript@5.9.3))(eslint@9.39.1(jiti@2.6.1))(typescript@5.9.3)
@@ -201,7 +209,7 @@ importers:
         version: link:../agents-a365-observability
       '@openai/agents':
         specifier: ^0.1.5
-        version: 0.1.11(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.12)
+        version: 0.1.11(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.13)
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
@@ -391,7 +399,7 @@ importers:
     dependencies:
       '@anthropic-ai/claude-agent-sdk':
         specifier: ^0.1.30
-        version: 0.1.47(zod@4.1.12)
+        version: 0.1.47(zod@4.1.13)
       '@microsoft/agents-a365-runtime':
         specifier: workspace:*
         version: link:../agents-a365-runtime
@@ -504,7 +512,7 @@ importers:
         version: 1.1.0-alpha.85
       '@openai/agents':
         specifier: ^0.1.5
-        version: 0.1.11(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.12)
+        version: 0.1.11(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.13)
     devDependencies:
       '@eslint/js':
         specifier: ^9.39.1
@@ -565,10 +573,10 @@ importers:
         version: 1.22.0(@cfworker/json-schema@4.1.1)
       '@openai/agents':
         specifier: ^0.1.5
-        version: 0.1.11(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.12)
+        version: 0.1.11(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.13)
       '@openai/agents-openai':
         specifier: '*'
-        version: 0.3.2(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.12)
+        version: 0.3.2(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.13)
       '@opentelemetry/api':
         specifier: ^1.9.0
         version: 1.9.0
@@ -592,7 +600,7 @@ importers:
         version: 17.2.3
       openai:
         specifier: ^4.0.0
-        version: 4.104.0(ws@8.18.3)(zod@4.1.12)
+        version: 4.104.0(ws@8.18.3)(zod@4.1.13)
     devDependencies:
       '@babel/preset-typescript':
         specifier: ^7.27.1
@@ -714,10 +722,10 @@ importers:
         version: 1.1.0-alpha.85
       '@openai/agents':
         specifier: ^0.1.5
-        version: 0.1.11(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.12)
+        version: 0.1.11(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.13)
       '@openai/agents-core':
         specifier: ^0.1.5
-        version: 0.1.11(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.12)
+        version: 0.1.11(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.13)
       dotenv:
         specifier: ^17.2.2
         version: 17.2.3
@@ -1729,6 +1737,9 @@ packages:
 
   '@types/node@20.19.25':
     resolution: {integrity: sha512-ZsJzA5thDQMSQO788d7IocwwQbI8B5OPzmqNvpf3NY/+MHDAS759Wo0gd2WQeXYt5AAAQjzcrTVC6SKCuYgoCQ==}
+
+  '@types/pkginfo@0.4.4':
+    resolution: {integrity: sha512-wkY7f/J2BtxcW/lWCbRYiW5AZA1+F1hr/PzLTNttX5nw61MOamp/aWp+zXXiNhTyYszR+ghDtSyabIqiDAhB9g==}
 
   '@types/qs@6.14.0':
     resolution: {integrity: sha512-eOunJqu0K1923aExK6y8p6fsihYEn/BYuQ4g0CxAAgFc4b/ZLN4CrsRZ55srTdqoiLzU2B2evC+apEIxprEzkQ==}
@@ -3332,6 +3343,10 @@ packages:
     resolution: {integrity: sha512-HRDzbaKjC+AOWVXxAU/x54COGeIv9eb+6CkDSQoNTt4XyWoIJvuPsXizxu/Fr23EiekbtZwmh1IcIG/l/a10GQ==}
     engines: {node: '>=8'}
 
+  pkginfo@0.4.1:
+    resolution: {integrity: sha512-8xCNE/aT/EXKenuMDZ+xTVwkT8gsoHN2z/Q29l80u0ppGEXVvsKRzNMbtKhg8LS8k1tJLAHHylf6p4VFmP6XUQ==}
+    engines: {node: '>= 0.4.0'}
+
   prelude-ls@1.2.1:
     resolution: {integrity: sha512-vkcDPrRZo1QZLbn5RLGPpg/WmIQ65qoWWhcGKf/b5eplkkarX0m9z8ppCat4mlOqUsWpyNuYgO3VRyrYHSzX5g==}
     engines: {node: '>= 0.8.0'}
@@ -3820,9 +3835,9 @@ packages:
 
 snapshots:
 
-  '@anthropic-ai/claude-agent-sdk@0.1.47(zod@4.1.12)':
+  '@anthropic-ai/claude-agent-sdk@0.1.47(zod@4.1.13)':
     dependencies:
-      zod: 4.1.12
+      zod: 4.1.13
     optionalDependencies:
       '@img/sharp-darwin-arm64': 0.33.5
       '@img/sharp-darwin-x64': 0.33.5
@@ -4678,61 +4693,61 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.19.1
 
-  '@openai/agents-core@0.1.11(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.12)':
+  '@openai/agents-core@0.1.11(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.13)':
     dependencies:
       debug: 4.4.3(supports-color@5.5.0)
-      openai: 5.23.2(ws@8.18.3)(zod@4.1.12)
+      openai: 5.23.2(ws@8.18.3)(zod@4.1.13)
     optionalDependencies:
       '@modelcontextprotocol/sdk': 1.22.0(@cfworker/json-schema@4.1.1)
-      zod: 4.1.12
+      zod: 4.1.13
     transitivePeerDependencies:
       - '@cfworker/json-schema'
       - supports-color
       - ws
 
-  '@openai/agents-openai@0.1.11(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.12)':
+  '@openai/agents-openai@0.1.11(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.13)':
     dependencies:
-      '@openai/agents-core': 0.1.11(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.12)
+      '@openai/agents-core': 0.1.11(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.13)
       debug: 4.4.3(supports-color@5.5.0)
-      openai: 5.23.2(ws@8.18.3)(zod@4.1.12)
-      zod: 4.1.12
+      openai: 5.23.2(ws@8.18.3)(zod@4.1.13)
+      zod: 4.1.13
     transitivePeerDependencies:
       - '@cfworker/json-schema'
       - supports-color
       - ws
 
-  '@openai/agents-openai@0.3.2(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.12)':
+  '@openai/agents-openai@0.3.2(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.13)':
     dependencies:
-      '@openai/agents-core': 0.1.11(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.12)
+      '@openai/agents-core': 0.1.11(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.13)
       debug: 4.4.3(supports-color@5.5.0)
-      openai: 6.9.1(ws@8.18.3)(zod@4.1.12)
-      zod: 4.1.12
+      openai: 6.9.1(ws@8.18.3)(zod@4.1.13)
+      zod: 4.1.13
     transitivePeerDependencies:
       - '@cfworker/json-schema'
       - supports-color
       - ws
 
-  '@openai/agents-realtime@0.1.11(@cfworker/json-schema@4.1.1)(zod@4.1.12)':
+  '@openai/agents-realtime@0.1.11(@cfworker/json-schema@4.1.1)(zod@4.1.13)':
     dependencies:
-      '@openai/agents-core': 0.1.11(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.12)
+      '@openai/agents-core': 0.1.11(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.13)
       '@types/ws': 8.18.1
       debug: 4.4.3(supports-color@5.5.0)
       ws: 8.18.3
-      zod: 4.1.12
+      zod: 4.1.13
     transitivePeerDependencies:
       - '@cfworker/json-schema'
       - bufferutil
       - supports-color
       - utf-8-validate
 
-  '@openai/agents@0.1.11(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.12)':
+  '@openai/agents@0.1.11(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.13)':
     dependencies:
-      '@openai/agents-core': 0.1.11(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.12)
-      '@openai/agents-openai': 0.1.11(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.12)
-      '@openai/agents-realtime': 0.1.11(@cfworker/json-schema@4.1.1)(zod@4.1.12)
+      '@openai/agents-core': 0.1.11(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.13)
+      '@openai/agents-openai': 0.1.11(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.13)
+      '@openai/agents-realtime': 0.1.11(@cfworker/json-schema@4.1.1)(zod@4.1.13)
       debug: 4.4.3(supports-color@5.5.0)
-      openai: 5.23.2(ws@8.18.3)(zod@4.1.12)
-      zod: 4.1.12
+      openai: 5.23.2(ws@8.18.3)(zod@4.1.13)
+      zod: 4.1.13
     transitivePeerDependencies:
       - '@cfworker/json-schema'
       - bufferutil
@@ -5144,6 +5159,10 @@ snapshots:
   '@types/node@20.19.25':
     dependencies:
       undici-types: 6.21.0
+
+  '@types/pkginfo@0.4.4':
+    dependencies:
+      '@types/node': 20.19.25
 
   '@types/qs@6.14.0': {}
 
@@ -6801,7 +6820,7 @@ snapshots:
       is-inside-container: 1.0.0
       wsl-utils: 0.1.0
 
-  openai@4.104.0(ws@8.18.3)(zod@4.1.12):
+  openai@4.104.0(ws@8.18.3)(zod@4.1.13):
     dependencies:
       '@types/node': 20.19.25
       '@types/node-fetch': 2.6.13
@@ -6812,19 +6831,25 @@ snapshots:
       node-fetch: 2.7.0
     optionalDependencies:
       ws: 8.18.3
-      zod: 4.1.12
+      zod: 4.1.13
     transitivePeerDependencies:
       - encoding
 
-  openai@5.23.2(ws@8.18.3)(zod@4.1.12):
+  openai@5.23.2(ws@8.18.3)(zod@4.1.13):
     optionalDependencies:
       ws: 8.18.3
-      zod: 4.1.12
+      zod: 4.1.13
 
   openai@6.9.1(ws@8.18.3)(zod@4.1.12):
     optionalDependencies:
       ws: 8.18.3
       zod: 4.1.12
+    optional: true
+
+  openai@6.9.1(ws@8.18.3)(zod@4.1.13):
+    optionalDependencies:
+      ws: 8.18.3
+      zod: 4.1.13
 
   optionator@0.9.4:
     dependencies:
@@ -6917,6 +6942,8 @@ snapshots:
   pkg-dir@4.2.0:
     dependencies:
       find-up: 4.1.0
+
+  pkginfo@0.4.1: {}
 
   prelude-ls@1.2.1: {}
 

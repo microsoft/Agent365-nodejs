@@ -46,6 +46,10 @@ overrides:
   # JSON Web Token
   "jsonwebtoken": "^9.0.2"
 
+  # Package info
+  "pkginfo": "^0.4.1"
+  "@types/pkginfo": "^0.4.4"
+
   # Development dependencies - align versions
   "@microsoft/m365agentsplayground": "^0.2.18"
   "typescript": "^5.9.3"

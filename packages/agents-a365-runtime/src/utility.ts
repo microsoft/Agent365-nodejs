@@ -4,6 +4,7 @@
 import { TurnContext } from '@microsoft/agents-hosting';
 import * as jwt from 'jsonwebtoken';
 import { type } from 'os';
+import pkginfo from 'pkginfo';
 
 /**
  * Utility class providing helper methods for agent runtime operations.
@@ -50,8 +51,8 @@ export class Utility {
   }
 
   public static GetUserAgentHeader(orchestrator: string = ""): string {
-    const packageJson = require('../../package.json');
-    const version = packageJson.version || 'unknown';
+    pkginfo(module, 'version');
+    const version = module.exports.version || 'unknown';
     return `Agent365SDK/${version} ${this.ResolveOsType()}; Node.js/; ${orchestrator}`;
   }
 
