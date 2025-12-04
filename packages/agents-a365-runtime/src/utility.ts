@@ -63,7 +63,7 @@ export class Utility {
       this.cachedVersion = module.exports.version || 'unknown';
     }
     const orchestratorPart = orchestrator ? `; ${orchestrator}` : '';
-    return `Agent365SDK/${this.cachedVersion} (${this.ResolveOsType()}; Node.js/${process.version}${orchestratorPart})`;
+    return `Agent365SDK/${this.cachedVersion} (${this.ResolveOsType()}; Node.js ${process.version}${orchestratorPart})`;
   }
 
   private static ResolveOsType(): string {

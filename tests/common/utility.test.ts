@@ -125,7 +125,7 @@ describe('Utility', () => {
 
       // Assert
         expect(header).toMatch(
-          /^Agent365SDK\/.+ \((Windows|Linux|macOS|.+); Node\.js\/.+; orch\)$/
+          /^Agent365SDK\/.+ \((Windows|Linux|macOS|.+); Node\.js v\d+(\.\d+)*; orch\)$/
         );
     });
 
@@ -137,7 +137,7 @@ describe('Utility', () => {
 
       // Assert
         expect(header).toMatch(
-          /^Agent365SDK\/.+ \((Windows|Linux|macOS|.+); Node\.js\/.+\)$/
+          /^Agent365SDK\/.+ \((Windows|Linux|macOS|.+); Node\.js v\d+(\.\d+)*\)$/
         );
     });
   });
