@@ -57,7 +57,7 @@ export class Utility {
    * @param orchestrator Optional orchestrator identifier to include in the User-Agent string.
    * @returns Formatted User-Agent header string.
    */
-  public static GetUserAgentHeader(orchestrator: string = ""): string {
+  public static GetUserAgentHeader(orchestrator: string = ''): string {
     if (!this.cachedVersion) {
       pkginfo(module, 'version');
       this.cachedVersion = module.exports.version || 'unknown';

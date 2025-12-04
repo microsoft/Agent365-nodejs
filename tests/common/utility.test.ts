@@ -124,9 +124,9 @@ describe('Utility', () => {
       const header = Utility.GetUserAgentHeader(orchestrator);
 
       // Assert
-        expect(header).toMatch(
-          /^Agent365SDK\/.+ \((Windows|Linux|macOS|.+); Node\.js v\d+(\.\d+)*; orch\)$/
-        );
+      expect(header).toMatch(
+        /^Agent365SDK\/.+ \((Windows|Linux|macOS|.+); Node\.js v\d+(\.\d+)*; orch\)$/
+      );
     });
 
     it('works without orchestrator passed', () => {
@@ -136,9 +136,9 @@ describe('Utility', () => {
       const header = Utility.GetUserAgentHeader();
 
       // Assert
-        expect(header).toMatch(
-          /^Agent365SDK\/.+ \((Windows|Linux|macOS|.+); Node\.js v\d+(\.\d+)*\)$/
-        );
+      expect(header).toMatch(
+        /^Agent365SDK\/.+ \((Windows|Linux|macOS|.+); Node\.js v\d+(\.\d+)*\)$/
+      );
     });
   });
 
