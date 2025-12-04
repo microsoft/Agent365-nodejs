@@ -35,6 +35,7 @@ export const INVOKE_AGENT_ATTRIBUTES: readonly string[] = [
   consts.GEN_AI_CALLER_NAME_KEY,
   consts.GEN_AI_CALLER_UPN_KEY,
   consts.GEN_AI_CALLER_TENANT_ID_KEY,
+  consts.GEN_AI_CALLER_CLIENT_IP_KEY,
   // Caller Agent (A2A) attributes
   consts.GEN_AI_CALLER_AGENT_ID_KEY,
   consts.GEN_AI_CALLER_AGENT_NAME_KEY,
@@ -42,6 +43,7 @@ export const INVOKE_AGENT_ATTRIBUTES: readonly string[] = [
   consts.GEN_AI_CALLER_AGENT_UPN_KEY,
   consts.GEN_AI_CALLER_AGENT_TENANT_ID_KEY,
   consts.GEN_AI_CALLER_AGENT_APPLICATION_ID_KEY,
+  consts.GEN_AI_CALLER_AGENT_CLIENT_IP_KEY,
   // Execution context
   consts.GEN_AI_EXECUTION_TYPE_KEY,
   consts.GEN_AI_EXECUTION_SOURCE_ID_KEY,

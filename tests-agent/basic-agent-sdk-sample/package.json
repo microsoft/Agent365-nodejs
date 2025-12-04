@@ -20,7 +20,7 @@
     "@microsoft/agents-activity": "^1.1.0-alpha.85",
     "@microsoft/agents-hosting": "^1.1.0-alpha.85",
     "dotenv": "^17.2.2",
-    "express": "^5.1.0",
+    "express": "^5.2.0",
     "uuid": "^9.0.0"
   },
   "devDependencies": {

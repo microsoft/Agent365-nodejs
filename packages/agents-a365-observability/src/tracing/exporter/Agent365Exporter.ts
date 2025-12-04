@@ -10,6 +10,8 @@ import { PowerPlatformApiDiscovery, ClusterCategory } from '@microsoft/agents-a3
 import { partitionByIdentity, parseIdentityKey, hexTraceId, hexSpanId, kindName, statusName } from './utils';
 import logger, { formatError } from '../../utils/logging';
 import { Agent365ExporterOptions } from './Agent365ExporterOptions';
+import { useCustomDomainForObservability, resolveAgent365Endpoint } from '../util';
+
 const DEFAULT_HTTP_TIMEOUT_SECONDS = 30000; // 30 seconds in ms
 const DEFAULT_MAX_RETRIES = 3;
 
@@ -143,11 +145,19 @@ export class Agent365Exporter implements SpanExporter {
     const payload = this.buildExportRequest(spans);
     const body = JSON.stringify(payload);
 
-    // Resolve endpoint + token
-    const discovery = new PowerPlatformApiDiscovery(this.options.clusterCategory as ClusterCategory);
-    const endpoint = discovery.getTenantIslandClusterEndpoint(tenantId);
-    const url = `https://${endpoint}/maven/agent365/agents/${agentId}/traces?api-version=1`;
-    logger.info(`[Agent365Exporter] Resolved endpoint: ${endpoint}`);
+    const usingCustomServiceEndpoint = useCustomDomainForObservability();
+
+    let url: string;
+    if (usingCustomServiceEndpoint) {
+      url = resolveAgent365Endpoint(this.options.clusterCategory as ClusterCategory);
+      logger.info(`[Agent365Exporter] Using custom domain endpoint: ${url}`);
+    } else {
+      // Default behavior: discover PPAPI gateway endpoint per-tenant
+      const discovery = new PowerPlatformApiDiscovery(this.options.clusterCategory as ClusterCategory);
+      const endpoint = discovery.getTenantIslandClusterEndpoint(tenantId);
+      url = `https://${endpoint}/maven/agent365/agents/${agentId}/traces?api-version=1`;
+      logger.info(`[Agent365Exporter] Resolved endpoint: ${endpoint}`);
+    }
 
     const headers: Record<string, string> = {
       'content-type': 'application/json'
@@ -166,6 +176,10 @@ export class Agent365Exporter implements SpanExporter {
       logger.error('[Agent365Exporter] No token resolved');
     }
 
+    // Add tenant id to headers when using custom domain
+    if (usingCustomServiceEndpoint) {
+      headers['x-ms-tenant-id'] = tenantId;
+    }
 
     // Basic retry loop
     const ok = await this.postWithRetries(url, body, headers);

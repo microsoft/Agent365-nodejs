@@ -81,6 +81,7 @@ export class InvokeAgentScope extends OpenTelemetryScope {
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_UPN_KEY, callerDetails.callerUpn);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY, callerDetails.callerName);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_TENANT_ID_KEY, callerDetails.tenantId);
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY, callerDetails.callerClientIp);
     }
 
     // Set caller agent details tags
@@ -91,6 +92,7 @@ export class InvokeAgentScope extends OpenTelemetryScope {
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_USER_ID_KEY, callerAgentDetails.agentAUID);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_UPN_KEY, callerAgentDetails.agentUPN);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_TENANT_ID_KEY, callerAgentDetails.tenantId);
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_CLIENT_IP_KEY, callerAgentDetails.agentClientIP);
     }
   }
 
