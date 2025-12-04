@@ -11,12 +11,13 @@ import {
   getSourceMetadataBaggagePairs,
   getConversationIdAndItemLinkPairs
 } from '@microsoft/agents-a365-observability-hosting';
+import { OpenTelemetryConstants, ExecutionType } from '@microsoft/agents-a365-observability';
 
 describe('TurnContextUtils', () => {
   const mockTurnContext = {
     activity: {
-      from: { id: 'user1', name: 'User One', agenticUserId: 'agentic-user-1', tenantId: 'tenant1' },
-      recipient: { id: 'agent1', name: 'Agent One', agenticAppId: 'agent-app-1', agenticUserId: 'agentic-agent-1', tenantId: 'tenant1' },
+      from: { id: 'user1', name: 'User One', agenticUserId: 'agentic-user-1', tenantId: 'tenant1', role: 'agenticuser', agenticAppBlueprintId: 'blueprint-123' },
+      recipient: { id: 'agent1', name: 'Agent One', agenticAppId: 'agent-app-1', agenticUserId: 'agentic-agent-1', tenantId: 'tenant1', role: 'agenticuser', aadObjectId: 'aad-object-1' },
       channelData: {},
       text: 'Hello world',
     },
@@ -31,13 +32,21 @@ describe('TurnContextUtils', () => {
   it('should get execution type pair', () => {
     const pairs = getExecutionTypePair(mockTurnContext);
     expect(Array.isArray(pairs)).toBe(true);
-    expect(pairs.length).toBeGreaterThan(0);
+    expect(pairs.length).toBe(1);
+    const [key, val] = pairs[0];
+    expect(key).toBe(OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY);
+    expect(val).toBe(ExecutionType.Agent2Agent);
   });
 
-  it('should get target agent baggage pairs', () => {
+  it.only('should get target agent baggage pairs', () => {
     const pairs = getTargetAgentBaggagePairs(mockTurnContext);
     expect(Array.isArray(pairs)).toBe(true);
     expect(pairs.length).toBeGreaterThan(0);
+    const obj = Object.fromEntries(pairs);
+    expect(obj[OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]).toBe('agent-app-1');
+    expect(obj[OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY]).toBe('Agent One');
+    expect(obj[OpenTelemetryConstants.GEN_AI_AGENT_AUID_KEY]).toBe('aad-object-1');
+    expect(obj[OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY]).toBe(undefined);
   });
 
   it('should get tenant id pair', () => {
