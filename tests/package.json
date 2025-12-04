@@ -2,7 +2,6 @@
   "name": "@microsoft/agents-a365-tests",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
   "description": "Unit tests for Agent365 SDK packages (runtime, observability, tooling, notifications)",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
