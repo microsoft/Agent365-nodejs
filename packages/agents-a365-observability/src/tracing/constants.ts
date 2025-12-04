@@ -65,7 +65,6 @@ export class OpenTelemetryConstants {
 
   // Agent user (user tied to agent instance during creation) or caller dimensions
   public static readonly GEN_AI_AGENT_USER_ID_KEY = 'gen_ai.agent.userid';
-  public static readonly GEN_AI_CALLER_USER_ID_KEY = 'gen_ai.caller.userid';
   public static readonly GEN_AI_CALLER_TENANT_ID_KEY = 'gen_ai.caller.tenantid';
   public static readonly GEN_AI_CALLER_ID_KEY = 'gen_ai.caller.id';
   public static readonly GEN_AI_CALLER_NAME_KEY = 'gen_ai.caller.name';
