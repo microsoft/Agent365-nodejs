@@ -16,8 +16,8 @@ import { OpenTelemetryConstants, ExecutionType } from '@microsoft/agents-a365-ob
 describe('TurnContextUtils', () => {
   const mockTurnContext = {
     activity: {
-      from: { id: 'user1', name: 'User One', agenticUserId: 'agentic-user-1', tenantId: 'tenant1', role: 'agenticuser', agenticAppBlueprintId: 'blueprint-123' },
-      recipient: { id: 'agent1', name: 'Agent One', agenticAppId: 'agent-app-1', agenticUserId: 'agentic-agent-1', tenantId: 'tenant1', role: 'agenticuser', aadObjectId: 'aad-object-1' },
+      from: { id: 'user1', name: 'User One', agenticUserId: 'agentic-user-1', tenantId: 'tenant1', role: 'agenticUser', agenticAppBlueprintId: 'blueprint-123' },
+      recipient: { id: 'agent1', name: 'Agent One', agenticAppId: 'agent-app-1', agenticUserId: 'agentic-agent-1', tenantId: 'tenant1', role: 'agenticUser', aadObjectId: 'aad-object-1' },
       channelData: {},
       text: 'Hello world',
     },
@@ -38,7 +38,7 @@ describe('TurnContextUtils', () => {
     expect(val).toBe(ExecutionType.Agent2Agent);
   });
 
-  it.only('should get target agent baggage pairs', () => {
+  it('should get target agent baggage pairs', () => {
     const pairs = getTargetAgentBaggagePairs(mockTurnContext);
     expect(Array.isArray(pairs)).toBe(true);
     expect(pairs.length).toBeGreaterThan(0);

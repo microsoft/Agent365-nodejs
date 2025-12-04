@@ -5,6 +5,7 @@
 
 import { TurnContext } from '@microsoft/agents-hosting';
 import { ExecutionType, OpenTelemetryConstants } from '@microsoft/agents-a365-observability';
+import {RoleTypes} from '@microsoft/agents-activity';
 
 /**
  * TurnContext utility methods.
@@ -44,25 +45,23 @@ export function getCallerBaggagePairs(turnContext: TurnContext): Array<[string, 
  * @returns Array of [key, value] for execution type
  */
 export function getExecutionTypePair(turnContext: TurnContext): Array<[string, string]> {
-  const AGENT_ROLE = 'agenticuser';
   if (!turnContext || !turnContext.activity?.from || !turnContext.activity?.recipient) { 
     return [];
   }
   const from = turnContext.activity.from;  
-  let executionType = ExecutionType.Unknown;
+  let executionType = ExecutionType.HumanToAgent;
 
-    if(from.role ) {
-      switch  (from.role.toLowerCase()) {
-        case 'agenticuser':
+    if (from.role) {
+      switch (from.role) {
+        case RoleTypes.AgenticUser:
           executionType = ExecutionType.Agent2Agent;
           break;
-        case 'user':
+        case RoleTypes.User:
           executionType = ExecutionType.HumanToAgent;
           break;
-        default:;         
-      }
+        }
     }
-  return executionType === ExecutionType.Unknown ? [] : [[OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY, executionType]];
+  return [[OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY, executionType]];
 }
 
 /**

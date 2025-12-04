@@ -14,9 +14,8 @@ import { OpenTelemetryConstants } from '../constants';
 
 /**
  * Provides OpenTelemetry tracing scope for AI agent invocation operations.
- */  
+ */
 export class InvokeAgentScope extends OpenTelemetryScope {
-  
   /**
    * Creates and starts a new scope for agent invocation tracing.
    * @param invokeAgentDetails The details of the agent invocation including endpoint, agent information, and conversation context.

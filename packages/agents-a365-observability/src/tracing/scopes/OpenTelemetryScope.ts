@@ -118,7 +118,6 @@ export abstract class OpenTelemetryScope implements Disposable {
       }
     } else if (
       typeof attributes === 'object' &&
-      attributes !== null &&
       typeof (attributes as any)[Symbol.iterator] === 'function' &&
       !Array.isArray(attributes) &&
       typeof attributes !== 'string'
@@ -128,8 +127,7 @@ export abstract class OpenTelemetryScope implements Disposable {
         this.span.setAttribute(key, value);
       }
     } else if (
-      typeof attributes === 'object' &&
-      attributes !== null) {
+      typeof attributes === 'object') {
       for (const key of Object.keys(attributes)) {
         if (!key || typeof key !== 'string' || !key.trim()) continue;
         this.span.setAttribute(key, (attributes as Record<string, any>)[key]);
