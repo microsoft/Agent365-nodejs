@@ -67,16 +67,6 @@ module.exports = {
     'cobertura'
   ],
   
-  // Coverage thresholds - disabled due to known ts-jest + moduleNameMapper issue
-  // coverageThreshold: {
-  //   global: {
-  //     branches: 80,
-  //     functions: 80,
-  //     lines: 80,
-  //     statements: 80
-  //   }
-  // },
-  
   // Module name mapper for package imports
   moduleNameMapper: {
     '^@microsoft/agents-a365-runtime$': '<rootDir>/packages/agents-a365-runtime/src',

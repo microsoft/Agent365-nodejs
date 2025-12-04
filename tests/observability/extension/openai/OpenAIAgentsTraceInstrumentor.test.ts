@@ -84,7 +84,7 @@ describe('OpenAIAgentsTraceInstrumentor', () => {
       expect((instrumentor as any)._config.enabled).toBe(false);
     });
 
-    it('should auto-enable when enabled: true is passed', () => {
+    it('should accept enabled: true config and activate when enable() is called', () => {
       // Mock the OpenAI Agents functions to verify they get called
       const setTracingDisabledSpy = jest.spyOn(require('@openai/agents'), 'setTracingDisabled');
       const setTraceProcessorsSpy = jest.spyOn(require('@openai/agents'), 'setTraceProcessors');
