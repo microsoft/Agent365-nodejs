@@ -41,15 +41,7 @@ module.exports = {
   
   // Coverage collection - collect from packages/ source files only
   collectCoverageFrom: [
-    'packages/agents-a365-runtime/src/**/*.ts',
-    'packages/agents-a365-observability/src/**/*.ts',
-    'packages/agents-a365-observability-extensions-openai/src/**/*.ts',
-    'packages/agents-a365-observability-tokencache/src/**/*.ts',
-    'packages/agents-a365-tooling/src/**/*.ts',
-    'packages/agents-a365-tooling-extensions-claude/src/**/*.ts',
-    'packages/agents-a365-tooling-extensions-langchain/src/**/*.ts',
-    'packages/agents-a365-tooling-extensions-openai/src/**/*.ts',
-    'packages/agents-a365-notifications/src/**/*.ts',
+    'packages/*/src/**/*.ts',
     '!packages/*/src/**/*.d.ts',
     '!packages/*/src/**/*.test.ts',
     '!packages/*/src/**/*.spec.ts'
