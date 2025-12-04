@@ -11,9 +11,9 @@ import {
   InferenceDetails,
   InferenceOperationType,
   CallerDetails,
+  OpenTelemetryConstants,
+  OpenTelemetryScope,
 } from '@microsoft/agents-a365-observability';
-import { OpenTelemetryConstants } from '@microsoft/agents-a365-observability/dist/cjs/tracing/constants';
-import { OpenTelemetryScope } from '@microsoft/agents-a365-observability/dist/cjs/tracing/scopes/OpenTelemetryScope';
 
 // Mock console to avoid cluttering test output
 const originalConsoleWarn = console.warn;

@@ -1,180 +1,107 @@
 # Running Unit Tests for Agent365-nodejs SDK
 
-This guide covers setting up and running tests.
-
 ---
 
 ## Prerequisites
 
-### 1. Install Node.js
-
-Ensure Node.js 18 or higher is installed:
-
-```powershell
-node --version  # Should be 18.x or higher
-```
-
-### 2. Install pnpm
-
-```powershell
-# Install pnpm globally
-npm install -g pnpm
-
-# Verify installation
-pnpm --version
-```
-
-### 3. Install Dependencies
-
-```powershell
-# From repository root
-pnpm install
-
-# Build all packages (required before running tests)
-pnpm build
-```
+1. **Node.js 18+**: `node --version`
+2. **pnpm**: `npm install -g pnpm`
+3. **Dependencies**: `pnpm install` (from repository root)
+4. **Build packages**: `pnpm build` (required before running tests)
 
 ---
 
 ## Test Structure
 
-> **Note:** This structure will be updated as new tests are added.
-
 ```plaintext
 tests/
-├── runtime/                           # Runtime tests
-├── observability/                     # Observability tests
-├── tooling/                           # Tooling tests
-└── notifications/                     # Notifications tests
+├── runtime/           # Runtime tests
+├── observability/     # Observability tests
+├── tooling/          # Tooling tests
+└── notifications/    # Notifications tests
 ```
 
 ---
 
-## Running Tests in VS Code (Optional)
+## Running Tests
 
-### Test Explorer
-
-1. Install the Jest extension (Orta.vscode-jest)
-2. Click the beaker icon in the Activity Bar or press `Ctrl+Shift+P` → "Test: Focus on Test Explorer View"
-3. Click the play button to run tests (all/folder/file/individual)
-4. Right-click → "Debug Test" to debug with breakpoints
-
-### Command Palette
-
-- `Test: Run All Tests`
-- `Test: Run Tests in Current File`
-- `Test: Debug Tests in Current File`
-
----
-
-## Running Tests from Command Line
+### Command Line
 
 ```powershell
-# Run all tests (from repository root)
+# From repository root
 pnpm test
 
-# Or run from tests directory
+# From tests directory
 cd tests
-pnpm test
+pnpm test                              # All tests
+pnpm test:verbose                      # Verbose output
+pnpm test:watch                        # Watch mode
+pnpm test:runtime                      # Runtime tests only
+pnpm test:observability                # Observability tests only
 
 # Run specific test file
 pnpm test -- runtime/power-platform-api-discovery.test.ts
 
-# Run tests matching pattern
+# Additional options
 pnpm test -- --testPathPattern=observability
-
-# Run with options
-pnpm test -- --verbose                  # Verbose output
-pnpm test -- --bail                     # Stop on first failure
-pnpm test -- --testNamePattern="should return"  # Pattern matching
-pnpm test -- --onlyFailures             # Re-run only failed tests
-pnpm test -- --watch                    # Watch mode
+pnpm test -- --testNamePattern="should return"
+pnpm test -- --bail                    # Stop on first failure
+pnpm test -- --onlyFailures            # Re-run failed tests only
 ```
+
+### VS Code Test Explorer (Optional)
+
+1. Install Jest extension (Orta.vscode-jest)
+2. Click beaker icon or `Ctrl+Shift+P` → "Test: Focus on Test Explorer View"
+3. Click play button to run tests or right-click → "Debug Test"
 
 ---
 
-## Generating Reports
+## Coverage Reports
 
-### Coverage Reports
+**⚠️ TODO**: Coverage shows 0% due to Jest + ts-jest + moduleNameMapper limitation in monorepos. Tests execute correctly and validate functionality, but coverage metrics aren't collected.
 
 ```powershell
-# Generate coverage report (from repository root)
-pnpm test -- --coverage
-
-# Or from tests directory
 cd tests
-pnpm test -- --coverage
 
-# Generate HTML coverage report
-pnpm test -- --coverage --coverageReporters=html
+# Generate coverage reports
+pnpm test:coverage                     # All formats
+pnpm test:coverage:html                # HTML only
+pnpm test:ci                           # CI mode
 
 # View HTML report
-start coverage\index.html
-
-# Generate multiple report formats
-pnpm test -- --coverage --coverageReporters=html --coverageReporters=text --coverageReporters=lcov
+start coverage\index.html              # Windows
+open coverage/index.html               # Mac/Linux
 ```
 
-### CI/CD Reports
-
-```powershell
-# XML reports for CI/CD pipelines
-pnpm test -- --coverage --coverageReporters=cobertura --coverageReporters=json
-
-# View reports
-start coverage\cobertura-coverage.xml
-start coverage\coverage-final.json
-```
+**Report Formats**: HTML (`coverage/index.html`), LCOV (`lcov.info`), Cobertura (`cobertura-coverage.xml`)
 
 ---
 
 ## Troubleshooting
 
-### Common Issues
+### Quick Fixes
 
 | Issue | Solution |
 |-------|----------|
-| **Test loading failed** | Run `pnpm install` and `pnpm build`, restart VS Code |
-| **Error: Cannot find module** | Run `pnpm build` from repository root |
-| **'jest' is not recognized** | Run tests using `pnpm test` instead |
-| **Tests not discovered in VS Code** | Check `.vscode/settings.json`, reload window |
-| **TypeScript errors in tests** | Ensure all packages are built: `pnpm build` |
+| Test loading failed | `pnpm install && pnpm build`, restart VS Code |
+| Cannot find module | `pnpm build` from repository root |
+| Tests not discovered | Check `.vscode/settings.json`, reload window |
 
-### Fix Steps
-
-If tests fail to discover or import errors occur:
-
-**1. Clean and reinstall dependencies**
+### Complete Reset
 
 ```powershell
 # From repository root
-pnpm clean  # If available, or manually delete node_modules
 pnpm install
-```
-
-**2. Build all packages**
-
-```powershell
-# From repository root
 pnpm build
-```
-
-**3. Clear Jest cache**
-
-```powershell
 pnpm test -- --clearCache
+
+# Restart VS Code: Ctrl+Shift+P → "Developer: Reload Window"
 ```
 
-**4. Restart VS Code**
+### VS Code Configuration
 
-- Close VS Code completely
-- Reopen the workspace
-- Run "Developer: Reload Window" command (`Ctrl+Shift+P`)
-- Wait for Jest extension to reload
-
-### VS Code Jest Configuration
-
-If Test Explorer doesn't work, ensure `.vscode/settings.json` exists:
+Create `.vscode/settings.json` if Test Explorer doesn't work:
 
 ```json
 {
@@ -186,5 +113,3 @@ If Test Explorer doesn't work, ensure `.vscode/settings.json` exists:
   }
 }
 ```
-
-**Note:** The `tests/jest.config.json` file is automatically used by Jest when you run tests from the `tests/` directory. No additional configuration is needed.
