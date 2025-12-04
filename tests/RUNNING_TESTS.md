@@ -15,10 +15,11 @@
 
 ```plaintext
 tests/
-├── runtime/           # Runtime tests
-├── observability/     # Observability tests
-├── tooling/          # Tooling tests
-└── notifications/    # Notifications tests
+├── runtime/                      # Runtime tests
+├── observability/                # Observability tests
+├── tooling/                      # Tooling tests
+├── notifications/                # Notifications tests
+└── all-packages-coverage.test.ts # Ensures all packages appear in coverage reports
 ```
 
 ---
@@ -36,8 +37,6 @@ cd tests
 pnpm test                              # All tests
 pnpm test:verbose                      # Verbose output
 pnpm test:watch                        # Watch mode
-pnpm test:runtime                      # Runtime tests only
-pnpm test:observability                # Observability tests only
 
 # Run specific test file
 pnpm test -- runtime/power-platform-api-discovery.test.ts
@@ -63,9 +62,8 @@ pnpm test -- --onlyFailures            # Re-run failed tests only
 cd tests
 
 # Generate coverage reports
-pnpm test:coverage                     # All formats
-pnpm test:coverage:html                # HTML only
-pnpm test:ci                           # CI mode
+pnpm test:coverage                     # All formats (HTML, LCOV, Cobertura)
+pnpm test:ci                           # CI mode (coverage + optimized for CI)
 
 # View HTML report
 start coverage\index.html              # Windows

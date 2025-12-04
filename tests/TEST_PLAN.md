@@ -11,12 +11,15 @@
 ## Overview
 
 ### Current State
-- ✅ Unit tests exist for `observability` and `runtime` modules
+- ✅ Unit tests complete for `runtime` module
+- ✅ Unit tests complete for `observability` modules
 - ❌ Missing tests for `tooling` and `notifications` modules
+- ✅ Coverage reporting includes all 9 packages
 - ❌ No integration tests or CI/CD automation
 
 ### Goals
 - Achieve **80%+ code coverage** across all modules
+- Implement unit tests for tooling and notifications modules
 - Implement integration tests for cross-module functionality
 - Integrate testing into CI/CD pipeline with coverage enforcement
 
@@ -37,15 +40,15 @@
 
 ## Implementation Roadmap
 
-| Phase | Deliverables | Priority |
-|-------|-------------|----------|
-| 1.1 | Runtime unit tests | ✅ Partial |
-| 1.2 | Tooling unit tests | HIGH |
-| 1.3 | Notifications unit tests | HIGH |
-| 1.4 | Expand observability tests | MEDIUM |
-| 1.5 | Tooling extension tests | MEDIUM |
-| 2 | Integration tests | MEDIUM |
-| 3 | CI/CD automation | HIGH |
+| Phase | Deliverables | Priority | Status |
+|-------|-------------|----------|--------|
+| 1.1 | Runtime unit tests | HIGH | ✅ Complete |
+| 1.2 | Tooling unit tests | HIGH | ❌ Missing |
+| 1.3 | Notifications unit tests | HIGH | ❌ Missing |
+| 1.4 | Expand observability tests | MEDIUM | ✅ Complete |
+| 1.5 | Tooling extension tests | LOW | ❌ Missing |
+| 2 | Integration tests | MEDIUM | ❌ Missing |
+| 3 | CI/CD automation | HIGH | ❌ Missing |
 
 ---
 
