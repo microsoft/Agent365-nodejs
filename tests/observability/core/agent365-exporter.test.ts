@@ -54,6 +54,7 @@ describe('Agent365Exporter', () => {
     jest.clearAllTimers();
     jest.useRealTimers();
     global.fetch = originalFetch;
+    delete process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN;
   });
 
   it('returns success immediately with no spans', async () => {
@@ -77,7 +78,9 @@ describe('Agent365Exporter', () => {
     const spans = [
       makeSpan({
         [OpenTelemetryConstants.TENANT_ID_KEY]: tenantId,
-        [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]: agentId
+        [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]: agentId,
+        [OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY]: '10.0.0.5',
+        [OpenTelemetryConstants.GEN_AI_CALLER_AGENT_CLIENT_IP_KEY]: '1.0.0.5'
       })
     ];
 
@@ -96,6 +99,63 @@ describe('Agent365Exporter', () => {
     expect(exportedSpan.attributes).toBeDefined();
     expect(exportedSpan.attributes[OpenTelemetryConstants.TENANT_ID_KEY]).toBe(tenantId);
     expect(exportedSpan.attributes[OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]).toBe(agentId);
+    expect(exportedSpan.attributes[OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY]).toBe('10.0.0.5');
+    expect(exportedSpan.attributes[OpenTelemetryConstants.GEN_AI_CALLER_AGENT_CLIENT_IP_KEY]).toBe('1.0.0.5');
+  });
+
+  it.each([
+    { cluster: 'prod', expectedUrl: 'https://agent365.svc.cloud.microsoft', token: 'tok-prod' },
+    { cluster: 'preprod', expectedUrl: 'https://agent365.svc.cloud.microsoft', token: 'tok-preprod' }
+  ])('exports to custom domain when enabled (cluster=%s)', async ({ cluster, expectedUrl, token }) => {
+    mockFetchSequence([200]);
+    process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN = 'true';
+    const opts = new Agent365ExporterOptions();
+    opts.clusterCategory = cluster;
+    opts.tokenResolver = () => token;
+    const exporter = new Agent365Exporter(opts);
+    const spans = [
+      makeSpan({
+        [OpenTelemetryConstants.TENANT_ID_KEY]: tenantId,
+        [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]: agentId
+      })
+    ];
+    const callback = jest.fn();
+    await exporter.export(spans, callback);
+    expect(callback).toHaveBeenCalledWith({ code: ExportResultCode.SUCCESS });
+    const fetchCalls = (global.fetch as unknown as { mock: { calls: any[] } }).mock.calls;
+    expect(fetchCalls.length).toBe(1);
+    const urlArg = fetchCalls[0][0];
+    const headersArg = fetchCalls[0][1].headers;
+    expect(urlArg).toBe(expectedUrl);
+    expect(headersArg['x-ms-tenant-id']).toBe(tenantId);
+    expect(headersArg['authorization']).toBe(`Bearer ${token}`);
+  });
+
+  it('exports to discovery endpoint when custom domain disabled', async () => {
+    mockFetchSequence([200]);
+    delete process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN;
+    const token = 'tok-prod-disabled';
+    const opts = new Agent365ExporterOptions();
+    opts.clusterCategory = 'prod';
+    opts.tokenResolver = () => token;
+    const exporter = new Agent365Exporter(opts);
+    const spans = [
+      makeSpan({
+        [OpenTelemetryConstants.TENANT_ID_KEY]: tenantId,
+        [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]: agentId
+      })
+    ];
+    const callback = jest.fn();
+    await exporter.export(spans, callback);
+    expect(callback).toHaveBeenCalledWith({ code: ExportResultCode.SUCCESS });
+    const fetchCalls = (global.fetch as unknown as { mock: { calls: any[] } }).mock.calls;
+    expect(fetchCalls.length).toBe(1);
+    const urlArg = fetchCalls[0][0];
+    const headersArg = fetchCalls[0][1].headers;
+    const discoveryRegex = new RegExp(`^https://[\\w.-]+/maven/agent365/agents/${agentId}/traces\\?api-version=1$`, 'i');
+    expect(urlArg).toMatch(discoveryRegex);
+    expect(headersArg['x-ms-tenant-id']).toBeUndefined();
+    expect(headersArg['authorization']).toBe(`Bearer ${token}`);
   });
 
   it('requires a tokenResolver and fails export when missing', async () => {

@@ -152,6 +152,9 @@ export interface CallerDetails {
 
   /** The tenant ID of the caller */
   tenantId?: string;
+
+  /** The client IP address for the caller */
+  callerClientIp?: string;
 }
 
 /**
@@ -169,6 +172,9 @@ export interface EnhancedAgentDetails extends AgentDetails {
 
   /** The tenant ID for the agent */
   tenantId?: string;
+
+  /** The client IP address for the agent user */
+  agentClientIP?: string;
 }
 
 /**

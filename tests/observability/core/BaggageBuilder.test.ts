@@ -62,12 +62,18 @@ describe('BaggageBuilder', () => {
       const builder = new BaggageBuilder();
       const pairs: Array<[string, string]> = [
         [OpenTelemetryConstants.TENANT_ID_KEY, 'tenant-123'],
-        [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY, 'agent-456']
+        [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY, 'agent-456'],
+        [OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY, '10.0.0.5']
       ];
       builder.setPairs(pairs);
 
       const scope = builder.build();
       expect(scope).toBeInstanceOf(BaggageScope);
+
+      const bag = propagation.getBaggage((scope as any).contextWithBaggage);
+      expect(bag?.getEntry(OpenTelemetryConstants.TENANT_ID_KEY)?.value).toBe('tenant-123');
+      expect(bag?.getEntry(OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY)?.value).toBe('agent-456');
+      expect(bag?.getEntry(OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY)?.value).toBe('10.0.0.5');
     });
 
     it('should ignore null values', () => {
