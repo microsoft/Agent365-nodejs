@@ -106,10 +106,7 @@ Create `.vscode/settings.json` if Test Explorer doesn't work:
 ```json
 {
   "jest.rootPath": "tests",
-  "jest.jestCommandLine": "pnpm test --",
-  "jest.autoRun": {
-    "watch": true,
-    "onStartup": ["all-tests"]
-  }
+  "jest.jestCommandLine": "pnpm test",
+  "jest.autoRun": "off"
 }
 ```
