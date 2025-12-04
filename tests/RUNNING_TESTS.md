@@ -59,8 +59,6 @@ pnpm test -- --onlyFailures            # Re-run failed tests only
 
 ## Coverage Reports
 
-**⚠️ TODO**: Coverage shows 0% due to Jest + ts-jest + moduleNameMapper limitation in monorepos. Tests execute correctly and validate functionality, but coverage metrics aren't collected.
-
 ```powershell
 cd tests
 

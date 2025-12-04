@@ -8,10 +8,11 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
+  rootDir: '../',
   
   // Test discovery
   roots: [
-    '<rootDir>'
+    '<rootDir>/tests'
   ],
   testMatch: [
     '**/?(*.)+(spec|test).ts',
@@ -40,22 +41,22 @@ module.exports = {
   
   // Coverage collection - collect from packages/ source files only
   collectCoverageFrom: [
-    '../packages/agents-a365-runtime/src/**/*.ts',
-    '../packages/agents-a365-observability/src/**/*.ts',
-    '../packages/agents-a365-observability-extensions-openai/src/**/*.ts',
-    '../packages/agents-a365-observability-tokencache/src/**/*.ts',
-    '../packages/agents-a365-tooling/src/**/*.ts',
-    '../packages/agents-a365-tooling-extensions-claude/src/**/*.ts',
-    '../packages/agents-a365-tooling-extensions-langchain/src/**/*.ts',
-    '../packages/agents-a365-tooling-extensions-openai/src/**/*.ts',
-    '../packages/agents-a365-notifications/src/**/*.ts',
-    '!../packages/*/src/**/*.d.ts',
-    '!../packages/*/src/**/*.test.ts',
-    '!../packages/*/src/**/*.spec.ts'
+    'packages/agents-a365-runtime/src/**/*.ts',
+    'packages/agents-a365-observability/src/**/*.ts',
+    'packages/agents-a365-observability-extensions-openai/src/**/*.ts',
+    'packages/agents-a365-observability-tokencache/src/**/*.ts',
+    'packages/agents-a365-tooling/src/**/*.ts',
+    'packages/agents-a365-tooling-extensions-claude/src/**/*.ts',
+    'packages/agents-a365-tooling-extensions-langchain/src/**/*.ts',
+    'packages/agents-a365-tooling-extensions-openai/src/**/*.ts',
+    'packages/agents-a365-notifications/src/**/*.ts',
+    '!packages/*/src/**/*.d.ts',
+    '!packages/*/src/**/*.test.ts',
+    '!packages/*/src/**/*.spec.ts'
   ],
   
   // Coverage output directory
-  coverageDirectory: '<rootDir>/coverage',
+  coverageDirectory: '<rootDir>/tests/coverage',
   
   // Coverage reporters - matches Python repo: html, text, lcov, cobertura
   coverageReporters: [
@@ -78,20 +79,20 @@ module.exports = {
   
   // Module name mapper for package imports
   moduleNameMapper: {
-    '^@microsoft/agents-a365-runtime$': '<rootDir>/../packages/agents-a365-runtime/src',
-    '^@microsoft/agents-a365-observability$': '<rootDir>/../packages/agents-a365-observability/src',
-    '^@microsoft/agents-a365-observability-extensions-openai$': '<rootDir>/../packages/agents-a365-observability-extensions-openai/src',
-    '^@microsoft/agents-a365-observability-tokencache$': '<rootDir>/../packages/agents-a365-observability-tokencache/src',
-    '^@microsoft/agents-a365-tooling$': '<rootDir>/../packages/agents-a365-tooling/src',
-    '^@microsoft/agents-a365-tooling-extensions-claude$': '<rootDir>/../packages/agents-a365-tooling-extensions-claude/src',
-    '^@microsoft/agents-a365-tooling-extensions-langchain$': '<rootDir>/../packages/agents-a365-tooling-extensions-langchain/src',
-    '^@microsoft/agents-a365-tooling-extensions-openai$': '<rootDir>/../packages/agents-a365-tooling-extensions-openai/src',
-    '^@microsoft/agents-a365-notifications$': '<rootDir>/../packages/agents-a365-notifications/src',
-    '^@opentelemetry/api$': '<rootDir>/../node_modules/@opentelemetry/api'
+    '^@microsoft/agents-a365-runtime$': '<rootDir>/packages/agents-a365-runtime/src',
+    '^@microsoft/agents-a365-observability$': '<rootDir>/packages/agents-a365-observability/src',
+    '^@microsoft/agents-a365-observability-extensions-openai$': '<rootDir>/packages/agents-a365-observability-extensions-openai/src',
+    '^@microsoft/agents-a365-observability-tokencache$': '<rootDir>/packages/agents-a365-observability-tokencache/src',
+    '^@microsoft/agents-a365-tooling$': '<rootDir>/packages/agents-a365-tooling/src',
+    '^@microsoft/agents-a365-tooling-extensions-claude$': '<rootDir>/packages/agents-a365-tooling-extensions-claude/src',
+    '^@microsoft/agents-a365-tooling-extensions-langchain$': '<rootDir>/packages/agents-a365-tooling-extensions-langchain/src',
+    '^@microsoft/agents-a365-tooling-extensions-openai$': '<rootDir>/packages/agents-a365-tooling-extensions-openai/src',
+    '^@microsoft/agents-a365-notifications$': '<rootDir>/packages/agents-a365-notifications/src',
+    '^@opentelemetry/api$': '<rootDir>/node_modules/@opentelemetry/api'
   },
   
   // Module resolution
-  moduleDirectories: ['node_modules', '<rootDir>/../node_modules'],
+  moduleDirectories: ['node_modules', '<rootDir>/node_modules'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
   
   // Test timeout
