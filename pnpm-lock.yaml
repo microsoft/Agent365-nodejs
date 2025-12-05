@@ -302,9 +302,6 @@ importers:
       jsonwebtoken:
         specifier: ^9.0.2
         version: 9.0.2
-      pkginfo:
-        specifier: ^0.4.1
-        version: 0.4.1
     devDependencies:
       '@eslint/js':
         specifier: ^9.39.1
@@ -318,9 +315,6 @@ importers:
       '@types/node':
         specifier: ^20.17.0
         version: 20.19.25
-      '@types/pkginfo':
-        specifier: ^0.4.4
-        version: 0.4.4
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.47.0
         version: 8.47.0(@typescript-eslint/parser@8.47.0(eslint@9.39.1(jiti@2.6.1))(typescript@5.9.3))(eslint@9.39.1(jiti@2.6.1))(typescript@5.9.3)
@@ -1738,9 +1732,6 @@ packages:
 
   '@types/node@20.19.25':
     resolution: {integrity: sha512-ZsJzA5thDQMSQO788d7IocwwQbI8B5OPzmqNvpf3NY/+MHDAS759Wo0gd2WQeXYt5AAAQjzcrTVC6SKCuYgoCQ==}
-
-  '@types/pkginfo@0.4.4':
-    resolution: {integrity: sha512-wkY7f/J2BtxcW/lWCbRYiW5AZA1+F1hr/PzLTNttX5nw61MOamp/aWp+zXXiNhTyYszR+ghDtSyabIqiDAhB9g==}
 
   '@types/qs@6.14.0':
     resolution: {integrity: sha512-eOunJqu0K1923aExK6y8p6fsihYEn/BYuQ4g0CxAAgFc4b/ZLN4CrsRZ55srTdqoiLzU2B2evC+apEIxprEzkQ==}
@@ -3342,10 +3333,6 @@ packages:
   pkg-dir@4.2.0:
     resolution: {integrity: sha512-HRDzbaKjC+AOWVXxAU/x54COGeIv9eb+6CkDSQoNTt4XyWoIJvuPsXizxu/Fr23EiekbtZwmh1IcIG/l/a10GQ==}
     engines: {node: '>=8'}
-
-  pkginfo@0.4.1:
-    resolution: {integrity: sha512-8xCNE/aT/EXKenuMDZ+xTVwkT8gsoHN2z/Q29l80u0ppGEXVvsKRzNMbtKhg8LS8k1tJLAHHylf6p4VFmP6XUQ==}
-    engines: {node: '>= 0.4.0'}
 
   prelude-ls@1.2.1:
     resolution: {integrity: sha512-vkcDPrRZo1QZLbn5RLGPpg/WmIQ65qoWWhcGKf/b5eplkkarX0m9z8ppCat4mlOqUsWpyNuYgO3VRyrYHSzX5g==}
@@ -5174,10 +5161,6 @@ snapshots:
     dependencies:
       undici-types: 6.21.0
 
-  '@types/pkginfo@0.4.4':
-    dependencies:
-      '@types/node': 20.19.25
-
   '@types/qs@6.14.0': {}
 
   '@types/range-parser@1.2.7': {}
@@ -6950,8 +6933,6 @@ snapshots:
   pkg-dir@4.2.0:
     dependencies:
       find-up: 4.1.0
-
-  pkginfo@0.4.1: {}
 
   prelude-ls@1.2.1: {}
 

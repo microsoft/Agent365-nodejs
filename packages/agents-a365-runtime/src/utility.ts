@@ -8,21 +8,12 @@ import { type } from 'os';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
-let packageVersion: string;
-try {
-  // __dirname is dist/cjs or dist/esm, so go up two levels to reach package.json
-  const packageJson = JSON.parse(
-    readFileSync(join(__dirname, '../../package.json'), 'utf-8')
-  );
-  packageVersion = packageJson.version || 'unknown';
-} catch {
-  packageVersion = 'unknown';
-}
-
 /**
  * Utility class providing helper methods for agent runtime operations.
  */
 export class Utility {
+  private static cachedVersion: string | undefined;
+
   /**
    * Decodes the current token and retrieves the App ID (appid or azp claim).
    * @param token Token to Decode
@@ -69,8 +60,23 @@ export class Utility {
    * @returns Formatted User-Agent header string.
    */
   public static GetUserAgentHeader(orchestrator: string = ''): string {
+    this.setPackageVersion();
+
     const osType = type();
     const orchestratorPart = orchestrator ? `; ${orchestrator}` : '';
-    return `Agent365SDK/${packageVersion} (${osType}; Node.js ${process.version}${orchestratorPart})`;
+    return `Agent365SDK/${this.cachedVersion} (${osType}; Node.js ${process.version}${orchestratorPart})`;
+  }
+
+  private static setPackageVersion(): void {
+    if (this.cachedVersion === undefined) {
+      try {
+        const packageJson = JSON.parse(
+          readFileSync(join(__dirname, '../../package.json'), 'utf-8')
+        );
+        this.cachedVersion = packageJson.version || 'unknown';
+      } catch {
+        this.cachedVersion = 'unknown';
+      }
+    }
   }
 }

@@ -35,15 +35,13 @@
   "dependencies": {
     "@azure/identity": "^4.12.1",
     "@microsoft/agents-hosting": "*",
-    "jsonwebtoken": "^9.0.2",
-    "pkginfo": "^0.4.1"
+    "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
     "@types/jest": "workspace:*",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20.0.0",
-    "@types/pkginfo": "^0.4.4",
     "@typescript-eslint/eslint-plugin": "^8.47.0",
     "@typescript-eslint/parser": "^8.47.0",
     "eslint": "^9.39.1",
