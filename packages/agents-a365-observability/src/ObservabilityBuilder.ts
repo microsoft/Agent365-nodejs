@@ -13,6 +13,7 @@ import { resourceFromAttributes } from '@opentelemetry/resources';
 import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
 import { trace } from '@opentelemetry/api';
 import { ClusterCategory } from '@microsoft/agents-a365-runtime';
+import { OpenTelemetryConstants } from './tracing/constants';
 /**
  * Configuration options for Agent 365 Observability Builder
  */
@@ -91,6 +92,20 @@ export class ObservabilityBuilder {
   }
 
   private createBatchProcessor(): BatchSpanProcessor {
+    // Check if we should use Agent365Exporter:
+    // 1. tokenResolver is explicitly provided via withTokenResolver, OR
+    // 2. tokenResolver is provided via exporterOptions, OR
+    // 3. ENABLE_A365_OBSERVABILITY_EXPORTER is explicitly enabled (for backward compatibility)
+    const hasTokenResolver = this.options.tokenResolver || this.options.exporterOptions?.tokenResolver;
+    const isExporterExplicitlyEnabled = isAgent365ExporterEnabled() && 
+      process.env[OpenTelemetryConstants.ENABLE_A365_OBSERVABILITY_EXPORTER];
+    
+    // If no token resolver and exporter is not explicitly enabled, use console exporter
+    if (!hasTokenResolver && !isExporterExplicitlyEnabled) {
+      return new BatchSpanProcessor(new ConsoleSpanExporter());
+    }
+
+    // If explicitly disabled via env var, use console exporter
     if (!isAgent365ExporterEnabled()) {
       return new BatchSpanProcessor(new ConsoleSpanExporter());
     }
@@ -103,6 +118,12 @@ export class ObservabilityBuilder {
     if (this.options.tokenResolver) {
       opts.tokenResolver = this.options.tokenResolver;
     }
+    
+    // If we still don't have a token resolver at this point, use console exporter
+    if (!opts.tokenResolver) {
+      return new BatchSpanProcessor(new ConsoleSpanExporter());
+    }
+    
     return new BatchSpanProcessor(new Agent365Exporter(opts), {
       maxQueueSize: opts.maxQueueSize,
       scheduledDelayMillis: opts.scheduledDelayMilliseconds,

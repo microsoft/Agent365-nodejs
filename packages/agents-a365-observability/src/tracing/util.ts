@@ -7,31 +7,62 @@ import { OpenTelemetryConstants } from './constants';
 import { ClusterCategory } from '@microsoft/agents-a365-runtime';
 /**
  * Check if exporter is enabled via environment variables
+ * Enabled by default, can be disabled by setting to 'false', '0', 'no', or 'off'
  */
 export const isAgent365ExporterEnabled: () => boolean = (): boolean => {
   const enableA365Exporter = process.env[OpenTelemetryConstants.ENABLE_A365_OBSERVABILITY_EXPORTER]?.toLowerCase();
 
-  return (
-    enableA365Exporter === 'true' ||
-    enableA365Exporter === '1' ||
-    enableA365Exporter === 'yes' ||
-    enableA365Exporter === 'on'
+  // If not set, default to enabled (true)
+  if (!enableA365Exporter) {
+    return true;
+  }
+
+  // Only return false if explicitly disabled
+  return !(
+    enableA365Exporter === 'false' ||
+    enableA365Exporter === '0' ||
+    enableA365Exporter === 'no' ||
+    enableA365Exporter === 'off'
   );
 };
 
 /**
    * Gets the enable telemetry configuration value
+   * Enabled by default, can be disabled by setting to 'false', '0', 'no', or 'off'
    */
 export const isAgent365TelemetryEnabled: () => boolean = (): boolean => {
   const enableObservability = process.env[OpenTelemetryConstants.ENABLE_OBSERVABILITY]?.toLowerCase();
   const enableA365 = process.env[OpenTelemetryConstants.ENABLE_A365_OBSERVABILITY]?.toLowerCase();
 
-  return (
-    enableObservability === 'true' ||
-    enableObservability === '1' ||
-    enableA365 === 'true' ||
-    enableA365 === '1'
-  );
+  // If neither is set, default to enabled (true)
+  if (!enableObservability && !enableA365) {
+    return true;
+  }
+
+  // Check if explicitly disabled
+  const isObservabilityDisabled = 
+    enableObservability === 'false' ||
+    enableObservability === '0' ||
+    enableObservability === 'no' ||
+    enableObservability === 'off';
+
+  const isA365Disabled = 
+    enableA365 === 'false' ||
+    enableA365 === '0' ||
+    enableA365 === 'no' ||
+    enableA365 === 'off';
+
+  // If either is explicitly set and not disabled, return true
+  // If both are explicitly set, both must not be disabled
+  if (enableObservability && enableA365) {
+    return !isObservabilityDisabled && !isA365Disabled;
+  } else if (enableObservability) {
+    return !isObservabilityDisabled;
+  } else if (enableA365) {
+    return !isA365Disabled;
+  }
+
+  return true;
 };
 
 /**

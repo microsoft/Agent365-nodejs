@@ -66,12 +66,25 @@ describe('ObservabilityBuilder exporterOptions merging', () => {
 
   it('defaults to prod clusterCategory when none provided', () => {
     const builder = new ObservabilityBuilder()
-      .withExporterOptions({ maxQueueSize: 15 }); // no cluster category passed
+      .withExporterOptions({ maxQueueSize: 15 }) // no cluster category passed
+      .withTokenResolver(() => 'test-token'); // Add token resolver so Agent365Exporter is used
 
     builder.build();
     const captured: any = (global as any).__capturedExporterOptions;
     expect(captured.clusterCategory).toBe('prod');
     expect(captured.maxQueueSize).toBe(15);
     expect(captured.scheduledDelayMilliseconds).toBe(5000); // default value
-  });  
+  });
+
+  it('uses ConsoleSpanExporter when no tokenResolver is provided', () => {
+    const builder = new ObservabilityBuilder()
+      .withExporterOptions({ maxQueueSize: 15 }); // no token resolver
+
+    const built = builder.build();
+    expect(built).toBe(true);
+
+    // Since no tokenResolver was provided, Agent365Exporter should NOT be created
+    const captured: any = (global as any).__capturedExporterOptions;
+    expect(captured).toBeUndefined();
+  });
 });
