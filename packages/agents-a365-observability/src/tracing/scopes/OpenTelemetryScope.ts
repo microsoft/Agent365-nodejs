@@ -59,6 +59,7 @@ export abstract class OpenTelemetryScope implements Disposable {
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY, agentDetails.agentId);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY, agentDetails.agentName);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_DESCRIPTION_KEY, agentDetails.agentDescription);
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_PLATFORM_ID_KEY, agentDetails.platformId);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, agentDetails.conversationId);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_ICON_URI_KEY, agentDetails.iconUri);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_AUID_KEY, agentDetails.agentAUID);
