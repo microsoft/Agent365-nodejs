@@ -62,21 +62,8 @@ export class Utility {
       pkginfo(module, 'version');
       this.cachedVersion = module.exports.version || 'unknown';
     }
-    const orchestratorPart = orchestrator ? `; ${orchestrator}` : '';
-    return `Agent365SDK/${this.cachedVersion} (${this.ResolveOsType()}; Node.js ${process.version}${orchestratorPart})`;
-  }
-
-  private static ResolveOsType(): string {
     const osType = type();
-    switch (osType) {
-      case 'Windows_NT':
-        return 'Windows';
-      case 'Darwin':
-        return 'macOS';
-      case 'Linux':
-        return 'Linux';
-      default:
-        return osType;
-    }
+    const orchestratorPart = orchestrator ? `; ${orchestrator}` : '';
+    return `Agent365SDK/${this.cachedVersion} (${osType}; Node.js ${process.version}${orchestratorPart})`;
   }
 }

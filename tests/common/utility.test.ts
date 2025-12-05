@@ -125,7 +125,7 @@ describe('Utility', () => {
 
       // Assert
       expect(header).toMatch(
-        /^Agent365SDK\/.+ \((Windows|Linux|macOS|.+); Node\.js v\d+(\.\d+)*; orch\)$/
+        /^Agent365SDK\/.+ \(.+; Node\.js v\d+(\.\d+)*; orch\)$/
       );
     });
 
@@ -137,63 +137,8 @@ describe('Utility', () => {
 
       // Assert
       expect(header).toMatch(
-        /^Agent365SDK\/.+ \((Windows|Linux|macOS|.+); Node\.js v\d+(\.\d+)*\)$/
+        /^Agent365SDK\/.+ \(.+; Node\.js v\d+(\.\d+)*\)$/
       );
-    });
-  });
-
-  describe('ResolveOsType', () => {
-    beforeEach(() => {
-      jest.resetModules();
-      jest.clearAllMocks();
-    });
-
-    it('returns "Windows" for Windows_NT', () => {
-      // Arrange
-      jest.mock('os', () => ({ type: () => 'Windows_NT' }), { virtual: true });
-      const { Utility } = require('@microsoft/agents-a365-runtime');
-
-      // Act
-      const result = Utility.ResolveOsType();
-
-      // Assert
-      expect(result).toBe('Windows');
-    });
-
-    it('returns "macOS" for Darwin', () => {
-      // Arrange
-      jest.mock('os', () => ({ type: () => 'Darwin' }), { virtual: true });
-      const { Utility } = require('@microsoft/agents-a365-runtime');
-
-      // Act
-      const result = Utility.ResolveOsType();
-
-      // Assert
-      expect(result).toBe('macOS');
-    });
-
-    it('returns "Linux" for Linux', () => {
-      // Arrange
-      jest.mock('os', () => ({ type: () => 'Linux' }), { virtual: true });
-      const { Utility } = require('@microsoft/agents-a365-runtime');
-
-      // Act
-      const result = Utility.ResolveOsType();
-
-      // Assert
-      expect(result).toBe('Linux');
-    });
-
-    it('returns type for unknown OS', () => {
-      // Arrange
-      jest.mock('os', () => ({ type: () => 'OtherOS' }), { virtual: true });
-      const { Utility } = require('@microsoft/agents-a365-runtime');
-
-      // Act
-      const result = Utility.ResolveOsType();
-
-      // Assert
-      expect(result).toBe('OtherOS');
     });
   });
 });
