@@ -57,8 +57,7 @@ $ npm run test-tool
 
 This should open a web browser with a chat interface. Send a message to your agent and you should see it reply back with a mocked response.
 
-In the first terminal, where you are running the agent application with TOOLS_MODE=MockMCPServer and NODE_ENV=development in .env,  
- you should see telemetry rendered starting similar as below when you invoke the agent e.g ask the agent to send email to someone.
+In the first terminal, where you are running the agent application with NODE_ENV=development in .env, you should see telemetry rendered starting similar as below when you invoke the agent e.g ask the agent to send email to someone.
 
 ```
 > openaiagent-instrument@1.0.0 start

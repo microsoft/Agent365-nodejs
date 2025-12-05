@@ -1,11 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-export enum ToolsMode {
-  MockMCPServer = 'MockMCPServer',
-  MCPPlatform = 'MCPPlatform'
-}
-
 // Constant for MCP Platform base URL in production
 const MCP_PLATFORM_PROD_BASE_URL = 'https://agent365.svc.cloud.microsoft';
 
@@ -90,10 +85,7 @@ export class Utility {
     const environment = this.getCurrentEnvironment().toLowerCase();
 
     if (environment === 'development') {
-      const toolsMode = this.GetToolsMode();
-      if (toolsMode === ToolsMode.MockMCPServer) {
-        return process.env.MOCK_MCP_SERVER_URL || 'http://localhost:5309/mcp-mock/agents/servers';
-      }
+      return process.env.MOCK_MCP_SERVER_URL || 'http://localhost:5309/mcp-mock/agents/servers';
     }
 
     return `${this.getMcpPlatformBaseUrl()}/agents/servers`;
@@ -112,16 +104,6 @@ export class Utility {
   public static BuildMcpServerUrl(serverName: string) : string {
     const baseUrl = this.GetMcpBaseUrl();
     return `${baseUrl}/${serverName}`;
-  }
-
-  public static GetToolsMode(): ToolsMode {
-    const toolsMode = process.env.TOOLS_MODE || 'MCPPlatform';
-    switch (toolsMode.toLowerCase()) {
-    case 'mockmcpserver':
-      return ToolsMode.MockMCPServer;
-    default:
-      return ToolsMode.MCPPlatform;
-    }
   }
 
   /**

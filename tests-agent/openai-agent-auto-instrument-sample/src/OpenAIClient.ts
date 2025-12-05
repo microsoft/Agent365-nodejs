@@ -22,10 +22,9 @@ export async function getClient(authorization: Authorization | undefined, authHa
   });
 
   try {
-    const toolsMode = process.env.TOOLS_MODE || 'MockMCPServer';
     const isDevelopment = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'Development';
 
-    if (toolsMode === 'MockMCPServer' || (isDevelopment && toolsMode !== 'ProductionMCPServer')) {
+    if (isDevelopment) {
       // Use local mock MCP servers
       await localMcpService.addMcpToolServers(
         agent,
