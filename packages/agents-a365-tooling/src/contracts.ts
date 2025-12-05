@@ -9,13 +9,13 @@ export interface MCPServerConfig {
 
 export interface McpClientTool {
   name: string;
-  description?: string | undefined;
+  description?: string;
   inputSchema: InputSchema;
 }
 
 export interface InputSchema {
   type: string;
-  properties?: Record<string, object> | undefined;
-  required?: string[] | undefined;
+  properties?: Record<string, object>;
+  required?: string[];
   additionalProperties?: boolean;
 }
