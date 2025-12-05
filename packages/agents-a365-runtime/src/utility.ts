@@ -4,7 +4,20 @@
 import { TurnContext } from '@microsoft/agents-hosting';
 import * as jwt from 'jsonwebtoken';
 import { type } from 'os';
-import pkginfo from 'pkginfo';
+
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
+let packageVersion: string;
+try {
+  // __dirname is dist/cjs or dist/esm, so go up two levels to reach package.json
+  const packageJson = JSON.parse(
+    readFileSync(join(__dirname, '../../package.json'), 'utf-8')
+  );
+  packageVersion = packageJson.version || 'unknown';
+} catch {
+  packageVersion = 'unknown';
+}
 
 /**
  * Utility class providing helper methods for agent runtime operations.
@@ -59,8 +72,7 @@ export class Utility {
    */
   public static GetUserAgentHeader(orchestrator: string = ''): string {
     if (!this.cachedVersion) {
-      pkginfo(module, 'version');
-      this.cachedVersion = module.exports.version || 'unknown';
+      this.cachedVersion = packageVersion;
     }
     const osType = type();
     const orchestratorPart = orchestrator ? `; ${orchestrator}` : '';
