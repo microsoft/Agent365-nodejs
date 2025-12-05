@@ -5,12 +5,27 @@
 
 import { OpenTelemetryConstants } from './constants';
 import { ClusterCategory } from '@microsoft/agents-a365-runtime';
+
+/**
+ * Helper function to check if a value is explicitly disabled
+ */
+const isExplicitlyDisabled = (value: string | undefined): boolean => {
+  if (!value) return false;
+  const lowerValue = value.toLowerCase();
+  return (
+    lowerValue === 'false' ||
+    lowerValue === '0' ||
+    lowerValue === 'no' ||
+    lowerValue === 'off'
+  );
+};
+
 /**
  * Check if exporter is enabled via environment variables
  * Enabled by default, can be disabled by setting to 'false', '0', 'no', or 'off'
  */
 export const isAgent365ExporterEnabled: () => boolean = (): boolean => {
-  const enableA365Exporter = process.env[OpenTelemetryConstants.ENABLE_A365_OBSERVABILITY_EXPORTER]?.toLowerCase();
+  const enableA365Exporter = process.env[OpenTelemetryConstants.ENABLE_A365_OBSERVABILITY_EXPORTER];
 
   // If not set, default to enabled (true)
   if (!enableA365Exporter) {
@@ -18,12 +33,7 @@ export const isAgent365ExporterEnabled: () => boolean = (): boolean => {
   }
 
   // Only return false if explicitly disabled
-  return !(
-    enableA365Exporter === 'false' ||
-    enableA365Exporter === '0' ||
-    enableA365Exporter === 'no' ||
-    enableA365Exporter === 'off'
-  );
+  return !isExplicitlyDisabled(enableA365Exporter);
 };
 
 /**
@@ -31,8 +41,8 @@ export const isAgent365ExporterEnabled: () => boolean = (): boolean => {
    * Enabled by default, can be disabled by setting to 'false', '0', 'no', or 'off'
    */
 export const isAgent365TelemetryEnabled: () => boolean = (): boolean => {
-  const enableObservability = process.env[OpenTelemetryConstants.ENABLE_OBSERVABILITY]?.toLowerCase();
-  const enableA365 = process.env[OpenTelemetryConstants.ENABLE_A365_OBSERVABILITY]?.toLowerCase();
+  const enableObservability = process.env[OpenTelemetryConstants.ENABLE_OBSERVABILITY];
+  const enableA365 = process.env[OpenTelemetryConstants.ENABLE_A365_OBSERVABILITY];
 
   // If neither is set, default to enabled (true)
   if (!enableObservability && !enableA365) {
@@ -40,17 +50,8 @@ export const isAgent365TelemetryEnabled: () => boolean = (): boolean => {
   }
 
   // Check if explicitly disabled
-  const isObservabilityDisabled = 
-    enableObservability === 'false' ||
-    enableObservability === '0' ||
-    enableObservability === 'no' ||
-    enableObservability === 'off';
-
-  const isA365Disabled = 
-    enableA365 === 'false' ||
-    enableA365 === '0' ||
-    enableA365 === 'no' ||
-    enableA365 === 'off';
+  const isObservabilityDisabled = isExplicitlyDisabled(enableObservability);
+  const isA365Disabled = isExplicitlyDisabled(enableA365);
 
   // If either is explicitly set and not disabled, return true
   // If both are explicitly set, both must not be disabled
