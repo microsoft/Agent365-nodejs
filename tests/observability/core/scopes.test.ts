@@ -158,6 +158,32 @@ describe('Scopes', () => {
       spy.mockRestore();
     });
 
+    it('should propagate caller agent platformId in span attributes', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const invokeAgentDetails: InvokeAgentDetails = {
+        agentId: 'test-agent',
+        agentName: 'Test Agent'
+      };
+      const callerAgentDetails: AgentDetails = {
+        agentId: 'caller-agent',
+        agentName: 'Caller Agent',
+        agentDescription: 'desc',
+        conversationId: 'conv',
+        platformId: 'caller-platform-xyz'
+      } as any;
+
+      const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails, callerAgentDetails, undefined);
+      expect(scope).toBeInstanceOf(InvokeAgentScope);
+
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CALLER_AGENT_PLATFORM_ID_KEY, val: 'caller-platform-xyz' })
+      ]));
+
+      scope?.dispose();
+      spy.mockRestore();
+    });
+
     it('should set caller and caller-agent IP tags', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
       const invokeAgentDetails: InvokeAgentDetails = {

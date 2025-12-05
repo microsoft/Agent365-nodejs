@@ -56,6 +56,17 @@ describe('BaggageBuilder', () => {
       const bag = propagation.getBaggage((scope as any).contextWithBaggage);
       expect(bag?.getEntry(OpenTelemetryConstants.GEN_AI_AGENT_PLATFORM_ID_KEY)?.value).toBe('platform-abc-456');
     });
+
+    it('should set caller agent platform ID via fluent API', () => {
+      const builder = new BaggageBuilder();
+      builder.callerAgentPlatformId('caller-platform-xyz');
+
+      const scope = builder.build();
+      expect(scope).toBeInstanceOf(BaggageScope);
+
+      const bag = propagation.getBaggage((scope as any).contextWithBaggage);
+      expect(bag?.getEntry(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_PLATFORM_ID_KEY)?.value).toBe('caller-platform-xyz');
+    });
   });
 
   describe('setPairs', () => {

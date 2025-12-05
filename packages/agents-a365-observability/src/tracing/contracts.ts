@@ -109,7 +109,7 @@ export interface AgentDetails {
 
   /** Optional icon identifier or URL for visual representation of the agent */
   iconUri?: string;
-
+  
   /** Optional platform identifier for the agent */
   platformId?: string;
 }
