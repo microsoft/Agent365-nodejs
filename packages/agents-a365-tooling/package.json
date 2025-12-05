@@ -35,7 +35,7 @@
   "dependencies": {
     "@microsoft/agents-a365-runtime": "workspace:*",
     "@microsoft/agents-hosting": "*",
-    "@modelcontextprotocol/sdk": "*",
+    "@modelcontextprotocol/sdk": "workspace:*",
     "express": "^5.2.0"
   },
   "devDependencies": {
