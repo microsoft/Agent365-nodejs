@@ -84,7 +84,7 @@ describe('OpenAIAgentsTraceInstrumentor', () => {
       expect((instrumentor as any)._config.enabled).toBe(false);
     });
 
-    it('should accept enabled: true config and activate when enable() is called', () => {
+    it('should auto-enable when enabled: true is passed', () => {
       // Mock the OpenAI Agents functions to verify they get called
       const setTracingDisabledSpy = jest.spyOn(require('@openai/agents'), 'setTracingDisabled');
       const setTraceProcessorsSpy = jest.spyOn(require('@openai/agents'), 'setTraceProcessors');
@@ -96,10 +96,7 @@ describe('OpenAIAgentsTraceInstrumentor', () => {
       // Verify the config was set correctly
       expect((instrumentor as any)._config.enabled).toBe(true);
       
-      // Explicitly enable the instrumentor
-      instrumentor.enable();
-      
-      // Verify that enable() triggered our setup
+      // Verify that OpenTelemetry automatically called enable() which triggered our setup
       expect(setTracingDisabledSpy).toHaveBeenCalledWith(false);
       expect(setTraceProcessorsSpy).toHaveBeenCalled();
       
