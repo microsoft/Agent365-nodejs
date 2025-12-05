@@ -31,7 +31,7 @@
     "@microsoft/agents-a365-observability-hosting": "workspace:*",
     "@microsoft/agents-a365-runtime": "workspace:*",
     "@microsoft/agents-hosting": "workspace:*",
-    "@modelcontextprotocol/sdk": "*",
+    "@modelcontextprotocol/sdk": "workspace:*",
     "@openai/agents": "*",
     "@openai/agents-openai": "*",
     "@opentelemetry/api": "*",
