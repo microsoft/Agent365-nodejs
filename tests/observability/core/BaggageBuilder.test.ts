@@ -39,10 +39,22 @@ describe('BaggageBuilder', () => {
         .agentId('agent-456')
         .correlationId('corr-789')
         .agentName('TestAgent')
+        .agentPlatformId('platform-xyz-123')
         .conversationId('conv-001');
 
       const scope = builder.build();
       expect(scope).toBeInstanceOf(BaggageScope);
+    });
+
+    it('should set agent platform ID', () => {
+      const builder = new BaggageBuilder();
+      builder.agentPlatformId('platform-abc-456');
+
+      const scope = builder.build();
+      expect(scope).toBeInstanceOf(BaggageScope);
+
+      const bag = propagation.getBaggage((scope as any).contextWithBaggage);
+      expect(bag?.getEntry(OpenTelemetryConstants.GEN_AI_AGENT_PLATFORM_ID_KEY)?.value).toBe('platform-abc-456');
     });
   });
 

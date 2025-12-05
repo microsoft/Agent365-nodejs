@@ -109,6 +109,9 @@ export interface AgentDetails {
 
   /** Optional icon identifier or URL for visual representation of the agent */
   iconUri?: string;
+
+  /** Optional platform identifier for the agent */
+  platformId?: string;
 }
 
 /**
@@ -175,6 +178,9 @@ export interface EnhancedAgentDetails extends AgentDetails {
 
   /** The client IP address for the agent user */
   agentClientIP?: string;
+
+  /** Optional platform identifier for the agent */
+  platformId?: string;
 }
 
 /**

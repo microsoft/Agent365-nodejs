@@ -80,6 +80,19 @@ describe('Scopes', () => {
       scope?.dispose();
     });
 
+    it('should create scope with platformId', () => {
+      const invokeAgentDetails: InvokeAgentDetails = {
+        agentId: 'test-agent',
+        agentName: 'Test Agent',
+        platformId: 'platform-xyz-123'
+      };
+      
+      const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
+
+      expect(scope).toBeInstanceOf(InvokeAgentScope);
+      scope?.dispose();
+    });
+
     it('should create scope with caller details', () => {
       const invokeAgentDetails: InvokeAgentDetails = {
         agentId: 'test-agent',
@@ -123,6 +136,26 @@ describe('Scopes', () => {
 
       expect(() => scope?.recordError(error)).not.toThrow();
       scope?.dispose();
+    });
+
+    it('should propagate platformId in span attributes', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const invokeAgentDetails: InvokeAgentDetails = {
+        agentId: 'test-agent',
+        agentName: 'Test Agent',
+        platformId: 'test-platform-123'
+      };
+
+      const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
+      expect(scope).toBeInstanceOf(InvokeAgentScope);
+
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_AGENT_PLATFORM_ID_KEY, val: 'test-platform-123' })
+      ]));
+
+      scope?.dispose();
+      spy.mockRestore();
     });
 
     it('should set caller and caller-agent IP tags', () => {

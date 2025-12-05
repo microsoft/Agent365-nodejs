@@ -150,6 +150,16 @@ export class BaggageBuilder {
   }
 
   /**
+   * Set the agent platform ID baggage value.
+   * @param value The agent platform ID
+   * @returns Self for method chaining
+   */
+  agentPlatformId(value: string | null | undefined): BaggageBuilder {
+    this.set(OpenTelemetryConstants.GEN_AI_AGENT_PLATFORM_ID_KEY, value);
+    return this;
+  }
+
+  /**
    * Set the session description baggage value.
    * @param value The session description
    * @returns Self for method chaining
