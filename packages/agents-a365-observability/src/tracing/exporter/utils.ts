@@ -6,6 +6,7 @@ import { ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import { SpanKind, SpanStatusCode } from '@opentelemetry/api';
 import { OpenTelemetryConstants } from '../constants';
 import logger from '../../utils/logging';
+import { isAgent365ExporterEnabled as isExporterEnabled } from '../util';
 
 /**
  * Convert trace ID to hex string format
@@ -111,19 +112,15 @@ export function partitionByIdentity(
 /**
  * Check if Agent 365 exporter is enabled via environment variable
  * Enabled by default, can be disabled by setting to 'false', '0', 'no', or 'off'
+ * This wrapper adds logging for debugging purposes
  */
 export function isAgent365ExporterEnabled(): boolean {
-  const a365Env = process.env[OpenTelemetryConstants.ENABLE_A365_OBSERVABILITY_EXPORTER]?.toLowerCase() || '';
-  
-  // If not set, default to enabled (true)
-  if (!a365Env) {
-    logger.info('[Agent365Exporter] Agent 365 exporter enabled: true (default)');
-    return true;
-  }
-
-  const disabledValues = ['false', '0', 'no', 'off'];
-  const enabled: boolean = !disabledValues.includes(a365Env);
-  logger.info(`[Agent365Exporter] Agent 365 exporter enabled: ${enabled}`);
+  const enabled = isExporterEnabled();
+  const envVar = process.env[OpenTelemetryConstants.ENABLE_A365_OBSERVABILITY_EXPORTER];
+  const message = envVar 
+    ? `[Agent365Exporter] Agent 365 exporter enabled: ${enabled} (env var: ${envVar})`
+    : '[Agent365Exporter] Agent 365 exporter enabled: true (default)';
+  logger.info(message);
   return enabled;
 }
 

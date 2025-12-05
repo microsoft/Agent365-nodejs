@@ -49,21 +49,13 @@ export const isAgent365TelemetryEnabled: () => boolean = (): boolean => {
     return true;
   }
 
-  // Check if explicitly disabled
-  const isObservabilityDisabled = isExplicitlyDisabled(enableObservability);
-  const isA365Disabled = isExplicitlyDisabled(enableA365);
-
-  // If either is explicitly set and not disabled, return true
-  // If both are explicitly set, both must not be disabled
-  if (enableObservability && enableA365) {
-    return !isObservabilityDisabled && !isA365Disabled;
-  } else if (enableObservability) {
-    return !isObservabilityDisabled;
-  } else if (enableA365) {
-    return !isA365Disabled;
-  }
-
-  return true;
+  // If both are set, both must not be disabled
+  // If only one is set, it must not be disabled
+  return enableObservability && enableA365
+    ? !isExplicitlyDisabled(enableObservability) && !isExplicitlyDisabled(enableA365)
+    : enableObservability
+      ? !isExplicitlyDisabled(enableObservability)
+      : !isExplicitlyDisabled(enableA365);
 };
 
 /**
