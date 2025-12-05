@@ -9,6 +9,7 @@
     "build:watch": "npm run build:watch --workspaces --if-present",
     "clean": "npm run clean --workspaces --if-present && rimraf node_modules",
     "test": "npm run test --workspaces --if-present -- --testPathIgnorePatterns=/integration/",
+    "test:coverage": "jest --config=tests/jest.config.cjs --coverage",
     "test:watch": "npm run test:watch --workspaces --if-present",
     "test:integration": "jest --config jest.integration.config.cjs",
     "test:integration:watch": "jest --config jest.integration.config.cjs --watch",
