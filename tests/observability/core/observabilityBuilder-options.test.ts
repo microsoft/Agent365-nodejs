@@ -29,7 +29,15 @@ describe('ObservabilityBuilder exporterOptions merging', () => {
     delete (global as any).__capturedExporterOptionsCallCount;
   });
 
+  afterEach(() => {
+    // Clean up environment variable after each test
+    delete process.env.ENABLE_A365_OBSERVABILITY_EXPORTER;
+  });
+
   it('applies provided exporterOptions and allows builder overrides to take precedence', () => {
+    // Enable Agent365 exporter to test the exporter options
+    process.env.ENABLE_A365_OBSERVABILITY_EXPORTER = 'true';
+
     const builder = new ObservabilityBuilder()
       .withExporterOptions({
         maxQueueSize: 10,
@@ -60,6 +68,9 @@ describe('ObservabilityBuilder exporterOptions merging', () => {
   });
 
   it('defaults to prod clusterCategory when none provided', () => {
+    // Enable Agent365 exporter to test the exporter options
+    process.env.ENABLE_A365_OBSERVABILITY_EXPORTER = 'true';
+
     const builder = new ObservabilityBuilder()
       .withExporterOptions({ maxQueueSize: 15 }) // no cluster category passed
       .withTokenResolver(() => 'test-token'); // Add token resolver so Agent365Exporter is used
@@ -79,6 +90,19 @@ describe('ObservabilityBuilder exporterOptions merging', () => {
     expect(built).toBe(true);
 
     // Since no tokenResolver was provided, Agent365Exporter should NOT be created
+    const captured: any = (global as any).__capturedExporterOptions;
+    expect(captured).toBeUndefined();
+  });
+
+  it('uses ConsoleSpanExporter when ENABLE_A365_OBSERVABILITY_EXPORTER is not set', () => {
+    // Even with tokenResolver, if env var is not set, should use ConsoleSpanExporter
+    const builder = new ObservabilityBuilder()
+      .withTokenResolver(() => 'test-token');
+
+    const built = builder.build();
+    expect(built).toBe(true);
+
+    // Since ENABLE_A365_OBSERVABILITY_EXPORTER is not set, Agent365Exporter should NOT be created
     const captured: any = (global as any).__capturedExporterOptions;
     expect(captured).toBeUndefined();
   });

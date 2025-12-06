@@ -22,18 +22,17 @@ const isExplicitlyDisabled = (value: string | undefined): boolean => {
 
 /**
  * Check if exporter is enabled via environment variables
- * Enabled by default, can be disabled by setting to 'false', '0', 'no', or 'off'
+ * Requires explicit enabling by setting to 'true', '1', 'yes', or 'on'
  */
 export const isAgent365ExporterEnabled: () => boolean = (): boolean => {
-  const enableA365Exporter = process.env[OpenTelemetryConstants.ENABLE_A365_OBSERVABILITY_EXPORTER];
+  const enableA365Exporter = process.env[OpenTelemetryConstants.ENABLE_A365_OBSERVABILITY_EXPORTER]?.toLowerCase();
 
-  // If not set, default to enabled (true)
-  if (!enableA365Exporter) {
-    return true;
-  }
-
-  // Only return false if explicitly disabled
-  return !isExplicitlyDisabled(enableA365Exporter);
+  return (
+    enableA365Exporter === 'true' ||
+    enableA365Exporter === '1' ||
+    enableA365Exporter === 'yes' ||
+    enableA365Exporter === 'on'
+  );
 };
 
 /**

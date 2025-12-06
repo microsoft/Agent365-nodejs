@@ -81,8 +81,8 @@ describe('Observability Utility Functions', () => {
       delete process.env[OpenTelemetryConstants.ENABLE_A365_OBSERVABILITY_EXPORTER];
     });
 
-    it('should return true by default when environment variable is not set', () => {
-      expect(isAgent365ExporterEnabled()).toBe(true);
+    it('should return false by default when environment variable is not set', () => {
+      expect(isAgent365ExporterEnabled()).toBe(false);
     });
 
     it('should return false when explicitly set to false', () => {
@@ -115,8 +115,13 @@ describe('Observability Utility Functions', () => {
       expect(isAgent365ExporterEnabled()).toBe(true);
     });
 
-    it('should return true when set to any other value', () => {
+    it('should return true when set to yes', () => {
       process.env[OpenTelemetryConstants.ENABLE_A365_OBSERVABILITY_EXPORTER] = 'yes';
+      expect(isAgent365ExporterEnabled()).toBe(true);
+    });
+
+    it('should return true when set to on', () => {
+      process.env[OpenTelemetryConstants.ENABLE_A365_OBSERVABILITY_EXPORTER] = 'on';
       expect(isAgent365ExporterEnabled()).toBe(true);
     });
   });
