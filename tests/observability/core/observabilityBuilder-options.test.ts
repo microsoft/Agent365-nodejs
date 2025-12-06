@@ -24,14 +24,9 @@ jest.mock('@microsoft/agents-a365-observability/src/tracing/exporter/Agent365Exp
 
 describe('ObservabilityBuilder exporterOptions merging', () => {
   beforeEach(() => {
-    // Ensure exporter is enabled so BatchSpanProcessor is created with Agent365Exporter
-    process.env.ENABLE_A365_OBSERVABILITY_EXPORTER = 'true';
+    // Clean up any captured options from previous tests
     delete (global as any).__capturedExporterOptions;
     delete (global as any).__capturedExporterOptionsCallCount;
-  });
-
-  afterEach(() => {
-    delete process.env.ENABLE_A365_OBSERVABILITY_EXPORTER;
   });
 
   it('applies provided exporterOptions and allows builder overrides to take precedence', () => {

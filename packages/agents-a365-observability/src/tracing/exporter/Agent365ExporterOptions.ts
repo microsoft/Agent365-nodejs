@@ -29,8 +29,8 @@ export class Agent365ExporterOptions {
   /** Environment / cluster category (e.g. "preprod", "prod"). */
   public clusterCategory: ClusterCategory | string = 'prod';
 
-  /** Optional delegate to resolve auth token used by exporter */
-  public tokenResolver?: TokenResolver; // Optional if ENABLE_A365_OBSERVABILITY_EXPORTER is false
+  /** Optional delegate to resolve auth token used by exporter. Required to send telemetry to Agent365 service; if not provided, telemetry is logged to console. */
+  public tokenResolver?: TokenResolver;
 
   /** Maximum span queue size before new spans are dropped. */
   public maxQueueSize: number = 2048;
