@@ -5,8 +5,24 @@
 
 import { OpenTelemetryConstants } from './constants';
 import { ClusterCategory } from '@microsoft/agents-a365-runtime';
+
+/**
+ * Helper function to check if a value is explicitly disabled
+ */
+const isExplicitlyDisabled = (value: string | undefined): boolean => {
+  if (!value) return false;
+  const lowerValue = value.toLowerCase();
+  return (
+    lowerValue === 'false' ||
+    lowerValue === '0' ||
+    lowerValue === 'no' ||
+    lowerValue === 'off'
+  );
+};
+
 /**
  * Check if exporter is enabled via environment variables
+ * Requires explicit enabling by setting to 'true', '1', 'yes', or 'on'
  */
 export const isAgent365ExporterEnabled: () => boolean = (): boolean => {
   const enableA365Exporter = process.env[OpenTelemetryConstants.ENABLE_A365_OBSERVABILITY_EXPORTER]?.toLowerCase();
@@ -21,17 +37,24 @@ export const isAgent365ExporterEnabled: () => boolean = (): boolean => {
 
 /**
    * Gets the enable telemetry configuration value
+   * Enabled by default, can be disabled by setting to 'false', '0', 'no', or 'off'
    */
 export const isAgent365TelemetryEnabled: () => boolean = (): boolean => {
-  const enableObservability = process.env[OpenTelemetryConstants.ENABLE_OBSERVABILITY]?.toLowerCase();
-  const enableA365 = process.env[OpenTelemetryConstants.ENABLE_A365_OBSERVABILITY]?.toLowerCase();
+  const enableObservability = process.env[OpenTelemetryConstants.ENABLE_OBSERVABILITY];
+  const enableA365 = process.env[OpenTelemetryConstants.ENABLE_A365_OBSERVABILITY];
 
-  return (
-    enableObservability === 'true' ||
-    enableObservability === '1' ||
-    enableA365 === 'true' ||
-    enableA365 === '1'
-  );
+  // If neither is set, default to enabled (true)
+  if (!enableObservability && !enableA365) {
+    return true;
+  }
+
+  // If both are set, both must not be disabled
+  // If only one is set, it must not be disabled
+  return enableObservability && enableA365
+    ? !isExplicitlyDisabled(enableObservability) && !isExplicitlyDisabled(enableA365)
+    : enableObservability
+      ? !isExplicitlyDisabled(enableObservability)
+      : !isExplicitlyDisabled(enableA365);
 };
 
 /**

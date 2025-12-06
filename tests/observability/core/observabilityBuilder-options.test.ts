@@ -24,17 +24,20 @@ jest.mock('@microsoft/agents-a365-observability/src/tracing/exporter/Agent365Exp
 
 describe('ObservabilityBuilder exporterOptions merging', () => {
   beforeEach(() => {
-    // Ensure exporter is enabled so BatchSpanProcessor is created with Agent365Exporter
-    process.env.ENABLE_A365_OBSERVABILITY_EXPORTER = 'true';
+    // Clean up any captured options from previous tests
     delete (global as any).__capturedExporterOptions;
     delete (global as any).__capturedExporterOptionsCallCount;
   });
 
   afterEach(() => {
+    // Clean up environment variable after each test
     delete process.env.ENABLE_A365_OBSERVABILITY_EXPORTER;
   });
 
   it('applies provided exporterOptions and allows builder overrides to take precedence', () => {
+    // Enable Agent365 exporter to test the exporter options
+    process.env.ENABLE_A365_OBSERVABILITY_EXPORTER = 'true';
+
     const builder = new ObservabilityBuilder()
       .withExporterOptions({
         maxQueueSize: 10,
@@ -65,13 +68,42 @@ describe('ObservabilityBuilder exporterOptions merging', () => {
   });
 
   it('defaults to prod clusterCategory when none provided', () => {
+    // Enable Agent365 exporter to test the exporter options
+    process.env.ENABLE_A365_OBSERVABILITY_EXPORTER = 'true';
+
     const builder = new ObservabilityBuilder()
-      .withExporterOptions({ maxQueueSize: 15 }); // no cluster category passed
+      .withExporterOptions({ maxQueueSize: 15 }) // no cluster category passed
+      .withTokenResolver(() => 'test-token'); // Add token resolver so Agent365Exporter is used
 
     builder.build();
     const captured: any = (global as any).__capturedExporterOptions;
     expect(captured.clusterCategory).toBe('prod');
     expect(captured.maxQueueSize).toBe(15);
     expect(captured.scheduledDelayMilliseconds).toBe(5000); // default value
-  });  
+  });
+
+  it('uses ConsoleSpanExporter when no tokenResolver is provided', () => {
+    const builder = new ObservabilityBuilder()
+      .withExporterOptions({ maxQueueSize: 15 }); // no token resolver
+
+    const built = builder.build();
+    expect(built).toBe(true);
+
+    // Since no tokenResolver was provided, Agent365Exporter should NOT be created
+    const captured: any = (global as any).__capturedExporterOptions;
+    expect(captured).toBeUndefined();
+  });
+
+  it('uses ConsoleSpanExporter when ENABLE_A365_OBSERVABILITY_EXPORTER is not set', () => {
+    // Even with tokenResolver, if env var is not set, should use ConsoleSpanExporter
+    const builder = new ObservabilityBuilder()
+      .withTokenResolver(() => 'test-token');
+
+    const built = builder.build();
+    expect(built).toBe(true);
+
+    // Since ENABLE_A365_OBSERVABILITY_EXPORTER is not set, Agent365Exporter should NOT be created
+    const captured: any = (global as any).__capturedExporterOptions;
+    expect(captured).toBeUndefined();
+  });
 });

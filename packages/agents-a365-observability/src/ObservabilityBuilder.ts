@@ -91,24 +91,33 @@ export class ObservabilityBuilder {
   }
 
   private createBatchProcessor(): BatchSpanProcessor {
-    if (!isAgent365ExporterEnabled()) {
-      return new BatchSpanProcessor(new ConsoleSpanExporter());
+    // To send telemetry to Agent365 service, BOTH conditions must be met:
+    // 1. ENABLE_A365_OBSERVABILITY_EXPORTER=true must be explicitly set
+    // 2. A tokenResolver must be provided
+    const isExporterEnabled = isAgent365ExporterEnabled();
+    const hasTokenResolver = this.options.tokenResolver || this.options.exporterOptions?.tokenResolver;
+    
+    // Use Agent365Exporter only if both exporter is enabled AND token resolver is available
+    if (isExporterEnabled && hasTokenResolver) {
+      const opts = new Agent365ExporterOptions();
+      if (this.options.exporterOptions) {
+        Object.assign(opts, this.options.exporterOptions);
+      }
+      opts.clusterCategory = this.options.clusterCategory || opts.clusterCategory || 'prod';
+      if (this.options.tokenResolver) {
+        opts.tokenResolver = this.options.tokenResolver;
+      }
+      
+      return new BatchSpanProcessor(new Agent365Exporter(opts), {
+        maxQueueSize: opts.maxQueueSize,
+        scheduledDelayMillis: opts.scheduledDelayMilliseconds,
+        exportTimeoutMillis: opts.exporterTimeoutMilliseconds,
+        maxExportBatchSize: opts.maxExportBatchSize
+      });
     }
-
-    const opts = new Agent365ExporterOptions();
-    if (this.options.exporterOptions) {
-      Object.assign(opts, this.options.exporterOptions);
-    }
-    opts.clusterCategory = this.options.clusterCategory || opts.clusterCategory || 'prod';
-    if (this.options.tokenResolver) {
-      opts.tokenResolver = this.options.tokenResolver;
-    }
-    return new BatchSpanProcessor(new Agent365Exporter(opts), {
-      maxQueueSize: opts.maxQueueSize,
-      scheduledDelayMillis: opts.scheduledDelayMilliseconds,
-      exportTimeoutMillis: opts.exporterTimeoutMilliseconds,
-      maxExportBatchSize: opts.maxExportBatchSize
-    });
+    
+    // Default: use console exporter (for local development and when service export is not configured)
+    return new BatchSpanProcessor(new ConsoleSpanExporter());
   }
 
   private createResource() {
