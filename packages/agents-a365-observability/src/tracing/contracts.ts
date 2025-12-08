@@ -124,9 +124,6 @@ export interface AgentDetails {
 
   /** The client IP address for the agent user */
   agentClientIP?: string;
-
-  /** The platform identifier for the agent */
-  platformId?: string;
 }
 
 /**
