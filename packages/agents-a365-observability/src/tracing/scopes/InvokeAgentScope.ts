@@ -8,7 +8,7 @@ import {
   InvokeAgentDetails,
   TenantDetails,
   CallerDetails,
-  EnhancedAgentDetails
+  AgentDetails
 } from '../contracts';
 import { OpenTelemetryConstants } from '../constants';
 
@@ -27,7 +27,7 @@ export class InvokeAgentScope extends OpenTelemetryScope {
   public static start(
     invokeAgentDetails: InvokeAgentDetails,
     tenantDetails: TenantDetails,
-    callerAgentDetails?: EnhancedAgentDetails,
+    callerAgentDetails?: AgentDetails,
     callerDetails?: CallerDetails,
   ): InvokeAgentScope {
     return new InvokeAgentScope(invokeAgentDetails, tenantDetails, callerAgentDetails, callerDetails);
@@ -36,7 +36,7 @@ export class InvokeAgentScope extends OpenTelemetryScope {
   private constructor(
     invokeAgentDetails: InvokeAgentDetails,
     tenantDetails: TenantDetails,
-    callerAgentDetails?: EnhancedAgentDetails,
+    callerAgentDetails?: AgentDetails,
     callerDetails?: CallerDetails,
   ) {
     super(
