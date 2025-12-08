@@ -3,8 +3,8 @@
 // ------------------------------------------------------------------------------
 
 import { context, propagation } from '@opentelemetry/api';
-import { BaggageBuilder, BaggageScope } from '@microsoft/agents-a365-observability/dist/cjs/tracing/middleware/BaggageBuilder';
-import { OpenTelemetryConstants } from '@microsoft/agents-a365-observability/dist/cjs/tracing/constants';
+import { BaggageBuilder, BaggageScope } from '@microsoft/agents-a365-observability/src/tracing/middleware/BaggageBuilder';
+import { OpenTelemetryConstants } from '@microsoft/agents-a365-observability/src/tracing/constants';
 
 describe('BaggageBuilder', () => {
   describe('fluent setters', () => {

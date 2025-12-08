@@ -1,7 +1,7 @@
 {
-  "name": "@microsoft/agents-a365-observability-tokencache",
+"name": "@microsoft/agents-a365-observability-hosting",
   "version": "0.0.0-placeholder",
-  "description": "Microsoft Agent 365 SDK observability token cache utilities",
+  "description": "Hosting & Observability utilities for Agent365 (Node.js): token caching, baggage builder, hosting registration.",
   "keywords": [
     "agent365",
     "observability",
@@ -16,7 +16,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/microsoft/Agent365-nodejs.git",
-    "directory": "packages/agents-a365-observability-tokencache"
+    "directory": "packages/agents-a365-observability-hosting"
   },
   "license": "MIT",
   "author": "Microsoft",
@@ -36,7 +36,7 @@
     "clean": "npx rimraf dist",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
-    "test": "jest --config ./jest.config.cjs --passWithNoTests",
+    "test": "jest --passWithNoTests",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "pack": "npm pack --pack-destination=../"

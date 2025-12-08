@@ -2,10 +2,10 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // ------------------------------------------------------------------------------
 
-import { ObservabilityBuilder } from '@microsoft/agents-a365-observability/dist/cjs/ObservabilityBuilder';
+import { ObservabilityBuilder } from '@microsoft/agents-a365-observability/src/ObservabilityBuilder';
 
 // Mock the Agent365Exporter so we can capture the constructed options without performing network calls.
-jest.mock('@microsoft/agents-a365-observability/dist/cjs/tracing/exporter/Agent365Exporter', () => {
+jest.mock('@microsoft/agents-a365-observability/src/tracing/exporter/Agent365Exporter', () => {
   return {
     Agent365Exporter: class {
       public static lastOptions: any;

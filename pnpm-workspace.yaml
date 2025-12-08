@@ -23,7 +23,7 @@ overrides:
   "@opentelemetry/semantic-conventions": "^1.37.0"
 
   # Model Context Protocol SDK
-  "@modelcontextprotocol/sdk": "^1.19.0"
+  "@modelcontextprotocol/sdk": "^1.24.0"
 
   # Azure packages
   "@azure/monitor-opentelemetry-exporter": "^1.0.0-beta.32"

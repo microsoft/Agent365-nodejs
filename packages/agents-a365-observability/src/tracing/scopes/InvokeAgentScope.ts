@@ -16,7 +16,6 @@ import { OpenTelemetryConstants } from '../constants';
  * Provides OpenTelemetry tracing scope for AI agent invocation operations.
  */
 export class InvokeAgentScope extends OpenTelemetryScope {
-
   /**
    * Creates and starts a new scope for agent invocation tracing.
    * @param invokeAgentDetails The details of the agent invocation including endpoint, agent information, and conversation context.
@@ -81,7 +80,6 @@ export class InvokeAgentScope extends OpenTelemetryScope {
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY, callerDetails.callerId);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_UPN_KEY, callerDetails.callerUpn);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY, callerDetails.callerName);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_USER_ID_KEY, callerDetails.callerUserId);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_TENANT_ID_KEY, callerDetails.tenantId);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY, callerDetails.callerClientIp);
     }
