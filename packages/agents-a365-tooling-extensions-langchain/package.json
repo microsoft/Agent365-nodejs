@@ -17,7 +17,7 @@
     "lint:fix": "eslint src/**/*.ts --fix",
     "prepublishOnly": "npm run clean && npm run build",
     "ci": "npm ci",
-    "pack": "cp ../../CHANGELOG.md . && cp ../../LICENSE.md . && npm pack --pack-destination=../"
+    "pack": "node ../../copyFiles.js . && pnpm pack --pack-destination=../"
   },
   "keywords": [
     "ai",
@@ -34,24 +34,24 @@
     "directory": "packages/agents-a365-tooling-extensions-langchain"
   },
   "dependencies": {
-    "@langchain/mcp-adapters": "*",
+    "@langchain/mcp-adapters": "catalog:",
     "@microsoft/agents-a365-runtime": "workspace:*",
     "@microsoft/agents-a365-tooling": "workspace:*",
-    "@microsoft/agents-hosting": "*",
-    "langchain": "^1.0.1"
+    "@microsoft/agents-hosting": "catalog:",
+    "langchain": "catalog:"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.1",
-    "@types/jest": "workspace:*",
-    "@types/node": "^20.0.0",
-    "@typescript-eslint/eslint-plugin": "^8.47.0",
-    "@typescript-eslint/parser": "^8.47.0",
-    "eslint": "^9.39.1",
-    "jest": "workspace:*",
-    "rimraf": "^5.0.0",
-    "ts-jest": "workspace:*",
-    "typescript": "^5.9.3",
-    "typescript-eslint": "^8.47.0"
+    "@eslint/js": "catalog:",
+    "@types/jest": "catalog:",
+    "@types/node": "catalog:",
+    "@typescript-eslint/eslint-plugin": "catalog:",
+    "@typescript-eslint/parser": "catalog:",
+    "eslint": "catalog:",
+    "jest": "catalog:",
+    "rimraf": "catalog:",
+    "ts-jest": "catalog:",
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:"
   },
   "engines": {
     "node": ">=18.0.0"
