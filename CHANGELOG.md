@@ -53,6 +53,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Node.js 18.0 or later
 - TypeScript 5.0 or later (for development)
 - OpenTelemetry 1.8.0 or later
-
-er (for development)
-- OpenTelemetry 1.8.0 or later
