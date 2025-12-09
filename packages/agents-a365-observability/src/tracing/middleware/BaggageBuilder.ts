@@ -196,7 +196,6 @@ export class BaggageBuilder {
    * @param value The caller client IP address
    * @returns Self for method chaining
    */
-  
   callerClientIp(value: string | null | undefined): BaggageBuilder {
     this.set(OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY, value);
     return this;
