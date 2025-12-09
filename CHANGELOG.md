@@ -5,6 +5,17 @@ All notable changes to the Agent365 TypeScript SDK will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-12-08
+
+### Changed
+- Merged `EnhancedAgentDetails` into `AgentDetails` to unify agent detail typing across scopes and middleware.
+
+### Deprecated
+- `EnhancedAgentDetails` is now an alias of `AgentDetails` and marked as deprecated. Existing imports continue to work without breaking changes; migrate to `AgentDetails` when convenient.
+
+### Notes
+- This release is non-breaking. A minor version bump reflects additive API changes and deprecation guidance.
+
 ## [1.0.0] - 2025-01-03
 
 ### Added
