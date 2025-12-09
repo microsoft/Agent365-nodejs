@@ -3,10 +3,9 @@
 
 import { TurnContext } from '@microsoft/agents-hosting';
 import * as jwt from 'jsonwebtoken';
-import { type } from 'os';
+import os from 'os';
 
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import { LIB_VERSION } from './version';
 
 /**
  * Utility class providing helper methods for agent runtime operations.
@@ -60,23 +59,8 @@ export class Utility {
    * @returns Formatted User-Agent header string.
    */
   public static GetUserAgentHeader(orchestrator: string = ''): string {
-    this.setPackageVersion();
-
-    const osType = type();
+    const osType = os.type();
     const orchestratorPart = orchestrator ? `; ${orchestrator}` : '';
-    return `Agent365SDK/${this.cachedVersion} (${osType}; Node.js ${process.version}${orchestratorPart})`;
-  }
-
-  private static setPackageVersion(): void {
-    if (this.cachedVersion === undefined) {
-      try {
-        const packageJson = JSON.parse(
-          readFileSync(join(__dirname, '../../package.json'), 'utf-8')
-        );
-        this.cachedVersion = packageJson.version || 'unknown';
-      } catch {
-        this.cachedVersion = 'unknown';
-      }
-    }
+    return `Agent365SDK/${LIB_VERSION} (${osType}; Node.js ${process.version}${orchestratorPart})`;
   }
 }

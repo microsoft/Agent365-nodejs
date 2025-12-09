@@ -27,8 +27,6 @@ overrides:
   express: ^5.1.0
   zod: ^4.1.12
   jsonwebtoken: ^9.0.2
-  pkginfo: ^0.4.1
-  '@types/pkginfo': ^0.4.4
   '@microsoft/m365agentsplayground': ^0.2.18
   typescript: ^5.9.3
   jest: ^30.2.0
