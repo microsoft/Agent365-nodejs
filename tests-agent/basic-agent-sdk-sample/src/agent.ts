@@ -20,8 +20,6 @@ import {
   ToolCallDetails,
   InferenceDetails,
   InferenceOperationType,
-  ExecutionType,
-  EnhancedAgentDetails,
   ServiceEndpoint,
 } from '@microsoft/agents-a365-observability';
 import { getObservabilityAuthenticationScope } from '@microsoft/agents-a365-runtime';

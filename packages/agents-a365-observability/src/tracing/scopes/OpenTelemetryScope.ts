@@ -5,7 +5,7 @@
 import { trace, SpanKind, Span, SpanStatusCode, Attributes, context } from '@opentelemetry/api';
 import { OpenTelemetryConstants } from '../constants';
 import { isAgent365TelemetryEnabled } from '../util';
-import { EnhancedAgentDetails, TenantDetails } from '../contracts';
+import { AgentDetails, TenantDetails } from '../contracts';
 import logger from '../../utils/logging';
 
 /**
@@ -35,7 +35,7 @@ export abstract class OpenTelemetryScope implements Disposable {
     kind: SpanKind,
     operationName: string,
     spanName: string,
-    agentDetails?: EnhancedAgentDetails,
+    agentDetails?: AgentDetails,
     tenantDetails?: TenantDetails
   ) {
     const currentContext = context.active();
