@@ -27,10 +27,10 @@ export const isAgent365TelemetryEnabled: () => boolean = (): boolean => {
   const enableA365 = process.env[OpenTelemetryConstants.ENABLE_A365_OBSERVABILITY]?.toLowerCase();
 
   return (
-    enableObservability === 'true' ||
-    enableObservability === '1' ||
-    enableA365 === 'true' ||
-    enableA365 === '1'
+    !(enableObservability === 'false' ||
+    enableObservability === '0' ||
+    enableA365 === 'false' ||
+    enableA365 === '0')
   );
 };
 
