@@ -1,6 +1,6 @@
 {
 "name": "@microsoft/agents-a365-observability-hosting",
-  "version": "0.1.0",
+  "version": "0.0.0-placeholder",
   "description": "Hosting & Observability utilities for Agent365 (Node.js): token caching, baggage builder, hosting registration.",
   "keywords": [
     "agent365",
