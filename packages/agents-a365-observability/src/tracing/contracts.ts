@@ -175,28 +175,7 @@ export interface CallerDetails {
   callerClientIp?: string;
 }
 
-/**
- * Enhanced agent details with additional properties
- */
-export interface EnhancedAgentDetails extends AgentDetails {
-  /** The agent user ID (AUID) */
-  agentAUID?: string;
-
-  /** The agent user principal name (UPN) */
-  agentUPN?: string;
-
-  /** The agent blueprint/application ID */
-  agentBlueprintId?: string;
-
-  /** The tenant ID for the agent */
-  tenantId?: string;
-
-  /** The client IP address for the agent user */
-  agentClientIP?: string;
-
-  /** Optional platform identifier for the agent */
-  platformId?: string;
-}
+/*
  * @deprecated Use AgentDetails. EnhancedAgentDetails is now an alias of AgentDetails.
  */
 export type EnhancedAgentDetails = AgentDetails;
