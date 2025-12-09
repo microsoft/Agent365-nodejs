@@ -11,8 +11,6 @@ import { LIB_VERSION } from './version';
  * Utility class providing helper methods for agent runtime operations.
  */
 export class Utility {
-  private static cachedVersion: string | undefined;
-
   /**
    * Decodes the current token and retrieves the App ID (appid or azp claim).
    * @param token Token to Decode

@@ -102,4 +102,31 @@ describe('Utility', () => {
       expect(Utility.ResolveAgentIdentity(mockContext, '')).toEqual('00000000-0000-0000-0000-000000000000');
     });
   });
+
+  describe('GetUserAgentHeader', () => {
+    it('returns string containing version, OS, and orchestrator', () => {
+      // Arrange
+      const orchestrator = 'orch';
+
+      // Act
+      const header = Utility.GetUserAgentHeader(orchestrator);
+
+      // Assert
+      expect(header).toMatch(
+        /^Agent365SDK\/.+ \(.+; Node\.js v\d+(\.\d+)*; orch\)$/
+      );
+    });
+
+    it('works without orchestrator passed', () => {
+      // Arrange
+
+      // Act
+      const header = Utility.GetUserAgentHeader();
+
+      // Assert
+      expect(header).toMatch(
+        /^Agent365SDK\/.+ \(.+; Node\.js v\d+(\.\d+)*\)$/
+      );
+    });
+  });
 });
