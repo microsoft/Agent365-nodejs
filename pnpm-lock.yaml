@@ -21,6 +21,9 @@ catalogs:
     '@eslint/js':
       specifier: ^9.39.1
       version: 9.39.1
+    '@jest/globals':
+      specifier: ^30.2.0
+      version: 30.2.0
     '@langchain/mcp-adapters':
       specifier: ^1.0.0
       version: 1.0.0
@@ -66,6 +69,9 @@ catalogs:
     '@opentelemetry/semantic-conventions':
       specifier: ^1.37.0
       version: 1.38.0
+    '@types/express':
+      specifier: ^5.0.0
+      version: 5.0.5
     '@types/jest':
       specifier: ^30.0.0
       version: 30.0.0
@@ -102,6 +108,9 @@ catalogs:
     langchain:
       specifier: ^1.0.1
       version: 1.0.6
+    nodemon:
+      specifier: ^3.1.10
+      version: 3.1.11
     openai:
       specifier: ^4.8.0
       version: 4.104.0
@@ -111,6 +120,9 @@ catalogs:
     ts-jest:
       specifier: ^29.4.5
       version: 29.4.5
+    ts-node:
+      specifier: ^10.9.2
+      version: 10.9.2
     typescript:
       specifier: ^5.9.3
       version: 5.9.3
@@ -120,11 +132,7 @@ catalogs:
 
 overrides:
   zod: ^4.1.12
-  '@jest/globals': ^30.2.0
-  '@types/express': ^5.0.0
   '@types/uuid': ^9.0.0
-  nodemon: ^3.1.10
-  ts-node: ^10.9.2
   uuid: ^9.0.0
 
 importers:
@@ -808,13 +816,13 @@ importers:
         specifier: 'catalog:'
         version: 9.39.1
       '@jest/globals':
-        specifier: ^30.2.0
+        specifier: 'catalog:'
         version: 30.2.0
       '@microsoft/m365agentsplayground':
         specifier: 'catalog:'
         version: 0.2.20
       '@types/express':
-        specifier: ^5.0.0
+        specifier: 'catalog:'
         version: 5.0.5
       '@types/node':
         specifier: 'catalog:'
@@ -832,7 +840,7 @@ importers:
         specifier: 'catalog:'
         version: 30.2.0(@types/node@20.19.25)(ts-node@10.9.2(@types/node@20.19.25)(typescript@5.9.3))
       nodemon:
-        specifier: ^3.1.10
+        specifier: 'catalog:'
         version: 3.1.11
       rimraf:
         specifier: 'catalog:'
@@ -841,7 +849,7 @@ importers:
         specifier: 'catalog:'
         version: 29.4.5(@babel/core@7.28.5)(@jest/transform@30.2.0)(@jest/types@30.2.0)(babel-jest@30.2.0(@babel/core@7.28.5))(jest-util@30.2.0)(jest@30.2.0(@types/node@20.19.25)(ts-node@10.9.2(@types/node@20.19.25)(typescript@5.9.3)))(typescript@5.9.3)
       ts-node:
-        specifier: ^10.9.2
+        specifier: 'catalog:'
         version: 10.9.2(@types/node@20.19.25)(typescript@5.9.3)
       typescript:
         specifier: 'catalog:'
@@ -1802,8 +1810,14 @@ packages:
   '@types/estree@1.0.8':
     resolution: {integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==}
 
+  '@types/express-serve-static-core@4.19.7':
+    resolution: {integrity: sha512-FvPtiIf1LfhzsaIXhv/PHan/2FeQBbtBDtfX2QfvPxdUelMDEckK08SM6nqo1MIZY3RUlfA+HV8+hFUSio78qg==}
+
   '@types/express-serve-static-core@5.1.0':
     resolution: {integrity: sha512-jnHMsrd0Mwa9Cf4IdOzbz543y4XJepXrbia2T4b6+spXC2We3t1y6K44D3mR8XMFSXMCf3/l7rCgddfx7UNVBA==}
+
+  '@types/express@4.17.25':
+    resolution: {integrity: sha512-dVd04UKsfpINUnK0yBoYHDF3xu7xVH4BuDotC/xGuycx4CgbP48X/KF/586bcObxT0HENHXEU8Nqtu6NR+eKhw==}
 
   '@types/express@5.0.5':
     resolution: {integrity: sha512-LuIQOcb6UmnF7C1PCFmEU1u2hmiHL43fgFQX67sN3H4Z+0Yk0Neo++mFsBjhOAuLzvlQeqAAkeDOZrJs9rzumQ==}
@@ -2872,7 +2886,7 @@ packages:
     peerDependencies:
       '@types/node': '*'
       esbuild-register: '>=3.4.0'
-      ts-node: ^10.9.2
+      ts-node: '>=9.0.0'
     peerDependenciesMeta:
       '@types/node':
         optional: true
@@ -5226,12 +5240,26 @@ snapshots:
 
   '@types/estree@1.0.8': {}
 
+  '@types/express-serve-static-core@4.19.7':
+    dependencies:
+      '@types/node': 20.19.25
+      '@types/qs': 6.14.0
+      '@types/range-parser': 1.2.7
+      '@types/send': 1.2.1
+
   '@types/express-serve-static-core@5.1.0':
     dependencies:
       '@types/node': 20.19.25
       '@types/qs': 6.14.0
       '@types/range-parser': 1.2.7
       '@types/send': 1.2.1
+
+  '@types/express@4.17.25':
+    dependencies:
+      '@types/body-parser': 1.19.6
+      '@types/express-serve-static-core': 4.19.7
+      '@types/qs': 6.14.0
+      '@types/serve-static': 1.15.10
 
   '@types/express@5.0.5':
     dependencies:
@@ -6692,7 +6720,7 @@ snapshots:
 
   jwks-rsa@3.2.0:
     dependencies:
-      '@types/express': 5.0.5
+      '@types/express': 4.17.25
       '@types/jsonwebtoken': 9.0.10
       debug: 4.4.3(supports-color@5.5.0)
       jose: 4.15.9
