@@ -30,6 +30,7 @@ export class McpToolServerConfigurationService {
    *
    * @param agenticAppId The agentic app id for which to discover servers.
    * @param authToken Optional bearer token used when querying the remote tooling gateway.
+   * @param orchestratorName Optional orchestrator name to include in User-Agent header when calling the tooling gateway.
    * @returns A promise resolving to an array of normalized MCP server configuration objects.
    */
   async listToolServers(agenticAppId: string, authToken: string, orchestratorName?: string): Promise<MCPServerConfig[]> {
@@ -77,6 +78,7 @@ export class McpToolServerConfigurationService {
    *
    * @param agenticAppId The agentic app id used by the tooling gateway to scope results.
    * @param authToken Optional Bearer token to include in the Authorization header when calling the gateway.
+   * @param orchestratorName Optional orchestrator name to include in User-Agent header when calling the gateway.
    * @throws Error when the gateway call fails or returns an unexpected payload.
    */
   private async getMCPServerConfigsFromToolingGateway(agenticAppId: string, authToken: string, orchestratorName?: string): Promise<MCPServerConfig[]> {
