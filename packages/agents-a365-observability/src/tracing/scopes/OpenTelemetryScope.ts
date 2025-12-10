@@ -4,7 +4,6 @@
 
 import { trace, SpanKind, Span, SpanStatusCode, Attributes, context } from '@opentelemetry/api';
 import { OpenTelemetryConstants } from '../constants';
-import { isAgent365TelemetryEnabled } from '../util';
 import { AgentDetails, TenantDetails } from '../contracts';
 import logger from '../../utils/logging';
 
@@ -16,9 +15,6 @@ export abstract class OpenTelemetryScope implements Disposable {
 
   protected readonly span: Span;
   private readonly startTime: number;
-
-  protected static enableTelemetry = isAgent365TelemetryEnabled();
-
   private errorType?: string;
   private exception?: Error;
   private hasEnded = false;
@@ -85,23 +81,21 @@ export abstract class OpenTelemetryScope implements Disposable {
    * @param error The error that occurred
    */
   public recordError(error: Error): void {
-    if (OpenTelemetryScope.enableTelemetry) {
-      logger.error(`[A365Observability] Records an error that occurred during the operation span[${this.span.spanContext().spanId}]: ${error.message}`);
-      // Check if it's an HTTP error with status code
-      if ('status' in error && typeof error.status === 'number') {
-        this.errorType = error.status.toString();
-      } else {
-        this.errorType = error.constructor.name;
-      }
-
-      this.exception = error;
-      this.span.setStatus({
-        code: SpanStatusCode.ERROR,
-        message: error.message
-      });
-
-      this.span.recordException(error);
+    logger.error(`[A365Observability] Records an error that occurred during the operation span[${this.span.spanContext().spanId}]: ${error.message}`);
+    // Check if it's an HTTP error with status code
+    if ('status' in error && typeof error.status === 'number') {
+      this.errorType = error.status.toString();
+    } else {
+      this.errorType = error.constructor.name;
     }
+
+    this.exception = error;
+    this.span.setStatus({
+      code: SpanStatusCode.ERROR,
+      message: error.message
+    });
+
+    this.span.recordException(error);
   }
 
   /**
@@ -109,7 +103,7 @@ export abstract class OpenTelemetryScope implements Disposable {
    * @param attributes Collection of attribute key/value pairs (array or iterable of [key, value] or object map).
    */
   public recordAttributes(attributes: Iterable<[string, any]> | Record<string, any> | null | undefined): void {
-    if (!OpenTelemetryScope.enableTelemetry || !attributes) return;
+    if (!attributes) return;
     // Support both array/iterable of pairs and object maps
     if (Array.isArray(attributes)) {
       for (const [key, value] of attributes as Array<[string, any]>) {
@@ -141,7 +135,7 @@ export abstract class OpenTelemetryScope implements Disposable {
    * @param value The tag value
    */
   protected setTagMaybe<T extends string | number | boolean>(name: string, value: T | null | undefined): void {
-    if (OpenTelemetryScope.enableTelemetry && value != null) {
+    if (value != null) {
       this.span.setAttributes({ [name]: value as string | number | boolean });
     }
   }
@@ -152,11 +146,9 @@ export abstract class OpenTelemetryScope implements Disposable {
    * @param value The baggage value
    */
   protected addBaggage(key: string, value: string): void {
-    if (OpenTelemetryScope.enableTelemetry) {
-      // Note: OpenTelemetry JS doesn't have direct baggage API in span
-      // This would typically be handled through the baggage API
-      this.span.setAttributes({ [`baggage.${key}`]: value });
-    }
+    // Note: OpenTelemetry JS doesn't have direct baggage API in span
+    // This would typically be handled through the baggage API
+    this.span.setAttributes({ [`baggage.${key}`]: value });
   }
 
   /**

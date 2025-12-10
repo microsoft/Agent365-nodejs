@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.0] - 2025-12-09
 
 ### Changed
-- Enable Observability by default unless explicitly disabling it through environment variable ENABLE_A365_OBSERVABILITY or ENABLE_OBSERVABILITY. 
+- Remove ENABLE_A365_OBSERVABILITY or ENABLE_OBSERVABILITY. No longer need to use environment variable for recordAttributes, setTagMaybe, and addBaggage.
 - Merged `EnhancedAgentDetails` into `AgentDetails` to unify agent detail typing across scopes and middleware.
 
 ### Deprecated

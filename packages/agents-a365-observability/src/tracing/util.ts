@@ -20,21 +20,6 @@ export const isAgent365ExporterEnabled: () => boolean = (): boolean => {
 };
 
 /**
-   * Gets the enable telemetry configuration value
-   */
-export const isAgent365TelemetryEnabled: () => boolean = (): boolean => {
-  const enableObservability = process.env[OpenTelemetryConstants.ENABLE_OBSERVABILITY]?.toLowerCase();
-  const enableA365 = process.env[OpenTelemetryConstants.ENABLE_A365_OBSERVABILITY]?.toLowerCase();
-
-  return (
-    !(enableObservability === 'false' ||
-    enableObservability === '0' ||
-    enableA365 === 'false' ||
-    enableA365 === '0')
-  );
-};
-
-/**
  * Single toggle to use custom domain for observability export.
  * When true exporter will send traces to custom Agent365 service endpoint
  * and include x-ms-tenant-id in headers.
