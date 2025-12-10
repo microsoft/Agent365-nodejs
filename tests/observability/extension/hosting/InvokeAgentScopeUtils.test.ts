@@ -7,14 +7,6 @@ import { InvokeAgentScopeUtils } from '@microsoft/agents-a365-observability-host
 import { InvokeAgentScope, OpenTelemetryScope, OpenTelemetryConstants } from '@microsoft/agents-a365-observability';
 
 describe('InvokeAgentScopeUtils', () => {
-  beforeAll(() => {
-    // Also force static field in case module was already loaded
-    (OpenTelemetryScope as any).enableTelemetry = true;
-  });
-  afterAll(() => {
-    delete process.env[OpenTelemetryConstants.ENABLE_OBSERVABILITY];
-    (OpenTelemetryScope as any).enableTelemetry = false;
-  });
   const mockTurnContext = {
     activity: {
       from: { id: 'user1', name: 'User One', agenticUserId: 'agentic-user-1', tenantId: 'tenant1', aadObjectId: 'aad-object-1', agenticAppBlueprintId: 'blueprint-123', role: 'user' },
