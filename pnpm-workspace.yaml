@@ -15,7 +15,7 @@ catalog:
   "express": "^5.2.0"
 
   # JSON Web Token
-  "jsonwebtoken": "^9.0.2"
+  "jsonwebtoken": "^9.0.3"
 
   # LangChain packages - use latest stable
   "langchain": "^1.0.1"
