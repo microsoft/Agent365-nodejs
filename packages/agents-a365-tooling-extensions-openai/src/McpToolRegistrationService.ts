@@ -16,6 +16,7 @@ import { Agent, MCPServerStreamableHttp } from '@openai/agents';
  */
 export class McpToolRegistrationService {
   private configService: McpToolServerConfigurationService  = new McpToolServerConfigurationService();
+  private readonly orchestratorName: string = "OpenAI";
 
 
   /**
@@ -48,7 +49,7 @@ export class McpToolRegistrationService {
     Utility.ValidateAuthToken(authToken);
 
     const agenticAppId = RuntimeUtility.ResolveAgentIdentity(turnContext, authToken);
-    const servers = await this.configService.listToolServers(agenticAppId, authToken);
+    const servers = await this.configService.listToolServers(agenticAppId, authToken, this.orchestratorName);
     const mcpServers: MCPServerStreamableHttp[] = [];
 
     for (const server of servers) {
@@ -57,6 +58,8 @@ export class McpToolRegistrationService {
       if (authToken) {
         headers['Authorization'] = `Bearer ${authToken}`;
       }
+
+      headers['User-Agent'] = RuntimeUtility.GetUserAgentHeader(this.orchestratorName);
 
       // Create MCPServerStreamableHttp instance for OpenAI agents
       const mcpServer = new MCPServerStreamableHttp({

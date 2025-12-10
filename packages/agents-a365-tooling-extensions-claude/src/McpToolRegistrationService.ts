@@ -16,6 +16,7 @@ import type { McpServerConfig, Options } from '@anthropic-ai/claude-agent-sdk';
  */
 export class McpToolRegistrationService {
   private readonly configService: McpToolServerConfigurationService = new McpToolServerConfigurationService();
+  private readonly orchestratorName: string = "Claude";
 
   /**
    * Registers MCP tool servers and updates agent options with discovered tools and server configs.
@@ -46,7 +47,7 @@ export class McpToolRegistrationService {
     Utility.ValidateAuthToken(authToken);
 
     const agenticAppId = RuntimeUtility.ResolveAgentIdentity(turnContext, authToken);
-    const servers = await this.configService.listToolServers(agenticAppId, authToken);
+    const servers = await this.configService.listToolServers(agenticAppId, authToken, this.orchestratorName);
     const mcpServers: Record<string, McpServerConfig> = {};
     const tools: McpClientTool[] = [];
 
@@ -56,6 +57,8 @@ export class McpToolRegistrationService {
       if (authToken) {
         headers['Authorization'] = `Bearer ${authToken}`;
       }
+
+      headers['User-Agent'] = RuntimeUtility.GetUserAgentHeader(this.orchestratorName);
 
       // Add each server to the config object
       mcpServers[server.mcpServerName] = {

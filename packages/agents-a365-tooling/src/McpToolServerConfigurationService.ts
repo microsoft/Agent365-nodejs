@@ -10,6 +10,8 @@ import { Utility } from './Utility';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 
+import { Utility as RunTimeUtility } from '@microsoft/agents-a365-runtime';
+
 /**
  * Service responsible for discovering and normalizing MCP (Model Context Protocol)
  * tool servers and producing configuration objects consumable by the Claude SDK.
@@ -30,8 +32,9 @@ export class McpToolServerConfigurationService {
    * @param authToken Optional bearer token used when querying the remote tooling gateway.
    * @returns A promise resolving to an array of normalized MCP server configuration objects.
    */
-  async listToolServers(agenticAppId: string, authToken: string): Promise<MCPServerConfig[]> {
-    return await (this.isDevScenario() ? this.getMCPServerConfigsFromManifest() : this.getMCPServerConfigsFromToolingGateway(agenticAppId, authToken));
+  async listToolServers(agenticAppId: string, authToken: string, orchestratorName: string = ""): Promise<MCPServerConfig[]> {
+    return await (this.isDevScenario() ? this.getMCPServerConfigsFromManifest() :
+      this.getMCPServerConfigsFromToolingGateway(agenticAppId, authToken, orchestratorName));
   }
 
   /**
@@ -76,7 +79,7 @@ export class McpToolServerConfigurationService {
    * @param authToken Optional Bearer token to include in the Authorization header when calling the gateway.
    * @throws Error when the gateway call fails or returns an unexpected payload.
    */
-  private async getMCPServerConfigsFromToolingGateway(agenticAppId: string, authToken: string): Promise<MCPServerConfig[]> {
+  private async getMCPServerConfigsFromToolingGateway(agenticAppId: string, authToken: string, orchestratorName: string = ""): Promise<MCPServerConfig[]> {
     // Validate the authentication token
     Utility.ValidateAuthToken(authToken);
 
@@ -88,6 +91,7 @@ export class McpToolServerConfigurationService {
         {
           headers: {
             'Authorization': authToken ? `Bearer ${authToken}` : undefined,
+            'User-Agent': RunTimeUtility.GetUserAgentHeader(orchestratorName),
           },
           timeout: 10000 // 10 seconds timeout
         }
