@@ -4,6 +4,7 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import * as jwt from 'jsonwebtoken';
 
+// Mock jsonwebtoken module
 jest.mock('jsonwebtoken');
 
 import { Utility } from '@microsoft/agents-a365-runtime';
@@ -66,6 +67,7 @@ describe('Utility', () => {
     let mockContext: jest.Mocked<TurnContext>;
 
     beforeEach(() => {
+      jest.clearAllMocks();
       mockContext = {
         activity: {
           isAgenticRequest: jest.fn(),
@@ -100,6 +102,33 @@ describe('Utility', () => {
       mockContext.activity.isAgenticRequest.mockReturnValue(false);
 
       expect(Utility.ResolveAgentIdentity(mockContext, '')).toEqual('00000000-0000-0000-0000-000000000000');
+    });
+  });
+
+  describe('GetUserAgentHeader', () => {
+    it('returns string containing version, OS, and orchestrator', () => {
+      // Arrange
+      const orchestrator = 'orch';
+
+      // Act
+      const header = Utility.GetUserAgentHeader(orchestrator);
+
+      // Assert
+      expect(header).toMatch(
+        /^Agent365SDK\/.+ \(.+; Node\.js v\d+(\.\d+)*; orch\)$/
+      );
+    });
+
+    it('works without orchestrator passed', () => {
+      // Arrange
+
+      // Act
+      const header = Utility.GetUserAgentHeader();
+
+      // Assert
+      expect(header).toMatch(
+        /^Agent365SDK\/.+ \(.+; Node\.js v\d+(\.\d+)*\)$/
+      );
     });
   });
 });

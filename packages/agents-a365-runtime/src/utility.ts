@@ -3,6 +3,9 @@
 
 import { TurnContext } from '@microsoft/agents-hosting';
 import * as jwt from 'jsonwebtoken';
+import os from 'os';
+
+import { LIB_VERSION } from './version';
 
 /**
  * Utility class providing helper methods for agent runtime operations.
@@ -46,5 +49,16 @@ export class Utility {
       : this.GetAppIdFromToken(authToken);
 
     return agenticAppId;
+  }
+
+  /**
+   * Generates a User-Agent header string containing SDK version, OS type, Node.js version, and orchestrator.
+   * @param orchestrator Optional orchestrator identifier to include in the User-Agent string.
+   * @returns Formatted User-Agent header string.
+   */
+  public static GetUserAgentHeader(orchestrator: string = ''): string {
+    const osType = os.type();
+    const orchestratorPart = orchestrator ? `; ${orchestrator}` : '';
+    return `Agent365SDK/${LIB_VERSION} (${osType}; Node.js ${process.version}${orchestratorPart})`;
   }
 }
