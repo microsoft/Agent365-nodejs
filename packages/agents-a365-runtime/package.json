@@ -6,6 +6,7 @@
   "module": "dist/esm/index.js",
   "types": "dist/esm/index.d.ts",
   "scripts": {
+    "prebuild": "node -p \"'export const LIB_VERSION = ' + JSON.stringify(require('./package.json').version) + ';'\" > src/version.ts",
     "build:cjs": "npx tsc --project tsconfig.cjs.json",
     "build:esm": "npx tsc --project tsconfig.esm.json",
     "build": "npm run build:cjs && npm run build:esm",
