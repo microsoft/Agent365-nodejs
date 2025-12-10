@@ -4,6 +4,7 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import * as jwt from 'jsonwebtoken';
 
+// Mock jsonwebtoken module
 jest.mock('jsonwebtoken');
 
 import { Utility } from '@microsoft/agents-a365-runtime';
@@ -66,6 +67,7 @@ describe('Utility', () => {
     let mockContext: jest.Mocked<TurnContext>;
 
     beforeEach(() => {
+      jest.clearAllMocks();
       mockContext = {
         activity: {
           isAgenticRequest: jest.fn(),
