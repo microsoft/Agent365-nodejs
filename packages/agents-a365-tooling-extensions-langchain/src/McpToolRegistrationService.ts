@@ -51,7 +51,7 @@ export class McpToolRegistrationService {
     const agenticAppId = RuntimeUtility.ResolveAgentIdentity(turnContext, authToken);
     const channelId = turnContext?.activity?.channelId as string | undefined;
     const subChannelId = turnContext?.activity?.channelIdSubChannel as string | undefined;
-    const servers = await this.configService.listToolServers(agenticAppId, authToken);
+    const servers = await this.configService.listToolServers(agenticAppId, authToken, channelId, subChannelId);
     const mcpServers: Record<string, Connection> = {};
 
     for (const server of servers) {

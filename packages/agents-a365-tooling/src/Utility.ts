@@ -10,7 +10,7 @@ export class Utility {
 
   /**
    * Compose standard headers for MCP tooling requests.
-   * Includes Authorization bearer token when provided, and optional
+    * Includes Authorization bearer token when provided, and optionally includes channel and subchannel identifiers for routing.
    *
    * @param authToken Bearer token.
    * @param channelId Optional channel identifier.
@@ -25,7 +25,7 @@ export class Utility {
     const headers: Record<string, string> = {};
 
     if (authToken) {
-      headers['Authorization'] =`Bearer ${authToken}`;
+      headers['Authorization'] = `Bearer ${authToken}`;
     }
 
     if (channelId) {
