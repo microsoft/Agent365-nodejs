@@ -7,7 +7,7 @@ import { ExportResult,ExportResultCode } from '@opentelemetry/core';
 import { ReadableSpan, SpanExporter } from '@opentelemetry/sdk-trace-base';
 
 import { PowerPlatformApiDiscovery, ClusterCategory } from '@microsoft/agents-a365-runtime';
-import { partitionByIdentity, parseIdentityKey, hexTraceId, hexSpanId, kindName, statusName } from './utils';
+import { buildAdditionalHttpRequestHeadersFromSpans, partitionByIdentity, parseIdentityKey, hexTraceId, hexSpanId, kindName, statusName } from './utils';
 import logger, { formatError } from '../../utils/logging';
 import { Agent365ExporterOptions } from './Agent365ExporterOptions';
 import { useCustomDomainForObservability, resolveAgent365Endpoint } from '../util';
@@ -163,6 +163,7 @@ export class Agent365Exporter implements SpanExporter {
       'content-type': 'application/json'
     };
 
+    Object.assign(headers, buildAdditionalHttpRequestHeadersFromSpans(spans));
     if (!this.options.tokenResolver) {
       logger.error('[Agent365Exporter] tokenResolver is undefined, skip exporting');
       return;

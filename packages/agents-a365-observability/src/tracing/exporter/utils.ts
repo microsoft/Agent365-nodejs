@@ -79,6 +79,40 @@ export function statusName(code: SpanStatusCode): string {
 }
 
 /**
+ * Build additional HTTP request headers from span attributes.
+ *
+ * Extracts channel metadata when present on any of the provided spans:
+ * - `x-ms-channel-id` is sourced from `GEN_AI_EXECUTION_SOURCE_NAME_KEY`.
+ * - `x-ms-subchannel-id` is sourced from `GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY`.
+ */
+export function buildAdditionalHttpRequestHeadersFromSpans(
+  spans: ReadableSpan[]
+): Record<string, string> {
+  const headers: Record<string, string> = {};
+
+  // Find the first span that has channel metadata
+  for (const span of spans) {
+    const attrs = span.attributes || {};
+    const channelId = asStr(attrs[OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY]);
+    const subchannelId = asStr(attrs[OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY]);
+
+    if (channelId) {
+      headers['x-ms-channel-id'] = channelId;
+    }
+    if (subchannelId) {
+      headers['x-ms-subchannel-id'] = subchannelId;
+    }
+
+    // If both are set, we can stop early
+    if (headers['x-ms-channel-id'] && headers['x-ms-subchannel-id']) {
+      break;
+    }
+  }
+
+  return headers;
+}
+
+/**
  * Partition spans by (tenantId, agentId) identity pairs
  */
 export function partitionByIdentity(

@@ -164,4 +164,32 @@ describe('Agent365Exporter', () => {
     // Intentionally omit tokenResolver
     expect(() => new Agent365Exporter(opts)).toThrow(/tokenResolver must be provided/);
   });
+
+  it('adds channel headers from span attributes', async () => {
+    mockFetchSequence([200]);
+    const token = 'tok-headers';
+    const opts = new Agent365ExporterOptions();
+    opts.clusterCategory = 'prod';
+    opts.tokenResolver = () => token;
+    const exporter = new Agent365Exporter(opts);
+
+    const spans = [
+      makeSpan({
+        [OpenTelemetryConstants.TENANT_ID_KEY]: tenantId,
+        [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]: agentId,
+        [OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY]: 'chat',
+        [OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY]: 'thread-123'
+      })
+    ];
+
+    const callback = jest.fn();
+    await exporter.export(spans, callback);
+    expect(callback).toHaveBeenCalledWith({ code: ExportResultCode.SUCCESS });
+
+    const fetchCalls = (global.fetch as unknown as { mock: { calls: unknown[][] } }).mock.calls;
+    expect(fetchCalls.length).toBe(1);
+    const headersArg = (fetchCalls[0][1] as { headers: Record<string, string> }).headers;
+    expect(headersArg['x-ms-channel-id']).toBe('chat');
+    expect(headersArg['x-ms-subchannel-id']).toBe('thread-123');
+  });
 });
