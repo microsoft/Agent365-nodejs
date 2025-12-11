@@ -4,7 +4,7 @@
 import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
-import { MCPServerConfig, McpClientTool } from './contracts';
+import { MCPServerConfig, McpClientTool, ToolOptions } from './contracts';
 import { Utility } from './Utility';
 
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
@@ -39,12 +39,15 @@ export class McpToolServerConfigurationService {
    *
    * @param agenticAppId The agentic app id for which to discover servers.
    * @param authToken Optional bearer token used when querying the remote tooling gateway.
-   * @param orchestratorName Optional orchestrator name to include in User-Agent header when calling the tooling gateway.
+   * @param options Optional tool options including orchestrator name for User-Agent header when calling the gateway.
    * @returns A promise resolving to an array of normalized MCP server configuration objects.
    */
-  async listToolServers(agenticAppId: string, authToken: string, orchestratorName?: string): Promise<MCPServerConfig[]> {
+  async listToolServers(agenticAppId: string, authToken: string, options?: ToolOptions): Promise<MCPServerConfig[]>;
+
+
+  async listToolServers(agenticAppId: string, authToken: string, options?: ToolOptions): Promise<MCPServerConfig[]> {
     return await (this.isDevScenario() ? this.getMCPServerConfigsFromManifest() :
-      this.getMCPServerConfigsFromToolingGateway(agenticAppId, authToken, orchestratorName));
+      this.getMCPServerConfigsFromToolingGateway(agenticAppId, authToken, options));
   }
 
   /**
@@ -90,7 +93,7 @@ export class McpToolServerConfigurationService {
    * @param orchestratorName Optional orchestrator name to include in User-Agent header when calling the gateway.
    * @throws Error when the gateway call fails or returns an unexpected payload.
    */
-  private async getMCPServerConfigsFromToolingGateway(agenticAppId: string, authToken: string, orchestratorName?: string): Promise<MCPServerConfig[]> {
+  private async getMCPServerConfigsFromToolingGateway(agenticAppId: string, authToken: string, options?: ToolOptions): Promise<MCPServerConfig[]> {
     // Validate the authentication token
     Utility.ValidateAuthToken(authToken);
 
@@ -102,7 +105,7 @@ export class McpToolServerConfigurationService {
         {
           headers: {
             'Authorization': authToken ? `Bearer ${authToken}` : undefined,
-            'User-Agent': RunTimeUtility.GetUserAgentHeader(orchestratorName),
+            'User-Agent': RunTimeUtility.GetUserAgentHeader(options?.orchestratorName),
           },
           timeout: 10000 // 10 seconds timeout
         }

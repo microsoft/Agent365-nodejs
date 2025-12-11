@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { McpToolServerConfigurationService, Utility } from '@microsoft/agents-a365-tooling';
+import { McpToolServerConfigurationService, Utility, ToolOptions } from '@microsoft/agents-a365-tooling';
 import { AgenticAuthenticationService, Utility as RuntimeUtility } from '@microsoft/agents-a365-runtime';
 
 // Agents SDK
@@ -49,7 +49,8 @@ export class McpToolRegistrationService {
     Utility.ValidateAuthToken(authToken);
 
     const agenticAppId = RuntimeUtility.ResolveAgentIdentity(turnContext, authToken);
-    const servers = await this.configService.listToolServers(agenticAppId, authToken, this.orchestratorName);
+    const options: ToolOptions = { orchestratorName: this.orchestratorName };
+    const servers = await this.configService.listToolServers(agenticAppId, authToken, options);
     const mcpServers: MCPServerStreamableHttp[] = [];
 
     for (const server of servers) {
