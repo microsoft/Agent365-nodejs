@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+import { TurnContext } from '@microsoft/agents-hosting';
+
 // Constant for MCP Platform base URL in production
 const MCP_PLATFORM_PROD_BASE_URL = 'https://agent365.svc.cloud.microsoft';
 
@@ -18,15 +20,17 @@ export class Utility {
    * @returns A headers record suitable for HTTP requests.
    */
   public static GetToolRequestHeaders(
-    authToken: string,
-    channelId?: string,
-    subChannelId?: string
+    authToken?: string,
+    turnContext?: TurnContext
   ): Record<string, string> {
     const headers: Record<string, string> = {};
 
     if (authToken) {
       headers['Authorization'] = `Bearer ${authToken}`;
     }
+
+    const channelId = turnContext?.activity?.channelId as string | undefined;
+    const subChannelId = turnContext?.activity?.channelIdSubChannel as string | undefined;
 
     if (channelId) {
       headers[Utility.HEADER_CHANNEL_ID] = channelId;

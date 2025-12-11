@@ -46,15 +46,13 @@ export class McpToolRegistrationService {
     Utility.ValidateAuthToken(authToken);
 
     const agenticAppId = RuntimeUtility.ResolveAgentIdentity(turnContext, authToken);
-    const channelId = turnContext?.activity?.channelId as string | undefined;
-    const subChannelId = turnContext?.activity?.channelIdSubChannel as string | undefined;
-    const servers = await this.configService.listToolServers(agenticAppId, authToken, channelId, subChannelId);
+    const servers = await this.configService.listToolServers(agenticAppId, authToken, turnContext);
     const mcpServers: Record<string, McpServerConfig> = {};
     const tools: McpClientTool[] = [];
 
     for (const server of servers) {
       
-      const headers: Record<string, string> = Utility.GetToolRequestHeaders(authToken, channelId, subChannelId);
+      const headers: Record<string, string> = Utility.GetToolRequestHeaders(authToken, turnContext);
 
       // Add each server to the config object
       mcpServers[server.mcpServerName] = {
