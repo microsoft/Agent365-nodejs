@@ -30,6 +30,15 @@ export class McpToolServerConfigurationService {
    *
    * @param agenticAppId The agentic app id for which to discover servers.
    * @param authToken Optional bearer token used when querying the remote tooling gateway.
+   * @returns A promise resolving to an array of normalized MCP server configuration objects.
+   */
+  async listToolServers(agenticAppId: string, authToken: string): Promise<MCPServerConfig[]>;
+
+  /**
+   * Return MCP server definitions for the given agent. In development (NODE_ENV=Development) this reads the local ToolingManifest.json; otherwise it queries the remote tooling gateway.
+   *
+   * @param agenticAppId The agentic app id for which to discover servers.
+   * @param authToken Optional bearer token used when querying the remote tooling gateway.
    * @param orchestratorName Optional orchestrator name to include in User-Agent header when calling the tooling gateway.
    * @returns A promise resolving to an array of normalized MCP server configuration objects.
    */
