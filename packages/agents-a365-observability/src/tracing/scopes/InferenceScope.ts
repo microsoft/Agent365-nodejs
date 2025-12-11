@@ -8,7 +8,8 @@ import { OpenTelemetryConstants } from '../constants';
 import {
   InferenceDetails,
   AgentDetails,
-  TenantDetails
+  TenantDetails,
+  SourceMetadata
 } from '../contracts';
 
 /**
@@ -20,13 +21,27 @@ export class InferenceScope extends OpenTelemetryScope {
    * @param details The inference call details
    * @param agentDetails The agent details
    * @param tenantDetails The tenant details
+   * @param conversationId Optional conversation id to tag on the span (`gen_ai.conversation.id`).
+   * @param sourceMetadata Optional source metadata; only `name` (channel name) and `description` (channel link/URL) are used for tagging.
    * @returns A new InferenceScope instance
    */
-  public static start(details: InferenceDetails, agentDetails: AgentDetails, tenantDetails: TenantDetails): InferenceScope {
-    return new InferenceScope(details, agentDetails, tenantDetails);
+  public static start(
+    details: InferenceDetails,
+    agentDetails: AgentDetails,
+    tenantDetails: TenantDetails,
+    conversationId?: string,
+    sourceMetadata?: Pick<SourceMetadata, "name" | "description">
+  ): InferenceScope {
+    return new InferenceScope(details, agentDetails, tenantDetails, conversationId, sourceMetadata);
   }
 
-  private constructor(details: InferenceDetails, agentDetails: AgentDetails, tenantDetails: TenantDetails) {
+  private constructor(
+    details: InferenceDetails,
+    agentDetails: AgentDetails,
+    tenantDetails: TenantDetails,
+    conversationId?: string,
+    sourceMetadata?: Pick<SourceMetadata, "name" | "description">
+  ) {
     super(
       SpanKind.CLIENT,
       details.operationName.toString(),
@@ -43,6 +58,9 @@ export class InferenceScope extends OpenTelemetryScope {
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY, details.outputTokens?.toString());
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_RESPONSE_FINISH_REASONS_KEY, details.finishReasons?.join(','));
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_RESPONSE_ID_KEY, details.responseId);
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, conversationId);
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY, sourceMetadata?.name);
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY, sourceMetadata?.description);    
   }
 
   /**
