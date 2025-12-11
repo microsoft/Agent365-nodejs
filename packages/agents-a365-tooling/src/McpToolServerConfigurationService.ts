@@ -28,10 +28,14 @@ export class McpToolServerConfigurationService {
    *
    * @param agenticAppId The agentic app id for which to discover servers.
    * @param authToken Optional bearer token used when querying the remote tooling gateway.
+   * @param channelId Optional channel identifier header used for routing.
+   * @param subChannelId Optional sub-channel identifier header used for routing.
    * @returns A promise resolving to an array of normalized MCP server configuration objects.
    */
-  async listToolServers(agenticAppId: string, authToken: string): Promise<MCPServerConfig[]> {
-    return await (this.isDevScenario() ? this.getMCPServerConfigsFromManifest() : this.getMCPServerConfigsFromToolingGateway(agenticAppId, authToken));
+  async listToolServers(agenticAppId: string, authToken: string, channelId?: string, subChannelId?: string): Promise<MCPServerConfig[]> {
+    return await (this.isDevScenario()
+      ? this.getMCPServerConfigsFromManifest()
+      : this.getMCPServerConfigsFromToolingGateway(agenticAppId, authToken, channelId, subChannelId));
   }
 
   /**
@@ -70,25 +74,28 @@ export class McpToolServerConfigurationService {
 
   /**
    * Query the tooling gateway for MCP servers for the specified agent and normalize each entry's mcpServerUniqueName into a full URL using Utility.BuildMcpServerUrl.
+   * Includes optional channel context headers and supports optional bearer token.
    * Throws an error if the gateway call fails.
    *
    * @param agenticAppId The agentic app id used by the tooling gateway to scope results.
    * @param authToken Optional Bearer token to include in the Authorization header when calling the gateway.
+   * @param channelId Optional channel identifier header used for routing.
+   * @param subChannelId Optional sub-channel identifier header used for routing.
+   * @returns Array of MCP server configs from the gateway (empty on no data).
    * @throws Error when the gateway call fails or returns an unexpected payload.
    */
-  private async getMCPServerConfigsFromToolingGateway(agenticAppId: string, authToken: string): Promise<MCPServerConfig[]> {
+  private async getMCPServerConfigsFromToolingGateway(agenticAppId: string, authToken: string, channelId?: string, subChannelId?: string): Promise<MCPServerConfig[]> {
     // Validate the authentication token
     Utility.ValidateAuthToken(authToken);
 
     const configEndpoint = Utility.GetToolingGatewayForDigitalWorker(agenticAppId);
 
     try {
+      const headers = Utility.GetToolRequestHeaders(authToken, channelId, subChannelId);
       const response = await axios.get(
         configEndpoint,
         {
-          headers: {
-            'Authorization': authToken ? `Bearer ${authToken}` : undefined,
-          },
+          headers,
           timeout: 10000 // 10 seconds timeout
         }
       );
