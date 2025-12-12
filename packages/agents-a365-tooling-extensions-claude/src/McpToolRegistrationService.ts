@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { McpToolServerConfigurationService, McpClientTool, Utility, MCPServerConfig } from '@microsoft/agents-a365-tooling';
+import { McpToolServerConfigurationService, McpClientTool, Utility, MCPServerConfig, ToolOptions } from '@microsoft/agents-a365-tooling';
 import { AgenticAuthenticationService, Utility as RuntimeUtility } from '@microsoft/agents-a365-runtime';
 
 // Agents SDK
@@ -16,6 +16,7 @@ import type { McpServerConfig, Options } from '@anthropic-ai/claude-agent-sdk';
  */
 export class McpToolRegistrationService {
   private readonly configService: McpToolServerConfigurationService = new McpToolServerConfigurationService();
+  private readonly orchestratorName: string = "Claude";
 
   /**
    * Registers MCP tool servers and updates agent options with discovered tools and server configs.
@@ -46,12 +47,13 @@ export class McpToolRegistrationService {
     Utility.ValidateAuthToken(authToken);
 
     const agenticAppId = RuntimeUtility.ResolveAgentIdentity(turnContext, authToken);
-    const servers = await this.configService.listToolServers(agenticAppId, authToken);
+    const options: ToolOptions = { orchestratorName: this.orchestratorName };
+    const servers = await this.configService.listToolServers(agenticAppId, authToken, options);
     const mcpServers: Record<string, McpServerConfig> = {};
     const tools: McpClientTool[] = [];
 
-    for (const server of servers) {      
-      const headers: Record<string, string> = Utility.GetToolRequestHeaders(authToken, turnContext);
+    for (const server of servers) {
+      const headers: Record<string, string> = Utility.GetToolRequestHeaders(authToken, turnContext, options);
 
       // Add each server to the config object
       mcpServers[server.mcpServerName] = {

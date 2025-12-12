@@ -2,6 +2,9 @@
 // Licensed under the MIT License.
 
 import { TurnContext } from '@microsoft/agents-hosting';
+import { Utility as RuntimeUtility } from '@microsoft/agents-a365-runtime';
+
+import { ToolOptions } from './contracts';
 
 // Constant for MCP Platform base URL in production
 const MCP_PLATFORM_PROD_BASE_URL = 'https://agent365.svc.cloud.microsoft';
@@ -9,6 +12,7 @@ const MCP_PLATFORM_PROD_BASE_URL = 'https://agent365.svc.cloud.microsoft';
 export class Utility {
   public static readonly HEADER_CHANNEL_ID = 'x-ms-channel-id';
   public static readonly HEADER_SUBCHANNEL_ID = 'x-ms-subchannel-id';
+  public static readonly HEADER_USER_AGENT = 'User-Agent';
 
   /**
    * Compose standard headers for MCP tooling requests.
@@ -16,11 +20,13 @@ export class Utility {
    *
    * @param authToken Bearer token for Authorization header.
    * @param turnContext Optional TurnContext object from which channel and subchannel IDs are extracted.
+   * @param options Optional ToolOptions object for additional request configuration.
    * @returns A headers record suitable for HTTP requests.
    */
   public static GetToolRequestHeaders(
     authToken?: string,
-    turnContext?: TurnContext
+    turnContext?: TurnContext,
+    options?: ToolOptions
   ): Record<string, string> {
     const headers: Record<string, string> = {};
 
@@ -37,6 +43,10 @@ export class Utility {
 
     if (subChannelId) {
       headers[Utility.HEADER_SUBCHANNEL_ID] = subChannelId;
+    }
+
+    if (options?.orchestratorName) {
+      headers[Utility.HEADER_USER_AGENT] = RuntimeUtility.GetUserAgentHeader(options.orchestratorName);
     }
 
     return headers;

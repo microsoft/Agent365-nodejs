@@ -19,3 +19,7 @@ export interface InputSchema {
   required?: string[];
   additionalProperties?: boolean;
 }
+
+export interface ToolOptions {
+  orchestratorName?: string;
+}
