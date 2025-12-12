@@ -24,6 +24,7 @@ export const GENERIC_ATTRIBUTES: readonly string[] = [
   consts.GEN_AI_AGENT_UPN_KEY,
   consts.GEN_AI_AGENT_BLUEPRINT_ID_KEY,
   consts.GEN_AI_AGENT_AUID_KEY,
+  consts.GEN_AI_AGENT_PLATFORM_ID_KEY,
 ];
 
 /**
@@ -44,6 +45,7 @@ export const INVOKE_AGENT_ATTRIBUTES: readonly string[] = [
   consts.GEN_AI_CALLER_AGENT_TENANT_ID_KEY,
   consts.GEN_AI_CALLER_AGENT_APPLICATION_ID_KEY,
   consts.GEN_AI_CALLER_AGENT_CLIENT_IP_KEY,
+  consts.GEN_AI_CALLER_AGENT_PLATFORM_ID_KEY,
   // Execution context
   consts.GEN_AI_EXECUTION_TYPE_KEY,
   consts.GEN_AI_EXECUTION_SOURCE_ID_KEY,

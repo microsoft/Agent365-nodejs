@@ -80,6 +80,19 @@ describe('Scopes', () => {
       scope?.dispose();
     });
 
+    it('should create scope with platformId', () => {
+      const invokeAgentDetails: InvokeAgentDetails = {
+        agentId: 'test-agent',
+        agentName: 'Test Agent',
+        platformId: 'platform-xyz-123'
+      };
+      
+      const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
+
+      expect(scope).toBeInstanceOf(InvokeAgentScope);
+      scope?.dispose();
+    });
+
     it('should create scope with caller details', () => {
       const invokeAgentDetails: InvokeAgentDetails = {
         agentId: 'test-agent',
@@ -123,6 +136,52 @@ describe('Scopes', () => {
 
       expect(() => scope?.recordError(error)).not.toThrow();
       scope?.dispose();
+    });
+
+    it('should propagate platformId in span attributes', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const invokeAgentDetails: InvokeAgentDetails = {
+        agentId: 'test-agent',
+        agentName: 'Test Agent',
+        platformId: 'test-platform-123'
+      };
+
+      const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
+      expect(scope).toBeInstanceOf(InvokeAgentScope);
+
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_AGENT_PLATFORM_ID_KEY, val: 'test-platform-123' })
+      ]));
+
+      scope?.dispose();
+      spy.mockRestore();
+    });
+
+    it('should propagate caller agent platformId in span attributes', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const invokeAgentDetails: InvokeAgentDetails = {
+        agentId: 'test-agent',
+        agentName: 'Test Agent'
+      };
+      const callerAgentDetails: AgentDetails = {
+        agentId: 'caller-agent',
+        agentName: 'Caller Agent',
+        agentDescription: 'desc',
+        conversationId: 'conv',
+        platformId: 'caller-platform-xyz'
+      } as any;
+
+      const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails, callerAgentDetails, undefined);
+      expect(scope).toBeInstanceOf(InvokeAgentScope);
+
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CALLER_AGENT_PLATFORM_ID_KEY, val: 'caller-platform-xyz' })
+      ]));
+
+      scope?.dispose();
+      spy.mockRestore();
     });
 
     it('should set caller and caller-agent IP tags', () => {
@@ -181,6 +240,35 @@ describe('Scopes', () => {
       expect(() => scope?.recordResponse('Tool result')).not.toThrow();
       scope?.dispose();
     });
+   
+    it('should set conversationId when provided', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const scope = (ExecuteToolScope as unknown as any).start({ toolName: 'test-tool' }, testAgentDetails, testTenantDetails, 'conv-tool-123');
+      expect(scope).toBeInstanceOf(ExecuteToolScope);
+
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, val: 'conv-tool-123' })
+      ]));
+
+      scope?.dispose();
+      spy.mockRestore();
+    });
+
+    it('should set source metadata tags when provided', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const scope = (ExecuteToolScope as unknown as any).start({ toolName: 'test-tool' }, testAgentDetails, testTenantDetails, undefined, { name: 'ChannelTool', description: 'https://channel/tool' });
+      expect(scope).toBeInstanceOf(ExecuteToolScope);
+
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY, val: 'ChannelTool' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY, val: 'https://channel/tool' })
+      ]));
+
+      scope?.dispose();
+      spy.mockRestore();
+    });
   });
 
 
@@ -232,6 +320,44 @@ describe('Scopes', () => {
       scope?.dispose();
     });
 
+     it('should set conversationId when provided', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const inferenceDetails: InferenceDetails = {
+        operationName: InferenceOperationType.CHAT,
+        model: 'gpt-4'
+      };
+
+      const scope = (InferenceScope as unknown as any).start(inferenceDetails, testAgentDetails, testTenantDetails, 'conv-inf-123');
+      expect(scope).toBeInstanceOf(InferenceScope);
+
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, val: 'conv-inf-123' })
+      ]));
+
+      scope?.dispose();
+      spy.mockRestore();
+    });
+
+    it('should set source metadata tags when provided', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const inferenceDetails: InferenceDetails = {
+        operationName: InferenceOperationType.CHAT,
+        model: 'gpt-4'
+      };
+
+      const scope = (InferenceScope as unknown as any).start(inferenceDetails, testAgentDetails, testTenantDetails, undefined, { name: 'ChannelInf', description: 'https://channel/inf' });
+      expect(scope).toBeInstanceOf(InferenceScope);
+
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY, val: 'ChannelInf' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY, val: 'https://channel/inf' })
+      ]));
+
+      scope?.dispose();
+      spy.mockRestore();
+    });
   });
 
   describe('Dispose pattern', () => {

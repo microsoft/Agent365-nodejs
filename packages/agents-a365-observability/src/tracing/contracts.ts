@@ -109,6 +109,9 @@ export interface AgentDetails {
 
   /** Optional icon identifier or URL for visual representation of the agent */
   iconUri?: string;
+  
+  /** Optional platform identifier for the agent */
+  platformId?: string;
 
   /** The agent user ID (AUID) */
   agentAUID?: string;
@@ -172,7 +175,7 @@ export interface CallerDetails {
   callerClientIp?: string;
 }
 
-/**
+/*
  * @deprecated Use AgentDetails. EnhancedAgentDetails is now an alias of AgentDetails.
  */
 export type EnhancedAgentDetails = AgentDetails;
