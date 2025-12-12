@@ -100,7 +100,7 @@ export class McpToolServerConfigurationService {
       const response = await axios.get(
         configEndpoint,
         {
-          headers: Utility.GetToolRequestHeaders(authToken, undefined, options),
+          headers: Utility.GetToolRequestHeaders(authToken, options),
           timeout: 10000 // 10 seconds timeout
         }
       );

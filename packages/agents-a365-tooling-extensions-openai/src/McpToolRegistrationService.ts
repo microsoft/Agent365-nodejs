@@ -49,13 +49,13 @@ export class McpToolRegistrationService {
     Utility.ValidateAuthToken(authToken);
 
     const agenticAppId = RuntimeUtility.ResolveAgentIdentity(turnContext, authToken);
-    const options: ToolOptions = { orchestratorName: this.orchestratorName };
+    const options: ToolOptions = { orchestratorName: this.orchestratorName, turnContext: turnContext };
     const servers = await this.configService.listToolServers(agenticAppId, authToken, options);
     const mcpServers: MCPServerStreamableHttp[] = [];
 
     for (const server of servers) {
       // Compose headers if values are available
-      const headers: Record<string, string> = Utility.GetToolRequestHeaders(authToken, turnContext, options);
+      const headers: Record<string, string> = Utility.GetToolRequestHeaders(authToken, options);
 
       // Create MCPServerStreamableHttp instance for OpenAI agents
       const mcpServer = new MCPServerStreamableHttp({

@@ -47,13 +47,13 @@ export class McpToolRegistrationService {
     Utility.ValidateAuthToken(authToken);
 
     const agenticAppId = RuntimeUtility.ResolveAgentIdentity(turnContext, authToken);
-    const options: ToolOptions = { orchestratorName: this.orchestratorName };
+    const options: ToolOptions = { orchestratorName: this.orchestratorName, turnContext: turnContext };
     const servers = await this.configService.listToolServers(agenticAppId, authToken, options);
     const mcpServers: Record<string, McpServerConfig> = {};
     const tools: McpClientTool[] = [];
 
     for (const server of servers) {
-      const headers: Record<string, string> = Utility.GetToolRequestHeaders(authToken, turnContext, options);
+      const headers: Record<string, string> = Utility.GetToolRequestHeaders(authToken, options);
 
       // Add each server to the config object
       mcpServers[server.mcpServerName] = {

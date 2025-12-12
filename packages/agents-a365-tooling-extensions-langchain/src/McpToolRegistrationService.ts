@@ -50,13 +50,13 @@ export class McpToolRegistrationService {
     Utility.ValidateAuthToken(authToken);
 
     const agenticAppId = RuntimeUtility.ResolveAgentIdentity(turnContext, authToken);
-    const options: ToolOptions = { orchestratorName: this.orchestratorName };
+    const options: ToolOptions = { orchestratorName: this.orchestratorName, turnContext: turnContext };
     const servers = await this.configService.listToolServers(agenticAppId, authToken, options);
     const mcpServers: Record<string, Connection> = {};
 
     for (const server of servers) {
       // Compose headers if values are available
-      const headers: Record<string, string> = Utility.GetToolRequestHeaders(authToken, turnContext, options);
+      const headers: Record<string, string> = Utility.GetToolRequestHeaders(authToken, options);
 
       // Create Connection instance for LangChain agents
       mcpServers[server.mcpServerName] = {
