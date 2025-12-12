@@ -48,7 +48,7 @@ export class McpToolRegistrationService {
     Utility.ValidateAuthToken(authToken);
 
     const agenticAppId = RuntimeUtility.ResolveAgentIdentity(turnContext, authToken);
-    const servers = await this.configService.listToolServers(agenticAppId, authToken, turnContext);
+    const servers = await this.configService.listToolServers(agenticAppId, authToken);
     const mcpServers: MCPServerStreamableHttp[] = [];
 
     for (const server of servers) {

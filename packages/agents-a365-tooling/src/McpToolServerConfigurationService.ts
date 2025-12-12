@@ -6,7 +6,6 @@ import path from 'path';
 import axios from 'axios';
 import { MCPServerConfig, McpClientTool } from './contracts';
 import { Utility } from './Utility';
-import { TurnContext } from '@microsoft/agents-hosting';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 
@@ -27,14 +26,11 @@ export class McpToolServerConfigurationService {
    * Return MCP server definitions for the given agent. In development (NODE_ENV=Development) this reads the local ToolingManifest.json; otherwise it queries the remote tooling gateway.
    *
    * @param agenticAppId The agentic app id for which to discover servers.
-    * @param authToken Optional bearer token used when querying the remote tooling gateway.
-    * @param turnContext Optional turn context used to derive routing headers (channel and subchannel) and future metadata.
+   * @param authToken Optional bearer token used when querying the remote tooling gateway.
    * @returns A promise resolving to an array of normalized MCP server configuration objects.
    */
-  async listToolServers(agenticAppId: string, authToken: string, turnContext?: TurnContext): Promise<MCPServerConfig[]> {
-    return await (this.isDevScenario()
-      ? this.getMCPServerConfigsFromManifest()
-      : this.getMCPServerConfigsFromToolingGateway(agenticAppId, authToken, turnContext));
+  async listToolServers(agenticAppId: string, authToken: string): Promise<MCPServerConfig[]> {
+    return await (this.isDevScenario() ? this.getMCPServerConfigsFromManifest() : this.getMCPServerConfigsFromToolingGateway(agenticAppId, authToken));
   }
 
   /**
@@ -77,23 +73,23 @@ export class McpToolServerConfigurationService {
    * Throws an error if the gateway call fails.
    *
    * @param agenticAppId The agentic app id used by the tooling gateway to scope results.
-    * @param authToken Optional Bearer token to include in the Authorization header when calling the gateway.
-    * @param turnContext Optional turn context used to derive routing headers (channel and subchannel) and future metadata.
+   * @param authToken Optional Bearer token to include in the Authorization header when calling the gateway.
    * @returns Array of MCP server configs from the gateway (empty on no data).
    * @throws Error when the gateway call fails or returns an unexpected payload.
    */
-    private async getMCPServerConfigsFromToolingGateway(agenticAppId: string, authToken: string, turnContext?: TurnContext): Promise<MCPServerConfig[]> {
+    private async getMCPServerConfigsFromToolingGateway(agenticAppId: string, authToken: string): Promise<MCPServerConfig[]> {
     // Validate the authentication token
     Utility.ValidateAuthToken(authToken);
 
     const configEndpoint = Utility.GetToolingGatewayForDigitalWorker(agenticAppId);
 
     try {
-      const headers = Utility.GetToolRequestHeaders(authToken, turnContext);
       const response = await axios.get(
         configEndpoint,
         {
-          headers,
+          headers: {
+            'Authorization': authToken ? `Bearer ${authToken}` : undefined,
+          },
           timeout: 10000 // 10 seconds timeout
         }
       );
