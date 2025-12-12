@@ -1,10 +1,47 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+import { TurnContext } from '@microsoft/agents-hosting';
+
 // Constant for MCP Platform base URL in production
 const MCP_PLATFORM_PROD_BASE_URL = 'https://agent365.svc.cloud.microsoft';
 
 export class Utility {
+  public static readonly HEADER_CHANNEL_ID = 'x-ms-channel-id';
+  public static readonly HEADER_SUBCHANNEL_ID = 'x-ms-subchannel-id';
+
+  /**
+   * Compose standard headers for MCP tooling requests.
+   * Includes Authorization bearer token when provided, and optionally includes channel and subchannel identifiers for routing.
+   *
+   * @param authToken Bearer token for Authorization header.
+   * @param turnContext Optional TurnContext object from which channel and subchannel IDs are extracted.
+   * @returns A headers record suitable for HTTP requests.
+   */
+  public static GetToolRequestHeaders(
+    authToken?: string,
+    turnContext?: TurnContext
+  ): Record<string, string> {
+    const headers: Record<string, string> = {};
+
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+    }
+
+    const channelId = turnContext?.activity?.channelId as string | undefined;
+    const subChannelId = turnContext?.activity?.channelIdSubChannel as string | undefined;
+
+    if (channelId) {
+      headers[Utility.HEADER_CHANNEL_ID] = channelId;
+    }
+
+    if (subChannelId) {
+      headers[Utility.HEADER_SUBCHANNEL_ID] = subChannelId;
+    }
+
+    return headers;
+  }
+
   /**
    * Validates a JWT authentication token.
    * Checks that the token is a valid JWT and is not expired.
