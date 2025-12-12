@@ -50,8 +50,7 @@ export class McpToolRegistrationService {
     const mcpServers: Record<string, McpServerConfig> = {};
     const tools: McpClientTool[] = [];
 
-    for (const server of servers) {
-      
+    for (const server of servers) {      
       const headers: Record<string, string> = Utility.GetToolRequestHeaders(authToken, turnContext);
 
       // Add each server to the config object
