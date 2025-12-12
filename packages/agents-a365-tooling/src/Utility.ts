@@ -19,6 +19,7 @@ export class Utility {
    *
    * @param authToken Bearer token for Authorization header.
    * @param turnContext Optional TurnContext object from which channel and subchannel IDs are extracted.
+   * @param options Optional ToolOptions object for additional request configuration.
    * @returns A headers record suitable for HTTP requests.
    */
   public static GetToolRequestHeaders(
