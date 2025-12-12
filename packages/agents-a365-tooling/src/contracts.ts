@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+import { TurnContext } from "@microsoft/agents-hosting";
+
 export interface MCPServerConfig {
   mcpServerName: string;
   url: string;
@@ -18,4 +20,9 @@ export interface InputSchema {
   properties?: Record<string, object>;
   required?: string[];
   additionalProperties?: boolean;
+}
+
+export interface ToolOptions {
+  orchestratorName?: string;
+  turnContext?: TurnContext;
 }
