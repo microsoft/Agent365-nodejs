@@ -10,8 +10,6 @@ import { Utility } from './Utility';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 
-import { Utility as RunTimeUtility } from '@microsoft/agents-a365-runtime';
-
 /**
  * Service responsible for discovering and normalizing MCP (Model Context Protocol)
  * tool servers and producing configuration objects consumable by the Claude SDK.

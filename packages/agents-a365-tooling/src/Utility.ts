@@ -12,6 +12,7 @@ const MCP_PLATFORM_PROD_BASE_URL = 'https://agent365.svc.cloud.microsoft';
 export class Utility {
   public static readonly HEADER_CHANNEL_ID = 'x-ms-channel-id';
   public static readonly HEADER_SUBCHANNEL_ID = 'x-ms-subchannel-id';
+  public static readonly HEADER_USER_AGENT = 'User-Agent';
 
   /**
    * Compose standard headers for MCP tooling requests.
@@ -45,7 +46,7 @@ export class Utility {
     }
 
     if (options?.orchestratorName) {
-      headers['User-Agent'] = RuntimeUtility.GetUserAgentHeader(options.orchestratorName);
+      headers[Utility.HEADER_USER_AGENT] = RuntimeUtility.GetUserAgentHeader(options.orchestratorName);
     }
 
     return headers;
