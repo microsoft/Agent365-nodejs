@@ -42,7 +42,6 @@ export class McpToolServerConfigurationService {
    */
   async listToolServers(agenticAppId: string, authToken: string, options?: ToolOptions): Promise<MCPServerConfig[]>;
 
-
   async listToolServers(agenticAppId: string, authToken: string, options?: ToolOptions): Promise<MCPServerConfig[]> {
     return await (this.isDevScenario() ? this.getMCPServerConfigsFromManifest() :
       this.getMCPServerConfigsFromToolingGateway(agenticAppId, authToken, options));
