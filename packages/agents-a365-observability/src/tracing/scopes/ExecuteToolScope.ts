@@ -4,7 +4,7 @@
 
 import { SpanKind } from '@opentelemetry/api';
 import { OpenTelemetryScope } from './OpenTelemetryScope';
-import { ToolCallDetails, AgentDetails, TenantDetails } from '../contracts';
+import { ToolCallDetails, AgentDetails, TenantDetails, SourceMetadata } from '../contracts';
 import { OpenTelemetryConstants } from '../constants';
 
 /**
@@ -16,13 +16,27 @@ export class ExecuteToolScope extends OpenTelemetryScope {
    * @param details The tool call details
    * @param agentDetails The agent details
    * @param tenantDetails The tenant details
+   * @param conversationId Optional conversation id to tag on the span (`gen_ai.conversation.id`).
+   * @param sourceMetadata Optional source metadata; only `name` (channel name) and `description` (channel link/URL) are used for tagging.
    * @returns A new ExecuteToolScope instance.
    */
-  public static start(details: ToolCallDetails, agentDetails: AgentDetails, tenantDetails: TenantDetails): ExecuteToolScope {
-    return new ExecuteToolScope(details, agentDetails, tenantDetails);
+  public static start(
+    details: ToolCallDetails,
+    agentDetails: AgentDetails,
+    tenantDetails: TenantDetails,
+    conversationId?: string,
+    sourceMetadata?: Pick<SourceMetadata, "name" | "description"> 
+  ): ExecuteToolScope {
+    return new ExecuteToolScope(details, agentDetails, tenantDetails, conversationId, sourceMetadata);
   }
 
-  private constructor(details: ToolCallDetails, agentDetails: AgentDetails, tenantDetails: TenantDetails) {
+  private constructor(
+    details: ToolCallDetails,
+    agentDetails: AgentDetails,
+    tenantDetails: TenantDetails,
+    conversationId?: string,
+    sourceMetadata?: Pick<SourceMetadata, "name" | "description">
+  ) {
     super(
       SpanKind.INTERNAL,
       OpenTelemetryConstants.EXECUTE_TOOL_OPERATION_NAME,
@@ -39,6 +53,10 @@ export class ExecuteToolScope extends OpenTelemetryScope {
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_TOOL_TYPE_KEY, toolType);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_TOOL_CALL_ID_KEY, toolCallId);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_TOOL_DESCRIPTION_KEY, description);
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, conversationId);
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY, sourceMetadata?.name);
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY, sourceMetadata?.description);    
+
 
     // Set endpoint information if provided
     if (endpoint) {
