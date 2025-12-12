@@ -69,15 +69,13 @@ export class McpToolServerConfigurationService {
 
   /**
    * Query the tooling gateway for MCP servers for the specified agent and normalize each entry's mcpServerUniqueName into a full URL using Utility.BuildMcpServerUrl.
-   * Includes optional channel context headers and supports optional bearer token.
    * Throws an error if the gateway call fails.
    *
    * @param agenticAppId The agentic app id used by the tooling gateway to scope results.
    * @param authToken Optional Bearer token to include in the Authorization header when calling the gateway.
-   * @returns Array of MCP server configs from the gateway (empty on no data).
    * @throws Error when the gateway call fails or returns an unexpected payload.
    */
-    private async getMCPServerConfigsFromToolingGateway(agenticAppId: string, authToken: string): Promise<MCPServerConfig[]> {
+  private async getMCPServerConfigsFromToolingGateway(agenticAppId: string, authToken: string): Promise<MCPServerConfig[]> {
     // Validate the authentication token
     Utility.ValidateAuthToken(authToken);
 
