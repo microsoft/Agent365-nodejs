@@ -103,10 +103,7 @@ export class McpToolServerConfigurationService {
       const response = await axios.get(
         configEndpoint,
         {
-          headers: {
-            'Authorization': authToken ? `Bearer ${authToken}` : undefined,
-            'User-Agent': RunTimeUtility.GetUserAgentHeader(options?.orchestratorName),
-          },
+          headers: Utility.GetToolRequestHeaders(authToken, undefined, options),
           timeout: 10000 // 10 seconds timeout
         }
       );

@@ -2,6 +2,9 @@
 // Licensed under the MIT License.
 
 import { TurnContext } from '@microsoft/agents-hosting';
+import { Utility as RuntimeUtility } from '@microsoft/agents-a365-runtime';
+
+import { ToolOptions } from './contracts';
 
 // Constant for MCP Platform base URL in production
 const MCP_PLATFORM_PROD_BASE_URL = 'https://agent365.svc.cloud.microsoft';
@@ -20,7 +23,8 @@ export class Utility {
    */
   public static GetToolRequestHeaders(
     authToken?: string,
-    turnContext?: TurnContext
+    turnContext?: TurnContext,
+    options?: ToolOptions
   ): Record<string, string> {
     const headers: Record<string, string> = {};
 
@@ -37,6 +41,10 @@ export class Utility {
 
     if (subChannelId) {
       headers[Utility.HEADER_SUBCHANNEL_ID] = subChannelId;
+    }
+
+    if (options?.orchestratorName) {
+      headers['User-Agent'] = RuntimeUtility.GetUserAgentHeader(options.orchestratorName);
     }
 
     return headers;

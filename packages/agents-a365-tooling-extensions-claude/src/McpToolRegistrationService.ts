@@ -52,10 +52,8 @@ export class McpToolRegistrationService {
     const mcpServers: Record<string, McpServerConfig> = {};
     const tools: McpClientTool[] = [];
 
-    for (const server of servers) {      
-      const headers: Record<string, string> = Utility.GetToolRequestHeaders(authToken, turnContext);
-
-      headers['User-Agent'] = RuntimeUtility.GetUserAgentHeader(this.orchestratorName);
+    for (const server of servers) {
+      const headers: Record<string, string> = Utility.GetToolRequestHeaders(authToken, turnContext, options);
 
       // Add each server to the config object
       mcpServers[server.mcpServerName] = {
