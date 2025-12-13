@@ -23,7 +23,7 @@ import {
   ServiceEndpoint,
 } from '@microsoft/agents-a365-observability';
 import { getObservabilityAuthenticationScope } from '@microsoft/agents-a365-runtime';
-import { AgenticTokenCacheInstance, BaggageBuilderUtils, InvokeAgentScopeUtils } from '@microsoft/agents-a365-observability-hosting';
+import { AgenticTokenCacheInstance, BaggageBuilderUtils, ScopeUtils } from '@microsoft/agents-a365-observability-hosting';
 import tokenCache from './token-cache'; 
 interface ConversationState {
   count: number;
@@ -72,7 +72,7 @@ agentApplication.onActivity(
       
       const invokeAgentScope = InvokeAgentScope.start(invokeAgentDetails, tenantInfo);
 
-      InvokeAgentScopeUtils.populateFromTurnContext(invokeAgentScope, context);
+      ScopeUtils.populateFromTurnContext(invokeAgentScope, context);
       await invokeAgentScope.withActiveSpanAsync(async () => {
         // Record input message
         invokeAgentScope.recordInputMessages([context.activity.text ?? 'Unknown text']);
