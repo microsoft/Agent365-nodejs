@@ -4,7 +4,7 @@
 import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
-import { MCPServerConfig, McpClientTool } from './contracts';
+import { MCPServerConfig, McpClientTool, ToolOptions } from './contracts';
 import { Utility } from './Utility';
 
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
@@ -30,8 +30,21 @@ export class McpToolServerConfigurationService {
    * @param authToken Optional bearer token used when querying the remote tooling gateway.
    * @returns A promise resolving to an array of normalized MCP server configuration objects.
    */
-  async listToolServers(agenticAppId: string, authToken: string): Promise<MCPServerConfig[]> {
-    return await (this.isDevScenario() ? this.getMCPServerConfigsFromManifest() : this.getMCPServerConfigsFromToolingGateway(agenticAppId, authToken));
+  async listToolServers(agenticAppId: string, authToken: string): Promise<MCPServerConfig[]>;
+
+  /**
+   * Return MCP server definitions for the given agent. In development (NODE_ENV=Development) this reads the local ToolingManifest.json; otherwise it queries the remote tooling gateway.
+   *
+   * @param agenticAppId The agentic app id for which to discover servers.
+   * @param authToken Optional bearer token used when querying the remote tooling gateway.
+   * @param options Optional tool options when calling the gateway.
+   * @returns A promise resolving to an array of normalized MCP server configuration objects.
+   */
+  async listToolServers(agenticAppId: string, authToken: string, options?: ToolOptions): Promise<MCPServerConfig[]>;
+
+  async listToolServers(agenticAppId: string, authToken: string, options?: ToolOptions): Promise<MCPServerConfig[]> {
+    return await (this.isDevScenario() ? this.getMCPServerConfigsFromManifest() :
+      this.getMCPServerConfigsFromToolingGateway(agenticAppId, authToken, options));
   }
 
   /**
@@ -74,9 +87,10 @@ export class McpToolServerConfigurationService {
    *
    * @param agenticAppId The agentic app id used by the tooling gateway to scope results.
    * @param authToken Optional Bearer token to include in the Authorization header when calling the gateway.
+   * @param options Optional tool options when calling the gateway.
    * @throws Error when the gateway call fails or returns an unexpected payload.
    */
-  private async getMCPServerConfigsFromToolingGateway(agenticAppId: string, authToken: string): Promise<MCPServerConfig[]> {
+  private async getMCPServerConfigsFromToolingGateway(agenticAppId: string, authToken: string, options?: ToolOptions): Promise<MCPServerConfig[]> {
     // Validate the authentication token
     Utility.ValidateAuthToken(authToken);
 
@@ -86,9 +100,7 @@ export class McpToolServerConfigurationService {
       const response = await axios.get(
         configEndpoint,
         {
-          headers: {
-            'Authorization': authToken ? `Bearer ${authToken}` : undefined,
-          },
+          headers: Utility.GetToolRequestHeaders(authToken, undefined, options),
           timeout: 10000 // 10 seconds timeout
         }
       );
