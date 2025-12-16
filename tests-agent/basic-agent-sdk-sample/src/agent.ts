@@ -63,16 +63,14 @@ agentApplication.onActivity(
     // Run the rest of the logic within the baggage scope
     await baggageScope.run(async () => {
       const invokeAgentDetails: InvokeAgentDetails = {
-        ...agentInfo,
+        agentId: agentInfo.agentId,
         request: {
           sessionId: context.activity.conversation?.id,
         },
         endpoint: {host:context.activity.serviceUrl, port:56150} as ServiceEndpoint,
       };      
       
-      const invokeAgentScope = InvokeAgentScope.start(invokeAgentDetails, tenantInfo);
-
-      ScopeUtils.populateFromTurnContext(invokeAgentScope, context);
+      const invokeAgentScope = ScopeUtils.populateInvokeAgentScopeFromTurnContext(invokeAgentDetails, context) as InvokeAgentScope;
       await invokeAgentScope.withActiveSpanAsync(async () => {
         // Record input message
         invokeAgentScope.recordInputMessages([context.activity.text ?? 'Unknown text']);
