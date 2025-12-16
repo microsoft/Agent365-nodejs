@@ -54,7 +54,7 @@ export class ScopeUtils {
    * @returns Agent details built from recipient properties; otherwise undefined.
    */
   public static deriveAgentDetailsFromRecipient(turnContext: TurnContext): AgentDetails | undefined {
-    const r = turnContext?.activity?.recipient as any;
+    const r = turnContext?.activity?.recipient;
     if (!r) return undefined;
     return {
       agentId: r.agenticAppId,
@@ -72,7 +72,7 @@ export class ScopeUtils {
    * @returns Agent details built from caller (from) properties; otherwise undefined.
    */
   public static deriveCallerAgent(turnContext: TurnContext): AgentDetails | undefined {
-    const f = turnContext?.activity?.from as any;
+    const f = turnContext?.activity?.from;
     if (!f) return undefined;
     return {
       agentBlueprintId: f.agenticAppBlueprintId,
@@ -91,14 +91,13 @@ export class ScopeUtils {
    * @returns Caller details when available; otherwise undefined.
    */
   public static deriveCallerDetails(turnContext: TurnContext): CallerDetails | undefined {
-    const f = turnContext?.activity?.from as any;
+    const f = turnContext?.activity?.from;
     if (!f) return undefined;
     return {
       callerId: f.aadObjectId,
       callerUpn: f.agenticUserId,
       callerName: f.name,
       tenantId: f.tenantId,
-      callerClientIp: f.clientIp
     } as CallerDetails;
   }
 
