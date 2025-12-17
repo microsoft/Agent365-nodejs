@@ -194,7 +194,7 @@ export class ScopeUtils {
       ...agent,
       conversationId: ScopeUtils.deriveConversationId(turnContext),
       request: {
-        ...details.request,
+        ...(details.request ?? {}),
         executionType: executionTypePair.length > 0 ? (executionTypePair[0][1] as ExecutionType) : details.request?.executionType, 
         sourceMetadata: { id: details.request?.sourceMetadata?.id, ...srcMeta }
       }
