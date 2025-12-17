@@ -78,6 +78,7 @@ describe('ScopeUtils.populateFromTurnContext', () => {
   test('build InvokeAgentScope based on turn context', () => {    
     const details = { operationName: 'invoke', model: 'n/a', providerName: 'internal' } as any;
     const ctx = makeTurnContext('invoke message', 'teams', 'https://teams', 'conv-B');
+    ctx.activity.from!.role = RoleTypes.AgenticUser;
     const scope = ScopeUtils.populateInvokeAgentScopeFromTurnContext(details, ctx) as InvokeAgentScope;
     expect(scope).toBeInstanceOf(InvokeAgentScope);
     const calls = spy.mock.calls.map(args => [args[0], args[1]]);
@@ -95,7 +96,7 @@ describe('ScopeUtils.populateFromTurnContext', () => {
         [OpenTelemetryConstants.GEN_AI_CALLER_AGENT_ID_KEY, 'callerAgent-1'],
         [OpenTelemetryConstants.GEN_AI_CALLER_AGENT_APPLICATION_ID_KEY, 'caller-agentBlueprintId'],
         [OpenTelemetryConstants.TENANT_ID_KEY, 'tenant-123'],
-        [OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY, ExecutionType.HumanToAgent],
+        [OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY, ExecutionType.Agent2Agent.toString()],
         [OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, 'invoke message'],
         [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY, 'agent-1'],
         [OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY, 'Agent One'],

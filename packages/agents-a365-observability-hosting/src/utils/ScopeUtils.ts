@@ -134,7 +134,7 @@ export class ScopeUtils {
     details: InferenceDetails,
     turnContext: TurnContext
   ): InferenceScope {
-    const agent = ScopeUtils.deriveAgentDetailsFromRecipient(turnContext);
+    const agent = ScopeUtils.deriveAgentDetails(turnContext);
     const tenant = ScopeUtils.deriveTenantDetails(turnContext);
     const conversationId = ScopeUtils.deriveConversationId(turnContext);
     const sourceMetadata = ScopeUtils.deriveSourceMetadataObject(turnContext);
@@ -154,7 +154,7 @@ export class ScopeUtils {
   /**
    * Create an `InvokeAgentScope` using `details` and values derived from the provided `TurnContext`.
    * Augments `details` with `conversationId` and `request.sourceMetadata` (channel name/link).
-   * Derives `tenantDetails`, `callerAgentDetails` (from recipient), and `callerDetails` (from from-user).
+   * Derives `tenantDetails`, `callerAgentDetails` (from caller), and `callerDetails` (from from-user).
    * Overrides `conversationId` and `request.sourceMetadata` (channel name/link) in `details` using context values.
    * Also sets execution type and input messages from the context if present.
    * @param details The invoke-agent call details to be augmented and used for the scope.
@@ -186,7 +186,7 @@ export class ScopeUtils {
    * @returns New InvokeAgentDetails suitable for starting an InvokeAgentScope.
    */
   public static buildInvokeAgentDetails(details: InvokeAgentDetails, turnContext: TurnContext): InvokeAgentDetails {
-    const agent = ScopeUtils.deriveAgentDetailsFromRecipient(turnContext);
+    const agent = ScopeUtils.deriveAgentDetails(turnContext);
     const srcMeta = ScopeUtils.deriveSourceMetadataObject(turnContext);
     const executionTypePair = getExecutionTypePair(turnContext);
     return {
@@ -212,7 +212,7 @@ export class ScopeUtils {
     details: ToolCallDetails,
     turnContext: TurnContext
   ): ExecuteToolScope {
-    const agent = ScopeUtils.deriveAgentDetailsFromRecipient(turnContext);
+    const agent = ScopeUtils.deriveAgentDetails(turnContext);
     const tenant = ScopeUtils.deriveTenantDetails(turnContext);
     const conversationId = ScopeUtils.deriveConversationId(turnContext);
     const sourceMetadata = ScopeUtils.deriveSourceMetadataObject(turnContext);
