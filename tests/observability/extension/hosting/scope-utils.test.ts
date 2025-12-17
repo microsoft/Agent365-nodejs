@@ -39,7 +39,7 @@ function makeTurnContext(
     aadObjectId: 'agent-oid',
     role: 'assistant',
     tenantId: 'tenant-123'
-  };  
+  };
   return base as TurnContext;
 }
 
@@ -109,8 +109,8 @@ describe('ScopeUtils.populateFromTurnContext', () => {
     const details = { toolName: 'search', arguments: '{}' } as any;
     const ctx = makeTurnContext(undefined, 'cli', 'https://cli', 'conv-C');
     const scope = ScopeUtils.populateExecuteToolScopeFromTurnContext(details, ctx) as ExecuteToolScope;
-    
-     const calls = spy.mock.calls.map(args => [args[0], args[1]]);
+    expect(scope).toBeInstanceOf(ExecuteToolScope);
+    const calls = spy.mock.calls.map(args => [args[0], args[1]]);
     expect(calls).toEqual(
       expect.arrayContaining([
         [OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, 'conv-C'],

@@ -65,7 +65,7 @@ export class InvokeAgentScope extends OpenTelemetryScope {
     // Set request-related tags
     const requestToUse = invokeAgentDetails.request;
     if (requestToUse) {
-      if(requestToUse.executionType) {
+      if (requestToUse.executionType) {
         this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY, requestToUse.executionType.toString());
       }      
       if (requestToUse.sourceMetadata) {
@@ -115,15 +115,6 @@ export class InvokeAgentScope extends OpenTelemetryScope {
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, messages.join(','));
   }
 
-
-  /**
-   * Records the execution type for telemetry tracking.
-   * Sets the execution type attribute on the span using the provided ExecutionType value.
-   * @param executionType The execution type of the agent invocation (e.g., chat, completion, etc.)
-   */
-  public recordExecutionType(executionType: ExecutionType): void {
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY, executionType.toString());
-  }
   /**
    * Records the output messages for telemetry tracking.
    * @param messages Array of output messages

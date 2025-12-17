@@ -72,8 +72,6 @@ agentApplication.onActivity(
       
       const invokeAgentScope = ScopeUtils.populateInvokeAgentScopeFromTurnContext(invokeAgentDetails, context) as InvokeAgentScope;
       await invokeAgentScope.withActiveSpanAsync(async () => {
-        // Record input message
-        invokeAgentScope.recordInputMessages([context.activity.text ?? 'Unknown text']);
 
         await context.sendActivity(`Preparing a response to your query (message #${state.conversation.count})...`);
 

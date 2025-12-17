@@ -134,19 +134,19 @@ export class ScopeUtils {
     details: InferenceDetails,
     turnContext: TurnContext
   ): InferenceScope {
-    /**
-     * Create and start an InferenceScope with context-derived agent, tenant, conversation id and source metadata.
-     * Also records input messages when present.
-     * @param details Inference call details
-     * @param turnContext Activity context
-     * @returns Started InferenceScope enriched with context.
-     */
     const agent = ScopeUtils.deriveAgentDetailsFromRecipient(turnContext);
     const tenant = ScopeUtils.deriveTenantDetails(turnContext);
     const conversationId = ScopeUtils.deriveConversationId(turnContext);
     const sourceMetadata = ScopeUtils.deriveSourceMetadataObject(turnContext);
 
-    const scope = InferenceScope.start(details, agent!, tenant!, conversationId, sourceMetadata);
+    if (!agent) {
+      throw new Error('populateInferenceScopeFromTurnContext: Missing agent details on TurnContext (recipient or from)');
+    }
+    if (!tenant) {
+      throw new Error('populateInferenceScopeFromTurnContext: Missing tenant details on TurnContext (recipient or from)');
+    }
+
+    const scope = InferenceScope.start(details, agent, tenant, conversationId, sourceMetadata);
     this.setInputMessageTags(scope, turnContext);
     return scope;
   }
@@ -165,19 +165,16 @@ export class ScopeUtils {
     details: InvokeAgentDetails,
     turnContext: TurnContext
   ): InvokeAgentScope {
-    /**
-     * Create and start an InvokeAgentScope using details combined with context-derived values.
-     * Augments details.conversationId and details.request.sourceMetadata, then records input messages.
-     * @param details Invoke-agent call details
-     * @param turnContext Activity context
-     * @returns Started InvokeAgentScope enriched with context.
-     */
     const tenant = ScopeUtils.deriveTenantDetails(turnContext);
     const callerAgent = ScopeUtils.deriveCallerAgent(turnContext);
     const caller = ScopeUtils.deriveCallerDetails(turnContext);
     const invokeAgentDetails = ScopeUtils.buildInvokeAgentDetails(details, turnContext);
 
-    const scope = InvokeAgentScope.start(invokeAgentDetails, tenant!, callerAgent, caller);
+    if (!tenant) {
+      throw new Error('populateInvokeAgentScopeFromTurnContext: Missing tenant details on TurnContext (recipient or from)');
+    }
+
+    const scope = InvokeAgentScope.start(invokeAgentDetails, tenant, callerAgent, caller);
     this.setInputMessageTags(scope, turnContext);
     return scope;
   }
@@ -215,17 +212,17 @@ export class ScopeUtils {
     details: ToolCallDetails,
     turnContext: TurnContext
   ): ExecuteToolScope {
-    /**
-     * Create and start an ExecuteToolScope with context-derived agent, tenant, conversation id and source metadata.
-     * @param details Tool call details
-     * @param turnContext Activity context
-     * @returns Started ExecuteToolScope enriched with context.
-     */
     const agent = ScopeUtils.deriveAgentDetailsFromRecipient(turnContext);
     const tenant = ScopeUtils.deriveTenantDetails(turnContext);
     const conversationId = ScopeUtils.deriveConversationId(turnContext);
     const sourceMetadata = ScopeUtils.deriveSourceMetadataObject(turnContext);
-    const scope = ExecuteToolScope.start(details, agent!, tenant!, conversationId, sourceMetadata);
+    if (!agent) {
+      throw new Error('populateExecuteToolScopeFromTurnContext: Missing agent details on TurnContext (recipient or from)');
+    }
+    if (!tenant) {
+      throw new Error('populateExecuteToolScopeFromTurnContext: Missing tenant details on TurnContext (recipient or from)');
+    }
+    const scope = ExecuteToolScope.start(details, agent, tenant, conversationId, sourceMetadata);
     return scope;
   }
 }
