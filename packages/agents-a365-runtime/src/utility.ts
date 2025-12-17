@@ -56,7 +56,7 @@ export class Utility {
    * @param orchestrator Optional orchestrator identifier to include in the User-Agent string.
    * @returns Formatted User-Agent header string.
    */
-  public static GetUserAgentHeader(orchestrator: string = ''): string {
+  public static GetUserAgentHeader(orchestrator?: string): string {
     const osType = os.type();
     const orchestratorPart = orchestrator ? `; ${orchestrator}` : '';
     return `Agent365SDK/${LIB_VERSION} (${osType}; Node.js ${process.version}${orchestratorPart})`;
