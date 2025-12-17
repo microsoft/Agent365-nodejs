@@ -53,7 +53,7 @@ export class ScopeUtils {
    * @param turnContext Activity context
    * @returns Agent details built from recipient properties; otherwise undefined.
    */
-  public static deriveAgentDetailsFromRecipient(turnContext: TurnContext): AgentDetails | undefined {
+  public static deriveAgentDetails(turnContext: TurnContext): AgentDetails | undefined {
     const r = turnContext?.activity?.recipient;
     if (!r) return undefined;
     return {
