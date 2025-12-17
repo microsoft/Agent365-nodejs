@@ -54,14 +54,14 @@ export class ScopeUtils {
    * @returns Agent details built from recipient properties; otherwise undefined.
    */
   public static deriveAgentDetails(turnContext: TurnContext): AgentDetails | undefined {
-    const r = turnContext?.activity?.recipient;
-    if (!r) return undefined;
+    const recipient = turnContext?.activity?.recipient;
+    if (!recipient) return undefined;
     return {
-      agentId: r.agenticAppId,
-      agentName: r.name,
-      agentAUID: r.aadObjectId,
-      agentDescription: r.role,
-      tenantId: r.tenantId
+      agentId: recipient.agenticAppId,
+      agentName: recipient.name,
+      agentAUID: recipient.aadObjectId,
+      agentDescription: recipient.role,
+      tenantId: recipient.tenantId
     } as AgentDetails;
   }
 
@@ -72,15 +72,15 @@ export class ScopeUtils {
    * @returns Agent details built from caller (from) properties; otherwise undefined.
    */
   public static deriveCallerAgent(turnContext: TurnContext): AgentDetails | undefined {
-    const f = turnContext?.activity?.from;
-    if (!f) return undefined;
+    const from = turnContext?.activity?.from;
+    if (!from) return undefined;
     return {
-      agentBlueprintId: f.agenticAppBlueprintId,
-      agentName: f.name,
-      agentAUID: f.aadObjectId,
-      agentDescription: f.role,
-      tenantId: f.tenantId,
-      agentId: f.agenticAppId
+      agentBlueprintId: from.agenticAppBlueprintId,
+      agentName: from.name,
+      agentAUID: from.aadObjectId,
+      agentDescription: from.role,
+      tenantId: from.tenantId,
+      agentId: from.agenticAppId
     } as AgentDetails;
   }
 
@@ -91,13 +91,13 @@ export class ScopeUtils {
    * @returns Caller details when available; otherwise undefined.
    */
   public static deriveCallerDetails(turnContext: TurnContext): CallerDetails | undefined {
-    const f = turnContext?.activity?.from;
-    if (!f) return undefined;
+    const from = turnContext?.activity?.from;
+    if (!from) return undefined;
     return {
-      callerId: f.aadObjectId,
-      callerUpn: f.agenticUserId,
-      callerName: f.name,
-      tenantId: f.tenantId,
+      callerId: from.aadObjectId,
+      callerUpn: from.agenticUserId,
+      callerName: from.name,
+      tenantId: from.tenantId,
     } as CallerDetails;
   }
 
@@ -154,7 +154,7 @@ export class ScopeUtils {
   /**
    * Create an `InvokeAgentScope` using `details` and values derived from the provided `TurnContext`.
    * Augments `details` with `conversationId` and `request.sourceMetadata` (channel name/link).
-   * Derives `tenantDetails`, `callerAgentDetails` (from caller), and `callerDetails` (from from-user).
+   * Derives `tenantDetails`, `callerAgentDetails` (from caller), and `callerDetails` (from fderiveAgentDetailsom-user).
    * Overrides `conversationId` and `request.sourceMetadata` (channel name/link) in `details` using context values.
    * Also sets execution type and input messages from the context if present.
    * @param details The invoke-agent call details to be augmented and used for the scope.
