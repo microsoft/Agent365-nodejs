@@ -154,7 +154,7 @@ export class ScopeUtils {
   /**
    * Create an `InvokeAgentScope` using `details` and values derived from the provided `TurnContext`.
    * Augments `details` with `conversationId` and `request.sourceMetadata` (channel name/link).
-   * Derives `tenantDetails`, `callerAgentDetails` (from caller), and `callerDetails` (from fderiveAgentDetailsom-user).
+   * Derives `tenantDetails`, `callerAgentDetails` (from caller), and `callerDetails` (from from-user).
    * Overrides `conversationId` and `request.sourceMetadata` (channel name/link) in `details` using context values.
    * Also sets execution type and input messages from the context if present.
    * @param details The invoke-agent call details to be augmented and used for the scope.
