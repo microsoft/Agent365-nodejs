@@ -4,7 +4,7 @@
 // ------------------------------------------------------------------------------
 
 import { ScopeUtils } from '../../../../packages/agents-a365-observability-hosting/src/utils/ScopeUtils';
-import { InferenceScope, InvokeAgentScope, ExecuteToolScope, OpenTelemetryConstants, ExecutionType, OpenTelemetryScope } from '@microsoft/agents-a365-observability';
+import { InferenceScope, InvokeAgentScope, ExecuteToolScope, OpenTelemetryConstants, ExecutionType, OpenTelemetryScope, InvokeAgentDetails } from '@microsoft/agents-a365-observability';
 import { RoleTypes } from '@microsoft/agents-activity';
 import type { TurnContext } from '@microsoft/agents-hosting';
 
@@ -126,4 +126,119 @@ describe('ScopeUtils.populateFromTurnContext', () => {
     );
     scope?.dispose();    
   });
+});
+
+// Simple helper to craft partial TurnContext objects for edge cases
+function makeCtx(partial: Partial<TurnContext>): TurnContext {
+  return partial as unknown as TurnContext;
+}
+
+test('deriveTenantDetails prefers recipient.tenantId', () => {
+  const ctx = makeCtx({ activity: { recipient: { tenantId: 't-rec' }, from: { tenantId: 't-from' } } as any });
+  expect(ScopeUtils.deriveTenantDetails(ctx)).toEqual({ tenantId: 't-rec' });
+});
+
+test('deriveTenantDetails returns undefined when only from.tenantId is present', () => {
+  const ctx = makeCtx({ activity: { from: { tenantId: 't-from' } } as any });
+  expect(ScopeUtils.deriveTenantDetails(ctx)).toBeUndefined();
+});
+
+test('deriveAgentDetails maps recipient fields to AgentDetails', () => {
+  const ctx = makeCtx({ activity: { recipient: { agenticAppId: 'aid', name: 'A', aadObjectId: 'auid', role: 'bot', tenantId: 't1' } } as any });
+  expect(ScopeUtils.deriveAgentDetails(ctx)).toEqual({
+    agentId: 'aid',
+    agentName: 'A',
+    agentAUID: 'auid',
+    agentDescription: 'bot',
+    tenantId: 't1',
+  });
+});
+
+test('deriveAgentDetails returns undefined without recipient', () => {
+  const ctx = makeCtx({ activity: {} as any });
+  expect(ScopeUtils.deriveAgentDetails(ctx)).toBeUndefined();
+});
+
+test('deriveCallerAgent maps from fields to caller AgentDetails', () => {
+  const ctx = makeCtx({ activity: { from: { agenticAppBlueprintId: 'bp', name: 'Caller', aadObjectId: 'uid', role: 'agent', tenantId: 't2', agenticAppId: 'agent-caller' } } as any });
+  expect(ScopeUtils.deriveCallerAgent(ctx)).toEqual({
+    agentBlueprintId: 'bp',
+    agentName: 'Caller',
+    agentAUID: 'uid',
+    agentDescription: 'agent',
+    tenantId: 't2',
+    agentId: 'agent-caller',
+  });
+});
+
+test('deriveCallerAgent returns undefined without from', () => {
+  const ctx = makeCtx({ activity: {} as any });
+  expect(ScopeUtils.deriveCallerAgent(ctx)).toBeUndefined();
+});
+
+test('deriveCallerDetails maps from to CallerDetails', () => {
+  const ctx = makeCtx({ activity: { from: { aadObjectId: 'uid', agenticUserId: 'upn', name: 'User', tenantId: 't3' } } as any });
+  expect(ScopeUtils.deriveCallerDetails(ctx)).toEqual({
+    callerId: 'uid',
+    callerUpn: 'upn',
+    callerName: 'User',
+    tenantId: 't3',
+  });
+});
+
+test('deriveCallerDetails returns undefined without from', () => {
+  const ctx = makeCtx({ activity: {} as any });
+  expect(ScopeUtils.deriveCallerDetails(ctx)).toBeUndefined();
+});
+
+test('deriveConversationId returns id when present', () => {
+  const ctx = makeCtx({ activity: { conversation: { id: 'conv-1' } } as any });
+  expect(ScopeUtils.deriveConversationId(ctx)).toBe('conv-1');
+});
+
+test('deriveConversationId returns undefined when missing', () => {
+  const ctx = makeCtx({ activity: {} as any });
+  expect(ScopeUtils.deriveConversationId(ctx)).toBeUndefined();
+});
+
+test('deriveSourceMetadataObject maps channel name/description', () => {
+  const ctx = makeCtx({ activity: { channelId: 'teams', channelIdSubChannel: 'chat' } as any });
+  expect(ScopeUtils.deriveSourceMetadataObject(ctx)).toEqual({ name: 'teams', description: 'chat' });
+});
+
+test('deriveSourceMetadataObject returns undefined fields when none', () => {
+  const ctx = makeCtx({ activity: {} as any });
+  expect(ScopeUtils.deriveSourceMetadataObject(ctx)).toEqual({ name: undefined, description: undefined });
+});
+
+test('buildInvokeAgentDetails merges agent (recipient), conversationId, sourceMetadata', () => {
+  const invokeAgentDetails: InvokeAgentDetails = {
+    agentId: 'provided',
+    request: { content: 'hi', executionType: ExecutionType.HumanToAgent, sourceMetadata: { id: 'orig-id' } },
+  };
+  const ctx = makeCtx({
+    activity: {
+      recipient: { agenticAppId: 'rec-agent', name: 'Rec', aadObjectId: 'auid', role: 'bot', tenantId: 'tX' },
+      conversation: { id: 'c-2' },
+      channelId: 'web',
+      channelIdSubChannel: 'inbox',
+    } as any
+  });
+
+  const result = ScopeUtils.buildInvokeAgentDetails(invokeAgentDetails, ctx);
+  expect(result.agentId).toBe('rec-agent');
+  expect(result.conversationId).toBe('c-2');
+  expect(result.request?.sourceMetadata).toEqual({ id: 'orig-id', name: 'web', description: 'inbox' });
+});
+
+test('buildInvokeAgentDetails keeps base request when TurnContext has no overrides', () => {
+  const invokeAgentDetails: InvokeAgentDetails = {
+    agentId: 'base-agent',
+    request: { content: 'hi', executionType: ExecutionType.HumanToAgent, sourceMetadata: { description: 'keep', name: 'keep-name' }},
+  };
+  const ctx = makeCtx({ activity: {} as any });
+  const result = ScopeUtils.buildInvokeAgentDetails(invokeAgentDetails, ctx);
+  expect(result.agentId).toBe('base-agent');
+  expect(result.conversationId).toBeUndefined();
+  expect(result.request?.sourceMetadata).toEqual({ description: 'keep', name: 'keep-name' });
 });

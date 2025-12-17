@@ -38,13 +38,12 @@ export class ScopeUtils {
   // Context-derived helpers
   // ----------------------
   /**
-   * Derive tenant details from the TurnContext (recipient preferred, fallback to from).
+   * Derive tenant details from the TurnContext.
    * @param turnContext Activity context
-   * @returns Tenant details if a tenant id is present; otherwise undefined.
+   * @returns Tenant details if a recipient tenant id is present; otherwise undefined.
    */
   public static deriveTenantDetails(turnContext: TurnContext): TenantDetails | undefined {
-    const tenantId = turnContext?.activity?.recipient?.tenantId
-      ?? turnContext?.activity?.from?.tenantId;
+    const tenantId = turnContext?.activity?.recipient?.tenantId;
     return tenantId ? { tenantId } : undefined;
   }
 
@@ -153,9 +152,8 @@ export class ScopeUtils {
 
   /**
    * Create an `InvokeAgentScope` using `details` and values derived from the provided `TurnContext`.
-   * Augments `details` with `conversationId` and `request.sourceMetadata` (channel name/link).
-   * Derives `tenantDetails`, `callerAgentDetails` (from caller), and `callerDetails` (from fderiveAgentDetailsom-user).
-   * Overrides `conversationId` and `request.sourceMetadata` (channel name/link) in `details` using context values.
+   * Populates `conversationId` and `request.sourceMetadata` (channel name/link) in `details` from the `TurnContext`, overriding any existing values.
+   * Derives `tenantDetails`, `callerAgentDetails` (from caller), and `callerDetails` (from user).
    * Also sets execution type and input messages from the context if present.
    * @param details The invoke-agent call details to be augmented and used for the scope.
    * @param turnContext The current activity context to derive scope parameters from.
@@ -187,16 +185,23 @@ export class ScopeUtils {
    */
   public static buildInvokeAgentDetails(details: InvokeAgentDetails, turnContext: TurnContext): InvokeAgentDetails {
     const agent = ScopeUtils.deriveAgentDetails(turnContext);
-    const srcMeta = ScopeUtils.deriveSourceMetadataObject(turnContext);
+    const srcMetaFromContext = ScopeUtils.deriveSourceMetadataObject(turnContext);
     const executionTypePair = getExecutionTypePair(turnContext);
+    const baseRequest = details.request ?? {};
+    const baseSource = baseRequest.sourceMetadata ?? {};
+    const mergedSourceMetadata = {
+      ...baseSource,
+      ...(srcMetaFromContext.name !== undefined ? { name: srcMetaFromContext.name } : {}),
+      ...(srcMetaFromContext.description !== undefined ? { description: srcMetaFromContext.description } : {}),
+    };
     return {
       ...details,
       ...agent,
       conversationId: ScopeUtils.deriveConversationId(turnContext),
       request: {
-        ...details.request,
-        executionType: executionTypePair.length > 0 ? (executionTypePair[0][1] as ExecutionType) : details.request?.executionType, 
-        sourceMetadata: { id: details.request?.sourceMetadata?.id, ...srcMeta }
+        ...baseRequest,
+        executionType: executionTypePair.length > 0 ? (executionTypePair[0][1] as ExecutionType) : baseRequest.executionType,
+        sourceMetadata: mergedSourceMetadata
       }
     };
   }
