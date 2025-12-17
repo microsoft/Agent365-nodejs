@@ -139,10 +139,10 @@ export class ScopeUtils {
     const sourceMetadata = ScopeUtils.deriveSourceMetadataObject(turnContext);
 
     if (!agent) {
-      throw new Error('populateInferenceScopeFromTurnContext: Missing agent details on TurnContext (recipient or from)');
+      throw new Error('populateInferenceScopeFromTurnContext: Missing agent details on TurnContext (recipient)');
     }
     if (!tenant) {
-      throw new Error('populateInferenceScopeFromTurnContext: Missing tenant details on TurnContext (recipient or from)');
+      throw new Error('populateInferenceScopeFromTurnContext: Missing tenant details on TurnContext (recipient)');
     }
 
     const scope = InferenceScope.start(details, agent, tenant, conversationId, sourceMetadata);
@@ -169,7 +169,7 @@ export class ScopeUtils {
     const invokeAgentDetails = ScopeUtils.buildInvokeAgentDetails(details, turnContext);
 
     if (!tenant) {
-      throw new Error('populateInvokeAgentScopeFromTurnContext: Missing tenant details on TurnContext (recipient or from)');
+      throw new Error('populateInvokeAgentScopeFromTurnContext: Missing tenant details on TurnContext (recipient)');
     }
 
     const scope = InvokeAgentScope.start(invokeAgentDetails, tenant, callerAgent, caller);
@@ -222,10 +222,10 @@ export class ScopeUtils {
     const conversationId = ScopeUtils.deriveConversationId(turnContext);
     const sourceMetadata = ScopeUtils.deriveSourceMetadataObject(turnContext);
     if (!agent) {
-      throw new Error('populateExecuteToolScopeFromTurnContext: Missing agent details on TurnContext (recipient or from)');
+      throw new Error('populateExecuteToolScopeFromTurnContext: Missing agent details on TurnContext (recipient)');
     }
     if (!tenant) {
-      throw new Error('populateExecuteToolScopeFromTurnContext: Missing tenant details on TurnContext (recipient or from)');
+      throw new Error('populateExecuteToolScopeFromTurnContext: Missing tenant details on TurnContext (recipient)');
     }
     const scope = ExecuteToolScope.start(details, agent, tenant, conversationId, sourceMetadata);
     return scope;

@@ -75,6 +75,44 @@ describe('ScopeUtils.populateFromTurnContext', () => {
     scope?.dispose();
   });
 
+    // Error path coverage for missing required fields in populate* helpers
+    describe('error conditions', () => {
+      test('populateInferenceScopeFromTurnContext throws when agent details are missing', () => {
+        const details: any = { operationName: 'inference', model: 'm', providerName: 'prov' };
+        const ctx = makeCtx({ activity: { /* no recipient */ } as any });
+        expect(() => ScopeUtils.populateInferenceScopeFromTurnContext(details, ctx))
+          .toThrow('populateInferenceScopeFromTurnContext: Missing agent details on TurnContext (recipient)');
+      });
+
+      test('populateInferenceScopeFromTurnContext throws when tenant details are missing', () => {
+        const details: any = { operationName: 'inference', model: 'm', providerName: 'prov' };
+        const ctx = makeCtx({ activity: { recipient: { agenticAppId: 'aid' } } as any }); // agent ok, no tenantId
+        expect(() => ScopeUtils.populateInferenceScopeFromTurnContext(details, ctx))
+          .toThrow('populateInferenceScopeFromTurnContext: Missing tenant details on TurnContext (recipient)');
+      });
+
+      test('populateExecuteToolScopeFromTurnContext throws when agent details are missing', () => {
+        const details: any = { toolName: 'tool' };
+        const ctx = makeCtx({ activity: { /* no recipient */ } as any });
+        expect(() => ScopeUtils.populateExecuteToolScopeFromTurnContext(details, ctx))
+          .toThrow('populateExecuteToolScopeFromTurnContext: Missing agent details on TurnContext (recipient)');
+      });
+
+      test('populateExecuteToolScopeFromTurnContext throws when tenant details are missing', () => {
+        const details: any = { toolName: 'tool' };
+        const ctx = makeCtx({ activity: { recipient: { agenticAppId: 'aid' } } as any }); // agent ok, no tenantId
+        expect(() => ScopeUtils.populateExecuteToolScopeFromTurnContext(details, ctx))
+          .toThrow('populateExecuteToolScopeFromTurnContext: Missing tenant details on TurnContext (recipient)');
+      });
+
+      test('populateInvokeAgentScopeFromTurnContext throws when tenant details are missing', () => {
+        const details: InvokeAgentDetails = { agentId: 'aid' } as any;
+        const ctx = makeCtx({ activity: { recipient: { agenticAppId: 'aid' } } as any }); // no tenantId
+        expect(() => ScopeUtils.populateInvokeAgentScopeFromTurnContext(details, ctx))
+          .toThrow('populateInvokeAgentScopeFromTurnContext: Missing tenant details on TurnContext (recipient)');
+      });
+    });
+
   test('build InvokeAgentScope based on turn context', () => {    
     const details = { operationName: 'invoke', model: 'n/a', providerName: 'internal' } as any;
     const ctx = makeTurnContext('invoke message', 'teams', 'https://teams', 'conv-B');
