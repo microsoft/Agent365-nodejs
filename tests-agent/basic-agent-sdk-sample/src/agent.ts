@@ -23,7 +23,7 @@ import {
   ServiceEndpoint,
 } from '@microsoft/agents-a365-observability';
 import { getObservabilityAuthenticationScope } from '@microsoft/agents-a365-runtime';
-import { AgenticTokenCacheInstance, BaggageBuilderUtils, InvokeAgentScopeUtils } from '@microsoft/agents-a365-observability-hosting';
+import { AgenticTokenCacheInstance, BaggageBuilderUtils, ScopeUtils } from '@microsoft/agents-a365-observability-hosting';
 import tokenCache from './token-cache'; 
 interface ConversationState {
   count: number;
@@ -63,19 +63,15 @@ agentApplication.onActivity(
     // Run the rest of the logic within the baggage scope
     await baggageScope.run(async () => {
       const invokeAgentDetails: InvokeAgentDetails = {
-        ...agentInfo,
+        agentId: agentInfo.agentId,
         request: {
           sessionId: context.activity.conversation?.id,
         },
         endpoint: {host:context.activity.serviceUrl, port:56150} as ServiceEndpoint,
       };      
       
-      const invokeAgentScope = InvokeAgentScope.start(invokeAgentDetails, tenantInfo);
-
-      InvokeAgentScopeUtils.populateFromTurnContext(invokeAgentScope, context);
+      const invokeAgentScope = ScopeUtils.populateInvokeAgentScopeFromTurnContext(invokeAgentDetails, context) as InvokeAgentScope;
       await invokeAgentScope.withActiveSpanAsync(async () => {
-        // Record input message
-        invokeAgentScope.recordInputMessages([context.activity.text ?? 'Unknown text']);
 
         await context.sendActivity(`Preparing a response to your query (message #${state.conversation.count})...`);
 

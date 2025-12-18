@@ -8,7 +8,8 @@ import {
   InvokeAgentDetails,
   TenantDetails,
   CallerDetails,
-  AgentDetails
+  AgentDetails,
+  ExecutionType
 } from '../contracts';
 import { OpenTelemetryConstants } from '../constants';
 
@@ -64,8 +65,9 @@ export class InvokeAgentScope extends OpenTelemetryScope {
     // Set request-related tags
     const requestToUse = invokeAgentDetails.request;
     if (requestToUse) {
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY, requestToUse.executionType?.toString());
-
+      if (requestToUse.executionType) {
+        this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY, requestToUse.executionType.toString());
+      }
       if (requestToUse.sourceMetadata) {
         this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_ID_KEY, requestToUse.sourceMetadata.id);
         this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY, requestToUse.sourceMetadata.name);

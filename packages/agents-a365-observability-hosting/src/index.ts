@@ -4,6 +4,6 @@
 // ------------------------------------------------------------------------------
 
 export * from './utils/BaggageBuilderUtils';
-export * from './utils/InvokeAgentScopeUtils';
+export * from './utils/ScopeUtils';
 export * from './utils/TurnContextUtils';
 export { AgenticTokenCacheInstance } from './caching/AgenticTokenCache';
