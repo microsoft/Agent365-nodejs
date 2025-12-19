@@ -22,11 +22,11 @@ export interface OpenAIAgentsInstrumentationConfig extends InstrumentationConfig
   tracerName?: string;
   tracerVersion?: string;
   /**
-   * When false, auto-instrumentation will not attach LLM prompt content
+   * When false, the gen_ai.prompt attribute containing LLM input messages
+   * will not be attached to spans in InvokeAgent scopes.
    * Defaults to true.
    */
   sendPromptInInvokeAgentScopes?: boolean;
-  
 }
 
 /**
