@@ -21,6 +21,12 @@ export interface OpenAIAgentsInstrumentationConfig extends InstrumentationConfig
   enabled?: boolean;
   tracerName?: string;
   tracerVersion?: string;
+  /**
+   * When false, auto-instrumentation will not attach LLM prompt content
+   * Defaults to true.
+   */
+  sendPromptInInvokeAgentScopes?: boolean;
+  
 }
 
 /**
@@ -93,7 +99,9 @@ export class OpenAIAgentsTraceInstrumentor extends InstrumentationBase<OpenAIAge
     // Get tracer provider
     trace.getTracerProvider();
 
-    this.processor = new OpenAIAgentsTraceProcessor(agent365Tracer);
+    this.processor = new OpenAIAgentsTraceProcessor(agent365Tracer, {
+      sendPromptInInvokeAgentScopes: this._config.sendPromptInInvokeAgentScopes !== false
+    });
 
     // Register the processor directly using the imported setTraceProcessors function
     // This bypasses the OpenTelemetry instrumentation patching mechanism

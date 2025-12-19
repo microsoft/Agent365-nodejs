@@ -31,6 +31,7 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
   private static readonly MAX_HANDOFFS_IN_FLIGHT = 1000;
 
   private readonly tracer: OtelTracer;
+  private readonly sendPromptInInvokeAgentScopes: boolean;
   private readonly rootSpans: Map<string, OtelSpan> = new Map();
   private readonly otelSpans: Map<string, OtelSpan> = new Map();
   private readonly tokens: Map<string, ContextToken> = new Map();
@@ -47,8 +48,9 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
     ['generation' + Constants.GEN_AI_REQUEST_CONTENT_KEY, OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY],
   ]);
 
-  constructor(tracer: OtelTracer) {
+  constructor(tracer: OtelTracer, options?: { sendPromptInInvokeAgentScopes?: boolean }) {
     this.tracer = tracer;
+    this.sendPromptInInvokeAgentScopes = options?.sendPromptInInvokeAgentScopes ?? true;
   }
 
   private getNewKey(spanType: string, key: string): string | null {
@@ -244,18 +246,18 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
 
       const modelName = attrs[OpenTelemetryConstants.GEN_AI_REQUEST_MODEL_KEY] ?? '';
       otelSpan.updateName(`${InferenceOperationType.CHAT} ${modelName}`);
-
     }
 
     if (inputObj) {
-      if (typeof inputObj === 'string') {
-        otelSpan.setAttribute(OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, inputObj);
-      } else if (Array.isArray(inputObj)) {
-        // Store the complete _input structure as JSON
-        otelSpan.setAttribute(
-          OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY,
-          JSON.stringify(inputObj)
-        );
+      if (this.sendPromptInInvokeAgentScopes) {
+        if (typeof inputObj === 'string') {
+          otelSpan.setAttribute(OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, inputObj);
+        } else if (Array.isArray(inputObj)) {
+          // Store the complete _input structure as JSON
+          otelSpan.setAttribute(
+            OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY,
+            JSON.stringify(inputObj)
+          );
 
         // Get attributes but filter out unwanted ones
         const attrs = Utils.getAttributesFromInput(inputObj);
@@ -263,8 +265,9 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
           if (value !== null && value !== undefined &&
               key !== Constants.GEN_AI_REQUEST_CONTENT_KEY) {
             otelSpan.setAttribute(key, value as string | number | boolean);
-          }
-        });
+            }
+          });
+        }
       }
     }
   }
@@ -279,7 +282,9 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
         || key === Constants.GEN_AI_EXECUTION_PAYLOAD_KEY;
       if (value !== null && value !== undefined && !shouldExcludeKey) {
         const newKey = this.getNewKey(data.type, key);
-        otelSpan.setAttribute(newKey || key, value as string | number | boolean);
+        if (newKey !== OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY || this.sendPromptInInvokeAgentScopes) {
+          otelSpan.setAttribute(newKey || key, value as string | number | boolean);
+        }
       }
     });
 
