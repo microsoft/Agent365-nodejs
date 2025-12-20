@@ -50,7 +50,7 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
 
   constructor(tracer: OtelTracer, options?: { suppressInvokeAgentInput?: boolean }) {
     this.tracer = tracer;
-    this.suppressInvokeAgentInput = options?.suppressInvokeAgentInput ?? false;  
+    this.suppressInvokeAgentInput = options?.suppressInvokeAgentInput ?? false;
   }
 
   private getNewKey(spanType: string, key: string): string | null {
