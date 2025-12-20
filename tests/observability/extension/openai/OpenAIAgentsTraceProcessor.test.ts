@@ -480,7 +480,7 @@ describe('OpenAIAgentsTraceProcessor', () => {
     });
 
     it('does not record GEN_AI_INPUT_MESSAGES when disabled', async () => {
-      const processor = new OpenAIAgentsTraceProcessor(tracer, { sendPromptInInvokeAgentScopes: false });
+      const processor = new OpenAIAgentsTraceProcessor(tracer, { suppressInvokeAgentInput: true });
       const traceData = { traceId: 'trace-suppress', name: 'Agent' } as any;
       await processor.onTraceStart(traceData);
 
@@ -528,7 +528,7 @@ describe('OpenAIAgentsTraceProcessor', () => {
     });
 
     it('suppresses input on response spans when disabled', async () => {
-      const processor = new OpenAIAgentsTraceProcessor(tracer, { sendPromptInInvokeAgentScopes: false });
+      const processor = new OpenAIAgentsTraceProcessor(tracer, { suppressInvokeAgentInput: true });
       const traceData = { traceId: 'trace-resp', name: 'Agent' } as any;
       await processor.onTraceStart(traceData);
 

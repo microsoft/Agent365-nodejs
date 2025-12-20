@@ -22,11 +22,11 @@ export interface OpenAIAgentsInstrumentationConfig extends InstrumentationConfig
   tracerName?: string;
   tracerVersion?: string;
   /**
-   * When false, the gen_ai.prompt attribute containing LLM input messages
-   * will not be attached to spans in InvokeAgent scopes.
-   * Defaults to true.
+   * When true, the gen_ai.prompt attribute containing LLM input messages
+   * will be suppressed and not attached to spans in InvokeAgent scopes.
+   * Defaults to false.
    */
-  sendPromptInInvokeAgentScopes?: boolean;
+  suppressInvokeAgentInput?: boolean;
 }
 
 /**
@@ -100,7 +100,7 @@ export class OpenAIAgentsTraceInstrumentor extends InstrumentationBase<OpenAIAge
     trace.getTracerProvider();
 
     this.processor = new OpenAIAgentsTraceProcessor(agent365Tracer, {
-      sendPromptInInvokeAgentScopes: this._config.sendPromptInInvokeAgentScopes !== false
+      suppressInvokeAgentInput: this._config.suppressInvokeAgentInput ?? false
     });
 
     // Register the processor directly using the imported setTraceProcessors function
