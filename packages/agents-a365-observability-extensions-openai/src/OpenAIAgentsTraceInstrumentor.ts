@@ -22,7 +22,7 @@ export interface OpenAIAgentsInstrumentationConfig extends InstrumentationConfig
   tracerName?: string;
   tracerVersion?: string;
   /**
-   * When true, the gen_ai.prompt attribute containing LLM input messages
+   * When true, the gen_ai.input.messages attribute containing LLM input messages
    * will be suppressed and not attached to spans in InvokeAgent scopes.
    * Defaults to false.
    */
