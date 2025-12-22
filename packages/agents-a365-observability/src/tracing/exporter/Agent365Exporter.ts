@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------------------------
 
-import { ExportResult,ExportResultCode } from '@opentelemetry/core';
+import { ExportResult, ExportResultCode } from '@opentelemetry/core';
 import { ReadableSpan, SpanExporter } from '@opentelemetry/sdk-trace-base';
 
 import { PowerPlatformApiDiscovery, ClusterCategory } from '@microsoft/agents-a365-runtime';
@@ -65,12 +65,12 @@ interface OTLPStatus {
   message?: string;
 }
 
-
 /**
  * Observability span exporter for Agent365:
  * - Partitions spans by (tenantId, agentId)
  * - Builds OTLP-like JSON: resourceSpans -> scopeSpans -> spans
  * - POSTs per group to https://{endpoint}/maven/agent365/agents/{agentId}/traces?api-version=1
+ *   or, when useS2SEndpoint is true, https://{endpoint}/maven/agent365/service/agents/{agentId}/traces?api-version=1
  * - Adds Bearer token via token_resolver(agentId, tenantId)
  */
 export class Agent365Exporter implements SpanExporter {
@@ -147,16 +147,23 @@ export class Agent365Exporter implements SpanExporter {
 
     const usingCustomServiceEndpoint = useCustomDomainForObservability();
 
+    // Select endpoint path based on S2S flag
+    const endpointPath =
+      this.options.useS2SEndpoint
+        ? `/maven/agent365/service/agents/${agentId}/traces`
+        : `/maven/agent365/agents/${agentId}/traces`;
+
     let url: string;
     if (usingCustomServiceEndpoint) {
-      url = resolveAgent365Endpoint(this.options.clusterCategory as ClusterCategory);
+      const base = resolveAgent365Endpoint(this.options.clusterCategory as ClusterCategory);
+      url = `${base}${endpointPath}?api-version=1`;
       logger.info(`[Agent365Exporter] Using custom domain endpoint: ${url}`);
     } else {
       // Default behavior: discover PPAPI gateway endpoint per-tenant
       const discovery = new PowerPlatformApiDiscovery(this.options.clusterCategory as ClusterCategory);
       const endpoint = discovery.getTenantIslandClusterEndpoint(tenantId);
-      url = `https://${endpoint}/maven/agent365/agents/${agentId}/traces?api-version=1`;
-      logger.info(`[Agent365Exporter] Resolved endpoint: ${endpoint}`);
+      url = `https://${endpoint}${endpointPath}?api-version=1`;
+      logger.info(`[Agent365Exporter] Resolved endpoint: ${url}`);
     }
 
     const headers: Record<string, string> = {

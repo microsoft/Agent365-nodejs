@@ -126,7 +126,7 @@ describe('Agent365Exporter', () => {
     expect(fetchCalls.length).toBe(1);
     const urlArg = fetchCalls[0][0];
     const headersArg = fetchCalls[0][1].headers;
-    expect(urlArg).toBe(expectedUrl);
+    expect(urlArg).toBe(`${expectedUrl}/maven/agent365/agents/${agentId}/traces?api-version=1`);
     expect(headersArg['x-ms-tenant-id']).toBe(tenantId);
     expect(headersArg['authorization']).toBe(`Bearer ${token}`);
   });
@@ -164,4 +164,61 @@ describe('Agent365Exporter', () => {
     // Intentionally omit tokenResolver
     expect(() => new Agent365Exporter(opts)).toThrow(/tokenResolver must be provided/);
   });
+  it('uses S2S endpoint path when useS2SEndpoint is true (discovery flow)', async () => {
+    mockFetchSequence([200]);
+    const token = 'tok-s2s';
+    const opts = new Agent365ExporterOptions();
+    opts.clusterCategory = 'prod';
+    opts.tokenResolver = () => token;
+    opts.useS2SEndpoint = true;
+
+    const exporter = new Agent365Exporter(opts);
+    const spans = [
+      makeSpan({
+        [OpenTelemetryConstants.TENANT_ID_KEY]: tenantId,
+        [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]: agentId
+      }, 's2s-span')
+    ];
+
+    const callback = jest.fn();
+    await exporter.export(spans, callback);
+
+    expect(callback).toHaveBeenCalledWith({ code: ExportResultCode.SUCCESS });
+    const fetchCalls = (global.fetch as unknown as { mock: { calls: any[] } }).mock.calls;
+    expect(fetchCalls.length).toBe(1);
+
+    const urlArg = fetchCalls[0][0] as string;
+    expect(urlArg).toMatch(`/maven/agent365/service/agents/${agentId}/traces?api-version=1`);
+    const headersArg = fetchCalls[0][1].headers as Record<string, string>;
+    expect(headersArg['authorization']).toBe(`Bearer ${token}`);
+  });
+
+  it('uses S2S endpoint path with custom domain and sets x-ms-tenant-id', async () => {
+    mockFetchSequence([200]);
+    process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN = 'true';
+    const token = 'tok-s2s-custom';
+    const opts = new Agent365ExporterOptions();
+    opts.clusterCategory = 'prod';
+    opts.tokenResolver = () => token;
+    opts.useS2SEndpoint = true;
+
+    const exporter = new Agent365Exporter(opts);
+    const spans = [
+      makeSpan({
+        [OpenTelemetryConstants.TENANT_ID_KEY]: tenantId,
+        [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]: agentId
+      }, 's2s-custom-span')
+    ];
+
+    const callback = jest.fn();
+    await exporter.export(spans, callback);
+
+    const fetchCalls = (global.fetch as unknown as { mock: { calls: any[] } }).mock.calls;
+    expect(fetchCalls.length).toBe(1);
+    const urlArg = fetchCalls[0][0] as string;
+    expect(urlArg).toMatch(`/maven/agent365/service/agents/${agentId}/traces?api-version=1`);
+    const headersArg = fetchCalls[0][1].headers as Record<string, string>;
+    expect(headersArg['authorization']).toBe(`Bearer ${token}`);
+    expect(headersArg['x-ms-tenant-id']).toBe(tenantId);
+  })
 });
