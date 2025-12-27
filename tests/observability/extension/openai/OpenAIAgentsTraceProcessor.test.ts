@@ -9,6 +9,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { Tracer } from '@opentelemetry/api';
+import { OpenTelemetryConstants } from '@microsoft/agents-a365-observability';
 import { OpenAIAgentsTraceProcessor } from '@microsoft/agents-a365-observability-extensions-openai';
 import { ObservabilityManager } from '@microsoft/agents-a365-observability';
 import { trace } from '@opentelemetry/api';
@@ -445,6 +446,109 @@ describe('OpenAIAgentsTraceProcessor', () => {
 
         processor.onTraceEnd(traceData);
       });
+    });
+  });
+
+  describe('Prompt Suppression in InvokeAgent traces', () => {
+    let spansByName: Record<string, any>;
+    let tracerSpy: jest.SpyInstance;
+
+    const createMockSpan = (name: string) => {
+      const attrs: Array<[string, unknown]> = [];
+      return {
+        setAttribute: jest.fn((k: string, v: unknown) => { attrs.push([k, v]); }),
+        updateName: jest.fn(),
+        setStatus: jest.fn(),
+        end: jest.fn(),
+        spanContext: jest.fn(() => ({ traceId: 'tid-' + name, spanId: 'sid-' + name })),
+        _attrs: attrs,
+      };
+    };
+
+    beforeEach(() => {
+      spansByName = {};
+      tracerSpy = jest.spyOn(tracer as any, 'startSpan').mockImplementation((...args: unknown[]) => {
+        const name = args[0] as string;
+        const s = createMockSpan(name);
+        spansByName[name] = s;
+        return s;
+      });
+    });
+
+    afterEach(() => {
+      tracerSpy.mockRestore();
+    });
+
+    it('does not record GEN_AI_INPUT_MESSAGES when disabled', async () => {
+      const processor = new OpenAIAgentsTraceProcessor(tracer, { suppressInvokeAgentInput: true });
+      const traceData = { traceId: 'trace-suppress', name: 'Agent' } as any;
+      await processor.onTraceStart(traceData);
+
+      const agentSpan = {
+        spanId: 'agent-span', traceId: 'trace-suppress', startedAt: new Date().toISOString(),
+        spanData: { type: 'agent' as const, name: 'agent-node' },
+      } as any;
+      await processor.onSpanStart(agentSpan);
+      await processor.onSpanEnd(agentSpan);
+
+      const genSpan = {
+        spanId: 'gen-span', traceId: 'trace-suppress', startedAt: new Date().toISOString(),
+        spanData: { type: 'generation' as const, name: 'Generate', model: 'gpt-4', input: 'Hello prompt' },
+      } as any;
+      await processor.onSpanStart(genSpan);
+      await processor.onSpanEnd(genSpan);
+
+      const genMock = spansByName['Generate'];
+      const keys = (genMock._attrs as Array<[string, unknown]>).map(([k]) => k);
+      expect(keys).not.toContain(OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY);
+    });
+
+    it('records GEN_AI_INPUT_MESSAGES when enabled (default)', async () => {
+      const processor = new OpenAIAgentsTraceProcessor(tracer);
+      const traceData = { traceId: 'trace-allow', name: 'Agent' } as any;
+      await processor.onTraceStart(traceData);
+
+      const agentSpan = {
+        spanId: 'agent-span-2', traceId: 'trace-allow', startedAt: new Date().toISOString(),
+        spanData: { type: 'agent' as const, name: 'agent-node-2' },
+      } as any;
+      await processor.onSpanStart(agentSpan);
+      await processor.onSpanEnd(agentSpan);
+
+      const genSpan = {
+        spanId: 'gen-span-2', traceId: 'trace-allow', startedAt: new Date().toISOString(),
+        spanData: { type: 'generation' as const, name: 'Generate2', model: 'gpt-4', input: 'Hello prompt' },
+      } as any;
+      await processor.onSpanStart(genSpan);
+      await processor.onSpanEnd(genSpan);
+
+      const genMock = spansByName['Generate2'];
+      const keys = (genMock._attrs as Array<[string, unknown]>).map(([k]) => k);
+      expect(keys).toContain(OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY);
+    });
+
+    it('suppresses input on response spans when disabled', async () => {
+      const processor = new OpenAIAgentsTraceProcessor(tracer, { suppressInvokeAgentInput: true });
+      const traceData = { traceId: 'trace-resp', name: 'Agent' } as any;
+      await processor.onTraceStart(traceData);
+
+      const agentSpan = {
+        spanId: 'agent-span-3', traceId: 'trace-resp', startedAt: new Date().toISOString(),
+        spanData: { type: 'agent' as const, name: 'agent-node-3' },
+      } as any;
+      await processor.onSpanStart(agentSpan);
+      await processor.onSpanEnd(agentSpan);
+
+      const respSpan = {
+        spanId: 'resp-span', traceId: 'trace-resp', startedAt: new Date().toISOString(),
+        spanData: { type: 'response' as const, name: 'Response', _input: 'Prompt text', _response: { model: 'gpt-4', output: 'ok' } },
+      } as any;
+      await processor.onSpanStart(respSpan);
+      await processor.onSpanEnd(respSpan);
+
+      const respMock = spansByName['Response'];
+      const keys = (respMock._attrs as Array<[string, unknown]>).map(([k]) => k);
+      expect(keys).not.toContain(OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY);
     });
   });
 });
