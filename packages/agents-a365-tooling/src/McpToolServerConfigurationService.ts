@@ -129,9 +129,16 @@ export class McpToolServerConfigurationService {
    *     {
    *       "mcpServerName": "sharePointMCPServerConfig",
    *       "mcpServerUniqueName": "mcp_SharePointTools"
+   *     },
+   *     {
+   *       "mcpServerName": "customMCPServer",
+   *       "url": "http://localhost:3000/mcp"
    *     }
    *   ]
    * }
+   *
+   * Each server entry can optionally include a "url" field to specify a custom MCP server URL.
+   * If the "url" field is not provided, the URL will be automatically constructed using the server name.
    */
   private async getMCPServerConfigsFromManifest(): Promise<MCPServerConfig[]> {
     let manifestPath = path.join(process.cwd(), 'ToolingManifest.json');
@@ -153,7 +160,7 @@ export class McpToolServerConfigurationService {
       return mcpServers.map((s: MCPServerConfig) => {
         return {
           mcpServerName: s.mcpServerName,
-          url: Utility.BuildMcpServerUrl(s.mcpServerName)
+          url: s.url || Utility.BuildMcpServerUrl(s.mcpServerName)
         };
       });
     } catch (err: unknown) {
