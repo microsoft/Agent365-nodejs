@@ -21,6 +21,12 @@ export interface OpenAIAgentsInstrumentationConfig extends InstrumentationConfig
   enabled?: boolean;
   tracerName?: string;
   tracerVersion?: string;
+  /**
+   * When true, the gen_ai.input.messages attribute containing LLM input messages
+   * will be suppressed and not attached to spans in InvokeAgent scopes.
+   * Defaults to false.
+   */
+  suppressInvokeAgentInput?: boolean;
 }
 
 /**
@@ -93,7 +99,9 @@ export class OpenAIAgentsTraceInstrumentor extends InstrumentationBase<OpenAIAge
     // Get tracer provider
     trace.getTracerProvider();
 
-    this.processor = new OpenAIAgentsTraceProcessor(agent365Tracer);
+    this.processor = new OpenAIAgentsTraceProcessor(agent365Tracer, {
+      suppressInvokeAgentInput: this._config.suppressInvokeAgentInput ?? false
+    });
 
     // Register the processor directly using the imported setTraceProcessors function
     // This bypasses the OpenTelemetry instrumentation patching mechanism
