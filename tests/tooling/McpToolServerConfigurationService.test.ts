@@ -3,6 +3,7 @@
 
 import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
 import { McpToolServerConfigurationService } from '../../packages/agents-a365-tooling/src/McpToolServerConfigurationService';
+import { Utility } from '../../packages/agents-a365-tooling/src/Utility';
 import fs from 'fs';
 
 describe('McpToolServerConfigurationService', () => {
@@ -65,7 +66,7 @@ describe('McpToolServerConfigurationService', () => {
       expect(servers).toHaveLength(1);
       expect(servers[0].mcpServerName).toBe('mcp_MailTools');
       // In development mode, should use mock server URL
-      expect(servers[0].url).toContain('mcp_MailTools');
+      expect(servers[0].url).toBe(Utility.BuildMcpServerUrl('mcp_MailTools'));
     });
 
     it('should handle mix of custom and default URLs in manifest', async () => {
@@ -101,7 +102,7 @@ describe('McpToolServerConfigurationService', () => {
       
       // Second server uses default URL building
       expect(servers[1].mcpServerName).toBe('mcp_MailTools');
-      expect(servers[1].url).toContain('mcp_MailTools');
+      expect(servers[1].url).toBe(Utility.BuildMcpServerUrl('mcp_MailTools'));
       
       // Third server has custom URL
       expect(servers[2].mcpServerName).toBe('anotherCustom');
