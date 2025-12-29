@@ -3,7 +3,7 @@
 
 export interface MCPServerConfig {
   mcpServerName: string;
-  url: string;
+  url?: string;
   headers?: Record<string, string>;
 }
 

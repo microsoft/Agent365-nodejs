@@ -4,7 +4,6 @@
 import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
 import { McpToolServerConfigurationService } from '../../packages/agents-a365-tooling/src/McpToolServerConfigurationService';
 import fs from 'fs';
-import path from 'path';
 
 describe('McpToolServerConfigurationService', () => {
   let service: McpToolServerConfigurationService;
@@ -25,7 +24,6 @@ describe('McpToolServerConfigurationService', () => {
   describe('listToolServers with custom URLs', () => {
     it('should use custom URL when provided in manifest', async () => {
       // Arrange
-      const mockManifestPath = path.join(process.cwd(), 'ToolingManifest.json');
       const manifestContent = {
         mcpServers: [
           {
@@ -49,7 +47,6 @@ describe('McpToolServerConfigurationService', () => {
 
     it('should build URL when not provided in manifest', async () => {
       // Arrange
-      const mockManifestPath = path.join(process.cwd(), 'ToolingManifest.json');
       const manifestContent = {
         mcpServers: [
           {
@@ -73,7 +70,6 @@ describe('McpToolServerConfigurationService', () => {
 
     it('should handle mix of custom and default URLs in manifest', async () => {
       // Arrange
-      const mockManifestPath = path.join(process.cwd(), 'ToolingManifest.json');
       const manifestContent = {
         mcpServers: [
           {
