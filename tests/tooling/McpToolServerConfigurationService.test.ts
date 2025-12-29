@@ -151,5 +151,50 @@ describe('McpToolServerConfigurationService', () => {
       // Assert
       expect(servers).toHaveLength(0);
     });
+
+    it('should use mcpServerUniqueName as fallback when mcpServerName is not provided', async () => {
+      // Arrange
+      const manifestContent = {
+        mcpServers: [
+          {
+            mcpServerUniqueName: 'mcp_UniqueServer'
+          }
+        ]
+      };
+
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(manifestContent));
+
+      // Act
+      const servers = await service.listToolServers('test-agent-id', 'mock-auth-token');
+
+      // Assert
+      expect(servers).toHaveLength(1);
+      expect(servers[0].mcpServerName).toBe('mcp_UniqueServer');
+      expect(servers[0].url).toBe(Utility.BuildMcpServerUrl('mcp_UniqueServer'));
+    });
+
+    it('should prefer mcpServerName over mcpServerUniqueName when both are provided', async () => {
+      // Arrange
+      const manifestContent = {
+        mcpServers: [
+          {
+            mcpServerName: 'mcp_PreferredName',
+            mcpServerUniqueName: 'mcp_FallbackName'
+          }
+        ]
+      };
+
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(manifestContent));
+
+      // Act
+      const servers = await service.listToolServers('test-agent-id', 'mock-auth-token');
+
+      // Assert
+      expect(servers).toHaveLength(1);
+      expect(servers[0].mcpServerName).toBe('mcp_PreferredName');
+      expect(servers[0].url).toBe(Utility.BuildMcpServerUrl('mcp_PreferredName'));
+    });
   });
 });

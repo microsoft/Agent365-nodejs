@@ -139,6 +139,7 @@ export class McpToolServerConfigurationService {
    *
    * Each server entry can optionally include a "url" field to specify a custom MCP server URL.
    * If the "url" field is not provided, the URL will be automatically constructed using the server name.
+   * The server name is determined by using "mcpServerName" if present, otherwise "mcpServerUniqueName".
    */
   private async getMCPServerConfigsFromManifest(): Promise<MCPServerConfig[]> {
     let manifestPath = path.join(process.cwd(), 'ToolingManifest.json');
@@ -157,10 +158,12 @@ export class McpToolServerConfigurationService {
       const manifestData = JSON.parse(jsonContent);
       const mcpServers = manifestData.mcpServers || [];
 
-      return mcpServers.map((s: MCPServerConfig) => {
+      return mcpServers.map((s: any) => {
+        // Use mcpServerName if available, otherwise fall back to mcpServerUniqueName
+        const serverName = s.mcpServerName || s.mcpServerUniqueName;
         return {
-          mcpServerName: s.mcpServerName,
-          url: s.url || Utility.BuildMcpServerUrl(s.mcpServerName)
+          mcpServerName: serverName,
+          url: s.url || Utility.BuildMcpServerUrl(serverName)
         };
       });
     } catch (err: unknown) {
