@@ -220,5 +220,47 @@ describe('McpToolServerConfigurationService', () => {
         expect.stringContaining('Either mcpServerName or mcpServerUniqueName must be provided')
       );
     });
+
+    it('should preserve custom headers when provided in manifest', async () => {
+      // Arrange
+      const manifestContent = {
+        mcpServers: [
+          {
+            mcpServerName: 'serverWithHeaders',
+            url: 'http://localhost:3000/custom-mcp',
+            headers: {
+              'Authorization': 'Bearer token123',
+              'X-Custom-Header': 'custom-value'
+            }
+          },
+          {
+            mcpServerName: 'serverWithoutHeaders',
+            url: 'http://localhost:4000/another-mcp'
+          }
+        ]
+      };
+
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(manifestContent));
+
+      // Act
+      const servers = await service.listToolServers('test-agent-id', 'mock-auth-token');
+
+      // Assert
+      expect(servers).toHaveLength(2);
+      
+      // First server should have headers preserved
+      expect(servers[0].mcpServerName).toBe('serverWithHeaders');
+      expect(servers[0].url).toBe('http://localhost:3000/custom-mcp');
+      expect(servers[0].headers).toEqual({
+        'Authorization': 'Bearer token123',
+        'X-Custom-Header': 'custom-value'
+      });
+      
+      // Second server should have undefined headers
+      expect(servers[1].mcpServerName).toBe('serverWithoutHeaders');
+      expect(servers[1].url).toBe('http://localhost:4000/another-mcp');
+      expect(servers[1].headers).toBeUndefined();
+    });
   });
 });
