@@ -4,7 +4,7 @@
 import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
-import { MCPServerConfig, McpClientTool, ToolOptions } from './contracts';
+import { MCPServerConfig, MCPServerManifestEntry, McpClientTool, ToolOptions } from './contracts';
 import { Utility } from './Utility';
 
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
@@ -158,9 +158,12 @@ export class McpToolServerConfigurationService {
       const manifestData = JSON.parse(jsonContent);
       const mcpServers = manifestData.mcpServers || [];
 
-      return mcpServers.map((s: any) => {
+      return mcpServers.map((s: MCPServerManifestEntry) => {
         // Use mcpServerName if available, otherwise fall back to mcpServerUniqueName
         const serverName = s.mcpServerName || s.mcpServerUniqueName;
+        if (!serverName) {
+          throw new Error('Either mcpServerName or mcpServerUniqueName must be provided in manifest entry');
+        }
         return {
           mcpServerName: serverName,
           url: s.url || Utility.BuildMcpServerUrl(serverName)

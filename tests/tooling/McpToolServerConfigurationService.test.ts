@@ -196,5 +196,29 @@ describe('McpToolServerConfigurationService', () => {
       expect(servers[0].mcpServerName).toBe('mcp_PreferredName');
       expect(servers[0].url).toBe(Utility.BuildMcpServerUrl('mcp_PreferredName'));
     });
+
+    it('should return empty array and log error when neither mcpServerName nor mcpServerUniqueName is provided', async () => {
+      // Arrange
+      const manifestContent = {
+        mcpServers: [
+          {
+            url: 'http://localhost:3000/custom-mcp'
+          }
+        ]
+      };
+
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(manifestContent));
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+      // Act
+      const servers = await service.listToolServers('test-agent-id', 'mock-auth-token');
+
+      // Assert
+      expect(servers).toHaveLength(0);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Either mcpServerName or mcpServerUniqueName must be provided')
+      );
+    });
   });
 });
