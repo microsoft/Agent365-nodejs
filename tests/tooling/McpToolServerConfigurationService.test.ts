@@ -8,11 +8,11 @@ import fs from 'fs';
 
 describe('McpToolServerConfigurationService', () => {
   let service: McpToolServerConfigurationService;
-  let originalEnv: NodeJS.ProcessEnv;
+  const originalEnv = process.env;
 
   beforeEach(() => {
     service = new McpToolServerConfigurationService();
-    originalEnv = { ...process.env };
+    process.env = { ...originalEnv };
     // Set to development mode to read from manifest
     process.env.NODE_ENV = 'Development';
   });
