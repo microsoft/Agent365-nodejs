@@ -166,7 +166,8 @@ export class McpToolServerConfigurationService {
         }
         return {
           mcpServerName: serverName,
-          url: s.url || Utility.BuildMcpServerUrl(serverName)
+          url: s.url || Utility.BuildMcpServerUrl(serverName),
+          headers: s.headers
         };
       });
     } catch (err: unknown) {
