@@ -6,11 +6,11 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "test": "NODE_OPTIONS='--experimental-vm-modules' jest --config jest.config.cjs --passWithNoTests --testPathIgnorePatterns=/integration/",
-    "test:watch": "NODE_OPTIONS='--experimental-vm-modules' jest --config jest.config.cjs --watch --testPathIgnorePatterns=/integration/",
-    "test:coverage": "NODE_OPTIONS='--experimental-vm-modules' jest --config jest.config.cjs --coverage --passWithNoTests --testPathIgnorePatterns=/integration/",
-    "test:verbose": "NODE_OPTIONS='--experimental-vm-modules' jest --config jest.config.cjs --verbose --passWithNoTests --testPathIgnorePatterns=/integration/",
-    "test:ci": "NODE_OPTIONS='--experimental-vm-modules' jest --config jest.config.cjs --coverage --ci --maxWorkers=2 --passWithNoTests --testPathIgnorePatterns=/integration/"
+    "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --config jest.config.cjs --passWithNoTests --testPathIgnorePatterns=/integration/",
+    "test:watch": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --config jest.config.cjs --watch --testPathIgnorePatterns=/integration/",
+    "test:coverage": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --config jest.config.cjs --coverage --passWithNoTests --testPathIgnorePatterns=/integration/",
+    "test:verbose": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --config jest.config.cjs --verbose --passWithNoTests --testPathIgnorePatterns=/integration/",
+    "test:ci": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --config jest.config.cjs --coverage --ci --maxWorkers=2 --passWithNoTests --testPathIgnorePatterns=/integration/"
   },
   "keywords": [
     "agents",
@@ -50,6 +50,7 @@
     "@types/node": "catalog:",
     "@typescript-eslint/eslint-plugin": "catalog:",
     "@typescript-eslint/parser": "catalog:",
+    "cross-env": "catalog:",
     "eslint": "catalog:",
     "jest": "catalog:",
     "js-yaml": "catalog:",
