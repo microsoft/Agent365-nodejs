@@ -17,10 +17,26 @@ export const DEVELOPMENT_ENVIRONMENT_NAME = 'Development';
 /**
  * Returns the scope for authenticating to the observability service
  *
- * @returns The authentication scope for the current environment.
+ * The default is the production observability scope, but this can be overridden
+ * for internal development and testing scenarios using the
+ * `A365_OBSERVABILITY_SCOPES_OVERRIDE` environment variable.
+ *
+ * When the override is set to a non-empty string, it is split on whitespace
+ * into individual scopes.
+ *
+ * @returns The authentication scopes for the current environment.
  */
 export function getObservabilityAuthenticationScope(): string[] {
-  // Always return production scope
+  const override = process.env.A365_OBSERVABILITY_SCOPES_OVERRIDE;
+
+  if (override && override.trim().length > 0) {
+    return override
+      .trim()
+      .split(/\s+/)
+      .map(scope => scope.trim())
+      .filter(scope => scope.length > 0);
+  }
+
   return [PROD_OBSERVABILITY_SCOPE];
 }
 
