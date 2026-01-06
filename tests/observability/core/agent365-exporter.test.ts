@@ -144,6 +144,11 @@ describe('Agent365Exporter', () => {
       expectedBaseUrl: 'https://agent365.svc.cloud.microsoft'
     },
     {
+      description: 'set to whitespace only',
+      override: '   ',
+      expectedBaseUrl: 'https://agent365.svc.cloud.microsoft'
+    },
+    {
       description: 'unset (undefined)',
       override: undefined,
       expectedBaseUrl: 'https://agent365.svc.cloud.microsoft'

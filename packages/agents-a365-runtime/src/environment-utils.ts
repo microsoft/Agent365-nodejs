@@ -30,11 +30,7 @@ export function getObservabilityAuthenticationScope(): string[] {
   const override = process.env.A365_OBSERVABILITY_SCOPES_OVERRIDE;
 
   if (override && override.trim().length > 0) {
-    return override
-      .trim()
-      .split(/\s+/)
-      .map(scope => scope.trim())
-      .filter(scope => scope.length > 0);
+    return override.trim().split(/\s+/);
   }
 
   return [PROD_OBSERVABILITY_SCOPE];
