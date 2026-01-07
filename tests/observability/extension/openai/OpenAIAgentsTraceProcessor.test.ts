@@ -161,7 +161,7 @@ describe('OpenAIAgentsTraceProcessor', () => {
 
         processor.onSpanStart(agentSpan);
 
-        const otelSpans = (processor as any).otelSpans;            
+        const otelSpans = (processor as any).otelSpans;
         expect(otelSpans.has('agent-1')).toBe(true);
 
         processor.onSpanEnd(agentSpan);
@@ -588,7 +588,7 @@ describe('OpenAIAgentsTraceProcessor', () => {
       const value = entry![1] as string;
       const parsed = JSON.parse(value);
       expect(parsed).toEqual(inputArray);
-    });    
+    });
     it('records user text content for array _input on response spans', async () => {
       const processor = new OpenAIAgentsTraceProcessor(tracer);
       const traceData = { traceId: 'trace-array-input', name: 'Agent' } as any;

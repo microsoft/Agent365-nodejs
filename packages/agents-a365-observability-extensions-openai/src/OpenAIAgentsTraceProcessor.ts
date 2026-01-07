@@ -261,19 +261,19 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
     }
   }
 
-  private buildInputMessages(arr: Array<{role?: string; parts?: Array<{type: string; content: unknown}>}>): string {
-  const userTexts = [];
-  for (const message of arr) {
-    if (message && message.role === "user" && Array.isArray(message.parts)) {
-      for (const p of message.parts) {
-        if (p && p.type === "text" && typeof p.content === "string") {
-          userTexts.push(p.content);
+  private buildInputMessages(arr: Array<{ role?: string; parts?: Array<{ type: string; content: unknown }> }>): string {
+    const userTexts: string[] = [];
+    for (const message of arr) {
+      if (message && message.role === 'user' && Array.isArray(message.parts)) {
+        for (const p of message.parts) {
+          if (p && p.type === 'text' && typeof p.content === 'string') {
+            userTexts.push(p.content);
+          }
         }
       }
     }
-  }
     return userTexts.length ? JSON.stringify(userTexts) : JSON.stringify(arr);
-}
+  }
 
 
   /**
