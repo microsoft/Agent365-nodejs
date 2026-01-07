@@ -626,5 +626,51 @@ describe('OpenAIAgentsTraceProcessor', () => {
       const parsed = JSON.parse(value);
       expect(parsed).toEqual(['Hello user 1', 'Hello user 2']);
     });
+
+    it('parses stringified array _input and records only user text content', async () => {
+      const processor = new OpenAIAgentsTraceProcessor(tracer);
+      const traceData = { traceId: 'trace-array-input-string', name: 'Agent' } as any;
+      await processor.onTraceStart(traceData);
+
+      const inputArray = [
+        {
+          role: 'user',
+          parts: [
+            { type: 'text', content: 'Hello user 1' },
+            { type: 'text', content: 'Hello user 2' },
+          ],
+        },
+        {
+          role: 'assistant',
+          parts: [
+            { type: 'text', content: 'Assistant reply' },
+          ],
+        },
+      ];
+
+      const respSpan = {
+        spanId: 'resp-array-span-string',
+        traceId: 'trace-array-input-string',
+        startedAt: new Date().toISOString(),
+        spanData: {
+          type: 'response' as const,
+          name: 'ResponseArrayString',
+          _input: JSON.stringify(inputArray),
+          _response: { model: 'gpt-4', output: 'ok' },
+        },
+      } as any;
+
+      await processor.onSpanStart(respSpan);
+      await processor.onSpanEnd(respSpan);
+
+      const respMock = spansByName['ResponseArrayString'];
+      const attrs = respMock._attrs as Array<[string, unknown]>;
+      const entry = attrs.find(([k]) => k === OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY);
+      expect(entry).toBeDefined();
+
+      const value = entry![1] as string;
+      const parsed = JSON.parse(value);
+      expect(parsed).toEqual(['Hello user 1', 'Hello user 2']);
+    });
   });
 });

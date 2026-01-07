@@ -250,6 +250,18 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
 
     if (inputObj && !this.suppressInvokeAgentInput) {
       if (typeof inputObj === 'string') {
+        try {
+          const parsed = JSON.parse(inputObj as string);
+          if (Array.isArray(parsed)) {
+            otelSpan.setAttribute(
+              OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY,
+              this.buildInputMessages(parsed)
+            );
+            return;
+          }
+        } catch {
+          // If parsing fails, fall back to raw string behavior
+        }
         otelSpan.setAttribute(OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, inputObj);
       } else if (Array.isArray(inputObj)) {
         // Store the complete _input structure as JSON
