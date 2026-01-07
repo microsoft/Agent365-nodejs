@@ -672,5 +672,38 @@ describe('OpenAIAgentsTraceProcessor', () => {
       const parsed = JSON.parse(value);
       expect(parsed).toEqual(['Hello user 1', 'Hello user 2']);
     });
+
+    it('records [gen_ai.input.messages] attribute for array input with non standard schema on response spans', async () => {
+      const processor = new OpenAIAgentsTraceProcessor(tracer);
+      const traceData = { traceId: 'trace-array-input', name: 'Agent' } as any;
+      await processor.onTraceStart(traceData);
+      const inputArray = [
+        { type: 'text', content: 'message 1' },
+        { type: 'text', content: 'message 2' },
+      ];
+      const respSpan = {
+        spanId: 'resp-array-span',
+        traceId: 'trace-array-input',
+        startedAt: new Date().toISOString(),
+        spanData: {
+          type: 'response' as const,
+          name: 'ResponseArray',
+          _input:  inputArray,         
+          _response: { model: 'gpt-4', output: 'ok' },
+        },
+      } as any;
+
+      await processor.onSpanStart(respSpan);
+      await processor.onSpanEnd(respSpan);
+
+      const respMock = spansByName['ResponseArray'];
+      const attrs = respMock._attrs as Array<[string, unknown]>;
+      const entry = attrs.find(([k]) => k === OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY);
+      expect(entry).toBeDefined();
+
+      const value = entry![1] as string;
+      const parsed = JSON.parse(value);
+      expect(parsed).toEqual(inputArray);
+    });
   });
 });
