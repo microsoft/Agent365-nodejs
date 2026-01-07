@@ -264,7 +264,7 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
         }
         otelSpan.setAttribute(OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, inputObj);
       } else if (Array.isArray(inputObj)) {
-        // Store the complete _input structure as JSON
+        // build the input messages from array
         otelSpan.setAttribute(
           OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY,
           this.buildInputMessages(inputObj)
@@ -286,7 +286,6 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
     }
     return userTexts.length ? JSON.stringify(userTexts) : JSON.stringify(arr);
   }
-
 
   /**
    * Process generation span data
