@@ -255,20 +255,26 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
         // Store the complete _input structure as JSON
         otelSpan.setAttribute(
           OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY,
-          JSON.stringify(inputObj)
+          this.buildInputMessages(inputObj)
         );
-
-        // Get attributes but filter out unwanted ones
-        const attrs = Utils.getAttributesFromInput(inputObj);
-        Object.entries(attrs).forEach(([key, value]) => {
-          if (value !== null && value !== undefined &&
-              key !== Constants.GEN_AI_REQUEST_CONTENT_KEY) {
-            otelSpan.setAttribute(key, value as string | number | boolean);
-          }
-        });
       }
     }
   }
+
+  private buildInputMessages(arr: Array<{role?: string; parts?: Array<{type: string; content: unknown}>}>): string {
+  const userTexts = [];
+  for (const message of arr) {
+    if (message && message.role === "user" && Array.isArray(message.parts)) {
+      for (const p of message.parts) {
+        if (p && p.type === "text" && typeof p.content === "string") {
+          userTexts.push(p.content);
+        }
+      }
+    }
+  }
+    return userTexts.length ? JSON.stringify(userTexts) : JSON.stringify(arr);
+}
+
 
   /**
    * Process generation span data
