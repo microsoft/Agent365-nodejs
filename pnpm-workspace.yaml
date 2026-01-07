@@ -27,7 +27,7 @@ catalog:
   "@microsoft/agents-activity": "^1.1.0-alpha.85"
 
   # Model Context Protocol SDK
-  "@modelcontextprotocol/sdk": "^1.24.0"
+  "@modelcontextprotocol/sdk": "^1.25.1"
 
   # OpenAI Agents packages
   "@openai/agents": "^0.1.5"
