@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { ChatHistoryMessage, ChatMessageRequest } from '../../packages/agents-a365-tooling/src/models';
+import { ChatHistoryMessage, ChatMessageRequest } from '../../packages/agents-a365-tooling/src/models/index';
 
 describe('Chat History Models', () => {
   describe('ChatHistoryMessage', () => {

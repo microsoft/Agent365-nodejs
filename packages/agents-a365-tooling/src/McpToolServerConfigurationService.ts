@@ -7,7 +7,7 @@ import axios from 'axios';
 import { TurnContext } from '@microsoft/agents-hosting';
 import { OperationResult, OperationError } from '@microsoft/agents-a365-runtime';
 import { MCPServerConfig, McpClientTool, ToolOptions } from './contracts';
-import { ChatHistoryMessage, ChatMessageRequest } from './models';
+import { ChatHistoryMessage, ChatMessageRequest } from './models/index';
 import { Utility } from './Utility';
 
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
