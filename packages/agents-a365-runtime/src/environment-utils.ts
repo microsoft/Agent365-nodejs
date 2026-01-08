@@ -19,23 +19,27 @@ export const DEVELOPMENT_ENVIRONMENT_NAME = 'Development';
  *
  * The default is the production observability scope, but this can be overridden
  * for internal development and testing scenarios using either the
- * `A365_OBSERVABILITY_SCOPES_OVERRIDE` (plural, supports multiple scopes) or
- * `A365_OBSERVABILITY_SCOPE_OVERRIDE` (singular, for single scope) environment variable.
+ * `A365_OBSERVABILITY_SCOPE_OVERRIDE` (singular, for a single scope) or
+ * `A365_OBSERVABILITY_SCOPES_OVERRIDE` (plural, supports multiple whitespace-separated scopes)
+ * environment variable.
  *
- * When the override is set to a non-empty string, it is split on whitespace
- * into individual scopes (for the plural form). The singular form takes precedence
- * for cross-SDK compatibility with the .NET SDK.
+ * The singular form takes precedence and returns a single scope without splitting.
+ * The plural form splits on whitespace to support multiple scopes.
+ * This dual support provides cross-SDK compatibility with the .NET SDK while maintaining
+ * enhanced functionality.
  *
  * @returns The authentication scopes for the current environment.
  */
 export function getObservabilityAuthenticationScope(): string[] {
   // Check singular form first for .NET SDK compatibility (PR #133)
+  // Returns a single scope without splitting on whitespace
   const singularOverride = process.env.A365_OBSERVABILITY_SCOPE_OVERRIDE;
   if (singularOverride && singularOverride.trim().length > 0) {
     return [singularOverride.trim()];
   }
 
   // Check plural form (original TypeScript implementation)
+  // Supports multiple whitespace-separated scopes
   const pluralOverride = process.env.A365_OBSERVABILITY_SCOPES_OVERRIDE;
   if (pluralOverride && pluralOverride.trim().length > 0) {
     return pluralOverride.trim().split(/\s+/);
