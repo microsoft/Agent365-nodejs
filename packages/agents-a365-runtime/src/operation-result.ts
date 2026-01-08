@@ -45,7 +45,7 @@ export class OperationResult {
    * @returns An OperationResult indicating a failed operation, with a list of errors if applicable.
    */
   public static failed(...errors: OperationError[]): OperationResult {
-    return new OperationResult(false, errors && errors.length > 0 ? errors : []);
+    return new OperationResult(false, errors.length > 0 ? errors : []);
   }
 
   /**
