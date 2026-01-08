@@ -134,7 +134,7 @@ describe('Agent365Exporter', () => {
 
   it.each([
     {
-      description: 'set to non-empty value',
+      description: 'set to non-empty value and A365_OBSERVABILITY_USE_CUSTOM_DOMAIN is true',
       override: 'https://custom-observability.internal',
       expectedBaseUrl: 'https://custom-observability.internal'
     },
@@ -152,10 +152,16 @@ describe('Agent365Exporter', () => {
       description: 'unset (undefined)',
       override: undefined,
       expectedBaseUrl: 'https://agent365.svc.cloud.microsoft'
-    }
-  ])('uses correct domain when A365_OBSERVABILITY_DOMAIN_OVERRIDE is $description', async ({ override, expectedBaseUrl }) => {
+    },
+    {
+      description: 'set to non-empty value and A365_OBSERVABILITY_USE_CUSTOM_DOMAIN is false',
+      override: 'https://custom-observability.internal',
+      expectedBaseUrl: 'https://custom-observability.internal',
+      notUseCustomDomain: true
+    },
+  ])('uses correct domain when A365_OBSERVABILITY_DOMAIN_OVERRIDE is $description', async ({ override, expectedBaseUrl, notUseCustomDomain }) => {
     mockFetchSequence([200]);
-    process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN = 'true';
+    process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN = notUseCustomDomain ? 'false' : 'true';
 
     if (override !== undefined) {
       process.env.A365_OBSERVABILITY_DOMAIN_OVERRIDE = override as string;
@@ -184,7 +190,11 @@ describe('Agent365Exporter', () => {
     const headersArg = fetchCalls[0][1].headers as Record<string, string>;
 
     expect(urlArg).toBe(`${expectedBaseUrl}/maven/agent365/agents/${agentId}/traces?api-version=1`);
+    if(!notUseCustomDomain) {
     expect(headersArg['x-ms-tenant-id']).toBe(tenantId);
+    } else {
+    expect(headersArg['x-ms-tenant-id']).toBeUndefined();
+    }
     expect(headersArg['authorization']).toBe(`Bearer ${token}`);
   });
 

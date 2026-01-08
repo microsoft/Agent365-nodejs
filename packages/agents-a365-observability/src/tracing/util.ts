@@ -36,23 +36,27 @@ export const useCustomDomainForObservability = (): boolean => {
 
 /**
  * Resolve the Agent365 service endpoint base URI for a given cluster category.
- *
- * By default this returns the production Agent365 endpoint. Internal development
- * and test clusters can override this by setting the
- * `A365_OBSERVABILITY_DOMAIN_OVERRIDE` environment variable. When set to a
- * non-empty value, that value is used as the base URI regardless of cluster category.
  */
 export function resolveAgent365Endpoint(clusterCategory: ClusterCategory): string {
-  const override = process.env.A365_OBSERVABILITY_DOMAIN_OVERRIDE;
-
-  if (override && override.trim().length > 0) {
-    // Normalize to avoid double slashes when concatenating paths
-    return override.trim().replace(/\/+$/, '');
-  }
-
   switch (clusterCategory) {
   case 'prod':
   default:
     return 'https://agent365.svc.cloud.microsoft';
   }
+}
+
+/**
+ * Get Agent365 Observability domain override.
+ * Internal development and test clusters can override this by setting the
+ * `A365_OBSERVABILITY_DOMAIN_OVERRIDE` environment variable. When set to a
+ * non-empty value, that value is used as the base URI regardless of cluster category. Otherwise, null is returned.
+ */
+export function getAgent365ObservabilityDomainOverride(): string | null{
+  const override = process.env.A365_OBSERVABILITY_DOMAIN_OVERRIDE;
+
+  if (override && override.trim().length > 0) {
+    // Normalize to avoid double slashes when concatenating paths
+    return override.trim().replace(/\/+$/, '');
+  } 
+  return null;
 }
