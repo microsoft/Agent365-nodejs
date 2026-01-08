@@ -18,19 +18,27 @@ export const DEVELOPMENT_ENVIRONMENT_NAME = 'Development';
  * Returns the scope for authenticating to the observability service
  *
  * The default is the production observability scope, but this can be overridden
- * for internal development and testing scenarios using the
- * `A365_OBSERVABILITY_SCOPES_OVERRIDE` environment variable.
+ * for internal development and testing scenarios using either the
+ * `A365_OBSERVABILITY_SCOPES_OVERRIDE` (plural, supports multiple scopes) or
+ * `A365_OBSERVABILITY_SCOPE_OVERRIDE` (singular, for single scope) environment variable.
  *
  * When the override is set to a non-empty string, it is split on whitespace
- * into individual scopes.
+ * into individual scopes (for the plural form). The singular form takes precedence
+ * for cross-SDK compatibility with the .NET SDK.
  *
  * @returns The authentication scopes for the current environment.
  */
 export function getObservabilityAuthenticationScope(): string[] {
-  const override = process.env.A365_OBSERVABILITY_SCOPES_OVERRIDE;
+  // Check singular form first for .NET SDK compatibility (PR #133)
+  const singularOverride = process.env.A365_OBSERVABILITY_SCOPE_OVERRIDE;
+  if (singularOverride && singularOverride.trim().length > 0) {
+    return [singularOverride.trim()];
+  }
 
-  if (override && override.trim().length > 0) {
-    return override.trim().split(/\s+/);
+  // Check plural form (original TypeScript implementation)
+  const pluralOverride = process.env.A365_OBSERVABILITY_SCOPES_OVERRIDE;
+  if (pluralOverride && pluralOverride.trim().length > 0) {
+    return pluralOverride.trim().split(/\s+/);
   }
 
   return [PROD_OBSERVABILITY_SCOPE];
