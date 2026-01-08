@@ -7,10 +7,19 @@ import { ExportResult, ExportResultCode } from '@opentelemetry/core';
 import { ReadableSpan, SpanExporter } from '@opentelemetry/sdk-trace-base';
 
 import { PowerPlatformApiDiscovery, ClusterCategory } from '@microsoft/agents-a365-runtime';
-import { partitionByIdentity, parseIdentityKey, hexTraceId, hexSpanId, kindName, statusName } from './utils';
+import {
+  partitionByIdentity,
+  parseIdentityKey,
+  hexTraceId,
+  hexSpanId,
+  kindName,
+  statusName,
+  useCustomDomainForObservability,
+  resolveAgent365Endpoint,
+  getAgent365ObservabilityDomainOverride
+} from './utils';
 import logger, { formatError } from '../../utils/logging';
 import { Agent365ExporterOptions } from './Agent365ExporterOptions';
-import { useCustomDomainForObservability, resolveAgent365Endpoint, getAgent365ObservabilityDomainOverride } from '../util';
 
 const DEFAULT_HTTP_TIMEOUT_SECONDS = 30000; // 30 seconds in ms
 const DEFAULT_MAX_RETRIES = 3;

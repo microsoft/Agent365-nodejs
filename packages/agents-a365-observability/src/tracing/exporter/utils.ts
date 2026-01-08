@@ -4,6 +4,7 @@
 
 import { ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import { SpanKind, SpanStatusCode } from '@opentelemetry/api';
+import { ClusterCategory } from '@microsoft/agents-a365-runtime';
 import { OpenTelemetryConstants } from '../constants';
 import logger from '../../utils/logging';
 
@@ -117,6 +118,47 @@ export function isAgent365ExporterEnabled(): boolean {
   const enabled: boolean = validValues.includes(a365Env);
   logger.info(`[Agent365Exporter] Agent 365 exporter enabled: ${enabled}`);
   return enabled;
+}
+
+/**
+ * Single toggle to use custom domain for observability export.
+ * When true exporter will send traces to custom Agent365 service endpoint
+ * and include x-ms-tenant-id in headers.
+ */
+export function useCustomDomainForObservability(): boolean {
+  const value = process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN?.toLowerCase() || '';
+  const validValues = ['true', '1', 'yes', 'on'];
+  const enabled = validValues.includes(value);
+  logger.info(`[Agent365Exporter] Use custom domain for observability: ${enabled}`);
+  return enabled;
+}
+
+/**
+ * Resolve the Agent365 service endpoint base URI for a given cluster category.
+ * When an explicit override is not configured, this determines the default base URI.
+ */
+export function resolveAgent365Endpoint(clusterCategory: ClusterCategory): string {
+  switch (clusterCategory) {
+  case 'prod':
+  default:
+    return 'https://agent365.svc.cloud.microsoft';
+  }
+}
+
+/**
+ * Get Agent365 Observability domain override.
+ * Internal development and test clusters can override this by setting the
+ * `A365_OBSERVABILITY_DOMAIN_OVERRIDE` environment variable. When set to a
+ * non-empty value, that value is used as the base URI regardless of cluster category. Otherwise, null is returned.
+ */
+export function getAgent365ObservabilityDomainOverride(): string | null {
+  const override = process.env.A365_OBSERVABILITY_DOMAIN_OVERRIDE;
+
+  if (override && override.trim().length > 0) {
+    // Normalize to avoid double slashes when concatenating paths
+    return override.trim().replace(/\/+$/, '');
+  }
+  return null;
 }
 
 
