@@ -190,10 +190,10 @@ describe('Agent365Exporter', () => {
     const headersArg = fetchCalls[0][1].headers as Record<string, string>;
 
     expect(urlArg).toBe(`${expectedBaseUrl}/maven/agent365/agents/${agentId}/traces?api-version=1`);
-    if(!notUseCustomDomain) {
-    expect(headersArg['x-ms-tenant-id']).toBe(tenantId);
+    if (!notUseCustomDomain) {
+      expect(headersArg['x-ms-tenant-id']).toBe(tenantId);
     } else {
-    expect(headersArg['x-ms-tenant-id']).toBeUndefined();
+      expect(headersArg['x-ms-tenant-id']).toBeUndefined();
     }
     expect(headersArg['authorization']).toBe(`Bearer ${token}`);
   });
