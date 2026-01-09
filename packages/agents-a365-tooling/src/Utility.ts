@@ -129,12 +129,6 @@ export class Utility {
    * @returns The base MCP environments URL.
    */
   public static GetMcpBaseUrl(): string {
-    const environment = this.getCurrentEnvironment().toLowerCase();
-
-    if (environment === 'development') {
-      return process.env.MOCK_MCP_SERVER_URL || 'http://localhost:5309/mcp-mock/agents/servers';
-    }
-
     return `${this.getMcpPlatformBaseUrl()}/agents/servers`;
   }
 
