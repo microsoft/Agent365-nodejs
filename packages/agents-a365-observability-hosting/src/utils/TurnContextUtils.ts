@@ -77,12 +77,12 @@ export function getTargetAgentBaggagePairs(turnContext: TurnContext): Array<[str
   const agentId = recipient.agenticAppId;
   const agentName = recipient.name;
   const aadObjectId = recipient.aadObjectId;
-  const agentDescription = recipient.role;
+  const agentType = recipient.role;
   const pairs: Array<[string, string | undefined]> = [
     [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY, agentId],
     [OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY, agentName],
+    [OpenTelemetryConstants.GEN_AI_AGENT_TYPE_KEY, agentType],
     [OpenTelemetryConstants.GEN_AI_AGENT_AUID_KEY, aadObjectId],
-    [OpenTelemetryConstants.GEN_AI_AGENT_DESCRIPTION_KEY, agentDescription]
   ];
   return normalizePairs(pairs);
 }

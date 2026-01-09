@@ -45,6 +45,7 @@ describe('TurnContextUtils', () => {
     const obj = Object.fromEntries(pairs);
     expect(obj[OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]).toBe('agent-app-1');
     expect(obj[OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY]).toBe('Agent One');
+    expect(obj[OpenTelemetryConstants.GEN_AI_AGENT_TYPE_KEY]).toBe('agenticUser');
     expect(obj[OpenTelemetryConstants.GEN_AI_AGENT_AUID_KEY]).toBe('aad-object-1');
     expect(obj[OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY]).toBe(undefined);
   });

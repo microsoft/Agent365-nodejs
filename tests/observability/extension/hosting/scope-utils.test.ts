@@ -186,6 +186,7 @@ test('deriveAgentDetails maps recipient fields to AgentDetails', () => {
   expect(ScopeUtils.deriveAgentDetails(ctx)).toEqual({
     agentId: 'aid',
     agentName: 'A',
+    agentType: 'bot',
     agentAUID: 'auid',
     agentDescription: 'bot',
     tenantId: 't1',
@@ -203,6 +204,7 @@ test('deriveCallerAgent maps from fields to caller AgentDetails', () => {
     agentBlueprintId: 'bp',
     agentName: 'Caller',
     agentAUID: 'uid',
+    agentType: 'agent',
     agentDescription: 'agent',
     tenantId: 't2',
     agentId: 'agent-caller',
