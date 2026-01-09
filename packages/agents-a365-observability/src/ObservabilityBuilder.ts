@@ -5,7 +5,7 @@
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { ConsoleSpanExporter, BatchSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import { SpanProcessor } from './tracing/processors/SpanProcessor';
-import { isAgent365ExporterEnabled } from './tracing/util';
+import { isAgent365ExporterEnabled } from './tracing/exporter/utils';
 import { Agent365Exporter } from './tracing/exporter/Agent365Exporter';
 import type { TokenResolver } from './tracing/exporter/Agent365ExporterOptions';
 import { Agent365ExporterOptions } from './tracing/exporter/Agent365ExporterOptions';
