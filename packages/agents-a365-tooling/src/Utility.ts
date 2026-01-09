@@ -148,20 +148,6 @@ export class Utility {
   }
 
   /**
-   * Reads the current environment name from process.env.
-   * Checks ASPNETCORE_ENVIRONMENT, DOTNET_ENVIRONMENT, and NODE_ENV in that order.
-   * If none are set this returns the string 'Development'.
-   *
-   * @returns The current environment identifier as a string.
-   */
-  private static getCurrentEnvironment(): string {
-    return process.env.ASPNETCORE_ENVIRONMENT ||
-           process.env.DOTNET_ENVIRONMENT ||
-           process.env.NODE_ENV ||
-           'Development';
-  }
-
-  /**
    * Gets the base URL for MCP platform, defaults to production URL if not set.
    *
    * @returns The base URL for MCP platform.
