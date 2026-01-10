@@ -67,7 +67,7 @@ describe('ScopeUtils.populateFromTurnContext', () => {
         [OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY, 'Agent One'],        
         [OpenTelemetryConstants.GEN_AI_AGENT_AUID_KEY, 'agent-oid'],  
         [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY, 'agent-1'],
-        [OpenTelemetryConstants.GEN_AI_AGENT_DESCRIPTION_KEY, 'assistant'],
+        [OpenTelemetryConstants.GEN_AI_AGENT_TYPE_KEY, 'assistant'],
         [OpenTelemetryConstants.TENANT_ID_KEY, 'tenant-123'],
         [OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, 'input text']
       ])
@@ -138,7 +138,7 @@ describe('ScopeUtils.populateFromTurnContext', () => {
         [OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, 'invoke message'],
         [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY, 'agent-1'],
         [OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY, 'Agent One'],
-        [OpenTelemetryConstants.GEN_AI_AGENT_DESCRIPTION_KEY, 'assistant']
+        [OpenTelemetryConstants.GEN_AI_AGENT_TYPE_KEY, 'assistant']
       ])
     );
     scope?.dispose();
@@ -158,7 +158,7 @@ describe('ScopeUtils.populateFromTurnContext', () => {
         [OpenTelemetryConstants.GEN_AI_AGENT_AUID_KEY, 'agent-oid'],
         [OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY, 'Agent One'],
         [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY, 'agent-1'],
-        [OpenTelemetryConstants.GEN_AI_AGENT_DESCRIPTION_KEY, 'assistant'],
+        [OpenTelemetryConstants.GEN_AI_AGENT_TYPE_KEY, 'assistant'],
         [OpenTelemetryConstants.TENANT_ID_KEY, 'tenant-123']
       ])
     );
@@ -186,8 +186,8 @@ test('deriveAgentDetails maps recipient fields to AgentDetails', () => {
   expect(ScopeUtils.deriveAgentDetails(ctx)).toEqual({
     agentId: 'aid',
     agentName: 'A',
+    agentType: 'bot',
     agentAUID: 'auid',
-    agentDescription: 'bot',
     tenantId: 't1',
   });
 });
@@ -203,7 +203,7 @@ test('deriveCallerAgent maps from fields to caller AgentDetails', () => {
     agentBlueprintId: 'bp',
     agentName: 'Caller',
     agentAUID: 'uid',
-    agentDescription: 'agent',
+    agentType: 'agent',
     tenantId: 't2',
     agentId: 'agent-caller',
   });

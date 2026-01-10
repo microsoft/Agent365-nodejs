@@ -18,6 +18,7 @@ export const GENERIC_ATTRIBUTES: readonly string[] = [
   consts.GEN_AI_OPERATION_NAME_KEY,
   consts.GEN_AI_AGENT_ID_KEY,
   consts.GEN_AI_AGENT_NAME_KEY,
+  consts.GEN_AI_AGENT_TYPE_KEY,
   consts.GEN_AI_AGENT_DESCRIPTION_KEY,
   consts.SESSION_DESCRIPTION_KEY,
   consts.GEN_AI_AGENT_USER_ID_KEY,

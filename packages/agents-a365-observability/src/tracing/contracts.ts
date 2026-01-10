@@ -104,6 +104,9 @@ export interface AgentDetails {
   /** The human-readable name of the AI agent */
   agentName?: string;
 
+  /** Optional type of the AI agent */
+  agentType?: string;
+
   /** A description of the AI agent's purpose or capabilities */
   agentDescription?: string;
 
