@@ -4,7 +4,10 @@
 import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
+import { TurnContext } from '@microsoft/agents-hosting';
+import { OperationResult, OperationError } from '@microsoft/agents-a365-runtime';
 import { MCPServerConfig, McpClientTool, ToolOptions } from './contracts';
+import { ChatHistoryMessage, ChatMessageRequest } from './models/index';
 import { Utility } from './Utility';
 
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
@@ -79,6 +82,108 @@ export class McpToolServerConfigurationService {
     await mcpClient.close();
 
     return toolsObj.tools;
+  }
+
+  /**
+   * Sends chat history to the MCP platform for real-time threat protection.
+   * 
+   * @param turnContext The turn context containing conversation information.
+   * @param chatHistoryMessages The chat history messages to send.
+   * @returns A Promise that resolves to an OperationResult indicating success or failure.
+   * @throws Error if turnContext or chatHistoryMessages is null/undefined.
+   * @throws Error if required turn context properties (Conversation.Id, Activity.Id, or Activity.Text) are null.
+   * @remarks
+   * HTTP exceptions (network errors, timeouts) are caught and logged but not rethrown.
+   * Instead, the method returns an OperationResult indicating whether the operation succeeded or failed.
+   * Callers can choose to inspect the result for error handling or ignore it if error details are not needed.
+   */
+  async sendChatHistory(turnContext: TurnContext, chatHistoryMessages: ChatHistoryMessage[]): Promise<OperationResult>;
+
+  /**
+   * Sends chat history to the MCP platform for real-time threat protection.
+   * 
+   * @param turnContext The turn context containing conversation information.
+   * @param chatHistoryMessages The chat history messages to send.
+   * @param options Optional tool options for sending chat history.
+   * @returns A Promise that resolves to an OperationResult indicating success or failure.
+   * @throws Error if turnContext or chatHistoryMessages is null/undefined.
+   * @throws Error if required turn context properties (Conversation.Id, Activity.Id, or Activity.Text) are null.
+   * @remarks
+   * HTTP exceptions (network errors, timeouts) are caught and logged but not rethrown.
+   * Instead, the method returns an OperationResult indicating whether the operation succeeded or failed.
+   * Callers can choose to inspect the result for error handling or ignore it if error details are not needed.
+   */
+  async sendChatHistory(turnContext: TurnContext, chatHistoryMessages: ChatHistoryMessage[], options?: ToolOptions): Promise<OperationResult>;
+
+  async sendChatHistory(turnContext: TurnContext, chatHistoryMessages: ChatHistoryMessage[], options?: ToolOptions): Promise<OperationResult> {
+    if (!turnContext) {
+      throw new Error('turnContext is required');
+    }
+    if (!chatHistoryMessages) {
+      throw new Error('chatHistoryMessages is required');
+    }
+
+    // Extract required information from turn context
+    const conversationId = turnContext.activity?.conversation?.id;
+    if (!conversationId) {
+      throw new Error('Conversation ID is required but not found in turn context');
+    }
+
+    const messageId = turnContext.activity?.id;
+    if (!messageId) {
+      throw new Error('Message ID is required but not found in turn context');
+    }
+
+    const userMessage = turnContext.activity?.text;
+    if (!userMessage) {
+      throw new Error('User message is required but not found in turn context');
+    }
+
+    // Get the endpoint URL
+    const endpoint = Utility.GetChatHistoryEndpoint();
+
+    this.logger.info(`Sending chat history to endpoint: ${endpoint}`);
+
+    // Create the request payload
+    const request: ChatMessageRequest = {
+      conversationId,
+      messageId,
+      userMessage,
+      chatHistory: chatHistoryMessages
+    };
+
+    try {
+      const headers = Utility.GetToolRequestHeaders(undefined, turnContext, options);
+      
+      await axios.post(
+        endpoint,
+        request,
+        {
+          headers: {
+            ...headers,
+            'Content-Type': 'application/json'
+          },
+          timeout: 10000 // 10 seconds timeout
+        }
+      );
+
+      this.logger.info('Successfully sent chat history to MCP platform');
+      return OperationResult.success;
+    } catch (err: unknown) {
+      const error = err as Error & { code?: string };
+      
+      if (axios.isAxiosError(err)) {
+        if (err.code === 'ECONNABORTED' || err.code === 'ETIMEDOUT') {
+          this.logger.error(`Request timeout sending chat history to '${endpoint}': ${error.message}`);
+        } else {
+          this.logger.error(`HTTP error sending chat history to '${endpoint}': ${error.message}`);
+        }
+      } else {
+        this.logger.error(`Failed to send chat history to '${endpoint}': ${error.message}`);
+      }
+      
+      return OperationResult.failed(new OperationError(error));
+    }
   }
 
   /**
