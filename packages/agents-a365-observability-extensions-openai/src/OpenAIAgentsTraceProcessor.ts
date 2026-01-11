@@ -250,24 +250,41 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
 
     if (inputObj && !this.suppressInvokeAgentInput) {
       if (typeof inputObj === 'string') {
+        try {
+          const parsed = JSON.parse(inputObj as string);
+          if (Array.isArray(parsed)) {
+            otelSpan.setAttribute(
+              OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY,
+              this.buildInputMessages(parsed)
+            );
+            return;
+          }
+        } catch {
+          // If parsing fails, fall back to raw string behavior
+        }
         otelSpan.setAttribute(OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, inputObj);
       } else if (Array.isArray(inputObj)) {
-        // Store the complete _input structure as JSON
+        // build the input messages from array
         otelSpan.setAttribute(
           OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY,
-          JSON.stringify(inputObj)
+          this.buildInputMessages(inputObj)
         );
-
-        // Get attributes but filter out unwanted ones
-        const attrs = Utils.getAttributesFromInput(inputObj);
-        Object.entries(attrs).forEach(([key, value]) => {
-          if (value !== null && value !== undefined &&
-              key !== Constants.GEN_AI_REQUEST_CONTENT_KEY) {
-            otelSpan.setAttribute(key, value as string | number | boolean);
-          }
-        });
       }
     }
+  }
+
+  private buildInputMessages(arr: Array<{ role?: string; parts?: Array<{ type: string; content: unknown }> }>): string {
+    const userTexts: string[] = [];
+    for (const message of arr) {
+      if (message && message.role === 'user' && Array.isArray(message.parts)) {
+        for (const p of message.parts) {
+          if (p && p.type === 'text' && typeof p.content === 'string') {
+            userTexts.push(p.content);
+          }
+        }
+      }
+    }
+    return userTexts.length ? JSON.stringify(userTexts) : JSON.stringify(arr);
   }
 
   /**
