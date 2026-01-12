@@ -45,7 +45,7 @@ function makeTurnContext(
 
 describe('ScopeUtils.populateFromTurnContext', () => {
   let spy: jest.SpyInstance;
-  beforeEach(() => { 
+  beforeEach(() => {
     spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
    });
 
@@ -53,7 +53,7 @@ describe('ScopeUtils.populateFromTurnContext', () => {
     spy.mockRestore();
   });
 
-  test('build InferenceScope based on turn context', () => {    
+  test('build InferenceScope based on turn context', () => {
     const details = { operationName: 'inference', model: 'gpt-4o', providerName: 'openai' } as any;
     const ctx = makeTurnContext('input text', 'web', 'https://web', 'conv-A');
     const scope = ScopeUtils.populateInferenceScopeFromTurnContext(details, ctx) as InferenceScope;
@@ -64,10 +64,10 @@ describe('ScopeUtils.populateFromTurnContext', () => {
         [OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, 'conv-A'],
         [OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY, 'web'],
         [OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY, 'https://web'],
-        [OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY, 'Agent One'],        
-        [OpenTelemetryConstants.GEN_AI_AGENT_AUID_KEY, 'agent-oid'],  
+        [OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY, 'Agent One'],
+        [OpenTelemetryConstants.GEN_AI_AGENT_AUID_KEY, 'agent-oid'],
         [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY, 'agent-1'],
-        [OpenTelemetryConstants.GEN_AI_AGENT_TYPE_KEY, 'assistant'],
+        [OpenTelemetryConstants.GEN_AI_AGENT_DESCRIPTION_KEY, 'assistant'],
         [OpenTelemetryConstants.TENANT_ID_KEY, 'tenant-123'],
         [OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, 'input text']
       ])
@@ -113,7 +113,7 @@ describe('ScopeUtils.populateFromTurnContext', () => {
       });
     });
 
-  test('build InvokeAgentScope based on turn context', () => {    
+  test('build InvokeAgentScope based on turn context', () => {
     const details = { operationName: 'invoke', model: 'n/a', providerName: 'internal' } as any;
     const ctx = makeTurnContext('invoke message', 'teams', 'https://teams', 'conv-B');
     ctx.activity.from!.role = RoleTypes.AgenticUser;
@@ -138,7 +138,7 @@ describe('ScopeUtils.populateFromTurnContext', () => {
         [OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, 'invoke message'],
         [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY, 'agent-1'],
         [OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY, 'Agent One'],
-        [OpenTelemetryConstants.GEN_AI_AGENT_TYPE_KEY, 'assistant']
+        [OpenTelemetryConstants.GEN_AI_AGENT_DESCRIPTION_KEY, 'assistant']
       ])
     );
     scope?.dispose();
@@ -158,11 +158,11 @@ describe('ScopeUtils.populateFromTurnContext', () => {
         [OpenTelemetryConstants.GEN_AI_AGENT_AUID_KEY, 'agent-oid'],
         [OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY, 'Agent One'],
         [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY, 'agent-1'],
-        [OpenTelemetryConstants.GEN_AI_AGENT_TYPE_KEY, 'assistant'],
+        [OpenTelemetryConstants.GEN_AI_AGENT_DESCRIPTION_KEY, 'assistant'],
         [OpenTelemetryConstants.TENANT_ID_KEY, 'tenant-123']
       ])
     );
-    scope?.dispose();    
+    scope?.dispose();
   });
 });
 
@@ -186,8 +186,8 @@ test('deriveAgentDetails maps recipient fields to AgentDetails', () => {
   expect(ScopeUtils.deriveAgentDetails(ctx)).toEqual({
     agentId: 'aid',
     agentName: 'A',
-    agentType: 'bot',
     agentAUID: 'auid',
+    agentDescription: 'bot',
     tenantId: 't1',
   });
 });
@@ -203,7 +203,7 @@ test('deriveCallerAgent maps from fields to caller AgentDetails', () => {
     agentBlueprintId: 'bp',
     agentName: 'Caller',
     agentAUID: 'uid',
-    agentType: 'agent',
+    agentDescription: 'agent',
     tenantId: 't2',
     agentId: 'agent-caller',
   });

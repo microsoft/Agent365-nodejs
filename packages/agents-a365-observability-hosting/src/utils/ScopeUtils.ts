@@ -59,7 +59,7 @@ export class ScopeUtils {
       agentId: recipient.agenticAppId,
       agentName: recipient.name,
       agentAUID: recipient.aadObjectId,
-      agentType: recipient.role,
+      agentDescription: recipient.role,
       tenantId: recipient.tenantId
     } as AgentDetails;
   }
@@ -77,7 +77,7 @@ export class ScopeUtils {
       agentBlueprintId: from.agenticAppBlueprintId,
       agentName: from.name,
       agentAUID: from.aadObjectId,
-      agentType: from.role,
+      agentDescription: from.role,
       tenantId: from.tenantId,
       agentId: from.agenticAppId
     } as AgentDetails;
