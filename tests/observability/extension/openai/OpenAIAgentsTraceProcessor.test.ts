@@ -559,9 +559,7 @@ describe('OpenAIAgentsTraceProcessor', () => {
       const inputArray = [
         {
           role: 'assistant',
-          parts: [
-            { type: 'text', content: 'Assistant reply' },
-          ],
+          content: 'Assistant reply',
         },
       ];
 
@@ -602,13 +600,8 @@ describe('OpenAIAgentsTraceProcessor', () => {
           type: 'response' as const,
           name: 'ResponseArray',
           _input: [
-            {
-              role: 'user',
-              parts: [
-                { type: 'text', content: 'Hello user 1' },
-                { type: 'text', content: 'Hello user 2' },
-              ],
-            }
+            { role: 'user', content: 'Hello user 1' },
+            { role: 'user', content: 'Hello user 2' },
           ],
           _response: { model: 'gpt-4', output: 'ok' },
         },
@@ -633,19 +626,9 @@ describe('OpenAIAgentsTraceProcessor', () => {
       await processor.onTraceStart(traceData);
 
       const inputArray = [
-        {
-          role: 'user',
-          parts: [
-            { type: 'text', content: 'Hello user 1' },
-            { type: 'text', content: 'Hello user 2' },
-          ],
-        },
-        {
-          role: 'assistant',
-          parts: [
-            { type: 'text', content: 'Assistant reply' },
-          ],
-        },
+        { role: 'user', content: 'Hello user 1' },
+        { role: 'user', content: 'Hello user 2' },
+        { role: 'assistant', content: 'Assistant reply' },
       ];
 
       const respSpan = {
@@ -704,6 +687,73 @@ describe('OpenAIAgentsTraceProcessor', () => {
       const value = entry![1] as string;
       const parsed = JSON.parse(value);
       expect(parsed).toEqual(inputArray);
+    });
+
+    it('records GEN_AI_OUTPUT_MESSAGES as plain string when output is a string', async () => {
+      const processor = new OpenAIAgentsTraceProcessor(tracer);
+      const traceData = { traceId: 'trace-output-string', name: 'Agent' } as any;
+      await processor.onTraceStart(traceData);
+
+      const respSpan = {
+        spanId: 'resp-output-string',
+        traceId: 'trace-output-string',
+        startedAt: new Date().toISOString(),
+        spanData: {
+          type: 'response' as const,
+          name: 'ResponseOutputString',
+          _input: 'ignored',
+          _response: { model: 'gpt-4', output: 'final answer' },
+        },
+      } as any;
+
+      await processor.onSpanStart(respSpan);
+      await processor.onSpanEnd(respSpan);
+
+      const respMock = spansByName['ResponseOutputString'];
+      const attrs = respMock._attrs as Array<[string, unknown]>;
+      const entry = attrs.find(([k]) => k === OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY);
+      expect(entry).toBeDefined();
+      expect(entry![1]).toBe('final answer');
+    });
+
+    it('records GEN_AI_OUTPUT_MESSAGES as aggregated texts when output is structured', async () => {
+      const processor = new OpenAIAgentsTraceProcessor(tracer);
+      const traceData = { traceId: 'trace-output-structured', name: 'Agent' } as any;
+      await processor.onTraceStart(traceData);
+
+      const outputArray = [
+        {
+          role: 'assistant',
+          content: [
+            { type: 'output_text', text: 'Hello user 1' },
+            { type: 'output_text', text: 'Hello user 2' },
+          ],
+        },
+      ];
+
+      const respSpan = {
+        spanId: 'resp-output-structured',
+        traceId: 'trace-output-structured',
+        startedAt: new Date().toISOString(),
+        spanData: {
+          type: 'response' as const,
+          name: 'ResponseOutputStructured',
+          _input: 'ignored',
+          _response: { model: 'gpt-4', output: outputArray },
+        },
+      } as any;
+
+      await processor.onSpanStart(respSpan);
+      await processor.onSpanEnd(respSpan);
+
+      const respMock = spansByName['ResponseOutputStructured'];
+      const attrs = respMock._attrs as Array<[string, unknown]>;
+      const entry = attrs.find(([k]) => k === OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY);
+      expect(entry).toBeDefined();
+
+      const value = entry![1] as string;
+      const parsed = JSON.parse(value);
+      expect(parsed).toEqual(['Hello user 1', 'Hello user 2']);
     });
   });
 });

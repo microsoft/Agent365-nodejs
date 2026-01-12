@@ -231,7 +231,10 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
         if (typeof resp.output === 'string') {
           otelSpan.setAttribute(OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY, resp.output);
         } else {
-          otelSpan.setAttribute(OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY, JSON.stringify(resp.output));
+          otelSpan.setAttribute(
+            OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY,
+            this.buildOutputMessages(resp.output  as Array<{ role: string; content: Array<{ type: string; text: string }> }>)
+          );
         }
       }
 
@@ -273,18 +276,30 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
     }
   }
 
-  private buildInputMessages(arr: Array<{ role?: string; parts?: Array<{ type: string; content: unknown }> }>): string {
+  private buildInputMessages(arr: Array<{ role: string; content: string }>): string {
+    const userTexts = arr
+      .filter((m) => m && m.role === 'user' && typeof m.content === 'string')
+      .map((m) => m.content);
+
+    return JSON.stringify(userTexts.length ? userTexts : arr);
+  }
+
+  private buildOutputMessages(arr: Array<{ role: string; content: Array<{ type: string; text: string }> }>): string {
     const userTexts: string[] = [];
-    for (const message of arr) {
-      if (message && message.role === 'user' && Array.isArray(message.parts)) {
-        for (const p of message.parts) {
-          if (p && p.type === 'text' && typeof p.content === 'string') {
-            userTexts.push(p.content);
-          }
+
+    for (const { content } of arr) {
+      if (!Array.isArray(content)) {
+        continue;
+      }
+
+      for (const { type, text } of content) {
+        if (type === 'output_text' && typeof text === 'string') {
+          userTexts.push(text);
         }
       }
     }
-    return userTexts.length ? JSON.stringify(userTexts) : JSON.stringify(arr);
+
+    return JSON.stringify(userTexts.length ? userTexts : arr);
   }
 
   /**
