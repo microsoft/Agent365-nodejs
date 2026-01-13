@@ -140,6 +140,16 @@ export class BaggageBuilder {
   }
 
   /**
+   * Set the agent type baggage value.
+   * @param value The agent type
+   * @returns Self for method chaining
+   */
+  agentType(value: string | null | undefined): BaggageBuilder {
+    this.set(OpenTelemetryConstants.GEN_AI_AGENT_TYPE_KEY, value);
+    return this;
+  }
+
+  /**
    * Set the agent description baggage value.
    * @param value The agent description
    * @returns Self for method chaining
