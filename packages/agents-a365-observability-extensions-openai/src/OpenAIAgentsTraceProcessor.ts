@@ -231,7 +231,10 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
         if (typeof resp.output === 'string') {
           otelSpan.setAttribute(OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY, resp.output);
         } else {
-          otelSpan.setAttribute(OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY, JSON.stringify(resp.output));
+          otelSpan.setAttribute(
+            OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY,
+            this.buildOutputMessages(resp.output  as Array<{ role: string; content: Array<{ type: string; text: string }> }>)
+          );
         }
       }
 
@@ -250,24 +253,53 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
 
     if (inputObj && !this.suppressInvokeAgentInput) {
       if (typeof inputObj === 'string') {
+        try {
+          const parsed = JSON.parse(inputObj as string);
+          if (Array.isArray(parsed)) {
+            otelSpan.setAttribute(
+              OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY,
+              this.buildInputMessages(parsed)
+            );
+            return;
+          }
+        } catch {
+          // If parsing fails, fall back to raw string behavior
+        }
         otelSpan.setAttribute(OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, inputObj);
       } else if (Array.isArray(inputObj)) {
-        // Store the complete _input structure as JSON
+        // build the input messages from array
         otelSpan.setAttribute(
           OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY,
-          JSON.stringify(inputObj)
+          this.buildInputMessages(inputObj)
         );
-
-        // Get attributes but filter out unwanted ones
-        const attrs = Utils.getAttributesFromInput(inputObj);
-        Object.entries(attrs).forEach(([key, value]) => {
-          if (value !== null && value !== undefined &&
-              key !== Constants.GEN_AI_REQUEST_CONTENT_KEY) {
-            otelSpan.setAttribute(key, value as string | number | boolean);
-          }
-        });
       }
     }
+  }
+
+  private buildInputMessages(arr: Array<{ role: string; content: string }>): string {
+    const userTexts = arr
+      .filter((m) => m && m.role === 'user' && typeof m.content === 'string')
+      .map((m) => m.content);
+
+    return JSON.stringify(userTexts.length ? userTexts : arr);
+  }
+
+  private buildOutputMessages(arr: Array<{ role: string; content: Array<{ type: string; text: string }> }>): string {
+    const userTexts: string[] = [];
+
+    for (const { content } of arr) {
+      if (!Array.isArray(content)) {
+        continue;
+      }
+
+      for (const { type, text } of content) {
+        if (type === 'output_text' && typeof text === 'string') {
+          userTexts.push(text);
+        }
+      }
+    }
+
+    return JSON.stringify(userTexts.length ? userTexts : arr);
   }
 
   /**
