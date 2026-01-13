@@ -39,7 +39,13 @@ export function setupTracing(configure?: (opts: Agent365ExporterOptions) => void
 
   if (opts.enablePerRequestContextToken) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (provider as any).addSpanProcessor(new PerRequestSpanProcessor(exporter, 250, 30000));
+    (provider as any).addSpanProcessor(
+      new PerRequestSpanProcessor(
+        exporter,
+        opts.perRequestFlushGraceMs,
+        opts.perRequestMaxTraceAgeMs
+      )
+    );
   } else {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (provider as any).addSpanProcessor(new BatchSpanProcessor(exporter, {

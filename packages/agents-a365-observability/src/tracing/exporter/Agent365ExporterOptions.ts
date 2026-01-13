@@ -26,6 +26,8 @@ export type TokenResolver = (agentId: string, tenantId: string) => string | null
  * @property {number} exporterTimeoutMilliseconds Per-export timeout (abort if exceeded).
  * @property {number} maxExportBatchSize Maximum number of spans per export batch.
  * @property {boolean} enablePerRequestContextToken When true, use per-request (per trace) export and read the token from OTel Context at export time.
+ * @property {number} perRequestFlushGraceMs Grace period (ms) to wait for child spans after root span ends (only for per-request mode).
+ * @property {number} perRequestMaxTraceAgeMs Maximum trace age (ms) before forcing flush (only for per-request mode).
  */
 export class Agent365ExporterOptions {
   /** Environment / cluster category (e.g. "preprod", "prod"). */
@@ -58,4 +60,16 @@ export class Agent365ExporterOptions {
    *  - The setup will register BatchSpanProcessor with configured batching options.
    */
   public enablePerRequestContextToken: boolean = false;
+
+  /**
+   * Grace period (ms) to wait for child spans after root span ends before flushing.
+   * Only used when enablePerRequestContextToken is true.
+   */
+  public perRequestFlushGraceMs: number = 250;
+
+  /**
+   * Maximum age (ms) for a trace before forcing a flush.
+   * Only used when enablePerRequestContextToken is true.
+   */
+  public perRequestMaxTraceAgeMs: number = 30000;
 }

@@ -6,9 +6,11 @@
 import { context, type Context } from '@opentelemetry/api';
 import type { ReadableSpan, SpanProcessor, SpanExporter } from '@opentelemetry/sdk-trace-base';
 
+const ZERO_SPAN_ID = '0000000000000000';
+
 function isRootSpan(span: ReadableSpan): boolean {
   const parentContext = span.parentSpanContext;
-  return !parentContext || !parentContext.spanId || parentContext.spanId === '0000000000000000';
+  return !parentContext || !parentContext.spanId || parentContext.spanId === ZERO_SPAN_ID;
 }
 
 type TraceBuffer = {
@@ -72,7 +74,9 @@ export class PerRequestSpanProcessor implements SpanProcessor {
 
   async shutdown(): Promise<void> {
     await this.forceFlush();
-    await this.exporter.shutdown?.();
+    if (this.exporter.shutdown) {
+      await this.exporter.shutdown();
+    }
   }
 
   private scheduleGraceFlush(traceId: string) {
