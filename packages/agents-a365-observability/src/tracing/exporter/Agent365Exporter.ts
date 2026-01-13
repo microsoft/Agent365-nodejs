@@ -7,10 +7,19 @@ import { ExportResult, ExportResultCode } from '@opentelemetry/core';
 import { ReadableSpan, SpanExporter } from '@opentelemetry/sdk-trace-base';
 
 import { PowerPlatformApiDiscovery, ClusterCategory } from '@microsoft/agents-a365-runtime';
-import { partitionByIdentity, parseIdentityKey, hexTraceId, hexSpanId, kindName, statusName } from './utils';
+import {
+  partitionByIdentity,
+  parseIdentityKey,
+  hexTraceId,
+  hexSpanId,
+  kindName,
+  statusName,
+  useCustomDomainForObservability,
+  resolveAgent365Endpoint,
+  getAgent365ObservabilityDomainOverride
+} from './utils';
 import logger, { formatError } from '../../utils/logging';
 import { Agent365ExporterOptions } from './Agent365ExporterOptions';
-import { useCustomDomainForObservability, resolveAgent365Endpoint } from '../util';
 
 const DEFAULT_HTTP_TIMEOUT_SECONDS = 30000; // 30 seconds in ms
 const DEFAULT_MAX_RETRIES = 3;
@@ -144,25 +153,26 @@ export class Agent365Exporter implements SpanExporter {
 
     const payload = this.buildExportRequest(spans);
     const body = JSON.stringify(payload);
-
     const usingCustomServiceEndpoint = useCustomDomainForObservability();
-
     // Select endpoint path based on S2S flag
-    const endpointPath =
+    const endpointRelativePath =
       this.options.useS2SEndpoint
         ? `/maven/agent365/service/agents/${agentId}/traces`
         : `/maven/agent365/agents/${agentId}/traces`;
 
     let url: string;
-    if (usingCustomServiceEndpoint) {
+    const domainOverride = getAgent365ObservabilityDomainOverride();
+    if (domainOverride) {
+      url = `${domainOverride}${endpointRelativePath}?api-version=1`;
+    } else if (usingCustomServiceEndpoint) {
       const base = resolveAgent365Endpoint(this.options.clusterCategory as ClusterCategory);
-      url = `${base}${endpointPath}?api-version=1`;
+      url = `${base}${endpointRelativePath}?api-version=1`;
       logger.info(`[Agent365Exporter] Using custom domain endpoint: ${url}`);
     } else {
       // Default behavior: discover PPAPI gateway endpoint per-tenant
       const discovery = new PowerPlatformApiDiscovery(this.options.clusterCategory as ClusterCategory);
       const endpoint = discovery.getTenantIslandClusterEndpoint(tenantId);
-      url = `https://${endpoint}${endpointPath}?api-version=1`;
+      url = `https://${endpoint}${endpointRelativePath}?api-version=1`;
       logger.info(`[Agent365Exporter] Resolved endpoint: ${url}`);
     }
 
