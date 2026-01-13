@@ -6,6 +6,12 @@
 import { context, type Context } from '@opentelemetry/api';
 import type { ReadableSpan, SpanProcessor, SpanExporter } from '@opentelemetry/sdk-trace-base';
 
+/** Default grace period (ms) to wait for child spans after root span ends */
+const DEFAULT_FLUSH_GRACE_MS = 250;
+
+/** Default maximum age (ms) for a trace before forcing flush */
+const DEFAULT_MAX_TRACE_AGE_MS = 30000;
+
 function isRootSpan(span: ReadableSpan): boolean {
   return !span.parentSpanContext;
 }
@@ -28,8 +34,8 @@ export class PerRequestSpanProcessor implements SpanProcessor {
 
   constructor(
     private readonly exporter: SpanExporter,
-    private readonly flushGraceMs: number = 250,
-    private readonly maxTraceAgeMs: number = 30000
+    private readonly flushGraceMs: number = DEFAULT_FLUSH_GRACE_MS,
+    private readonly maxTraceAgeMs: number = DEFAULT_MAX_TRACE_AGE_MS
   ) {}
 
   onStart(span: ReadableSpan, ctx: Context): void {
@@ -54,7 +60,7 @@ export class PerRequestSpanProcessor implements SpanProcessor {
     if (!buf) return;
 
     buf.spans.push(span);
-    buf.openCount = Math.max(0, buf.openCount - 1);
+    buf.openCount -= 1;
 
     if (isRootSpan(span)) {
       buf.rootEnded = true;
@@ -94,8 +100,17 @@ export class PerRequestSpanProcessor implements SpanProcessor {
     // Export under the original request Context so tokenResolver can read the token from context.active()
     await new Promise<void>((resolve) => {
       context.with(buf.rootCtx ?? context.active(), () => {
-        this.exporter.export(spans, () => resolve());
+        this.exporter.export(spans, (result) => {
+          // Log export failures but still resolve to avoid blocking processor
+          if (result.code !== 0) {
+            console.error(`[PerRequestSpanProcessor] Export failed for trace ${traceId}`);
+          }
+          resolve();
+        });
       });
     });
   }
 }
+
+/** Export constants for use in configuration */
+export { DEFAULT_FLUSH_GRACE_MS, DEFAULT_MAX_TRACE_AGE_MS };

@@ -5,7 +5,7 @@
 
 import { NodeTracerProvider } from '@opentelemetry/sdk-trace-node';
 import { BatchSpanProcessor } from '@opentelemetry/sdk-trace-base';
-import { PerRequestSpanProcessor } from './PerRequestSpanProcessor';
+import { PerRequestSpanProcessor, DEFAULT_FLUSH_GRACE_MS, DEFAULT_MAX_TRACE_AGE_MS } from './PerRequestSpanProcessor';
 import { Agent365Exporter } from './exporter/Agent365Exporter';
 import { Agent365ExporterOptions } from './exporter/Agent365ExporterOptions';
 import { getExportToken } from './context/token-context';
@@ -36,7 +36,7 @@ export function setupTracing(configure?: (opts: Agent365ExporterOptions) => void
   const exporter = new Agent365Exporter(opts);
 
   const spanProcessor = opts.enablePerRequestContextToken
-    ? new PerRequestSpanProcessor(exporter, 250, 30000)
+    ? new PerRequestSpanProcessor(exporter, DEFAULT_FLUSH_GRACE_MS, DEFAULT_MAX_TRACE_AGE_MS)
     : new BatchSpanProcessor(exporter, {
         maxQueueSize: opts.maxQueueSize,
         scheduledDelayMillis: opts.scheduledDelayMilliseconds,
