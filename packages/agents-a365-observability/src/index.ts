@@ -12,6 +12,12 @@ export { OpenTelemetryConstants } from './tracing/constants';
 // Baggage builder
 export { BaggageBuilder, BaggageScope } from './tracing/middleware/BaggageBuilder';
 
+// Per-request export utilities
+export { setupTracing } from './tracing/setup-per-request-export';
+export { withExportToken } from './tracing/middleware/withExportToken';
+export { PerRequestSpanProcessor } from './tracing/PerRequestSpanProcessor';
+export { runWithExportToken, getExportToken } from './tracing/context/token-context';
+
 // Contracts and interfaces
 export {
   ExecutionType,

@@ -25,6 +25,7 @@ export type TokenResolver = (agentId: string, tenantId: string) => string | null
  * @property {number} scheduledDelayMilliseconds Delay between automatic batch flush attempts.
  * @property {number} exporterTimeoutMilliseconds Per-export timeout (abort if exceeded).
  * @property {number} maxExportBatchSize Maximum number of spans per export batch.
+ * @property {boolean} enablePerRequestContextToken When true, use per-request (per trace) export and read the token from OTel Context at export time.
  */
 export class Agent365ExporterOptions {
   /** Environment / cluster category (e.g. "preprod", "prod"). */
@@ -47,4 +48,14 @@ export class Agent365ExporterOptions {
 
   /** Maximum number of spans per export batch. */
   public maxExportBatchSize: number = 512;
+
+  /**
+   * Toggle for per-request, zero-storage token export.
+   * When true:
+   *  - The setup will register PerRequestSpanProcessor (export per trace).
+   *  - The exporter will read the token from OTel Context at export time.
+   * When false:
+   *  - The setup will register BatchSpanProcessor with configured batching options.
+   */
+  public enablePerRequestContextToken: boolean = false;
 }
