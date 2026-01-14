@@ -13,6 +13,53 @@ npm install @microsoft/agents-a365-runtime
 
 ## Usage
 
+### Agent Settings Service
+
+The Agent Settings Service provides methods to manage agent settings templates and instance-specific settings:
+
+```typescript
+import { 
+  AgentSettingsService, 
+  PowerPlatformApiDiscovery 
+} from '@microsoft/agents-a365-runtime';
+
+// Initialize the service
+const apiDiscovery = new PowerPlatformApiDiscovery('prod');
+const tenantId = 'your-tenant-id';
+const service = new AgentSettingsService(apiDiscovery, tenantId);
+
+// Get agent setting template by agent type
+const template = await service.getAgentSettingTemplate(
+  'my-agent-type',
+  accessToken
+);
+
+// Set agent setting template
+await service.setAgentSettingTemplate(
+  {
+    agentType: 'my-agent-type',
+    settings: { key1: 'value1', key2: 'value2' }
+  },
+  accessToken
+);
+
+// Get agent settings by instance
+const settings = await service.getAgentSettings(
+  'agent-instance-id',
+  accessToken
+);
+
+// Set agent settings by instance
+await service.setAgentSettings(
+  {
+    agentInstanceId: 'agent-instance-id',
+    agentType: 'my-agent-type',
+    settings: { instanceKey: 'instanceValue' }
+  },
+  accessToken
+);
+```
+
 For detailed usage examples and implementation guidance, see the [Microsoft Agent 365 Developer Documentation](https://learn.microsoft.com/microsoft-agent-365/developer/?tabs=nodejs).
 
 ## Support
