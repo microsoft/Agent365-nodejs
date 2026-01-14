@@ -159,4 +159,18 @@ export class Utility {
 
     return MCP_PLATFORM_PROD_BASE_URL;
   }
+
+  /**
+   * Constructs the endpoint URL for sending chat history to the MCP platform for real-time threat protection.
+   * 
+   * @returns An absolute URL that tooling components can use to send or retrieve chat messages for
+   * real-time threat protection scenarios.
+   * @remarks
+   * Call this method when constructing HTTP requests that need to access the chat-message history
+   * for real-time threat protection. The returned URL already includes the MCP platform base address
+   * and the fixed path segment `/agents/real-time-threat-protection/chat-message`.
+   */
+  public static GetChatHistoryEndpoint(): string {
+    return `${this.getMcpPlatformBaseUrl()}/agents/real-time-threat-protection/chat-message`;
+  }
 }
