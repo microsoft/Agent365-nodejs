@@ -10,7 +10,7 @@ configDotenv();
 import { AuthConfiguration, authorizeJWT, CloudAdapter, loadAuthConfigFromEnv, Request } from '@microsoft/agents-hosting';
 import express, { Response } from 'express';
 import { agentApplication } from './A365Agent';
-import { a365Observability, openAIAgentsTraceInstrumentor } from './Telemetry';
+import { a365Observability, openAIAgentsTraceInstrumentor, getExportToken, runWithExportToken } from './Telemetry';
 
 // Start observability
 a365Observability.start();
@@ -25,9 +25,20 @@ app.use(express.json());
 app.use(authorizeJWT(authConfig));
 
 app.post('/api/messages', async (req: Request, res: Response) => {
-  await adapter.process(req, res, async (context) => {
-    const app = agentApplication;
-    await app.run(context);
+  // Extract the auth token from the request
+  const authHeader = req.headers.authorization;
+  const token = typeof authHeader === 'string' ? authHeader.replace('Bearer ', '') : '';
+  
+  // When ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT=true:
+  // - Call runWithExportToken(token, fn) to set the token in OTel Context
+  // - The token resolver in Agent365Exporter automatically reads from context
+  // - No need to implement a custom tokenResolver in the builder
+  // - Token is NOT stored in spans, only accessible at export time
+  await runWithExportToken(token, async () => {
+    await adapter.process(req, res, async (context) => {
+      const app = agentApplication;
+      await app.run(context);
+    });
   });
 });
 

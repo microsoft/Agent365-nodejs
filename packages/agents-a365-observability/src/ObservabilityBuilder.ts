@@ -5,10 +5,12 @@
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { ConsoleSpanExporter, BatchSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import { SpanProcessor } from './tracing/processors/SpanProcessor';
-import { isAgent365ExporterEnabled } from './tracing/exporter/utils';
+import { isAgent365ExporterEnabled, isPerRequestExportEnabled } from './tracing/exporter/utils';
 import { Agent365Exporter } from './tracing/exporter/Agent365Exporter';
 import type { TokenResolver } from './tracing/exporter/Agent365ExporterOptions';
 import { Agent365ExporterOptions } from './tracing/exporter/Agent365ExporterOptions';
+import { PerRequestSpanProcessor, DEFAULT_FLUSH_GRACE_MS, DEFAULT_MAX_TRACE_AGE_MS } from './tracing/PerRequestSpanProcessor';
+import { getExportToken } from './tracing/context/token-context';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
 import { trace } from '@opentelemetry/api';
@@ -111,6 +113,37 @@ export class ObservabilityBuilder {
     });
   }
 
+  private createPerRequestProcessor(): PerRequestSpanProcessor {
+    const opts = new Agent365ExporterOptions();
+    if (this.options.exporterOptions) {
+      Object.assign(opts, this.options.exporterOptions);
+    }
+    opts.clusterCategory = this.options.clusterCategory || opts.clusterCategory || 'prod';
+    
+    // When per-request export is enabled, use token from OTel Context if not explicitly provided
+    if (!this.options.tokenResolver) {
+      opts.tokenResolver = (agentId: string, tenantId: string) => {
+        return getExportToken() ?? null;
+      };
+    } else {
+      opts.tokenResolver = this.options.tokenResolver;
+    }
+    
+    return new PerRequestSpanProcessor(new Agent365Exporter(opts), DEFAULT_FLUSH_GRACE_MS, DEFAULT_MAX_TRACE_AGE_MS);
+  }
+
+  private createExportProcessor(): BatchSpanProcessor | PerRequestSpanProcessor {
+    if (!isAgent365ExporterEnabled()) {
+      return new BatchSpanProcessor(new ConsoleSpanExporter());
+    }
+
+    if (isPerRequestExportEnabled()) {
+      return this.createPerRequestProcessor();
+    }
+
+    return this.createBatchProcessor();
+  }
+
   private createResource() {
     const serviceName = this.options.serviceVersion
       ? `${this.options.serviceName}-${this.options.serviceVersion}`
@@ -133,8 +166,8 @@ export class ObservabilityBuilder {
     // 1. baggage enricher (copies baggage -> span attributes)
     const spanProcessor = new SpanProcessor();
 
-    // 2. batch processor that actually ships spans out
-    const batchProcessor = this.createBatchProcessor();
+    // 2. export processor (batch or per-request based on environment variable)
+    const exportProcessor = this.createExportProcessor();
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const globalProvider: any = trace.getTracerProvider();
@@ -146,11 +179,11 @@ export class ObservabilityBuilder {
     if (canAddProcessors) {
       // Someone else already created a provider (maybe their own NodeSDK).
       // We DO NOT create a new NodeSDK.
-      // We just add our baggage enricher + batch exporter to their provider,
+      // We just add our baggage enricher + export processor to their provider,
       // but only if they aren't already there.
 
       this.attachProcessorIfMissing(globalProvider, spanProcessor);
-      this.attachProcessorIfMissing(globalProvider, batchProcessor);
+      this.attachProcessorIfMissing(globalProvider, exportProcessor);
 
       this.isBuilt = true;
       this.sdk = undefined; // we didn't create/own one
@@ -163,7 +196,7 @@ export class ObservabilityBuilder {
       resource: this.createResource(),
       spanProcessors: [
         spanProcessor,
-        batchProcessor,
+        exportProcessor,
       ],
     });
 

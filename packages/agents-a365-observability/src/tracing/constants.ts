@@ -24,6 +24,7 @@ export class OpenTelemetryConstants {
   public static readonly ENABLE_OBSERVABILITY = 'ENABLE_OBSERVABILITY';
   public static readonly ENABLE_A365_OBSERVABILITY_EXPORTER = 'ENABLE_A365_OBSERVABILITY_EXPORTER';
   public static readonly ENABLE_A365_OBSERVABILITY = 'ENABLE_A365_OBSERVABILITY';
+  public static readonly ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT = 'ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT';
 
   // GenAI semantic conventions
   public static readonly GEN_AI_CLIENT_OPERATION_DURATION_METRIC_NAME = 'gen_ai.client.operation.duration';
