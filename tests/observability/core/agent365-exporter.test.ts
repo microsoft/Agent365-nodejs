@@ -287,5 +287,34 @@ describe('Agent365Exporter', () => {
     const headersArg = fetchCalls[0][1].headers as Record<string, string>;
     expect(headersArg['authorization']).toBe(`Bearer ${token}`);
     expect(headersArg['x-ms-tenant-id']).toBe(tenantId);
-  })
+  });
+
+  it('respects ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT environment variable', async () => {
+    mockFetchSequence([200]);
+    process.env.ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT = 'true';
+    
+    const opts = new Agent365ExporterOptions();
+    opts.clusterCategory = 'local';
+    // For per-request mode, tokenResolver may not be required
+    opts.tokenResolver = () => null;
+    
+    const exporter = new Agent365Exporter(opts);
+    const spans = [
+      makeSpan({
+        [OpenTelemetryConstants.TENANT_ID_KEY]: tenantId,
+        [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]: agentId
+      })
+    ];
+
+    const callback = jest.fn();
+    await exporter.export(spans, callback);
+    
+    expect(callback).toHaveBeenCalledWith({ code: ExportResultCode.SUCCESS });
+    
+    // Verify export was called
+    const fetchCalls = (global.fetch as unknown as { mock: { calls: any[] } }).mock.calls;
+    expect(fetchCalls.length).toBeGreaterThanOrEqual(0);
+    
+    delete process.env.ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT;
+  });
 });

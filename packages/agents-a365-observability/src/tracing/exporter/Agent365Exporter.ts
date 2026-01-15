@@ -16,8 +16,10 @@ import {
   statusName,
   useCustomDomainForObservability,
   resolveAgent365Endpoint,
-  getAgent365ObservabilityDomainOverride
+  getAgent365ObservabilityDomainOverride,
+  isPerRequestExportEnabled
 } from './utils';
+import { getExportToken } from '../context/token-context';
 import logger, { formatError } from '../../utils/logging';
 import { Agent365ExporterOptions } from './Agent365ExporterOptions';
 
@@ -95,8 +97,8 @@ export class Agent365Exporter implements SpanExporter {
       throw new Error('Agent365ExporterOptions must be provided (was null/undefined)');
     }
 
-    if (!options.tokenResolver) {
-      throw new Error('Agent365Exporter tokenResolver must be provided');
+    if (!isPerRequestExportEnabled() && !options.tokenResolver) {
+      throw new Error('Agent365Exporter tokenResolver must be provided for batch export');
     }
     this.options = options;
   }
@@ -180,17 +182,33 @@ export class Agent365Exporter implements SpanExporter {
       'content-type': 'application/json'
     };
 
-    if (!this.options.tokenResolver) {
-      logger.error('[Agent365Exporter] tokenResolver is undefined, skip exporting');
-      return;
+    let token: string | null = null;
+
+    if (isPerRequestExportEnabled()) {
+      // For per-request export, get token from OTel Context
+      token = getExportToken() ?? null;
+      if (token) {
+        logger.info('[Agent365Exporter] Token retrieved from OTel Context for per-request export');
+      } else {
+        logger.error('[Agent365Exporter] No token available in OTel Context for per-request export');
+      }
+    } else {
+      // For batch export, use tokenResolver
+      if (!this.options.tokenResolver) {
+        logger.error('[Agent365Exporter] tokenResolver is undefined, skip exporting');
+        return;
+      }
+      const tokenResult = this.options.tokenResolver(agentId, tenantId);
+      token = tokenResult instanceof Promise ? await tokenResult : tokenResult;
+      if (token) {
+        logger.info('[Agent365Exporter] Token resolved successfully via tokenResolver');
+      } else {
+        logger.error('[Agent365Exporter] No token resolved via tokenResolver');
+      }
     }
-    const tokenResult = this.options.tokenResolver(agentId, tenantId);
-    const token = tokenResult instanceof Promise ? await tokenResult : tokenResult;
+
     if (token) {
       headers['authorization'] = `Bearer ${token}`;
-      logger.info('[Agent365Exporter] Token resolved successfully');
-    } else {
-      logger.error('[Agent365Exporter] No token resolved');
     }
 
     // Add tenant id to headers when using custom domain

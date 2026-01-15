@@ -4,6 +4,7 @@
 // ------------------------------------------------------------------------------
 
 import { context, createContextKey, Context } from '@opentelemetry/api';
+import logger from '../../utils/logging';
 
 const EXPORT_TOKEN_KEY = createContextKey('a365_export_token');
 
@@ -13,6 +14,7 @@ const EXPORT_TOKEN_KEY = createContextKey('a365_export_token');
  */
 export function runWithExportToken<T>(token: string, fn: () => T): T {
   const ctxWithToken = context.active().setValue(EXPORT_TOKEN_KEY, token);
+  logger.info(`[TokenContext] Running function with export token in context. Token length=${token.length}`);
   return context.with(ctxWithToken, fn);
 }
 

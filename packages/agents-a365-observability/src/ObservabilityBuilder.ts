@@ -10,11 +10,11 @@ import { Agent365Exporter } from './tracing/exporter/Agent365Exporter';
 import type { TokenResolver } from './tracing/exporter/Agent365ExporterOptions';
 import { Agent365ExporterOptions } from './tracing/exporter/Agent365ExporterOptions';
 import { PerRequestSpanProcessor, DEFAULT_FLUSH_GRACE_MS, DEFAULT_MAX_TRACE_AGE_MS } from './tracing/PerRequestSpanProcessor';
-import { getExportToken } from './tracing/context/token-context';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
 import { trace } from '@opentelemetry/api';
 import { ClusterCategory } from '@microsoft/agents-a365-runtime';
+import logger from './utils/logging';
 /**
  * Configuration options for Agent 365 Observability Builder
  */
@@ -94,6 +94,7 @@ export class ObservabilityBuilder {
 
   private createBatchProcessor(): BatchSpanProcessor {
     if (!isAgent365ExporterEnabled()) {
+      logger.info('[ObservabilityBuilder] Agent 365 exporter not enabled, using ConsoleSpanExporter for BatchSpanProcessor');      
       return new BatchSpanProcessor(new ConsoleSpanExporter());
     }
 
@@ -114,29 +115,23 @@ export class ObservabilityBuilder {
   }
 
   private createPerRequestProcessor(): PerRequestSpanProcessor {
+    if (!isAgent365ExporterEnabled()) {
+      logger.info('[Agent365Exporter] Per-request export enabled but Agent 365 exporter is disabled. Using ConsoleSpanExporter.');
+      return new PerRequestSpanProcessor(new ConsoleSpanExporter());
+    }
+
     const opts = new Agent365ExporterOptions();
     if (this.options.exporterOptions) {
       Object.assign(opts, this.options.exporterOptions);
     }
     opts.clusterCategory = this.options.clusterCategory || opts.clusterCategory || 'prod';
     
-    // When per-request export is enabled, use token from OTel Context if not explicitly provided
-    if (!this.options.tokenResolver) {
-      opts.tokenResolver = (agentId: string, tenantId: string) => {
-        return getExportToken() ?? null;
-      };
-    } else {
-      opts.tokenResolver = this.options.tokenResolver;
-    }
-    
+    // For per-request export, token is retrieved from OTel Context by Agent365Exporter
+    // using getExportToken(), so no tokenResolver is needed here
     return new PerRequestSpanProcessor(new Agent365Exporter(opts), DEFAULT_FLUSH_GRACE_MS, DEFAULT_MAX_TRACE_AGE_MS);
   }
 
   private createExportProcessor(): BatchSpanProcessor | PerRequestSpanProcessor {
-    if (!isAgent365ExporterEnabled()) {
-      return new BatchSpanProcessor(new ConsoleSpanExporter());
-    }
-
     if (isPerRequestExportEnabled()) {
       return this.createPerRequestProcessor();
     }

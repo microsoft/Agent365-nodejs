@@ -5,6 +5,7 @@
 
 import { context, type Context } from '@opentelemetry/api';
 import type { ReadableSpan, SpanProcessor, SpanExporter } from '@opentelemetry/sdk-trace-base';
+import logger from '../utils/logging';
 
 /** Default grace period (ms) to wait for child spans after root span ends */
 const DEFAULT_FLUSH_GRACE_MS = 250;
@@ -23,6 +24,8 @@ type TraceBuffer = {
   rootCtx?: Context;           // holds the request Context (with token in ALS)
   flushTimer?: NodeJS.Timeout; // grace/safety timer
 };
+
+type FlushReason = 'trace_completed' | 'root_ended_grace' | 'max_trace_age' | 'force_flush';
 
 /**
  * Buffers spans per trace and exports once the request completes.
@@ -44,9 +47,19 @@ export class PerRequestSpanProcessor implements SpanProcessor {
     if (!buf) {
       buf = { spans: [], openCount: 0, rootEnded: false, rootCtx: undefined };
       this.traces.set(traceId, buf);
-      buf.flushTimer = setTimeout(() => this.flushTrace(traceId), this.maxTraceAgeMs);
+      buf.flushTimer = setTimeout(() => this.flushTrace(traceId, 'max_trace_age'), this.maxTraceAgeMs);
+
+      logger.info(
+        `[PerRequestSpanProcessor] Trace started traceId=${traceId} maxTraceAgeMs=${this.maxTraceAgeMs}`
+      );
     }
     buf.openCount += 1;
+
+    // Debug lifecycle: span started
+    logger.info(
+      `[PerRequestSpanProcessor] Span start name=${span.name} traceId=${traceId} spanId=${span.spanContext().spanId}` +
+        ` root=${isRootSpan(span)} openCount=${buf.openCount}`
+    );
 
     // Prefer capturing the root span's context (contains token via ALS).
     if (!buf.rootCtx || isRootSpan(span)) {
@@ -62,17 +75,31 @@ export class PerRequestSpanProcessor implements SpanProcessor {
     buf.spans.push(span);
     buf.openCount -= 1;
 
+    // Debug lifecycle: span ended
+    logger.info(
+      `[PerRequestSpanProcessor] Span end name=${span.name} traceId=${traceId} spanId=${span.spanContext().spanId}` +
+        ` root=${isRootSpan(span)} openCount=${buf.openCount} rootEnded=${buf.rootEnded}`
+    );
+
     if (isRootSpan(span)) {
       buf.rootEnded = true;
-      if (buf.openCount === 0) this.flushTrace(traceId);
-      else this.scheduleGraceFlush(traceId);
+      if (buf.openCount === 0) {
+        // Trace completed: root ended and no open spans remain.
+        this.flushTrace(traceId, 'trace_completed');
+      }
+      else {
+        // Schedule a grace flush in case child spans do not arrive
+        this.scheduleGraceFlush(traceId);
+      }
     } else if (buf.rootEnded && buf.openCount === 0) {
-      this.flushTrace(traceId);
+      // Common case: root ends first, then children finish shortly after.
+      // Flush immediately when the last child ends instead of waiting for grace/max timers.
+      this.flushTrace(traceId, 'trace_completed');
     }
   }
 
   async forceFlush(): Promise<void> {
-    await Promise.all([...this.traces.keys()].map(id => this.flushTrace(id)));
+    await Promise.all([...this.traces.keys()].map((id) => this.flushTrace(id, 'force_flush')));
   }
 
   async shutdown(): Promise<void> {
@@ -81,29 +108,49 @@ export class PerRequestSpanProcessor implements SpanProcessor {
   }
 
   private scheduleGraceFlush(traceId: string) {
-    const buf = this.traces.get(traceId);
-    if (!buf) return;
-    if (buf.flushTimer) clearTimeout(buf.flushTimer);
-    buf.flushTimer = setTimeout(() => this.flushTrace(traceId), this.flushGraceMs);
+    const trace = this.traces.get(traceId);
+    if (!trace) return;
+    if (trace.flushTimer) clearTimeout(trace.flushTimer);
+
+    logger.info(
+      `[PerRequestSpanProcessor] Root ended; scheduling grace flush traceId=${traceId} graceMs=${this.flushGraceMs} openCount=${trace.openCount}`
+    );
+
+    trace.flushTimer = setTimeout(() => this.flushTrace(traceId, 'root_ended_grace'), this.flushGraceMs);
   }
 
-  private async flushTrace(traceId: string): Promise<void> {
-    const buf = this.traces.get(traceId);
-    if (!buf) return;
+  private async flushTrace(traceId: string, reason: FlushReason): Promise<void> {
+    const trace = this.traces.get(traceId);
+    if (!trace) return;
 
-    if (buf.flushTimer) clearTimeout(buf.flushTimer);
+    if (trace.flushTimer) clearTimeout(trace.flushTimer);
     this.traces.delete(traceId);
 
-    const spans = buf.spans;
+    const spans = trace.spans;
     if (spans.length === 0) return;
 
-    // Export under the original request Context so tokenResolver can read the token from context.active()
+    logger.info(
+      `[PerRequestSpanProcessor] Flushing trace traceId=${traceId} reason=${reason} spans=${spans.length} rootEnded=${trace.rootEnded}`
+    );
+
+    // Must have captured the root context to access the token
+    if (!trace.rootCtx) {
+      logger.error(`[PerRequestSpanProcessor] Missing rootCtx for trace ${traceId}, cannot export spans`);
+      return;
+    }
+
+    // Export under the original request Context so exporter can read the token from context.active()
     await new Promise<void>((resolve) => {
-      context.with(buf.rootCtx ?? context.active(), () => {
+      context.with(trace.rootCtx as Context, () => {
         this.exporter.export(spans, (result) => {
           // Log export failures but still resolve to avoid blocking processor
           if (result.code !== 0) {
-            console.error(`[PerRequestSpanProcessor] Export failed for trace ${traceId}`);
+            logger.error(
+              `[PerRequestSpanProcessor] Export failed traceId=${traceId} reason=${reason} code=${result.code}`,
+              result.error
+            );
+          } else {
+            logger.info(`[PerRequestSpanProcessor] Export succeeded traceId=${traceId} reason=${reason} spans=${spans.length}`);
           }
           resolve();
         });
