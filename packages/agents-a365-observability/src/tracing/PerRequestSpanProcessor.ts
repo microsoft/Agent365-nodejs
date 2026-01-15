@@ -86,8 +86,7 @@ export class PerRequestSpanProcessor implements SpanProcessor {
       if (buf.openCount === 0) {
         // Trace completed: root ended and no open spans remain.
         this.flushTrace(traceId, 'trace_completed');
-      }
-      else {
+      } else {
         // Schedule a grace flush in case child spans do not arrive
         this.scheduleGraceFlush(traceId);
       }
