@@ -1,6 +1,5 @@
 // ------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // ------------------------------------------------------------------------------
 
 import { context, createContextKey, Context } from '@opentelemetry/api';
@@ -14,7 +13,7 @@ const EXPORT_TOKEN_KEY = createContextKey('a365_export_token');
  */
 export function runWithExportToken<T>(token: string, fn: () => T): T {
   const ctxWithToken = context.active().setValue(EXPORT_TOKEN_KEY, token);
-  logger.info(`[TokenContext] Running function with export token in context. Token length=${token.length}`);
+  logger.info('[TokenContext] Running function with export token in context.');
   return context.with(ctxWithToken, fn);
 }
 

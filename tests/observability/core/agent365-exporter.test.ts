@@ -56,6 +56,7 @@ describe('Agent365Exporter', () => {
     global.fetch = originalFetch;
     delete process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN;
     delete process.env.A365_OBSERVABILITY_DOMAIN_OVERRIDE;
+    delete process.env.ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT;
   });
 
   it('returns success immediately with no spans', async () => {
@@ -311,10 +312,8 @@ describe('Agent365Exporter', () => {
     
     expect(callback).toHaveBeenCalledWith({ code: ExportResultCode.SUCCESS });
     
-    // Verify export was called
+    // Verify export was attempted (should be greater than 0 when enabled)
     const fetchCalls = (global.fetch as unknown as { mock: { calls: any[] } }).mock.calls;
-    expect(fetchCalls.length).toBeGreaterThanOrEqual(0);
-    
-    delete process.env.ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT;
+    expect(fetchCalls.length).toBeGreaterThan(0);
   });
 });

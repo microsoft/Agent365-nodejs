@@ -1,6 +1,5 @@
 // ------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
+// Copyright (c) Microsoft Corporation. All rights reserved.
 // ------------------------------------------------------------------------------
 
 import { context, type Context } from '@opentelemetry/api';
@@ -29,8 +28,8 @@ type FlushReason = 'trace_completed' | 'root_ended_grace' | 'max_trace_age' | 'f
 
 /**
  * Buffers spans per trace and exports once the request completes.
- * Token is not stored; we export under the saved request Context so the exporter's tokenResolver
- * can read the token from context.active() at export time.
+ * Token is not stored; we export under the saved request Context so that getExportToken()
+ * can read the token from the active OpenTelemetry Context at export time.
  */
 export class PerRequestSpanProcessor implements SpanProcessor {
   private traces = new Map<string, TraceBuffer>();

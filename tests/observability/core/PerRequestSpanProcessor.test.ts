@@ -1,7 +1,7 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
+// ------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// ------------------------------------------------------------------------------
 
-import { context, Context } from '@opentelemetry/api';
 import { BasicTracerProvider } from '@opentelemetry/sdk-trace-base';
 import { PerRequestSpanProcessor, DEFAULT_FLUSH_GRACE_MS, DEFAULT_MAX_TRACE_AGE_MS } from '@microsoft/agents-a365-observability/src/tracing/PerRequestSpanProcessor';
 import { runWithExportToken } from '@microsoft/agents-a365-observability/src/tracing/context/token-context';
@@ -153,6 +153,8 @@ describe('PerRequestSpanProcessor', () => {
     it('should respect custom grace flush timeout', async () => {
       exportedSpans = [];
       const customGrace = 30;
+      // Shutdown existing processor and provider to avoid resource leak
+      await processor.shutdown();
       processor = new PerRequestSpanProcessor(mockExporter, customGrace, DEFAULT_MAX_TRACE_AGE_MS);
       provider = new BasicTracerProvider({
         spanProcessors: [processor]

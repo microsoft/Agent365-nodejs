@@ -10,7 +10,7 @@ import { AuthConfiguration, CloudAdapter, loadAuthConfigFromEnv, Request } from 
 import express, { NextFunction, Response } from 'express';
 import { agentApplication } from './agent';
 import { a365Observability } from './telemetry';
-import { logger, runWithExportToken } from  '@microsoft/agents-a365-observability';
+import { logger, runWithExportToken } from '@microsoft/agents-a365-observability';
 import { getObservabilityAuthenticationScope } from '@microsoft/agents-a365-runtime';
 
 const authConfig: AuthConfiguration = loadAuthConfigFromEnv();
@@ -39,17 +39,17 @@ app.post('/api/messages', async (req: Request, res: Response) => {
       process.env.ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT?.toLowerCase() === 'true';
 
     await adapter.process(req, res, async (context) => {
-      const app = agentApplication;
+      const agentApp = agentApplication;
 
       if (!isPerRequestExportEnabled) {
         // For batch export, token resolution is handled by exporter/tokenResolver.
-        await app.run(context);
+        await agentApp.run(context);
         return;
       }
 
       let token = '';
       try {
-        const exchanged = await app.authorization.exchangeToken(context, 'agentic', {
+        const exchanged = await agentApp.authorization.exchangeToken(context, 'agentic', {
           scopes: getObservabilityAuthenticationScope()
         });
         token = exchanged?.token || '';
@@ -59,7 +59,7 @@ app.post('/api/messages', async (req: Request, res: Response) => {
       }
 
       await runWithExportToken(token, async () => {
-        await app.run(context);
+        await agentApp.run(context);
       });
     });
   } catch (err) {

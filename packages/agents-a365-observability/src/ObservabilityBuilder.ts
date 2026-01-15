@@ -94,7 +94,7 @@ export class ObservabilityBuilder {
 
   private createBatchProcessor(): BatchSpanProcessor {
     if (!isAgent365ExporterEnabled()) {
-      logger.info('[ObservabilityBuilder] Agent 365 exporter not enabled, using ConsoleSpanExporter for BatchSpanProcessor');      
+      logger.info('[ObservabilityBuilder] Agent 365 exporter not enabled. Using ConsoleSpanExporter for BatchSpanProcessor.');      
       return new BatchSpanProcessor(new ConsoleSpanExporter());
     }
 
