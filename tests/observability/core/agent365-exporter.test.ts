@@ -10,6 +10,9 @@ import { Agent365ExporterOptions } from '@microsoft/agents-a365-observability/sr
 import { ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import { ExportResultCode } from '@opentelemetry/core';
 import { OpenTelemetryConstants } from '@microsoft/agents-a365-observability/src/tracing/constants';
+import { runWithExportToken } from '@microsoft/agents-a365-observability/src/tracing/context/token-context';
+import { context as otelContext } from '@opentelemetry/api';
+import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
 
 // Minimal mock span factory
 function makeSpan(attrs: Record<string, unknown>, name = 'test'): ReadableSpan {
@@ -37,6 +40,13 @@ const agentId = 'agent-22222222-2222-2222-2222-222222222222';
 
 // Patch global fetch
 const originalFetch = global.fetch;
+
+type FetchCallArgs = [string, { headers: Record<string, string>; body?: unknown }];
+
+function getFetchCalls(): FetchCallArgs[] {
+  const f = global.fetch as unknown as { mock?: { calls?: unknown[][] } };
+  return (f.mock?.calls ?? []) as unknown as FetchCallArgs[];
+}
 
 function mockFetchSequence(statuses: number[]): void {
   let call = 0;
@@ -90,7 +100,7 @@ describe('Agent365Exporter', () => {
     await exporter.export(spans, callback);
     expect(callback).toHaveBeenCalledWith({ code: ExportResultCode.SUCCESS });
     // Ensure fetch saw auth header
-    const fetchCalls = (global.fetch as unknown as { mock: { calls: any[] } }).mock.calls;
+    const fetchCalls = getFetchCalls();
     expect(fetchCalls.length).toBe(1);
     const headersArg = fetchCalls[0][1].headers;
     expect(headersArg['authorization']).toBe(`Bearer ${token}`);
@@ -124,7 +134,7 @@ describe('Agent365Exporter', () => {
     const callback = jest.fn();
     await exporter.export(spans, callback);
     expect(callback).toHaveBeenCalledWith({ code: ExportResultCode.SUCCESS });
-    const fetchCalls = (global.fetch as unknown as { mock: { calls: any[] } }).mock.calls;
+    const fetchCalls = getFetchCalls();
     expect(fetchCalls.length).toBe(1);
     const urlArg = fetchCalls[0][0];
     const headersArg = fetchCalls[0][1].headers;
@@ -185,7 +195,7 @@ describe('Agent365Exporter', () => {
     await exporter.export(spans, callback);
 
     expect(callback).toHaveBeenCalledWith({ code: ExportResultCode.SUCCESS });
-    const fetchCalls = (global.fetch as unknown as { mock: { calls: any[] } }).mock.calls;
+    const fetchCalls = getFetchCalls();
     expect(fetchCalls.length).toBe(1);
     const urlArg = fetchCalls[0][0] as string;
     const headersArg = fetchCalls[0][1].headers as Record<string, string>;
@@ -216,7 +226,7 @@ describe('Agent365Exporter', () => {
     const callback = jest.fn();
     await exporter.export(spans, callback);
     expect(callback).toHaveBeenCalledWith({ code: ExportResultCode.SUCCESS });
-    const fetchCalls = (global.fetch as unknown as { mock: { calls: any[] } }).mock.calls;
+    const fetchCalls = getFetchCalls();
     expect(fetchCalls.length).toBe(1);
     const urlArg = fetchCalls[0][0];
     const headersArg = fetchCalls[0][1].headers;
@@ -252,7 +262,7 @@ describe('Agent365Exporter', () => {
     await exporter.export(spans, callback);
 
     expect(callback).toHaveBeenCalledWith({ code: ExportResultCode.SUCCESS });
-    const fetchCalls = (global.fetch as unknown as { mock: { calls: any[] } }).mock.calls;
+    const fetchCalls = getFetchCalls();
     expect(fetchCalls.length).toBe(1);
 
     const urlArg = fetchCalls[0][0] as string;
@@ -281,7 +291,7 @@ describe('Agent365Exporter', () => {
     const callback = jest.fn();
     await exporter.export(spans, callback);
 
-    const fetchCalls = (global.fetch as unknown as { mock: { calls: any[] } }).mock.calls;
+    const fetchCalls = getFetchCalls();
     expect(fetchCalls.length).toBe(1);
     const urlArg = fetchCalls[0][0] as string;
     expect(urlArg).toMatch(`/maven/agent365/service/agents/${agentId}/traces?api-version=1`);
@@ -290,30 +300,51 @@ describe('Agent365Exporter', () => {
     expect(headersArg['x-ms-tenant-id']).toBe(tenantId);
   });
 
-  it('respects ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT environment variable', async () => {
-    mockFetchSequence([200]);
-    process.env.ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT = 'true';
-    
-    const opts = new Agent365ExporterOptions();
-    opts.clusterCategory = 'local';
-    // For per-request mode, tokenResolver may not be required
-    opts.tokenResolver = () => null;
-    
-    const exporter = new Agent365Exporter(opts);
-    const spans = [
-      makeSpan({
-        [OpenTelemetryConstants.TENANT_ID_KEY]: tenantId,
-        [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]: agentId
-      })
-    ];
 
-    const callback = jest.fn();
-    await exporter.export(spans, callback);
-    
-    expect(callback).toHaveBeenCalledWith({ code: ExportResultCode.SUCCESS });
-    
-    // Verify export was attempted (should be greater than 0 when enabled)
-    const fetchCalls = (global.fetch as unknown as { mock: { calls: any[] } }).mock.calls;
-    expect(fetchCalls.length).toBeGreaterThan(0);
+  describe('per-request export (token from OTel Context)', () => {
+    let contextManager: AsyncLocalStorageContextManager | undefined;
+
+    beforeEach(() => {
+      // Ensure OpenTelemetry context propagates across async/await in this group.
+      contextManager = new AsyncLocalStorageContextManager();
+      contextManager.enable();
+      otelContext.setGlobalContextManager(contextManager);
+    });
+
+    afterEach(() => {
+      contextManager?.disable();
+      otelContext.disable();
+      contextManager = undefined;
+    });
+
+    it('acquires export token from OTel Context when per-request export is enabled', async () => {
+      mockFetchSequence([200]);
+      process.env.ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT = 'true';
+
+      const opts = new Agent365ExporterOptions();
+      opts.clusterCategory = 'local';
+
+      const exporter = new Agent365Exporter(opts);
+      const spans = [
+        makeSpan({
+          [OpenTelemetryConstants.TENANT_ID_KEY]: tenantId,
+          [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]: agentId
+        })
+      ];
+
+      const callback = jest.fn();
+      const exportToken = 'tok-from-context';
+      await runWithExportToken(exportToken, async () => exporter.export(spans, callback));
+
+      expect(callback).toHaveBeenCalledWith({ code: ExportResultCode.SUCCESS });
+
+      // Verify export was attempted (should be greater than 0 when enabled)
+      const fetchCalls = getFetchCalls();
+      expect(fetchCalls.length).toBeGreaterThan(0);
+
+      // Verify token came from OTel Context (per-request mode)
+      const headersArg = fetchCalls[0][1].headers as Record<string, string>;
+      expect(headersArg['authorization']).toBe(`Bearer ${exportToken}`);
+    });
   });
 });

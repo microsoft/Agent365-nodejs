@@ -21,7 +21,9 @@ describe('PerRequestSpanProcessor', () => {
         exportedSpans.push([...spans]);
         resultCallback({ code: ExportResultCode.SUCCESS });
       },
-      shutdown: async () => {}
+      shutdown: async () => {
+        await provider.shutdown();
+      }
     };
 
     processor = new PerRequestSpanProcessor(mockExporter, DEFAULT_FLUSH_GRACE_MS, DEFAULT_MAX_TRACE_AGE_MS);
