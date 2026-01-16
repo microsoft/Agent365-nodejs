@@ -1,5 +1,6 @@
 // ------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 // ------------------------------------------------------------------------------
 
 import { context, type Context } from '@opentelemetry/api';
@@ -20,8 +21,9 @@ type TraceBuffer = {
   spans: ReadableSpan[];
   openCount: number;
   rootEnded: boolean;
-  rootCtx?: Context;           // holds the request Context (with token in ALS)
-  flushTimer?: NodeJS.Timeout; // grace/safety timer
+  rootCtx?: Context; // holds the request Context (with token in ALS)
+  startedAtMs: number;
+  rootEndedAtMs?: number;
 };
 
 type FlushReason = 'trace_completed' | 'root_ended_grace' | 'max_trace_age' | 'force_flush';
@@ -33,6 +35,8 @@ type FlushReason = 'trace_completed' | 'root_ended_grace' | 'max_trace_age' | 'f
  */
 export class PerRequestSpanProcessor implements SpanProcessor {
   private traces = new Map<string, TraceBuffer>();
+  private sweepTimer?: NodeJS.Timeout;
+  private isSweeping = false;
 
   constructor(
     private readonly exporter: SpanExporter,
@@ -44,9 +48,10 @@ export class PerRequestSpanProcessor implements SpanProcessor {
     const traceId = span.spanContext().traceId;
     let buf = this.traces.get(traceId);
     if (!buf) {
-      buf = { spans: [], openCount: 0, rootEnded: false, rootCtx: undefined };
+      buf = { spans: [], openCount: 0, rootEnded: false, rootCtx: undefined, startedAtMs: Date.now() };
       this.traces.set(traceId, buf);
-      buf.flushTimer = setTimeout(() => this.flushTrace(traceId, 'max_trace_age'), this.maxTraceAgeMs);
+
+      this.ensureSweepTimer();
 
       logger.info(
         `[PerRequestSpanProcessor] Trace started traceId=${traceId} maxTraceAgeMs=${this.maxTraceAgeMs}`
@@ -60,9 +65,13 @@ export class PerRequestSpanProcessor implements SpanProcessor {
         ` root=${isRootSpan(span)} openCount=${buf.openCount}`
     );
 
-    // Prefer capturing the root span's context (contains token via ALS).
-    if (!buf.rootCtx || isRootSpan(span)) {
+    // Capture a context to export under.
+    // - Use the first seen context as a fallback.
+    // - If/when the root span starts, prefer its context (contains token via ALS).
+    if (isRootSpan(span)) {
       buf.rootCtx = ctx;
+    } else {
+      buf.rootCtx ??= ctx;
     }
   }
 
@@ -73,6 +82,12 @@ export class PerRequestSpanProcessor implements SpanProcessor {
 
     buf.spans.push(span);
     buf.openCount -= 1;
+    if (buf.openCount < 0) {
+      logger.warn(
+        `[PerRequestSpanProcessor] openCount underflow traceId=${traceId} spanId=${span.spanContext().spanId} resettingToZero`
+      );
+      buf.openCount = 0;
+    }
 
     // Debug lifecycle: span ended
     logger.info(
@@ -82,12 +97,10 @@ export class PerRequestSpanProcessor implements SpanProcessor {
 
     if (isRootSpan(span)) {
       buf.rootEnded = true;
+      buf.rootEndedAtMs = Date.now();
       if (buf.openCount === 0) {
         // Trace completed: root ended and no open spans remain.
         this.flushTrace(traceId, 'trace_completed');
-      } else {
-        // Schedule a grace flush in case child spans do not arrive
-        this.scheduleGraceFlush(traceId);
       }
     } else if (buf.rootEnded && buf.openCount === 0) {
       // Common case: root ends first, then children finish shortly after.
@@ -102,27 +115,70 @@ export class PerRequestSpanProcessor implements SpanProcessor {
 
   async shutdown(): Promise<void> {
     await this.forceFlush();
+    this.stopSweepTimerIfIdle();
     await this.exporter.shutdown?.();
   }
 
-  private scheduleGraceFlush(traceId: string) {
-    const trace = this.traces.get(traceId);
-    if (!trace) return;
-    if (trace.flushTimer) clearTimeout(trace.flushTimer);
+  private ensureSweepTimer(): void {
+    if (this.sweepTimer) return;
 
-    logger.info(
-      `[PerRequestSpanProcessor] Root ended; scheduling grace flush traceId=${traceId} graceMs=${this.flushGraceMs} openCount=${trace.openCount}`
-    );
+    // Keep one lightweight sweeper. Interval is derived from grace/max-age to keep responsiveness reasonable.
+    const intervalMs = Math.max(10, Math.min(this.flushGraceMs, 250));
+    this.sweepTimer = setInterval(() => {
+      void this.sweep();
+    }, intervalMs);
 
-    trace.flushTimer = setTimeout(() => this.flushTrace(traceId, 'root_ended_grace'), this.flushGraceMs);
+    this.sweepTimer.unref?.();
+  }
+
+  private stopSweepTimerIfIdle(): void {
+    if (this.traces.size !== 0) return;
+    if (!this.sweepTimer) return;
+    clearInterval(this.sweepTimer);
+    this.sweepTimer = undefined;
+  }
+
+  private async sweep(): Promise<void> {
+    if (this.isSweeping) return;
+    this.isSweeping = true;
+    try {
+      if (this.traces.size === 0) {
+        this.stopSweepTimerIfIdle();
+        return;
+      }
+
+      const now = Date.now();
+      const toFlush: Array<{ traceId: string; reason: FlushReason }> = [];
+
+      for (const [traceId, trace] of this.traces.entries()) {
+        // 1) Max age safety flush (clears buffers even if spans never end)
+        if (now - trace.startedAtMs >= this.maxTraceAgeMs) {
+          toFlush.push({ traceId, reason: 'max_trace_age' });
+          continue;
+        }
+
+        // 2) Root ended grace window flush (clears buffers if children never end)
+        if (trace.rootEnded && trace.openCount > 0 && trace.rootEndedAtMs) {
+          if (now - trace.rootEndedAtMs >= this.flushGraceMs) {
+            toFlush.push({ traceId, reason: 'root_ended_grace' });
+          }
+        }
+      }
+
+      // Flush in parallel; flushTrace removes entries eagerly.
+      await Promise.all(toFlush.map((x) => this.flushTrace(x.traceId, x.reason)));
+      this.stopSweepTimerIfIdle();
+    } finally {
+      this.isSweeping = false;
+    }
   }
 
   private async flushTrace(traceId: string, reason: FlushReason): Promise<void> {
     const trace = this.traces.get(traceId);
     if (!trace) return;
 
-    if (trace.flushTimer) clearTimeout(trace.flushTimer);
     this.traces.delete(traceId);
+    this.stopSweepTimerIfIdle();
 
     const spans = trace.spans;
     if (spans.length === 0) return;
@@ -139,20 +195,35 @@ export class PerRequestSpanProcessor implements SpanProcessor {
 
     // Export under the original request Context so exporter can read the token from context.active()
     await new Promise<void>((resolve) => {
-      context.with(trace.rootCtx as Context, () => {
-        this.exporter.export(spans, (result) => {
-          // Log export failures but still resolve to avoid blocking processor
-          if (result.code !== 0) {
+      try {
+        context.with(trace.rootCtx as Context, () => {
+          try {
+            this.exporter.export(spans, (result) => {
+              // Log export failures but still resolve to avoid blocking processor
+              if (result.code !== 0) {
+                logger.error(
+                  `[PerRequestSpanProcessor] Export failed traceId=${traceId} reason=${reason} code=${result.code}`,
+                  result.error
+                );
+              } else {
+                logger.info(
+                  `[PerRequestSpanProcessor] Export succeeded traceId=${traceId} reason=${reason} spans=${spans.length}`
+                );
+              }
+              resolve();
+            });
+          } catch (err) {
             logger.error(
-              `[PerRequestSpanProcessor] Export failed traceId=${traceId} reason=${reason} code=${result.code}`,
-              result.error
+              `[PerRequestSpanProcessor] Export threw traceId=${traceId} reason=${reason} spans=${spans.length}`,
+              err
             );
-          } else {
-            logger.info(`[PerRequestSpanProcessor] Export succeeded traceId=${traceId} reason=${reason} spans=${spans.length}`);
+            resolve();
           }
-          resolve();
         });
-      });
+      } catch (err) {
+        logger.error(`[PerRequestSpanProcessor] context.with threw traceId=${traceId} reason=${reason}`, err);
+        resolve();
+      }
     });
   }
 }
