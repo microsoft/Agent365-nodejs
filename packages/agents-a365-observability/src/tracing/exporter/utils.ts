@@ -121,6 +121,19 @@ export function isAgent365ExporterEnabled(): boolean {
 }
 
 /**
+ * Check if per-request export is enabled via environment variable.
+ * When enabled, the PerRequestSpanProcessor is used instead of BatchSpanProcessor.
+ * The token is passed via OTel Context (async local storage) at export time.
+ */
+export function isPerRequestExportEnabled(): boolean {
+  const value = process.env[OpenTelemetryConstants.ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT]?.toLowerCase() || '';
+  const validValues = ['true', '1', 'yes', 'on'];
+  const enabled: boolean = validValues.includes(value);
+  logger.info(`[Agent365Exporter] Per-request export enabled: ${enabled}`);
+  return enabled;
+}
+
+/**
  * Single toggle to use custom domain for observability export.
  * When true exporter will send traces to custom Agent365 service endpoint
  * and include x-ms-tenant-id in headers.
