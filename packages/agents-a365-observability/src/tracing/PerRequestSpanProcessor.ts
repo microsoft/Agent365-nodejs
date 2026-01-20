@@ -305,6 +305,3 @@ export class PerRequestSpanProcessor implements SpanProcessor {
     if (next) next();
   }
 }
-
-/** Export constants for use in configuration */
-export { DEFAULT_FLUSH_GRACE_MS, DEFAULT_MAX_TRACE_AGE_MS };

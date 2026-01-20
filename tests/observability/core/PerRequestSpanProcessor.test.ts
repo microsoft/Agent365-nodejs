@@ -3,7 +3,7 @@
 // ------------------------------------------------------------------------------
 
 import { BasicTracerProvider } from '@opentelemetry/sdk-trace-base';
-import { PerRequestSpanProcessor, DEFAULT_FLUSH_GRACE_MS, DEFAULT_MAX_TRACE_AGE_MS } from '@microsoft/agents-a365-observability/src/tracing/PerRequestSpanProcessor';
+import { PerRequestSpanProcessor } from '@microsoft/agents-a365-observability/src/tracing/PerRequestSpanProcessor';
 import { runWithExportToken } from '@microsoft/agents-a365-observability/src/tracing/context/token-context';
 import type { SpanExporter, ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import { ExportResult, ExportResultCode } from '@opentelemetry/core';
@@ -35,7 +35,7 @@ describe('PerRequestSpanProcessor', () => {
       }
     };
 
-    processor = new PerRequestSpanProcessor(mockExporter, DEFAULT_FLUSH_GRACE_MS, DEFAULT_MAX_TRACE_AGE_MS);
+    processor = new PerRequestSpanProcessor(mockExporter);
     provider = new BasicTracerProvider({
       spanProcessors: [processor]
     });
@@ -60,7 +60,7 @@ describe('PerRequestSpanProcessor', () => {
   describe('per-request export with token context', () => {
     it('should cap the number of buffered traces (maxBufferedTraces)', async () => {
       process.env.A365_PER_REQUEST_MAX_TRACES = '2';
-      await recreateProvider(new PerRequestSpanProcessor(mockExporter, DEFAULT_FLUSH_GRACE_MS, DEFAULT_MAX_TRACE_AGE_MS));
+      await recreateProvider(new PerRequestSpanProcessor(mockExporter));
 
       const tracer = provider.getTracer('test');
 
@@ -97,7 +97,7 @@ describe('PerRequestSpanProcessor', () => {
 
     it('should drop additional traces beyond maxBufferedTraces (drop case)', async () => {
       process.env.A365_PER_REQUEST_MAX_TRACES = '2';
-      await recreateProvider(new PerRequestSpanProcessor(mockExporter, DEFAULT_FLUSH_GRACE_MS, DEFAULT_MAX_TRACE_AGE_MS));
+      await recreateProvider(new PerRequestSpanProcessor(mockExporter));
 
       const tracer = provider.getTracer('test');
 
@@ -141,7 +141,7 @@ describe('PerRequestSpanProcessor', () => {
 
     it('should cap the number of buffered spans per trace (maxSpansPerTrace)', async () => {
       process.env.A365_PER_REQUEST_MAX_SPANS_PER_TRACE = '2';
-      await recreateProvider(new PerRequestSpanProcessor(mockExporter, DEFAULT_FLUSH_GRACE_MS, DEFAULT_MAX_TRACE_AGE_MS));
+      await recreateProvider(new PerRequestSpanProcessor(mockExporter));
 
       const tracer = provider.getTracer('test');
 
@@ -198,7 +198,8 @@ describe('PerRequestSpanProcessor', () => {
         }
       };
 
-      await recreateProvider(new PerRequestSpanProcessor(mockExporter, DEFAULT_FLUSH_GRACE_MS, DEFAULT_MAX_TRACE_AGE_MS));
+      await recreateProvider(new PerRequestSpanProcessor(mockExporter));
+
 
       const tracer = provider.getTracer('test');
 
@@ -344,7 +345,7 @@ describe('PerRequestSpanProcessor', () => {
     it('should respect custom grace flush timeout', async () => {
       exportedSpans = [];
       const customGrace = 30;
-      await recreateProvider(new PerRequestSpanProcessor(mockExporter, customGrace, DEFAULT_MAX_TRACE_AGE_MS));
+      await recreateProvider(new PerRequestSpanProcessor(mockExporter, customGrace));
 
       const tracer = provider.getTracer('test');
 

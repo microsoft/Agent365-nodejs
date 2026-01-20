@@ -9,7 +9,7 @@ import { isAgent365ExporterEnabled, isPerRequestExportEnabled } from './tracing/
 import { Agent365Exporter } from './tracing/exporter/Agent365Exporter';
 import type { TokenResolver } from './tracing/exporter/Agent365ExporterOptions';
 import { Agent365ExporterOptions } from './tracing/exporter/Agent365ExporterOptions';
-import { PerRequestSpanProcessor, DEFAULT_FLUSH_GRACE_MS, DEFAULT_MAX_TRACE_AGE_MS } from './tracing/PerRequestSpanProcessor';
+import { PerRequestSpanProcessor } from './tracing/PerRequestSpanProcessor';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
 import { trace } from '@opentelemetry/api';
@@ -128,7 +128,7 @@ export class ObservabilityBuilder {
     
     // For per-request export, token is retrieved from OTel Context by Agent365Exporter
     // using getExportToken(), so no tokenResolver is needed here
-    return new PerRequestSpanProcessor(new Agent365Exporter(opts), DEFAULT_FLUSH_GRACE_MS, DEFAULT_MAX_TRACE_AGE_MS);
+    return new PerRequestSpanProcessor(new Agent365Exporter(opts));
   }
 
   private createExportProcessor(): BatchSpanProcessor | PerRequestSpanProcessor {

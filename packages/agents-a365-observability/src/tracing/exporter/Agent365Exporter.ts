@@ -187,9 +187,7 @@ export class Agent365Exporter implements SpanExporter {
     if (isPerRequestExportEnabled()) {
       // For per-request export, get token from OTel Context
       token = getExportToken() ?? null;
-      if (token) {
-        logger.info('[Agent365Exporter] Token retrieved from OTel Context for per-request export');
-      } else {
+      if (!token) {
         logger.error('[Agent365Exporter] No token available in OTel Context for per-request export');
       }
     } else {
