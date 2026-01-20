@@ -14,6 +14,7 @@ describe('PerRequestSpanProcessor', () => {
   let processor: PerRequestSpanProcessor;
   let exportedSpans: ReadableSpan[][] = [];
   let mockExporter: SpanExporter;
+  let originalEnv: NodeJS.ProcessEnv;
 
   const getActiveTraceCount = () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -22,6 +23,7 @@ describe('PerRequestSpanProcessor', () => {
   };
 
   beforeEach(() => {
+    originalEnv = { ...process.env };
     exportedSpans = [];
     mockExporter = {
       export: (spans: ReadableSpan[], resultCallback: (result: ExportResult) => void) => {
@@ -42,6 +44,7 @@ describe('PerRequestSpanProcessor', () => {
   afterEach(async () => {
     await provider.shutdown();
     jest.useRealTimers();
+    process.env = originalEnv;
   });
 
   const recreateProvider = async (newProcessor: PerRequestSpanProcessor) => {
@@ -55,6 +58,174 @@ describe('PerRequestSpanProcessor', () => {
   };
 
   describe('per-request export with token context', () => {
+    it('should cap the number of buffered traces (maxBufferedTraces)', async () => {
+      process.env.A365_PER_REQUEST_MAX_TRACES = '2';
+      await recreateProvider(new PerRequestSpanProcessor(mockExporter, DEFAULT_FLUSH_GRACE_MS, DEFAULT_MAX_TRACE_AGE_MS));
+
+      const tracer = provider.getTracer('test');
+
+      // The guardrail caps *concurrently buffered* traces. To make that observable,
+      // keep trace-1 buffered (root ended but child still open) while starting trace-2.
+      await new Promise<void>((resolve) => {
+        runWithExportToken('token-1', () => {
+          const root1 = tracer.startSpan('trace-1', { root: true });
+          const ctx1 = trace.setSpan(context.active(), root1);
+          const child1 = tracer.startSpan('trace-1-child', undefined, ctx1);
+
+          // End root but leave child open so the trace remains buffered.
+          root1.end();
+
+          runWithExportToken('token-2', () => {
+            const root2 = tracer.startSpan('trace-2');
+            root2.end();
+          });
+
+          // Finish trace-1 so it can flush.
+          setTimeout(() => {
+            child1.end();
+            setTimeout(resolve, 50);
+          }, 10);
+        });
+      });
+
+      // With max traces=2, both traces are allowed (trace-2 should NOT be dropped).
+      const exportedNames = exportedSpans.flatMap((s) => s.map((sp) => sp.name));
+      expect(exportedNames).toContain('trace-1');
+      expect(exportedNames).toContain('trace-1-child');
+      expect(exportedNames).toContain('trace-2');
+    });
+
+    it('should drop additional traces beyond maxBufferedTraces (drop case)', async () => {
+      process.env.A365_PER_REQUEST_MAX_TRACES = '2';
+      await recreateProvider(new PerRequestSpanProcessor(mockExporter, DEFAULT_FLUSH_GRACE_MS, DEFAULT_MAX_TRACE_AGE_MS));
+
+      const tracer = provider.getTracer('test');
+
+      // Keep two traces buffered (root ended but child still open), then attempt a third.
+      await new Promise<void>((resolve) => {
+        runWithExportToken('token-1', () => {
+          const root1 = tracer.startSpan('trace-1', { root: true });
+          const ctx1 = trace.setSpan(context.active(), root1);
+          const child1 = tracer.startSpan('trace-1-child', undefined, ctx1);
+          root1.end();
+
+          runWithExportToken('token-2', () => {
+            const root2 = tracer.startSpan('trace-2', { root: true });
+            const ctx2 = trace.setSpan(context.active(), root2);
+            const child2 = tracer.startSpan('trace-2-child', undefined, ctx2);
+            root2.end();
+
+            // This third trace should be dropped because two traces are already buffered.
+            runWithExportToken('token-3', () => {
+              const root3 = tracer.startSpan('trace-3', { root: true });
+              root3.end();
+            });
+
+            // Finish the buffered traces so they can flush.
+            setTimeout(() => {
+              child2.end();
+              child1.end();
+              setTimeout(resolve, 50);
+            }, 10);
+          });
+        });
+      });
+
+      const exportedNames = exportedSpans.flatMap((s) => s.map((sp) => sp.name));
+      expect(exportedNames).toContain('trace-1');
+      expect(exportedNames).toContain('trace-1-child');
+      expect(exportedNames).toContain('trace-2');
+      expect(exportedNames).toContain('trace-2-child');
+      expect(exportedNames).not.toContain('trace-3');
+    });
+
+    it('should cap the number of buffered spans per trace (maxSpansPerTrace)', async () => {
+      process.env.A365_PER_REQUEST_MAX_SPANS_PER_TRACE = '2';
+      await recreateProvider(new PerRequestSpanProcessor(mockExporter, DEFAULT_FLUSH_GRACE_MS, DEFAULT_MAX_TRACE_AGE_MS));
+
+      const tracer = provider.getTracer('test');
+
+      await new Promise<void>((resolve) => {
+        runWithExportToken('test-token', () => {
+          const rootSpan = tracer.startSpan('root', { root: true });
+          const ctxWithRoot = trace.setSpan(context.active(), rootSpan);
+
+          const child1 = tracer.startSpan('child-1', undefined, ctxWithRoot);
+          const child2 = tracer.startSpan('child-2', undefined, ctxWithRoot);
+          child1.end();
+          child2.end();
+          // Ending root after 2 children makes the drop deterministic: root is the 3rd ended span.
+          rootSpan.end();
+
+          setTimeout(resolve, 50);
+        });
+      });
+
+      // We exported a single trace flush, but only 2 ended spans should be buffered/exported.
+      expect(exportedSpans.length).toBe(1);
+      expect(exportedSpans[0].length).toBe(2);
+
+      const exportedNames = exportedSpans[0].map((sp) => sp.name);
+      expect(exportedNames).toContain('child-1');
+      expect(exportedNames).toContain('child-2');
+      expect(exportedNames).not.toContain('root');
+    });
+
+    it('should respect max concurrent exports (A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS)', async () => {
+      process.env.A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS = '2';
+
+      let inFlight = 0;
+      let maxInFlight = 0;
+
+      // Hold each export "in flight" for a bit. If concurrency limiting is broken,
+      // all 3 exports would start immediately and maxInFlight would hit 3.
+      const exportHoldMs = 50;
+
+      exportedSpans = [];
+      mockExporter = {
+        export: (spans: ReadableSpan[], resultCallback: (result: ExportResult) => void) => {
+          inFlight += 1;
+          maxInFlight = Math.max(maxInFlight, inFlight);
+          exportedSpans.push([...spans]);
+
+          setTimeout(() => {
+            inFlight -= 1;
+            resultCallback({ code: ExportResultCode.SUCCESS });
+          }, exportHoldMs);
+        },
+        shutdown: async () => {
+          // No-op: provider shutdown is handled explicitly in afterEach.
+        }
+      };
+
+      await recreateProvider(new PerRequestSpanProcessor(mockExporter, DEFAULT_FLUSH_GRACE_MS, DEFAULT_MAX_TRACE_AGE_MS));
+
+      const tracer = provider.getTracer('test');
+
+      // Create multiple independent traces that will flush around the same time.
+      runWithExportToken('token-1', () => {
+        const span = tracer.startSpan('trace-1');
+        span.end();
+      });
+      runWithExportToken('token-2', () => {
+        const span = tracer.startSpan('trace-2');
+        span.end();
+      });
+      runWithExportToken('token-3', () => {
+        const span = tracer.startSpan('trace-3');
+        span.end();
+      });
+
+      // Wait long enough for 3 exports to be attempted and completed.
+      await new Promise<void>((resolve) => setTimeout(resolve, exportHoldMs * 6));
+
+      expect(maxInFlight).toBeLessThanOrEqual(2);
+      const exportedNames = exportedSpans.flatMap((s) => s.map((sp) => sp.name));
+      expect(exportedNames).toContain('trace-1');
+      expect(exportedNames).toContain('trace-2');
+      expect(exportedNames).toContain('trace-3');
+    });
+
     it('should capture root span context and export under that context', async () => {
       const tracer = provider.getTracer('test');
 

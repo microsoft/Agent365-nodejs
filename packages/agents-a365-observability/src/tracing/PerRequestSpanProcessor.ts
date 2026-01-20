@@ -13,6 +13,18 @@ const DEFAULT_FLUSH_GRACE_MS = 250;
 /** Default maximum age (ms) for a trace before forcing flush */
 const DEFAULT_MAX_TRACE_AGE_MS = 30000;
 
+/** Guardrails to prevent unbounded memory growth / export bursts */
+const DEFAULT_MAX_BUFFERED_TRACES = 1000;
+const DEFAULT_MAX_SPANS_PER_TRACE = 5000;
+const DEFAULT_MAX_CONCURRENT_EXPORTS = 20;
+
+function readEnvInt(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
 function isRootSpan(span: ReadableSpan): boolean {
   return !span.parentSpanContext;
 }
@@ -24,6 +36,7 @@ type TraceBuffer = {
   rootCtx?: Context; // holds the request Context (with token in ALS)
   startedAtMs: number;
   rootEndedAtMs?: number;
+  droppedSpans: number;
 };
 
 type FlushReason = 'trace_completed' | 'root_ended_grace' | 'max_trace_age' | 'force_flush';
@@ -38,17 +51,44 @@ export class PerRequestSpanProcessor implements SpanProcessor {
   private sweepTimer?: NodeJS.Timeout;
   private isSweeping = false;
 
+  private readonly maxBufferedTraces: number;
+  private readonly maxSpansPerTrace: number;
+  private readonly maxConcurrentExports: number;
+
+  private inFlightExports = 0;
+  private exportWaiters: Array<() => void> = [];
+
   constructor(
     private readonly exporter: SpanExporter,
     private readonly flushGraceMs: number = DEFAULT_FLUSH_GRACE_MS,
     private readonly maxTraceAgeMs: number = DEFAULT_MAX_TRACE_AGE_MS
-  ) {}
+  ) {
+    // Defaults are intentionally high but bounded; override via env vars if needed.
+    // Set to 0 (or negative) to disable a guardrail.
+    this.maxBufferedTraces = readEnvInt('A365_PER_REQUEST_MAX_TRACES', DEFAULT_MAX_BUFFERED_TRACES);
+    this.maxSpansPerTrace = readEnvInt('A365_PER_REQUEST_MAX_SPANS_PER_TRACE', DEFAULT_MAX_SPANS_PER_TRACE);
+    this.maxConcurrentExports = readEnvInt('A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS', DEFAULT_MAX_CONCURRENT_EXPORTS);
+  }
 
   onStart(span: ReadableSpan, ctx: Context): void {
     const traceId = span.spanContext().traceId;
     let buf = this.traces.get(traceId);
     if (!buf) {
-      buf = { spans: [], openCount: 0, rootEnded: false, rootCtx: undefined, startedAtMs: Date.now() };
+      if (this.traces.size >= this.maxBufferedTraces) {
+        logger.warn(
+          `[PerRequestSpanProcessor] Dropping new trace due to maxBufferedTraces=${this.maxBufferedTraces} traceId=${traceId}`
+        );
+        return;
+      }
+
+      buf = {
+        spans: [],
+        openCount: 0,
+        rootEnded: false,
+        rootCtx: undefined,
+        startedAtMs: Date.now(),
+        droppedSpans: 0,
+      };
       this.traces.set(traceId, buf);
 
       this.ensureSweepTimer();
@@ -80,7 +120,17 @@ export class PerRequestSpanProcessor implements SpanProcessor {
     const buf = this.traces.get(traceId);
     if (!buf) return;
 
-    buf.spans.push(span);
+    if (buf.spans.length >= this.maxSpansPerTrace) {
+      buf.droppedSpans += 1;
+      if (buf.droppedSpans === 1 || buf.droppedSpans % 100 === 0) {
+        logger.warn(
+          `[PerRequestSpanProcessor] Dropping ended span due to maxSpansPerTrace=${this.maxSpansPerTrace} ` +
+            `traceId=${traceId} droppedSpans=${buf.droppedSpans}`
+        );
+      }
+    } else {
+      buf.spans.push(span);
+    }
     buf.openCount -= 1;
     if (buf.openCount < 0) {
       logger.warn(
@@ -193,38 +243,66 @@ export class PerRequestSpanProcessor implements SpanProcessor {
       return;
     }
 
-    // Export under the original request Context so exporter can read the token from context.active()
-    await new Promise<void>((resolve) => {
-      try {
-        context.with(trace.rootCtx as Context, () => {
-          try {
-            this.exporter.export(spans, (result) => {
-              // Log export failures but still resolve to avoid blocking processor
-              if (result.code !== 0) {
-                logger.error(
-                  `[PerRequestSpanProcessor] Export failed traceId=${traceId} reason=${reason} code=${result.code}`,
-                  result.error
-                );
-              } else {
-                logger.info(
-                  `[PerRequestSpanProcessor] Export succeeded traceId=${traceId} reason=${reason} spans=${spans.length}`
-                );
-              }
+    await this.acquireExportSlot();
+
+    try {
+      // Export under the original request Context so exporter can read the token from context.active()
+      await new Promise<void>((resolve) => {
+        try {
+          context.with(trace.rootCtx as Context, () => {
+            try {
+              this.exporter.export(spans, (result) => {
+                // Log export failures but still resolve to avoid blocking processor
+                if (result.code !== 0) {
+                  logger.error(
+                    `[PerRequestSpanProcessor] Export failed traceId=${traceId} reason=${reason} code=${result.code}`,
+                    result.error
+                  );
+                } else {
+                  logger.info(
+                    `[PerRequestSpanProcessor] Export succeeded traceId=${traceId} reason=${reason} spans=${spans.length}`
+                  );
+                }
+                resolve();
+              });
+            } catch (err) {
+              logger.error(
+                `[PerRequestSpanProcessor] Export threw traceId=${traceId} reason=${reason} spans=${spans.length}`,
+                err
+              );
               resolve();
-            });
-          } catch (err) {
-            logger.error(
-              `[PerRequestSpanProcessor] Export threw traceId=${traceId} reason=${reason} spans=${spans.length}`,
-              err
-            );
-            resolve();
-          }
-        });
-      } catch (err) {
-        logger.error(`[PerRequestSpanProcessor] context.with threw traceId=${traceId} reason=${reason}`, err);
+            }
+          });
+        } catch (err) {
+          logger.error(`[PerRequestSpanProcessor] context.with threw traceId=${traceId} reason=${reason}`, err);
+          resolve();
+        }
+      });
+    } finally {
+      this.releaseExportSlot();
+    }
+  }
+
+  private async acquireExportSlot(): Promise<void> {
+    if (this.maxConcurrentExports <= 0) return;
+    if (this.inFlightExports < this.maxConcurrentExports) {
+      this.inFlightExports += 1;
+      return;
+    }
+
+    await new Promise<void>((resolve) => {
+      this.exportWaiters.push(() => {
+        this.inFlightExports += 1;
         resolve();
-      }
+      });
     });
+  }
+
+  private releaseExportSlot(): void {
+    if (this.maxConcurrentExports <= 0) return;
+    this.inFlightExports = Math.max(0, this.inFlightExports - 1);
+    const next = this.exportWaiters.shift();
+    if (next) next();
   }
 }
 

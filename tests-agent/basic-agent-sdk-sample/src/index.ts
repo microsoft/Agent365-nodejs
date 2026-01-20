@@ -26,6 +26,7 @@ a365Observability.start();
 app.use((req: Request, _res: Response, next: NextFunction) => {
   // Create a mock identity when JWT is disabled
   req.user = {
+    aud: authConfig.clientId || 'mock-client-id',
     appid: authConfig.clientId || 'mock-client-id',
     azp: authConfig.clientId || 'mock-client-id'
   };
