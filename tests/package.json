@@ -6,11 +6,11 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "test": "jest --config jest.config.cjs --passWithNoTests --testPathIgnorePatterns=/integration/",
-    "test:watch": "jest --config jest.config.cjs --watch --testPathIgnorePatterns=/integration/",
-    "test:coverage": "jest --config jest.config.cjs --coverage --passWithNoTests --testPathIgnorePatterns=/integration/",
-    "test:verbose": "jest --config jest.config.cjs --verbose --passWithNoTests --testPathIgnorePatterns=/integration/",
-    "test:ci": "jest --config jest.config.cjs --coverage --ci --maxWorkers=2 --passWithNoTests --testPathIgnorePatterns=/integration/"
+    "test": "node --experimental-vm-modules $(npm root)/../node_modules/.bin/jest --config jest.config.cjs --passWithNoTests --testPathIgnorePatterns=/integration/",
+    "test:watch": "node --experimental-vm-modules $(npm root)/../node_modules/.bin/jest --config jest.config.cjs --watch --testPathIgnorePatterns=/integration/",
+    "test:coverage": "node --experimental-vm-modules $(npm root)/../node_modules/.bin/jest --config jest.config.cjs --coverage --passWithNoTests --testPathIgnorePatterns=/integration/",
+    "test:verbose": "node --experimental-vm-modules $(npm root)/../node_modules/.bin/jest --config jest.config.cjs --verbose --passWithNoTests --testPathIgnorePatterns=/integration/",
+    "test:ci": "node --experimental-vm-modules $(npm root)/../node_modules/.bin/jest --config jest.config.cjs --coverage --ci --maxWorkers=2 --passWithNoTests --testPathIgnorePatterns=/integration/"
   },
   "keywords": [
     "agents",
