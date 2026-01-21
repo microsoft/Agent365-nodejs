@@ -23,11 +23,37 @@ describe('environment-utils', () => {
   });
 
   describe('getObservabilityAuthenticationScope', () => {
-    it('should return production observability scope', () => {
+    it('should return production observability scope when override is not set', () => {
+      delete process.env.A365_OBSERVABILITY_SCOPES_OVERRIDE;
+
       const scopes = getObservabilityAuthenticationScope();
 
       expect(scopes).toEqual([PROD_OBSERVABILITY_SCOPE]);
       expect(scopes[0]).toEqual('https://api.powerplatform.com/.default');
+    });
+
+    it('should return overridden observability scope when A365_OBSERVABILITY_SCOPES_OVERRIDE is set', () => {
+      process.env.A365_OBSERVABILITY_SCOPES_OVERRIDE = 'https://override.example.com/.default';
+
+      const scopes = getObservabilityAuthenticationScope();
+
+      expect(scopes).toEqual(['https://override.example.com/.default']);
+    });
+
+    it('should support multiple scopes separated by whitespace', () => {
+      process.env.A365_OBSERVABILITY_SCOPES_OVERRIDE = 'scope-one/.default scope-two/.default';
+
+      const scopes = getObservabilityAuthenticationScope();
+
+      expect(scopes).toEqual(['scope-one/.default', 'scope-two/.default']);
+    });
+
+    it('should fall back to production scope when override is empty or whitespace', () => {
+      process.env.A365_OBSERVABILITY_SCOPES_OVERRIDE = '   ';
+
+      const scopes = getObservabilityAuthenticationScope();
+
+      expect(scopes).toEqual([PROD_OBSERVABILITY_SCOPE]);
     });
   });
 

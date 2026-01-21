@@ -55,6 +55,7 @@ describe('Agent365Exporter', () => {
     jest.useRealTimers();
     global.fetch = originalFetch;
     delete process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN;
+    delete process.env.A365_OBSERVABILITY_DOMAIN_OVERRIDE;
   });
 
   it('returns success immediately with no spans', async () => {
@@ -128,6 +129,72 @@ describe('Agent365Exporter', () => {
     const headersArg = fetchCalls[0][1].headers;
     expect(urlArg).toBe(`${expectedUrl}/maven/agent365/agents/${agentId}/traces?api-version=1`);
     expect(headersArg['x-ms-tenant-id']).toBe(tenantId);
+    expect(headersArg['authorization']).toBe(`Bearer ${token}`);
+  });
+
+  it.each([
+    {
+      description: 'set to non-empty value and A365_OBSERVABILITY_USE_CUSTOM_DOMAIN is true',
+      override: 'https://custom-observability.internal',
+      expectedBaseUrl: 'https://custom-observability.internal'
+    },
+    {
+      description: 'set to empty string',
+      override: '',
+      expectedBaseUrl: 'https://agent365.svc.cloud.microsoft'
+    },
+    {
+      description: 'set to whitespace only',
+      override: '   ',
+      expectedBaseUrl: 'https://agent365.svc.cloud.microsoft'
+    },
+    {
+      description: 'unset (undefined)',
+      override: undefined,
+      expectedBaseUrl: 'https://agent365.svc.cloud.microsoft'
+    },
+    {
+      description: 'set to non-empty value and A365_OBSERVABILITY_USE_CUSTOM_DOMAIN is false',
+      override: 'https://custom-observability.internal',
+      expectedBaseUrl: 'https://custom-observability.internal',
+      notUseCustomDomain: true
+    },
+  ])('uses correct domain when A365_OBSERVABILITY_DOMAIN_OVERRIDE is $description', async ({ override, expectedBaseUrl, notUseCustomDomain }) => {
+    mockFetchSequence([200]);
+    process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN = notUseCustomDomain ? 'false' : 'true';
+
+    if (override !== undefined) {
+      process.env.A365_OBSERVABILITY_DOMAIN_OVERRIDE = override as string;
+    }
+
+    const token = 'tok-override-domain';
+    const opts = new Agent365ExporterOptions();
+    opts.clusterCategory = 'prod';
+    opts.tokenResolver = () => token;
+
+    const exporter = new Agent365Exporter(opts);
+    const spans = [
+      makeSpan({
+        [OpenTelemetryConstants.TENANT_ID_KEY]: tenantId,
+        [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]: agentId
+      })
+    ];
+
+    const callback = jest.fn();
+    await exporter.export(spans, callback);
+
+    expect(callback).toHaveBeenCalledWith({ code: ExportResultCode.SUCCESS });
+    const fetchCalls = (global.fetch as unknown as { mock: { calls: any[] } }).mock.calls;
+    expect(fetchCalls.length).toBe(1);
+    const urlArg = fetchCalls[0][0] as string;
+    const headersArg = fetchCalls[0][1].headers as Record<string, string>;
+
+    expect(urlArg).toBe(`${expectedBaseUrl}/maven/agent365/agents/${agentId}/traces?api-version=1`);
+    if (!notUseCustomDomain) {
+      expect(headersArg['x-ms-tenant-id']).toBe(tenantId);
+    } else {
+      expect(headersArg['x-ms-tenant-id']).toBeUndefined();
+    }
     expect(headersArg['authorization']).toBe(`Bearer ${token}`);
   });
 
