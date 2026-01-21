@@ -42,6 +42,7 @@ export class OpenTelemetryConstants {
 
   public static readonly GEN_AI_AGENT_ID_KEY = 'gen_ai.agent.id';
   public static readonly GEN_AI_AGENT_NAME_KEY = 'gen_ai.agent.name';
+  public static readonly GEN_AI_AGENT_TYPE_KEY = 'gen_ai.agent.type';
   public static readonly GEN_AI_AGENT_DESCRIPTION_KEY = 'gen_ai.agent.description';
   public static readonly GEN_AI_AGENT_PLATFORM_ID_KEY = 'gen_ai.agent.platformid';
   public static readonly GEN_AI_CONVERSATION_ID_KEY = 'gen_ai.conversation.id';

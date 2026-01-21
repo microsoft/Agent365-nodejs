@@ -48,6 +48,7 @@ describe('BaggageBuilderUtils', () => {
     expect(asObj[OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]).toBe('agent-app-1');
     expect(asObj[OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY]).toBe('Agent One');
     expect(asObj[OpenTelemetryConstants.GEN_AI_AGENT_AUID_KEY]).toBe('aad-object-2');
+    expect(asObj[OpenTelemetryConstants.GEN_AI_AGENT_DESCRIPTION_KEY]).toBe('agent');
     expect(asObj[OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY]).toBe('blueprint-123');
     expect(asObj[OpenTelemetryConstants.GEN_AI_AGENT_UPN_KEY]).toBe(undefined);
     expect(asObj[OpenTelemetryConstants.TENANT_ID_KEY]).toBe('tenant1');
