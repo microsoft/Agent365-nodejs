@@ -58,16 +58,3 @@ Per-request buffering can increase memory usage and cause export bursts during t
 - `A365_PER_REQUEST_MAX_SPANS_PER_TRACE` (default `5000`): caps buffered ended spans per trace.
 
 Set to `0` (or negative) to disable a specific guardrail.
-
-## Interaction with batch export
-
-- **Batch export mode** (`ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT` not enabled) requires `tokenResolver` so the exporter can resolve tokens during export.
-- **Per-request export mode** uses the token from OpenTelemetry Context; a `tokenResolver` is not required.
-
-## Troubleshooting
-
-If you see: `No token available in OTel Context for per-request export`
-
-- Ensure `ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT=true`.
-- Ensure your request handler is wrapped in `runWithExportToken(...)`.
-- Ensure the work that creates spans runs within the same async call chain (avoid detaching work into separate processes/worker threads without propagating context).
