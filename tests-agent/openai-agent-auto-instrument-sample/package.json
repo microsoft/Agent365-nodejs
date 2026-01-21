@@ -36,7 +36,8 @@
     "@openai/agents": "catalog:",
     "@openai/agents-core": "catalog:",
     "dotenv": "catalog:",
-    "express": "catalog:"
+    "express": "catalog:",
+    "hono": "catalog:"
   },
   "devDependencies": {
     "@eslint/js": "catalog:",

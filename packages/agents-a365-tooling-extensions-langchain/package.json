@@ -38,6 +38,7 @@
     "@microsoft/agents-a365-runtime": "workspace:*",
     "@microsoft/agents-a365-tooling": "workspace:*",
     "@microsoft/agents-hosting": "catalog:",
+    "hono": "catalog:",
     "langchain": "catalog:"
   },
   "devDependencies": {

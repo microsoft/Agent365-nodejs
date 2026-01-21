@@ -57,5 +57,13 @@
   "dependencies": {
     "globals": "^16.5.0",
     "jiti": "^2.6.1"
+  },
+  "pnpm": {
+    "overrides": {
+      "@types/uuid": "^9.0.8",
+      "hono": "^4.11.4",
+      "uuid": "^9.0.1",
+      "zod": "^4.1.12"
+    }
   }
 }

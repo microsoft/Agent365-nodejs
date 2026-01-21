@@ -37,7 +37,8 @@
     "@microsoft/agents-a365-runtime": "workspace:*",
     "@microsoft/agents-a365-tooling": "workspace:*",
     "@microsoft/agents-hosting": "catalog:",
-    "@openai/agents": "catalog:"
+    "@openai/agents": "catalog:",
+    "hono": "catalog:"
   },
   "devDependencies": {
     "@eslint/js": "catalog:",
