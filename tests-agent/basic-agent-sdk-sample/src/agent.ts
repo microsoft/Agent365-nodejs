@@ -24,7 +24,7 @@ import {
 } from '@microsoft/agents-a365-observability';
 import { getObservabilityAuthenticationScope } from '@microsoft/agents-a365-runtime';
 import { AgenticTokenCacheInstance, BaggageBuilderUtils, ScopeUtils } from '@microsoft/agents-a365-observability-hosting';
-import tokenCache from './token-cache'; 
+import tokenCache from './token-cache';
 interface ConversationState {
   count: number;
 }
@@ -81,22 +81,24 @@ agentApplication.onActivity(
 
         // Set Use_Custom_Resolver === 'true' to use a custom token resolver (see telemetry.ts) and a custom token cache (see token-cache.ts).
         // Otherwise: use the default AgenticTokenCache via RefreshObservabilityToken.
-        if (process.env.Use_Custom_Resolver === 'true') {
-          const aauToken = await agentApplication.authorization.exchangeToken(context, 'agentic', {
-            scopes: getObservabilityAuthenticationScope()
-          });
-          const cacheKey = createAgenticTokenCacheKey(agentInfo.agentId, tenantInfo.tenantId);
-          tokenCache.set(cacheKey, aauToken?.token || '');
-        } else {
-          // Preload/refresh the observability token into the shared AgenticTokenCache.
-          // We don't immediately need the token here, and if acquisition fails we continue (non-fatal for this demo sample).
-          await AgenticTokenCacheInstance.RefreshObservabilityToken(
-            agentInfo.agentId,
-            tenantInfo.tenantId,
-            context,
-            agentApplication.authorization,
-            getObservabilityAuthenticationScope()
-          );
+        if (process.env.ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT?.toLowerCase() !== 'true') {
+          if (process.env.Use_Custom_Resolver === 'true') {
+            const aauToken = await agentApplication.authorization.exchangeToken(context, 'agentic', {
+              scopes: getObservabilityAuthenticationScope()
+            });
+            const cacheKey = createAgenticTokenCacheKey(agentInfo.agentId, tenantInfo.tenantId);
+            tokenCache.set(cacheKey, aauToken?.token || '');
+          } else {
+            // Preload/refresh the observability token into the shared AgenticTokenCache.
+            // We don't immediately need the token here, and if acquisition fails we continue (non-fatal for this demo sample).
+            await AgenticTokenCacheInstance.RefreshObservabilityToken(
+              agentInfo.agentId,
+              tenantInfo.tenantId,
+              context,
+              agentApplication.authorization,
+              getObservabilityAuthenticationScope()
+            );
+          }
         }
 
         const llmResponse = await performInference(
