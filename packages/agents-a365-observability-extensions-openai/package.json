@@ -48,7 +48,8 @@
     "@microsoft/agents-a365-observability": "workspace:*",
     "@openai/agents": "catalog:",
     "@opentelemetry/api": "catalog:",
-    "@opentelemetry/instrumentation": "catalog:"
+    "@opentelemetry/instrumentation": "catalog:",
+    "hono": "catalog:"
   },
   "devDependencies": {
     "@eslint/js": "catalog:",
