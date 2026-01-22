@@ -1,12 +1,17 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 // It is important to load environment variables before importing other modules
 import { configDotenv } from 'dotenv';
 
 configDotenv();
 
-import { AuthConfiguration, authorizeJWT, CloudAdapter, loadAuthConfigFromEnv, Request } from '@microsoft/agents-hosting';
+import { AuthConfiguration, CloudAdapter, loadAuthConfigFromEnv, Request } from '@microsoft/agents-hosting';
 import express, { NextFunction, Response } from 'express';
 import { agentApplication } from './agent';
 import { a365Observability } from './telemetry';
+import { logger, runWithExportToken } from '@microsoft/agents-a365-observability';
+import { getObservabilityAuthenticationScope } from '@microsoft/agents-a365-runtime';
 
 const authConfig: AuthConfiguration = loadAuthConfigFromEnv();
 const adapter = new CloudAdapter(authConfig);
@@ -18,7 +23,7 @@ a365Observability.start();
 
 // Mock authentication middleware for development
 // This is only required when running from agents playground
-app.use((req: Request, res: Response, next: NextFunction) => {
+app.use((req: Request, _res: Response, next: NextFunction) => {
   // Create a mock identity when JWT is disabled
   req.user = {
     aud: authConfig.clientId || 'mock-client-id',
@@ -30,24 +35,53 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 app.post('/api/messages', async (req: Request, res: Response) => {
   try {
+    // Check if per-request export is enabled
+    const isPerRequestExportEnabled = 
+      process.env.ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT?.toLowerCase() === 'true';
+
     await adapter.process(req, res, async (context) => {
-      const app = agentApplication;
-      await app.run(context);
+      const agentApp = agentApplication;
+
+      if (!isPerRequestExportEnabled) {
+        // For batch export, token resolution is handled by exporter/tokenResolver.
+        await agentApp.run(context);
+        return;
+      }
+
+      let token = '';
+      try {
+        const exchanged = await agentApp.authorization.exchangeToken(context, 'agentic', {
+          scopes: getObservabilityAuthenticationScope()
+        });
+        token = exchanged?.token || '';
+      } catch (exchangeErr) {
+        logger.error('[diagnostic] token exchange failed; continuing without export token', exchangeErr);
+        token = '';
+      }
+
+      await runWithExportToken(token, async () => {
+        await agentApp.run(context);
+      });
     });
   } catch (err) {
     // Enhanced diagnostic logging for token acquisition / adapter failures
-    const anyErr = err as any;
-    const status = anyErr?.status || anyErr?.response?.status;
-    const data = anyErr?.response?.data;
-    const message = anyErr?.message || 'Unknown error';
-    // Axios style nested config
+    type AdapterProcessError = Error & {
+      status?: number;
+      response?: { status?: number; data?: unknown };
+      config?: { url?: string; data?: unknown };
+    };
+
+    const e = err as AdapterProcessError;
+    const status = e?.status || e?.response?.status;
+    const data = e?.response?.data as Record<string, unknown> | undefined;
+    const message = e?.message || 'Unknown error';
     const aadError = data?.error || data?.error_description || data;
     console.error('[diagnostic] adapter.process failed', {
       message,
       status,
       aadError,
-      url: anyErr?.config?.url,
-      scope: anyErr?.config?.data,
+      url: e?.config?.url,
+      scope: e?.config?.data,
     });
     // Surface minimal info to caller while keeping internals in log
     if (!res.headersSent) {
