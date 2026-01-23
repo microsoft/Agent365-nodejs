@@ -274,7 +274,6 @@ grep -r "ts-node" --include="package.json" --include="pnpm-workspace.yaml" .
 |------|---------|-----------------|
 | basic-agent-sdk-sample dev server | `cd tests-agent/basic-agent-sdk-sample && pnpm dev` | Server starts successfully |
 | openai-agent-auto-instrument-sample dev server | `cd tests-agent/openai-agent-auto-instrument-sample && pnpm dev` | Server starts successfully |
-| openai-agent-auto-instrument-sample test setup | `cd tests-agent/openai-agent-auto-instrument-sample && pnpm test:setup` | Script executes successfully |
 
 #### 8.2.3 Test Suite Verification
 
