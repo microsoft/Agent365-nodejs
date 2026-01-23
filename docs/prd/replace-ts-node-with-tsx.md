@@ -42,12 +42,12 @@ The `ts-node` package is used in a limited, well-defined scope:
 
 | Location | Usage |
 |----------|-------|
-| [pnpm-workspace.yaml:66](../pnpm-workspace.yaml#L66) | Catalog entry: `"ts-node": "^10.9.2"` |
-| [basic-agent-sdk-sample/package.json:9](../tests-agent/basic-agent-sdk-sample/package.json#L9) | Dev script |
-| [basic-agent-sdk-sample/package.json:34](../tests-agent/basic-agent-sdk-sample/package.json#L34) | devDependency |
-| [openai-agent-auto-instrument-sample/package.json:9](../tests-agent/openai-agent-auto-instrument-sample/package.json#L9) | Dev script |
-| [openai-agent-auto-instrument-sample/package.json:13](../tests-agent/openai-agent-auto-instrument-sample/package.json#L13) | test:setup script |
-| [openai-agent-auto-instrument-sample/package.json:54](../tests-agent/openai-agent-auto-instrument-sample/package.json#L54) | devDependency |
+| [pnpm-workspace.yaml:66](../../pnpm-workspace.yaml#L66) | Catalog entry: `"ts-node": "^10.9.2"` |
+| [basic-agent-sdk-sample/package.json:9](../../tests-agent/basic-agent-sdk-sample/package.json#L9) | Dev script |
+| [basic-agent-sdk-sample/package.json:34](../../tests-agent/basic-agent-sdk-sample/package.json#L34) | devDependency |
+| [openai-agent-auto-instrument-sample/package.json:9](../../tests-agent/openai-agent-auto-instrument-sample/package.json#L9) | Dev script |
+| [openai-agent-auto-instrument-sample/package.json:13](../../tests-agent/openai-agent-auto-instrument-sample/package.json#L13) | test:setup script |
+| [openai-agent-auto-instrument-sample/package.json:54](../../tests-agent/openai-agent-auto-instrument-sample/package.json#L54) | devDependency |
 
 **Important**: The Jest test framework uses `ts-jest`, which is a separate, actively maintained package and is **not affected** by this migration.
 
