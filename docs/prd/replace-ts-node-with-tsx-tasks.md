@@ -28,12 +28,12 @@ This task list implements the migration from `ts-node` to `tsx` in the Agent365-
 
 | ID | Task | Priority | Dependencies | Status |
 |----|------|----------|--------------|--------|
-| **T2.1** | Update `pnpm-workspace.yaml`: Replace `"ts-node": "^10.9.2"` with `"tsx": "^4.21.0"` in catalog (line 66) | P0 | T1.2, T1.3 | Pending |
-| **T2.2** | Update `tests-agent/basic-agent-sdk-sample/package.json`: Change `dev` script from `ts-node` to `tsx` (line 9) | P0 | T2.1 | Pending |
-| **T2.3** | Update `tests-agent/basic-agent-sdk-sample/package.json`: Change devDependency from `"ts-node": "^10.9.2"` to `"tsx": "catalog:"` (line 34) | P0 | T2.1 | Pending |
-| **T2.4** | Update `tests-agent/openai-agent-auto-instrument-sample/package.json`: Change `dev` script from `ts-node` to `tsx` (line 9) | P0 | T2.1 | Pending |
-| **T2.5** | Update `tests-agent/openai-agent-auto-instrument-sample/package.json`: Change `test:setup` script from `ts-node` to `tsx` (line 13) | P0 | T2.1 | Pending |
-| **T2.6** | Update `tests-agent/openai-agent-auto-instrument-sample/package.json`: Change devDependency from `"ts-node": "catalog:"` to `"tsx": "catalog:"` (line 54) | P0 | T2.1 | Pending |
+| **T2.1** | Update `pnpm-workspace.yaml`: Replace `"ts-node": "^10.9.2"` with `"tsx": "^4.21.0"` in the catalog section | P0 | T1.2, T1.3 | Pending |
+| **T2.2** | Update `tests-agent/basic-agent-sdk-sample/package.json`: Change `dev` script from `ts-node` to `tsx` | P0 | T2.1 | Pending |
+| **T2.3** | Update `tests-agent/basic-agent-sdk-sample/package.json`: Change devDependency from `"ts-node": "^10.9.2"` to `"tsx": "catalog:"` | P0 | T2.1 | Pending |
+| **T2.4** | Update `tests-agent/openai-agent-auto-instrument-sample/package.json`: Change `dev` script from `ts-node` to `tsx` | P0 | T2.1 | Pending |
+| **T2.5** | Update `tests-agent/openai-agent-auto-instrument-sample/package.json`: Change `test:setup` script from `ts-node` to `tsx` | P0 | T2.1 | Pending |
+| **T2.6** | Update `tests-agent/openai-agent-auto-instrument-sample/package.json`: Change devDependency from `"ts-node": "catalog:"` to `"tsx": "catalog:"` | P0 | T2.1 | Pending |
 
 ---
 
