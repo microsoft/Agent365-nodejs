@@ -91,7 +91,7 @@ The following items are explicitly out of scope for this migration:
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| FR-1 | Remove all references to ts-node from the repository | P0 |
+| FR-1 | Remove direct ts-node usage from package scripts and devDependencies (documentation references may be cleaned up separately) | P0 |
 | FR-2 | Add tsx to the pnpm workspace catalog | P0 |
 | FR-3 | Update basic-agent-sdk-sample to use tsx for development | P0 |
 | FR-4 | Update openai-agent-auto-instrument-sample to use tsx for development | P0 |
