@@ -6,7 +6,7 @@
     "build": "tsc",
     "prestart": "npm run build",
     "start": "node dist/index.js",
-    "dev": "nodemon --watch src/*.ts --exec ts-node src/index.ts",
+    "dev": "nodemon --watch src/*.ts --exec tsx src/index.ts",
     "test-tool": "agentsplayground"
   },
   "keywords": [],
@@ -31,7 +31,7 @@
     "@types/uuid": "^9.0.0",
     "eslint": "^9.39.1",
     "nodemon": "^3.1.10",
-    "ts-node": "^10.9.2",
+    "tsx": "catalog:",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.47.0"
   }
