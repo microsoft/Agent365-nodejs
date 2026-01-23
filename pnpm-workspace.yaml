@@ -33,9 +33,9 @@ catalog:
   "@modelcontextprotocol/sdk": "^1.25.2"
 
   # OpenAI Agents packages
-  "@openai/agents": "^0.1.5"
-  "@openai/agents-core": "^0.1.5"
-  "@openai/agents-openai": "^0.1.5"
+  "@openai/agents": "^0.4.0"
+  "@openai/agents-core": "^0.4.0"
+  "@openai/agents-openai": "^0.4.0"
   "openai": "^4.8.0"
 
   # OpenTelemetry packages - align versions

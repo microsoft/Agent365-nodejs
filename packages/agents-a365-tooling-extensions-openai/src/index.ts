@@ -1,1 +1,4 @@
 export * from './McpToolRegistrationService';
+
+// Re-export OpenAI types for convenience
+export { OpenAIConversationsSession } from '@openai/agents-openai';

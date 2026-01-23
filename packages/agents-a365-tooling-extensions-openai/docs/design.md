@@ -198,6 +198,152 @@ private readonly orchestratorName: string = "OpenAI";
 // "Agent365SDK/1.0.0 (Windows_NT; Node.js v18.0.0; OpenAI)"
 ```
 
+## Chat History API
+
+The service provides methods to send conversation history to the MCP platform for real-time threat protection. These methods handle the conversion from OpenAI SDK types (`AgentInputItem`) to the platform-native `ChatHistoryMessage` format.
+
+### sendChatHistoryAsync
+
+Sends chat history from an OpenAI Session to the MCP platform:
+
+```typescript
+import { McpToolRegistrationService } from '@microsoft/agents-a365-tooling-extensions-openai';
+
+const registrationService = new McpToolRegistrationService();
+
+// Using OpenAI Session directly (most common use case)
+const result = await registrationService.sendChatHistoryAsync(
+  turnContext,
+  session,       // OpenAI Session instance
+  50,            // Optional: limit number of messages
+  toolOptions    // Optional: custom tool options
+);
+
+if (result.succeeded) {
+  console.log('Chat history sent successfully');
+} else {
+  console.error('Failed to send chat history:', result.errors);
+}
+```
+
+**Method Signature:**
+
+```typescript
+async sendChatHistoryAsync(
+  turnContext: TurnContext,              // Current turn context
+  session: OpenAIConversationsSession,   // OpenAI session to extract messages from
+  limit?: number,                        // Optional limit on messages
+  toolOptions?: ToolOptions              // Optional tool options
+): Promise<OperationResult>              // Returns operation result
+```
+
+### sendChatHistoryMessagesAsync
+
+Sends a list of messages directly to the MCP platform:
+
+```typescript
+// Or using a list of items directly
+const items = await session.getItems();
+const result = await registrationService.sendChatHistoryMessagesAsync(
+  turnContext,
+  items,
+  toolOptions    // Optional: custom tool options
+);
+```
+
+**Method Signature:**
+
+```typescript
+async sendChatHistoryMessagesAsync(
+  turnContext: TurnContext,     // Current turn context
+  messages: AgentInputItem[],   // Array of OpenAI messages
+  toolOptions?: ToolOptions     // Optional tool options
+): Promise<OperationResult>     // Returns operation result
+```
+
+### Message Conversion
+
+The service handles automatic conversion of OpenAI message types:
+
+| OpenAI Property | ChatHistoryMessage Property | Conversion Logic |
+|-----------------|----------------------------|------------------|
+| `role` | `role` | Pass-through (no transformation) |
+| `content` (string) | `content` | Direct use |
+| `content` (array) | `content` | Concatenate text parts |
+| `text` | `content` | Fallback for text property |
+| `id` | `id` | Use existing or generate UUID |
+| N/A | `timestamp` | Always current UTC time |
+
+**Content Extraction Priority:**
+1. If `message.content` is a string, use it directly
+2. If `message.content` is an array (ContentPart[]), concatenate all text parts
+3. If `message.text` exists, use it as fallback
+4. If content is empty or undefined, the message is skipped with a warning
+
+**ID Generation:**
+- If `message.id` exists, it is preserved
+- Otherwise, a UUID v4 is generated automatically
+
+**Timestamp Generation:**
+- AgentInputItem types do not have a standard timestamp property
+- Current UTC timestamp is always generated
+
+### Error Handling
+
+| Error Condition | Behavior |
+|-----------------|----------|
+| `turnContext` is null/undefined | Throws `Error('turnContext is required')` |
+| `session` is null/undefined | Throws `Error('session is required')` |
+| `messages` is null/undefined | Throws `Error('messages is required')` |
+| `messages` is empty array | Returns `OperationResult.success` (no-op) |
+| Message conversion fails | Message is skipped, error logged |
+| HTTP error from MCP platform | Returns `OperationResult.failed()` with error |
+| Network timeout | Returns `OperationResult.failed()` with error |
+
+### Complete Example
+
+```typescript
+import { Agent, run } from '@openai/agents';
+import { McpToolRegistrationService } from '@microsoft/agents-a365-tooling-extensions-openai';
+
+async function onMessage(turnContext: TurnContext, authorization: Authorization) {
+  const registrationService = new McpToolRegistrationService();
+
+  // Create OpenAI agent with session
+  let agent = new Agent({
+    name: 'MyAssistant',
+    model: 'gpt-4o',
+    instructions: 'You are a helpful assistant.'
+  });
+
+  // Register MCP tools
+  agent = await registrationService.addToolServersToAgent(
+    agent,
+    authorization,
+    'myAuthHandler',
+    turnContext,
+    authToken
+  );
+
+  // Run the agent with conversation session
+  const session = new OpenAIConversationsSession();
+  const result = await run(agent, turnContext.activity.text, { session });
+
+  // Send chat history for threat protection
+  const historyResult = await registrationService.sendChatHistoryAsync(
+    turnContext,
+    session,
+    100  // Send up to 100 messages
+  );
+
+  if (!historyResult.succeeded) {
+    console.warn('Failed to send chat history:', historyResult.errors);
+  }
+
+  await turnContext.sendActivity(result.finalOutput);
+}
+```
+
 ## Comparison with Other Extensions
 
 | Feature | OpenAI Extension | Claude Extension | LangChain Extension |
@@ -206,3 +352,4 @@ private readonly orchestratorName: string = "OpenAI";
 | Tool Discovery | Automatic via SDK | Manual via client | Via MCP adapters |
 | Tool Naming | Native MCP names | `mcp__server__tool` | Native MCP names |
 | Return Type | Updated `Agent` | `void` (modifies options) | New `ReactAgent` |
+| Chat History API | `sendChatHistoryAsync` | N/A | N/A |
