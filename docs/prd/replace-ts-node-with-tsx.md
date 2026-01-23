@@ -373,6 +373,8 @@ The migration is considered successful when:
 1. `pnpm-workspace.yaml` - Line 66: Catalog entry update
 2. `tests-agent/basic-agent-sdk-sample/package.json` - Lines 9, 34: Script and dependency update
 3. `tests-agent/openai-agent-auto-instrument-sample/package.json` - Lines 9, 13, 54: Scripts and dependency update
+4. `docs/prd/replace-ts-node-with-tsx.md` - New PRD document added
+5. `pnpm-lock.yaml` - Lockfile updated to reflect dependency changes
 
 ### B. Reference Links
 
