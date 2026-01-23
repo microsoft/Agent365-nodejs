@@ -7,12 +7,13 @@ export interface MCPServerConfig {
   headers?: Record<string, string>;
 }
 
-export interface MCPServerManifestEntry {
-  mcpServerName?: string;
-  mcpServerUniqueName?: string;
+export type MCPServerManifestEntry = {
   url?: string;
   headers?: Record<string, string>;
-}
+} & (
+  | { mcpServerName: string; mcpServerUniqueName?: string }
+  | { mcpServerUniqueName: string; mcpServerName?: string }
+);
 
 export interface McpClientTool {
   name: string;
