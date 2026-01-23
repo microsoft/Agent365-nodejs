@@ -10,7 +10,7 @@
     "test-tool": "agentsplayground",
     "test:integration": "jest --config ../../jest.integration.config.js",
     "test:integration:watch": "jest --config ../../jest.integration.config.js --watch",
-    "test:setup": "tsx ../../tests/integration/setup.ts",
+    "test:setup": "tsx ../../tests/observability/integration/setup.ts",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "install:clean": "npm run clean && npm install",
