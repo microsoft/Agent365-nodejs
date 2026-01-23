@@ -66,7 +66,7 @@ The `ts-node` package is used in a limited, well-defined scope:
 
 | Metric | Target |
 |--------|--------|
-| ts-node references in codebase | 0 |
+| Direct ts-node usage in scripts/deps | 0 (excluding auto-generated lockfiles and historical documentation) |
 | Sample package dev servers functional | 100% |
 | Test suite pass rate | 100% (no regressions) |
 | Dev server startup time improvement | >50% reduction |
