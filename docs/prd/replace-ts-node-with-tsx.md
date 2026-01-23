@@ -133,7 +133,7 @@ The following items are explicitly out of scope for this migration:
 | Maintenance Status | Active (v4.21.0, November 2025) | Inactive |
 | Weekly Downloads | 10.65M+ | Declining |
 | GitHub Stars | 11.7k+ | Legacy |
-| Startup Performance | ~10x faster (esbuild/Rust) | Slower (tsc) |
+| Startup Performance | Significantly faster startup (esbuild-based) | Slower (tsc) |
 | ESM Support | Native, seamless | Requires configuration |
 | Configuration | Zero-config (reads tsconfig.json) | Complex |
 | Nodemon Compatibility | Drop-in replacement | Native |
