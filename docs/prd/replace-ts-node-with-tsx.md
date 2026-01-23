@@ -240,10 +240,11 @@ pnpm install
 ```
 
 This will:
-- Remove ts-node from node_modules
-- Install tsx in the affected sample packages
-- Update the pnpm-lock.yaml file
+- Remove direct `ts-node` usage from devDependencies and scripts in the affected sample packages
+- Install `tsx` in the affected sample packages
+- Update the `pnpm-lock.yaml` file to reflect these dependency changes
 
+> Note: `ts-node` may still appear in `node_modules` and `pnpm-lock.yaml` as an optional peer dependency (for example, via `jest-config`) when pnpm `autoInstallPeers` is enabled. If complete removal of `ts-node` is required, additional pnpm configuration or dependency adjustments will be needed.
 ---
 
 ## 8. Verification Plan
