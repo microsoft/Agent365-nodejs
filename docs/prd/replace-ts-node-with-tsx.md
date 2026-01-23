@@ -262,9 +262,9 @@ This will:
 # Verify tsx is installed
 pnpm list tsx --depth=0
 
-# Verify ts-node is completely removed
-grep -r "ts-node" --include="*.json" --include="*.yaml" --include="*.yml" .
-# Expected: No results
+# Verify ts-node is not used as a direct dependency
+grep -r "ts-node" --include="package.json" --include="pnpm-workspace.yaml" .
+# Expected: No results (no direct ts-node dependency; transitive references in lockfiles are acceptable)
 ```
 
 #### 8.2.2 Functional Verification
