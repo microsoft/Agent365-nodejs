@@ -174,4 +174,4 @@ If issues are discovered post-migration:
 | `tests-agent/basic-agent-sdk-sample/package.json` | Script update + devDependency update |
 | `tests-agent/openai-agent-auto-instrument-sample/package.json` | Script updates (2) + devDependency update |
 
-**Total files modified**: 3
+**Total files modified (excluding lockfiles and documentation)**: 3
