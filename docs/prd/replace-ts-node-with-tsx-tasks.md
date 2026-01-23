@@ -111,8 +111,8 @@ This task list implements the migration from `ts-node` to `tsx` in the Agent365-
 **Script Changes**:
 - Line 9 - Current: `"dev": "nodemon --watch src/*.ts --exec ts-node src/index.ts"`
 - Line 9 - Updated: `"dev": "nodemon --watch src/*.ts --exec tsx src/index.ts"`
-- Line 13 - Current: `"test:setup": "ts-node ../../tests/integration/setup.ts"`
-- Line 13 - Updated: `"test:setup": "tsx ../../tests/integration/setup.ts"`
+- Line 13 - Current: `"test:setup": "ts-node ../../tests/observability/integration/setup.ts"`
+- Line 13 - Updated: `"test:setup": "tsx ../../tests/observability/integration/setup.ts"`
 
 **Dependency Change (line 54)**:
 - Current: `"ts-node": "catalog:"`
