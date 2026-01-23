@@ -134,9 +134,10 @@ catalogs:
       version: 8.47.0
 
 overrides:
+  '@types/uuid': ^9.0.8
+  hono: ^4.11.4
+  uuid: ^9.0.1
   zod: ^4.1.12
-  '@types/uuid': ^9.0.0
-  uuid: ^9.0.0
 
 importers:
 
@@ -291,13 +292,16 @@ importers:
         version: link:../agents-a365-observability
       '@openai/agents':
         specifier: 'catalog:'
-        version: 0.1.11(@cfworker/json-schema@4.1.1)(hono@4.11.3)(ws@8.18.3)(zod@4.1.13)
+        version: 0.1.11(@cfworker/json-schema@4.1.1)(hono@4.11.4)(ws@8.18.3)(zod@4.1.13)
       '@opentelemetry/api':
         specifier: 'catalog:'
         version: 1.9.0
       '@opentelemetry/instrumentation':
         specifier: 'catalog:'
         version: 0.204.0(@opentelemetry/api@1.9.0)
+      hono:
+        specifier: ^4.11.4
+        version: 4.11.4
     devDependencies:
       '@eslint/js':
         specifier: 'catalog:'
@@ -438,10 +442,13 @@ importers:
         version: 1.1.0-alpha.85
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
-        version: 1.25.2(@cfworker/json-schema@4.1.1)(hono@4.11.3)(zod@4.1.13)
+        version: 1.25.2(@cfworker/json-schema@4.1.1)(hono@4.11.4)(zod@4.1.13)
       express:
         specifier: 'catalog:'
         version: 5.2.0
+      hono:
+        specifier: ^4.11.4
+        version: 4.11.4
     devDependencies:
       '@eslint/js':
         specifier: 'catalog:'
@@ -493,7 +500,7 @@ importers:
         version: 1.1.0-alpha.85
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
-        version: 1.25.2(@cfworker/json-schema@4.1.1)(hono@4.11.3)(zod@4.1.13)
+        version: 1.25.2(@cfworker/json-schema@4.1.1)(hono@4.11.4)(zod@4.1.13)
     devDependencies:
       '@eslint/js':
         specifier: 'catalog:'
@@ -533,7 +540,7 @@ importers:
     dependencies:
       '@langchain/mcp-adapters':
         specifier: 'catalog:'
-        version: 1.1.1(@cfworker/json-schema@4.1.1)(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3)(zod@4.1.13)))(@langchain/langgraph@1.0.2(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3)(zod@4.1.13)))(zod-to-json-schema@3.25.0(zod@4.1.13))(zod@4.1.13))
+        version: 1.1.1(@cfworker/json-schema@4.1.1)(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3)(zod@4.1.13)))(@langchain/langgraph@1.0.2(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3)(zod@4.1.13)))(zod-to-json-schema@3.25.0(zod@4.1.13))(zod@4.1.13))(hono@4.11.4)
       '@microsoft/agents-a365-runtime':
         specifier: workspace:*
         version: link:../agents-a365-runtime
@@ -543,6 +550,9 @@ importers:
       '@microsoft/agents-hosting':
         specifier: 'catalog:'
         version: 1.1.0-alpha.85
+      hono:
+        specifier: ^4.11.4
+        version: 4.11.4
       langchain:
         specifier: 'catalog:'
         version: 1.2.3(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3)(zod@4.1.13)))(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3)(zod@4.1.13))(zod-to-json-schema@3.25.0(zod@4.1.13))
@@ -594,7 +604,10 @@ importers:
         version: 1.1.0-alpha.85
       '@openai/agents':
         specifier: 'catalog:'
-        version: 0.1.11(@cfworker/json-schema@4.1.1)(hono@4.11.3)(ws@8.18.3)(zod@4.1.13)
+        version: 0.1.11(@cfworker/json-schema@4.1.1)(hono@4.11.4)(ws@8.18.3)(zod@4.1.13)
+      hono:
+        specifier: ^4.11.4
+        version: 4.11.4
     devDependencies:
       '@eslint/js':
         specifier: 'catalog:'
@@ -652,13 +665,13 @@ importers:
         version: 1.1.0-alpha.85
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
-        version: 1.25.2(@cfworker/json-schema@4.1.1)(hono@4.11.3)(zod@4.1.13)
+        version: 1.25.2(@cfworker/json-schema@4.1.1)(hono@4.11.4)(zod@4.1.13)
       '@openai/agents':
         specifier: 'catalog:'
-        version: 0.1.11(@cfworker/json-schema@4.1.1)(hono@4.11.3)(ws@8.18.3)(zod@4.1.13)
+        version: 0.1.11(@cfworker/json-schema@4.1.1)(hono@4.11.4)(ws@8.18.3)(zod@4.1.13)
       '@openai/agents-openai':
         specifier: 'catalog:'
-        version: 0.1.11(@cfworker/json-schema@4.1.1)(hono@4.11.3)(ws@8.18.3)(zod@4.1.13)
+        version: 0.1.11(@cfworker/json-schema@4.1.1)(hono@4.11.4)(ws@8.18.3)(zod@4.1.13)
       '@opentelemetry/api':
         specifier: 'catalog:'
         version: 1.9.0
@@ -680,6 +693,9 @@ importers:
       dotenv:
         specifier: 'catalog:'
         version: 17.2.3
+      hono:
+        specifier: ^4.11.4
+        version: 4.11.4
       openai:
         specifier: 'catalog:'
         version: 4.104.0(ws@8.18.3)(zod@4.1.13)
@@ -751,7 +767,7 @@ importers:
         specifier: ^5.2.0
         version: 5.2.0
       uuid:
-        specifier: ^9.0.0
+        specifier: ^9.0.1
         version: 9.0.1
     devDependencies:
       '@eslint/js':
@@ -767,7 +783,7 @@ importers:
         specifier: ^20.17.0
         version: 20.19.25
       '@types/uuid':
-        specifier: ^9.0.0
+        specifier: ^9.0.8
         version: 9.0.8
       eslint:
         specifier: ^9.39.1
@@ -807,16 +823,19 @@ importers:
         version: 1.1.0-alpha.85
       '@openai/agents':
         specifier: 'catalog:'
-        version: 0.1.11(@cfworker/json-schema@4.1.1)(hono@4.11.3)(ws@8.18.3)(zod@4.1.13)
+        version: 0.1.11(@cfworker/json-schema@4.1.1)(hono@4.11.4)(ws@8.18.3)(zod@4.1.13)
       '@openai/agents-core':
         specifier: 'catalog:'
-        version: 0.1.11(@cfworker/json-schema@4.1.1)(hono@4.11.3)(ws@8.18.3)(zod@4.1.13)
+        version: 0.1.11(@cfworker/json-schema@4.1.1)(hono@4.11.4)(ws@8.18.3)(zod@4.1.13)
       dotenv:
         specifier: 'catalog:'
         version: 17.2.3
       express:
         specifier: 'catalog:'
         version: 5.2.0
+      hono:
+        specifier: ^4.11.4
+        version: 4.11.4
     devDependencies:
       '@eslint/js':
         specifier: 'catalog:'
@@ -1198,7 +1217,7 @@ packages:
     resolution: {integrity: sha512-vUcD0uauS7EU2caukW8z5lJKtoGMokxNbJtBiwHgpqxEXokaHCBkQUmCHhjFB1VUTWdqj25QoMkMKzgjq+uhrw==}
     engines: {node: '>=18.14.1'}
     peerDependencies:
-      hono: ^4
+      hono: ^4.11.4
 
   '@humanfs/core@0.19.1':
     resolution: {integrity: sha512-5DyQ4+1JEUzejeK1JGICcideyfUbGixgS9jNgex5nqkW+cY7WZhxBigmieN5Qnw9ZosSNVC9KQKyb+GUaGyKUA==}
@@ -2737,8 +2756,8 @@ packages:
     resolution: {integrity: sha512-0hJU9SCPvmMzIBdZFqNPXWa6dqh7WdH0cII9y+CyS8rG3nL48Bclra9HmKhVVUHyPWNH5Y7xDwAB7bfgSjkUMQ==}
     engines: {node: '>= 0.4'}
 
-  hono@4.11.3:
-    resolution: {integrity: sha512-PmQi306+M/ct/m5s66Hrg+adPnkD5jiO6IjA7WhWw0gSBSo1EcRegwuI1deZ+wd5pzCGynCcn2DprnE4/yEV4w==}
+  hono@4.11.4:
+    resolution: {integrity: sha512-U7tt8JsyrxSRKspfhtLET79pU8K+tInj5QZXs1jSugO1Vq5dFj3kmZsRldo29mTBfcjDRVRXrEZ6LS63Cog9ZA==}
     engines: {node: '>=16.9.0'}
 
   html-escaper@2.0.2:
@@ -4415,9 +4434,9 @@ snapshots:
       protobufjs: 7.5.4
       yargs: 17.7.2
 
-  '@hono/node-server@1.19.7(hono@4.11.3)':
+  '@hono/node-server@1.19.7(hono@4.11.4)':
     dependencies:
-      hono: 4.11.3
+      hono: 4.11.4
 
   '@humanfs/core@0.19.1': {}
 
@@ -4747,11 +4766,11 @@ snapshots:
       - react
       - react-dom
 
-  '@langchain/mcp-adapters@1.1.1(@cfworker/json-schema@4.1.1)(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3)(zod@4.1.13)))(@langchain/langgraph@1.0.2(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3)(zod@4.1.13)))(zod-to-json-schema@3.25.0(zod@4.1.13))(zod@4.1.13))':
+  '@langchain/mcp-adapters@1.1.1(@cfworker/json-schema@4.1.1)(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3)(zod@4.1.13)))(@langchain/langgraph@1.0.2(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3)(zod@4.1.13)))(zod-to-json-schema@3.25.0(zod@4.1.13))(zod@4.1.13))(hono@4.11.4)':
     dependencies:
       '@langchain/core': 1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3)(zod@4.1.13))
       '@langchain/langgraph': 1.0.2(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3)(zod@4.1.13)))(zod-to-json-schema@3.25.0(zod@4.1.13))(zod@4.1.13)
-      '@modelcontextprotocol/sdk': 1.25.2(@cfworker/json-schema@4.1.1)(hono@4.11.3)(zod@4.1.13)
+      '@modelcontextprotocol/sdk': 1.25.2(@cfworker/json-schema@4.1.1)(hono@4.11.4)(zod@4.1.13)
       debug: 4.4.3(supports-color@5.5.0)
       zod: 4.1.13
     optionalDependencies:
@@ -4784,9 +4803,9 @@ snapshots:
 
   '@microsoft/m365agentsplayground@0.2.20': {}
 
-  '@modelcontextprotocol/sdk@1.25.2(@cfworker/json-schema@4.1.1)(hono@4.11.3)(zod@4.1.13)':
+  '@modelcontextprotocol/sdk@1.25.2(@cfworker/json-schema@4.1.1)(hono@4.11.4)(zod@4.1.13)':
     dependencies:
-      '@hono/node-server': 1.19.7(hono@4.11.3)
+      '@hono/node-server': 1.19.7(hono@4.11.4)
       ajv: 8.17.1
       ajv-formats: 3.0.1(ajv@8.17.1)
       content-type: 1.0.5
@@ -4827,12 +4846,12 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.19.1
 
-  '@openai/agents-core@0.1.11(@cfworker/json-schema@4.1.1)(hono@4.11.3)(ws@8.18.3)(zod@4.1.13)':
+  '@openai/agents-core@0.1.11(@cfworker/json-schema@4.1.1)(hono@4.11.4)(ws@8.18.3)(zod@4.1.13)':
     dependencies:
       debug: 4.4.3(supports-color@5.5.0)
       openai: 5.23.2(ws@8.18.3)(zod@4.1.13)
     optionalDependencies:
-      '@modelcontextprotocol/sdk': 1.25.2(@cfworker/json-schema@4.1.1)(hono@4.11.3)(zod@4.1.13)
+      '@modelcontextprotocol/sdk': 1.25.2(@cfworker/json-schema@4.1.1)(hono@4.11.4)(zod@4.1.13)
       zod: 4.1.13
     transitivePeerDependencies:
       - '@cfworker/json-schema'
@@ -4840,9 +4859,9 @@ snapshots:
       - supports-color
       - ws
 
-  '@openai/agents-openai@0.1.11(@cfworker/json-schema@4.1.1)(hono@4.11.3)(ws@8.18.3)(zod@4.1.13)':
+  '@openai/agents-openai@0.1.11(@cfworker/json-schema@4.1.1)(hono@4.11.4)(ws@8.18.3)(zod@4.1.13)':
     dependencies:
-      '@openai/agents-core': 0.1.11(@cfworker/json-schema@4.1.1)(hono@4.11.3)(ws@8.18.3)(zod@4.1.13)
+      '@openai/agents-core': 0.1.11(@cfworker/json-schema@4.1.1)(hono@4.11.4)(ws@8.18.3)(zod@4.1.13)
       debug: 4.4.3(supports-color@5.5.0)
       openai: 5.23.2(ws@8.18.3)(zod@4.1.13)
       zod: 4.1.13
@@ -4852,9 +4871,9 @@ snapshots:
       - supports-color
       - ws
 
-  '@openai/agents-realtime@0.1.11(@cfworker/json-schema@4.1.1)(hono@4.11.3)(zod@4.1.13)':
+  '@openai/agents-realtime@0.1.11(@cfworker/json-schema@4.1.1)(hono@4.11.4)(zod@4.1.13)':
     dependencies:
-      '@openai/agents-core': 0.1.11(@cfworker/json-schema@4.1.1)(hono@4.11.3)(ws@8.18.3)(zod@4.1.13)
+      '@openai/agents-core': 0.1.11(@cfworker/json-schema@4.1.1)(hono@4.11.4)(ws@8.18.3)(zod@4.1.13)
       '@types/ws': 8.18.1
       debug: 4.4.3(supports-color@5.5.0)
       ws: 8.18.3
@@ -4866,11 +4885,11 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@openai/agents@0.1.11(@cfworker/json-schema@4.1.1)(hono@4.11.3)(ws@8.18.3)(zod@4.1.13)':
+  '@openai/agents@0.1.11(@cfworker/json-schema@4.1.1)(hono@4.11.4)(ws@8.18.3)(zod@4.1.13)':
     dependencies:
-      '@openai/agents-core': 0.1.11(@cfworker/json-schema@4.1.1)(hono@4.11.3)(ws@8.18.3)(zod@4.1.13)
-      '@openai/agents-openai': 0.1.11(@cfworker/json-schema@4.1.1)(hono@4.11.3)(ws@8.18.3)(zod@4.1.13)
-      '@openai/agents-realtime': 0.1.11(@cfworker/json-schema@4.1.1)(hono@4.11.3)(zod@4.1.13)
+      '@openai/agents-core': 0.1.11(@cfworker/json-schema@4.1.1)(hono@4.11.4)(ws@8.18.3)(zod@4.1.13)
+      '@openai/agents-openai': 0.1.11(@cfworker/json-schema@4.1.1)(hono@4.11.4)(ws@8.18.3)(zod@4.1.13)
+      '@openai/agents-realtime': 0.1.11(@cfworker/json-schema@4.1.1)(hono@4.11.4)(zod@4.1.13)
       debug: 4.4.3(supports-color@5.5.0)
       openai: 5.23.2(ws@8.18.3)(zod@4.1.13)
       zod: 4.1.13
@@ -6248,7 +6267,7 @@ snapshots:
     dependencies:
       function-bind: 1.1.2
 
-  hono@4.11.3: {}
+  hono@4.11.4: {}
 
   html-escaper@2.0.2: {}
 

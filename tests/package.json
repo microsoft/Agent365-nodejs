@@ -41,6 +41,7 @@
     "@opentelemetry/sdk-trace-base": "catalog:",
     "@opentelemetry/semantic-conventions": "catalog:",
     "dotenv": "catalog:",
+    "hono": "catalog:",
     "openai": "catalog:"
   },
   "devDependencies": {
