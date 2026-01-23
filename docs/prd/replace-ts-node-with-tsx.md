@@ -217,11 +217,11 @@ catalog:
 ```json
 // Before
 "dev": "nodemon --watch src/*.ts --exec ts-node src/index.ts"
-"test:setup": "ts-node ../../tests/integration/setup.ts"
+"test:setup": "ts-node ../../tests/observability/integration/setup.ts"
 
 // After
 "dev": "nodemon --watch src/*.ts --exec tsx src/index.ts"
-"test:setup": "tsx ../../tests/integration/setup.ts"
+"test:setup": "tsx ../../tests/observability/integration/setup.ts"
 ```
 
 **Dependency Change**:
