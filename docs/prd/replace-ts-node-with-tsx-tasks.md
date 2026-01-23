@@ -50,7 +50,7 @@ This task list implements the migration from `ts-node` to `tsx` in the Agent365-
 | ID | Task | Priority | Dependencies | Status |
 |----|------|----------|--------------|--------|
 | **T4.1** | Verify tsx installation: Run `pnpm list tsx --depth=0` and confirm tsx is listed | P0 | T3.1 | Pending |
-| **T4.2** | Verify ts-node removal: Search codebase for any remaining ts-node references in `.json` and `.yaml` files | P0 | T3.1 | Pending |
+| **T4.2** | Verify ts-node removal: Search the codebase (including `pnpm-lock.yaml`, `.json`, `.yaml`, and `.md` files) for any remaining `ts-node` references. It is acceptable for `ts-node` to appear as a transitive dependency in `pnpm-lock.yaml`, but there must be no direct devDependencies, scripts, or documentation instructions that use `ts-node`. | P0 | T3.1 | Pending |
 | **T4.3** | Test basic-agent-sdk-sample dev server: Run `cd tests-agent/basic-agent-sdk-sample && pnpm dev` and verify it starts successfully | P0 | T3.1 | Pending |
 | **T4.4** | Test openai-agent-auto-instrument-sample dev server: Run `cd tests-agent/openai-agent-auto-instrument-sample && pnpm dev` and verify it starts successfully | P0 | T3.1 | Pending |
 | **T4.5** | Test openai-agent-auto-instrument-sample test:setup: Run `cd tests-agent/openai-agent-auto-instrument-sample && pnpm test:setup` and verify it executes | P0 | T3.1 | Pending |
