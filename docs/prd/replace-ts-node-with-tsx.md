@@ -328,7 +328,7 @@ If issues are discovered post-migration:
 
 The migration is considered successful when:
 
-1. **Complete Removal**: Zero references to `ts-node` exist in the repository
+1. **Complete Removal**: No direct usage of `ts-node` exists in any `package.json` scripts or dependencies (excluding lockfiles and documentation)
 2. **Functional Parity**: All sample dev servers start and operate correctly
 3. **Test Integrity**: All unit and integration tests pass without modification
 4. **Build Success**: `pnpm build` completes without errors
