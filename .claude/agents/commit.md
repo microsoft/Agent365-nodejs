@@ -129,10 +129,9 @@ Once the user approves (or provides an edited message):
 
 1. **Create the commit**:
    ```bash
-   git commit -m "$(cat <<'EOF'
-   [approved commit message]
-   EOF
-   )"
+   # Save the approved commit message to a temporary file using your tooling
+   # (ensuring the contents are not interpreted by the shell), then run:
+   git commit -F /path/to/approved-commit-message.txt
    ```
 
 2. **Verify the commit**:
