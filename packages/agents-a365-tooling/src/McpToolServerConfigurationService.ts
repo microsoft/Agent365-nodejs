@@ -234,10 +234,6 @@ export class McpToolServerConfigurationService {
    *     {
    *       "mcpServerName": "sharePointMCPServerConfig",
    *       "mcpServerUniqueName": "mcp_SharePointTools"
-   *     },
-   *     {
-   *       "mcpServerName": "customMCPServer",
-   *       "url": "http://localhost:3000/mcp"
    *     }
    *   ]
    * }
