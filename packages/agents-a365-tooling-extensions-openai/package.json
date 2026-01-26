@@ -39,10 +39,10 @@
     "@microsoft/agents-hosting": "catalog:",
     "@openai/agents": "catalog:",
     "hono": "catalog:",
-    "uuid": "^9.0.0"
+    "uuid": "catalog:"
   },
   "devDependencies": {
-    "@types/uuid": "^9.0.0",
+    "@types/uuid": "catalog:",
     "@eslint/js": "catalog:",
     "@types/jest": "catalog:",
     "@types/node": "catalog:",
