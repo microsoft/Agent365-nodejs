@@ -1,4 +1,4 @@
-ce# Product Requirements Document (PRD)
+# Product Requirements Document (PRD)
 
 ## OpenAI `sendChatHistoryAsync` API for Agent365-nodejs SDK
 
