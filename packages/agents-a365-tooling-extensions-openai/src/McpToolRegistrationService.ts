@@ -19,7 +19,6 @@ import { OpenAIConversationsSession } from '@openai/agents-openai';
 export class McpToolRegistrationService {
   private configService: McpToolServerConfigurationService = new McpToolServerConfigurationService();
   private readonly orchestratorName: string = "OpenAI";
-  private readonly logger = console;
 
 
   /**
@@ -132,7 +131,6 @@ export class McpToolRegistrationService {
       if (err instanceof Error && err.message.includes('is required')) {
         throw err; // Re-throw validation errors
       }
-      this.logger.error(`Failed to send chat history from session: ${err}`);
       return OperationResult.failed(new OperationError(err as Error));
     }
   }
@@ -172,7 +170,6 @@ export class McpToolRegistrationService {
 
     // Handle empty list as no-op
     if (messages.length === 0) {
-      this.logger.info('Empty message list provided, returning success');
       return OperationResult.success;
     }
 
@@ -185,8 +182,6 @@ export class McpToolRegistrationService {
       // Convert OpenAI messages to ChatHistoryMessage format
       const chatHistoryMessages = this.convertToChatHistoryMessages(messages);
 
-      this.logger.info(`Converted ${chatHistoryMessages.length} OpenAI messages to chat history format`);
-
       // Delegate to core service
       return await this.configService.sendChatHistory(
         turnContext,
@@ -197,7 +192,6 @@ export class McpToolRegistrationService {
       if (err instanceof Error && err.message.includes('is required')) {
         throw err; // Re-throw validation errors
       }
-      this.logger.error(`Failed to send chat history messages: ${err}`);
       return OperationResult.failed(new OperationError(err as Error));
     }
   }
@@ -226,20 +220,28 @@ export class McpToolRegistrationService {
         content: this.extractContent(message),
         timestamp: this.extractTimestamp(message)
       };
-    } catch (err) {
-      this.logger.error(`Failed to convert message: ${err}`);
+    } catch {
       return null;
     }
   }
 
   /**
    * Extracts the role from an OpenAI message.
-   * Simply returns the role property as-is without any transformation.
+   * Validates that the message has a role property and that it is a non-empty string.
+   * Non-message AgentInputItem variants that lack a role will cause an error and be
+   * filtered out by convertSingleMessage.
    * @param message - The AgentInputItem to extract the role from.
    * @returns The role string from the message.
+   * @throws Error if the role is missing or invalid.
    */
   private extractRole(message: AgentInputItem): string {
-    return (message as { role: string }).role;
+    const { role } = message as { role?: unknown };
+
+    if (typeof role !== 'string' || role.trim().length === 0) {
+      throw new Error('Message role is missing or invalid');
+    }
+
+    return role;
   }
 
   /**
@@ -299,9 +301,7 @@ export class McpToolRegistrationService {
       return messageWithId.id;
     }
 
-    const generatedId = uuidv4();
-    this.logger.debug(`Generated UUID ${generatedId} for message without ID`);
-    return generatedId;
+    return uuidv4();
   }
 
   /**
