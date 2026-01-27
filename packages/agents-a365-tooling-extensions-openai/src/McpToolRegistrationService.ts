@@ -180,7 +180,7 @@ export class McpToolRegistrationService {
       chatHistoryMessages = this.convertToChatHistoryMessages(messages);
     } catch (err: unknown) {
       // Convert errors from message conversion into a failed OperationResult
-      const error = err as Error;
+      const error = err instanceof Error ? err : new Error(String(err));
       return OperationResult.failed(new OperationError(error));
     }
 
