@@ -36,11 +36,6 @@ interface ParentSpanRef {
    * Span ID (16-character hex string)
    */
   spanId: string;
-
-  /**
-   * Optional trace flags (default: sampled)
-   */
-  traceFlags?: number;
 }
 ```
 
@@ -66,7 +61,6 @@ const spanContext = invokeScope.getSpanContext();
 const parentRef: ParentSpanRef = {
   traceId: spanContext.traceId,
   spanId: spanContext.spanId,
-  traceFlags: spanContext.traceFlags,
 };
 
 // Store parentRef for use in async callbacks
@@ -148,7 +142,6 @@ async function handleAgentRequest(req: Request, res: Response) {
   const parentRef: ParentSpanRef = {
     traceId: spanContext.traceId,
     spanId: spanContext.spanId,
-    traceFlags: spanContext.traceFlags,
   };
 
   // Capture the export token from the request
@@ -322,7 +315,7 @@ runWithParentSpanRef(parentRef, () => {
 
 - `scope.getSpanContext(): SpanContext`
   - Available on all scope types
-  - Returns the span context containing `traceId`, `spanId`, and `traceFlags`
+  - Returns the span context containing `traceId` and `spanId`
   - Use this to capture parent context for later use
 
 ## Related Documentation

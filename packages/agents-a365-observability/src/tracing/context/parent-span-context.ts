@@ -19,11 +19,6 @@ export interface ParentSpanRef {
    * Span ID (16-character hex string)
    */
   spanId: string;
-
-  /**
-   * Optional trace flags (default: sampled)
-   */
-  traceFlags?: number;
 }
 
 /**
@@ -41,7 +36,7 @@ export function createContextWithParentSpanRef(base: Context, parent: ParentSpan
   const parentSpanContext: SpanContext = {
     traceId: parent.traceId,
     spanId: parent.spanId,
-    traceFlags: parent.traceFlags ?? TraceFlags.SAMPLED,
+    traceFlags: TraceFlags.SAMPLED,
   };
 
   // Create a non-recording span with the parent context
@@ -60,23 +55,6 @@ export function createContextWithParentSpanRef(base: Context, parent: ParentSpan
  * @param parent The parent span reference
  * @param callback The function to execute with the parent context
  * @returns The result of the callback
- *
- * @example
- * ```typescript
- * // Capture parent context from an InvokeAgentScope
- * const parentRef: ParentSpanRef = {
- *   traceId: invokeScope.getSpanContext().traceId,
- *   spanId: invokeScope.getSpanContext().spanId,
- * };
- *
- * // Later, in a WebSocket callback where context is lost:
- * runWithParentSpanRef(parentRef, () => {
- *   runWithExportToken(token, async () => {
- *     // Child spans created here will be correctly parented
- *     using inferenceScope = InferenceScope.start(...);
- *   });
- * });
- * ```
  */
 export function runWithParentSpanRef<T>(parent: ParentSpanRef, callback: () => T): T {
   const base = context.active();

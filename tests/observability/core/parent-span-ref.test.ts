@@ -65,7 +65,6 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
       const parentRef: ParentSpanRef = {
         traceId: '0123456789abcdef0123456789abcdef',
         spanId: '0123456789abcdef',
-        traceFlags: 1,
       };
 
       const baseContext = otelContext.active();
@@ -93,7 +92,6 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
       const parentRef: ParentSpanRef = {
         traceId: '0123456789abcdef0123456789abcdef',
         spanId: '0123456789abcdef',
-        traceFlags: 1,
       };
 
       let executed = false;
@@ -117,7 +115,6 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
       const parentRef: ParentSpanRef = {
         traceId: parentSpanContext.traceId,
         spanId: parentSpanContext.spanId,
-        traceFlags: parentSpanContext.traceFlags,
       };
 
       // Create a child scope with explicit parent reference
@@ -313,12 +310,10 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
       const parentRef: ParentSpanRef = {
         traceId: parentSpanContext.traceId,
         spanId: parentSpanContext.spanId,
-        traceFlags: parentSpanContext.traceFlags,
       };
 
       expect(parentRef.traceId).toBe(parentSpanContext.traceId);
       expect(parentRef.spanId).toBe(parentSpanContext.spanId);
-      expect(parentRef.traceFlags).toBe(parentSpanContext.traceFlags);
 
       // Now create a child scope using this reference
       const inferenceDetails: InferenceDetails = {

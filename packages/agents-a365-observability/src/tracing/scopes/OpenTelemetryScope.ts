@@ -90,7 +90,7 @@ export abstract class OpenTelemetryScope implements Disposable {
   /**
    * Gets the span context for this scope.
    * This can be used to create a ParentSpanRef for explicit parent-child linking across async boundaries.
-   * @returns The SpanContext containing traceId, spanId, and traceFlags
+   * @returns The SpanContext containing traceId and spanId
    */
   public getSpanContext(): SpanContext {
     return this.span.spanContext();
