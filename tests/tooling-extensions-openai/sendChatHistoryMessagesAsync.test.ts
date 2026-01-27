@@ -70,13 +70,24 @@ describe('McpToolRegistrationService - sendChatHistoryMessagesAsync', () => {
       ).rejects.toThrow('messages is required');
     });
 
-    it('UV-05: should return success for empty array (no-op)', async () => {
+    it('UV-05: should make MCP platform call even with empty array', async () => {
+      mockedAxios.post.mockResolvedValue({ status: 200, data: {} });
       const result = await service.sendChatHistoryMessagesAsync(mockTurnContext, []);
 
       expect(result.succeeded).toBe(true);
       expect(result).toBe(OperationResult.success);
-      // Verify that no HTTP call was made
-      expect(mockedAxios.post).not.toHaveBeenCalled();
+      // Verify that HTTP call was made even with empty messages
+      expect(mockedAxios.post).toHaveBeenCalledTimes(1);
+      expect(mockedAxios.post).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          conversationId: 'conv-123',
+          messageId: 'msg-456',
+          userMessage: 'Current user message',
+          chatHistory: [], // Empty chat history
+        }),
+        expect.any(Object)
+      );
     });
   });
 
