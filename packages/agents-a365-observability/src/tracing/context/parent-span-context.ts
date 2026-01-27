@@ -41,7 +41,7 @@ export function createContextWithParentSpanRef(base: Context, parent: ParentSpan
   const parentSpanContext: SpanContext = {
     traceId: parent.traceId,
     spanId: parent.spanId,
-    traceFlags: parent.traceFlags !== undefined ? parent.traceFlags : TraceFlags.SAMPLED,
+    traceFlags: parent.traceFlags ?? TraceFlags.SAMPLED,
   };
 
   // Create a non-recording span with the parent context
