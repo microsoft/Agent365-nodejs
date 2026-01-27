@@ -6,7 +6,7 @@ import path from 'path';
 import axios from 'axios';
 import { TurnContext } from '@microsoft/agents-hosting';
 import { OperationResult, OperationError } from '@microsoft/agents-a365-runtime';
-import { MCPServerConfig, McpClientTool, ToolOptions } from './contracts';
+import { MCPServerConfig, MCPServerManifestEntry, McpClientTool, ToolOptions } from './contracts';
 import { ChatHistoryMessage, ChatMessageRequest } from './models/index';
 import { Utility } from './Utility';
 
@@ -237,6 +237,10 @@ export class McpToolServerConfigurationService {
    *     }
    *   ]
    * }
+   *
+   * Each server entry can optionally include a "url" field to specify a custom MCP server URL.
+   * If the "url" field is not provided, the URL will be automatically constructed using the server name.
+   * The server name is determined by using "mcpServerName" if present, otherwise "mcpServerUniqueName".
    */
   private async getMCPServerConfigsFromManifest(): Promise<MCPServerConfig[]> {
     let manifestPath = path.join(process.cwd(), 'ToolingManifest.json');
@@ -255,10 +259,16 @@ export class McpToolServerConfigurationService {
       const manifestData = JSON.parse(jsonContent);
       const mcpServers = manifestData.mcpServers || [];
 
-      return mcpServers.map((s: MCPServerConfig) => {
+      return mcpServers.map((s: MCPServerManifestEntry) => {
+        // Use mcpServerName if available, otherwise fall back to mcpServerUniqueName
+        const serverName = s.mcpServerName || s.mcpServerUniqueName;
+        if (!serverName) {
+          throw new Error('Either mcpServerName or mcpServerUniqueName must be provided in manifest entry');
+        }
         return {
-          mcpServerName: s.mcpServerName,
-          url: Utility.BuildMcpServerUrl(s.mcpServerName)
+          mcpServerName: serverName,
+          url: s.url || Utility.BuildMcpServerUrl(serverName),
+          headers: s.headers
         };
       });
     } catch (err: unknown) {
