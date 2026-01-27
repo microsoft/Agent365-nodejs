@@ -3,7 +3,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { McpToolServerConfigurationService, Utility, ToolOptions, ChatHistoryMessage } from '@microsoft/agents-a365-tooling';
-import { AgenticAuthenticationService, Utility as RuntimeUtility, OperationResult } from '@microsoft/agents-a365-runtime';
+import { AgenticAuthenticationService, Utility as RuntimeUtility, OperationResult, OperationError } from '@microsoft/agents-a365-runtime';
 
 // Agents SDK
 import { TurnContext, Authorization } from '@microsoft/agents-hosting';
@@ -117,10 +117,18 @@ export class McpToolRegistrationService {
       throw new Error('session is required');
     }
 
-    // Extract messages from session
-    const items = await session.getItems(limit);
+    let items: AgentInputItem[];
+    try {
+      // Extract messages from session
+      items = await session.getItems(limit);
+    } catch (err: unknown) {
+      // Convert errors from session.getItems() into a failed OperationResult
+      const error = err as Error;
+      return OperationResult.failed(new OperationError(error));
+    }
 
     // Delegate to the list-based method
+    // Validation errors from this method will propagate
     return await this.sendChatHistoryMessagesAsync(
       turnContext,
       items,

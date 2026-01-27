@@ -112,8 +112,15 @@ describe('McpToolRegistrationService - sendChatHistoryAsync', () => {
       const result = await service.sendChatHistoryAsync(mockTurnContext, mockSession as unknown as OpenAIConversationsSession);
 
       expect(result.succeeded).toBe(true);
-      // Empty array should be a no-op - axios.post should not be called
-      expect(mockedAxios.post).not.toHaveBeenCalled();
+      // Even with empty array, API call should be made to MCP platform
+      expect(mockedAxios.post).toHaveBeenCalledTimes(1);
+      const callArgs = mockedAxios.post.mock.calls[0];
+      expect(callArgs[1]).toEqual({
+        conversationId: 'conv-123',
+        messageId: 'msg-456',
+        userMessage: 'Current user message',
+        chatHistory: []
+      });
     });
 
     it('should pass toolOptions to the underlying service', async () => {
