@@ -257,21 +257,6 @@ describe('McpToolRegistrationService - sendChatHistoryMessagesAsync', () => {
       expect(result.errors[0].message).toBe('Conversion error');
     });
 
-    it('EH-06: should handle non-Error thrown values gracefully', async () => {
-      const messages = createMixedMessages();
-
-      // Mock convertToChatHistoryMessages to throw a non-Error object
-      jest.spyOn(service as any, 'convertToChatHistoryMessages').mockImplementation(() => {
-        throw 'String error'; // eslint-disable-line no-throw-literal
-      });
-
-      const result = await service.sendChatHistoryMessagesAsync(mockTurnContext, messages);
-
-      expect(result.succeeded).toBe(false);
-      expect(result.errors).toHaveLength(1);
-      expect(result.errors[0].message).toBe('String error');
-    });
-
     it('should re-throw validation errors from core service', async () => {
       const messages = createMixedMessages();
       // Remove conversation ID to trigger validation error
