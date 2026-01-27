@@ -27,7 +27,7 @@ catalog:
   "@microsoft/agents-activity": "^1.1.0-alpha.85"
 
   # Hono - required peer dependency for MCP SDK and OpenAI agents
-  "hono": "^4.11.4"
+  "hono": "^4.11.7"
 
   # Model Context Protocol SDK
   "@modelcontextprotocol/sdk": "^1.25.2"
