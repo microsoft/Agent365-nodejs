@@ -227,21 +227,13 @@ export class McpToolRegistrationService {
 
   /**
    * Extracts the role from an OpenAI message.
-   * Validates that the message has a role property and that it is a non-empty string.
-   * Non-message AgentInputItem variants that lack a role will cause an error and be
-   * filtered out by convertSingleMessage.
+   * Simply returns message.role directly without any transformation or validation.
    * @param message - The AgentInputItem to extract the role from.
    * @returns The role string from the message.
-   * @throws Error if the role is missing or invalid.
    */
   private extractRole(message: AgentInputItem): string {
     const { role } = message as { role?: unknown };
-
-    if (typeof role !== 'string' || role.trim().length === 0) {
-      throw new Error('Message role is missing or invalid');
-    }
-
-    return role;
+    return role as string;
   }
 
   /**
