@@ -168,11 +168,6 @@ export class McpToolRegistrationService {
       throw new Error('messages is required');
     }
 
-    // Handle empty list as no-op
-    if (messages.length === 0) {
-      return OperationResult.success;
-    }
-
     // Set default options
     const effectiveOptions: ToolOptions = {
       orchestratorName: toolOptions?.orchestratorName ?? this.orchestratorName

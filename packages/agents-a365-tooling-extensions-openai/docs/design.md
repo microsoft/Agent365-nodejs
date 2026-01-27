@@ -295,7 +295,7 @@ The service handles automatic conversion of OpenAI message types:
 | `turnContext` is null/undefined | Throws `Error('turnContext is required')` |
 | `session` is null/undefined | Throws `Error('session is required')` |
 | `messages` is null/undefined | Throws `Error('messages is required')` |
-| `messages` is empty array | Returns `OperationResult.success` (no-op) |
+| `messages` is empty array | Makes MCP platform call with empty chat history |
 | Message conversion fails | Message is skipped, error logged |
 | HTTP error from MCP platform | Returns `OperationResult.failed()` with error |
 | Network timeout | Returns `OperationResult.failed()` with error |
