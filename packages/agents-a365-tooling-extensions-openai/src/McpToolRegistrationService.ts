@@ -174,8 +174,15 @@ export class McpToolRegistrationService {
       orchestratorName: toolOptions?.orchestratorName ?? this.orchestratorName
     };
 
-    // Convert OpenAI messages to ChatHistoryMessage format
-    const chatHistoryMessages = this.convertToChatHistoryMessages(messages);
+    let chatHistoryMessages: ChatHistoryMessage[];
+    try {
+      // Convert OpenAI messages to ChatHistoryMessage format
+      chatHistoryMessages = this.convertToChatHistoryMessages(messages);
+    } catch (err: unknown) {
+      // Convert errors from message conversion into a failed OperationResult
+      const error = err as Error;
+      return OperationResult.failed(new OperationError(error));
+    }
 
     // Delegate to core service
     return await this.configService.sendChatHistory(

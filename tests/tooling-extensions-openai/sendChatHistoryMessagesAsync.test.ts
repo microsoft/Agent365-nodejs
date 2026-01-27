@@ -242,6 +242,21 @@ describe('McpToolRegistrationService - sendChatHistoryMessagesAsync', () => {
       expect(result.errors).toHaveLength(1);
     });
 
+    it('EH-05: should return failed when message conversion throws unexpected error', async () => {
+      const messages = createMixedMessages();
+      
+      // Mock convertToChatHistoryMessages to throw an error
+      jest.spyOn(service as any, 'convertToChatHistoryMessages').mockImplementation(() => {
+        throw new Error('Conversion error');
+      });
+
+      const result = await service.sendChatHistoryMessagesAsync(mockTurnContext, messages);
+
+      expect(result.succeeded).toBe(false);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0].message).toBe('Conversion error');
+    });
+
     it('should re-throw validation errors from core service', async () => {
       const messages = createMixedMessages();
       // Remove conversation ID to trigger validation error
