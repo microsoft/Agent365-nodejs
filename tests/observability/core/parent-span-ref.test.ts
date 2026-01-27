@@ -4,7 +4,8 @@
 
 import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
-import { trace, context, SpanStatusCode } from '@opentelemetry/api';
+import { trace, context as otelContext } from '@opentelemetry/api';
+import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
 import {
   ParentSpanRef,
   runWithParentSpanRef,
@@ -23,19 +24,29 @@ import {
 describe('ParentSpanRef - Explicit Parent Span Support', () => {
   let provider: BasicTracerProvider;
   let exporter: InMemorySpanExporter;
+  let contextManager: AsyncLocalStorageContextManager;
 
   beforeEach(() => {
+    // Set up context manager
+    contextManager = new AsyncLocalStorageContextManager();
+    contextManager.enable();
+    otelContext.setGlobalContextManager(contextManager);
+
     // Set up tracing provider with in-memory exporter for testing
     exporter = new InMemorySpanExporter();
-    provider = new BasicTracerProvider();
-    provider.addSpanProcessor(new SimpleSpanProcessor(exporter));
-    provider.register();
+    const processor = new SimpleSpanProcessor(exporter);
+    provider = new BasicTracerProvider({
+      spanProcessors: [processor]
+    });
+    // Register provider globally so OpenTelemetryScope can use it
+    trace.setGlobalTracerProvider(provider);
   });
 
-  afterEach(() => {
-    // Clean up
+  afterEach(async () => {
+    // Clean up - reset exporter before shutting down
     exporter.reset();
-    provider.shutdown();
+    await provider.shutdown();
+    contextManager.disable();
   });
 
   const testAgentDetails: AgentDetails = {
@@ -57,7 +68,7 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
         traceFlags: 1,
       };
 
-      const baseContext = context.active();
+      const baseContext = otelContext.active();
       const newContext = createContextWithParentSpanRef(baseContext, parentRef);
 
       expect(newContext).toBeDefined();
@@ -70,7 +81,7 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
         spanId: '0123456789abcdef',
       };
 
-      const baseContext = context.active();
+      const baseContext = otelContext.active();
       const newContext = createContextWithParentSpanRef(baseContext, parentRef);
 
       expect(newContext).toBeDefined();
@@ -97,9 +108,9 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
   });
 
   describe('InvokeAgentScope with parentSpanRef', () => {
-    it('should create a child span with correct parent relationship', () => {
+    it('should create a child span with correct parent relationship', async () => {
       // Create a root span to get a parent reference
-      const tracer = trace.getTracer('test');
+      const tracer = provider.getTracer('test');
       const rootSpan = tracer.startSpan('root-span');
       const parentSpanContext = rootSpan.spanContext();
       
@@ -133,21 +144,24 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
       childScope.dispose();
       rootSpan.end();
 
+      // Force flush to ensure all spans are exported
+      await provider.forceFlush();
+
       // Export and verify spans
       const spans = exporter.getFinishedSpans();
       expect(spans.length).toBeGreaterThanOrEqual(2);
 
-      // Find the child span
-      const childSpan = spans.find(s => s.name.includes('InvokeAgent'));
+      // Find the child span (case-insensitive search)
+      const childSpan = spans.find(s => s.name.toLowerCase().includes('invokeagent') || s.name.includes('invoke_agent'));
       expect(childSpan).toBeDefined();
       expect(childSpan!.spanContext().traceId).toBe(parentSpanContext.traceId);
-      expect(childSpan!.parentSpanId).toBe(parentSpanContext.spanId);
+      expect(childSpan!.parentSpanContext?.spanId).toBe(parentSpanContext.spanId);
     });
   });
 
   describe('InferenceScope with parentSpanRef', () => {
-    it('should create a child span with correct parent relationship', () => {
-      const tracer = trace.getTracer('test');
+    it('should create a child span with correct parent relationship', async () => {
+      const tracer = provider.getTracer('test');
       const rootSpan = tracer.startSpan('root-span');
       const parentSpanContext = rootSpan.spanContext();
       
@@ -177,17 +191,19 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
       childScope.dispose();
       rootSpan.end();
 
+      await provider.forceFlush();
+
       const spans = exporter.getFinishedSpans();
-      const childSpan = spans.find(s => s.name.includes('chat'));
+      const childSpan = spans.find(s => s.name.toLowerCase().includes('chat'));
       expect(childSpan).toBeDefined();
       expect(childSpan!.spanContext().traceId).toBe(parentSpanContext.traceId);
-      expect(childSpan!.parentSpanId).toBe(parentSpanContext.spanId);
+      expect(childSpan!.parentSpanContext?.spanId).toBe(parentSpanContext.spanId);
     });
   });
 
   describe('ExecuteToolScope with parentSpanRef', () => {
-    it('should create a child span with correct parent relationship', () => {
-      const tracer = trace.getTracer('test');
+    it('should create a child span with correct parent relationship', async () => {
+      const tracer = provider.getTracer('test');
       const rootSpan = tracer.startSpan('root-span');
       const parentSpanContext = rootSpan.spanContext();
       
@@ -216,17 +232,19 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
       childScope.dispose();
       rootSpan.end();
 
+      await provider.forceFlush();
+
       const spans = exporter.getFinishedSpans();
-      const childSpan = spans.find(s => s.name.includes('ExecuteTool'));
+      const childSpan = spans.find(s => s.name.includes('execute_tool'));
       expect(childSpan).toBeDefined();
       expect(childSpan!.spanContext().traceId).toBe(parentSpanContext.traceId);
-      expect(childSpan!.parentSpanId).toBe(parentSpanContext.spanId);
+      expect(childSpan!.parentSpanContext?.spanId).toBe(parentSpanContext.spanId);
     });
   });
 
   describe('runWithParentSpanRef with nested scope creation', () => {
-    it('should correctly parent spans created inside runWithParentSpanRef', () => {
-      const tracer = trace.getTracer('test');
+    it('should correctly parent spans created inside runWithParentSpanRef', async () => {
+      const tracer = provider.getTracer('test');
       const rootSpan = tracer.startSpan('root-span');
       const parentSpanContext = rootSpan.spanContext();
       
@@ -255,11 +273,13 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
 
       rootSpan.end();
 
+      await provider.forceFlush();
+
       const spans = exporter.getFinishedSpans();
-      const nestedSpan = spans.find(s => s.name.includes('InvokeAgent'));
+      const nestedSpan = spans.find(s => s.name.includes('invoke_agent'));
       expect(nestedSpan).toBeDefined();
       expect(nestedSpan!.spanContext().traceId).toBe(parentSpanContext.traceId);
-      expect(nestedSpan!.parentSpanId).toBe(parentSpanContext.spanId);
+      expect(nestedSpan!.parentSpanContext?.spanId).toBe(parentSpanContext.spanId);
     });
   });
 
@@ -281,7 +301,7 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
       scope.dispose();
     });
 
-    it('should allow creating a ParentSpanRef from a scope', () => {
+    it('should allow creating a ParentSpanRef from a scope', async () => {
       const invokeAgentDetails: InvokeAgentDetails = {
         agentId: 'parent-agent',
       };
@@ -321,14 +341,16 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
       parentScope.dispose();
       childScope.dispose();
 
+      await provider.forceFlush();
+
       const spans = exporter.getFinishedSpans();
-      const parentSpan = spans.find(s => s.name.includes('InvokeAgent'));
-      const childSpan = spans.find(s => s.name.includes('chat'));
+      const parentSpan = spans.find(s => s.name.toLowerCase().includes('invoke_agent'));
+      const childSpan = spans.find(s => s.name.toLowerCase().includes('chat'));
       
       expect(parentSpan).toBeDefined();
       expect(childSpan).toBeDefined();
       expect(childSpan!.spanContext().traceId).toBe(parentSpan!.spanContext().traceId);
-      expect(childSpan!.parentSpanId).toBe(parentSpan!.spanContext().spanId);
+      expect(childSpan!.parentSpanContext?.spanId).toBe(parentSpan!.spanContext().spanId);
     });
   });
 });
