@@ -3,7 +3,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { McpToolServerConfigurationService, Utility, ToolOptions, ChatHistoryMessage } from '@microsoft/agents-a365-tooling';
-import { AgenticAuthenticationService, Utility as RuntimeUtility, OperationResult, OperationError } from '@microsoft/agents-a365-runtime';
+import { AgenticAuthenticationService, Utility as RuntimeUtility, OperationResult } from '@microsoft/agents-a365-runtime';
 
 // Agents SDK
 import { TurnContext, Authorization } from '@microsoft/agents-hosting';
@@ -117,22 +117,15 @@ export class McpToolRegistrationService {
       throw new Error('session is required');
     }
 
-    try {
-      // Extract messages from session
-      const items = await session.getItems(limit);
+    // Extract messages from session
+    const items = await session.getItems(limit);
 
-      // Delegate to the list-based method
-      return await this.sendChatHistoryMessagesAsync(
-        turnContext,
-        items,
-        toolOptions
-      );
-    } catch (err) {
-      if (err instanceof Error && err.message.includes('is required')) {
-        throw err; // Re-throw validation errors
-      }
-      return OperationResult.failed(new OperationError(err as Error));
-    }
+    // Delegate to the list-based method
+    return await this.sendChatHistoryMessagesAsync(
+      turnContext,
+      items,
+      toolOptions
+    );
   }
 
   /**
@@ -173,22 +166,15 @@ export class McpToolRegistrationService {
       orchestratorName: toolOptions?.orchestratorName ?? this.orchestratorName
     };
 
-    try {
-      // Convert OpenAI messages to ChatHistoryMessage format
-      const chatHistoryMessages = this.convertToChatHistoryMessages(messages);
+    // Convert OpenAI messages to ChatHistoryMessage format
+    const chatHistoryMessages = this.convertToChatHistoryMessages(messages);
 
-      // Delegate to core service
-      return await this.configService.sendChatHistory(
-        turnContext,
-        chatHistoryMessages,
-        effectiveOptions
-      );
-    } catch (err) {
-      if (err instanceof Error && err.message.includes('is required')) {
-        throw err; // Re-throw validation errors
-      }
-      return OperationResult.failed(new OperationError(err as Error));
-    }
+    // Delegate to core service
+    return await this.configService.sendChatHistory(
+      turnContext,
+      chatHistoryMessages,
+      effectiveOptions
+    );
   }
 
   /**
