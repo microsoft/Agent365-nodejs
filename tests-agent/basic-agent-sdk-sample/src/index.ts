@@ -39,7 +39,7 @@ app.post('/api/messages', async (req: Request, res: Response) => {
     const isPerRequestExportEnabled = 
       process.env.ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT?.toLowerCase() === 'true';
 
-    await adapter.process(req, res, async (context) => {
+    await adapter.process(req, res as any, async (context) => {
       const agentApp = agentApplication;
 
       if (!isPerRequestExportEnabled) {

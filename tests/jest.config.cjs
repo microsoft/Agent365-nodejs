@@ -63,6 +63,7 @@ module.exports = {
   moduleNameMapper: {
     '^@microsoft/agents-a365-runtime$': '<rootDir>/packages/agents-a365-runtime/src',
     '^@microsoft/agents-a365-observability$': '<rootDir>/packages/agents-a365-observability/src',
+    '^@microsoft/agents-a365-observability-extensions-langchain$': '<rootDir>/packages/agents-a365-observability-extensions-langchain/src',
     '^@microsoft/agents-a365-observability-extensions-openai$': '<rootDir>/packages/agents-a365-observability-extensions-openai/src',
     '^@microsoft/agents-a365-observability-tokencache$': '<rootDir>/packages/agents-a365-observability-tokencache/src',
     '^@microsoft/agents-a365-tooling$': '<rootDir>/packages/agents-a365-tooling/src',

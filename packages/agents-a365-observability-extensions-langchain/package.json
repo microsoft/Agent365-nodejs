@@ -1,0 +1,73 @@
+{
+  "name": "@microsoft/agents-a365-observability-extensions-langchain",
+  "version": "0.0.0-placeholder",
+  "description": "Microsoft Agent 365 SDK LangChain instrumentation extensions for telemetry and observability",
+  "keywords": [
+    "agent365",
+    "langchain",
+    "agents",
+    "telemetry",
+    "observability",
+    "opentelemetry",
+    "instrumentation"
+  ],
+  "homepage": "https://github.com/microsoft/Agent365-nodejs",
+  "bugs": {
+    "url": "https://github.com/microsoft/Agent365-nodejs/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/microsoft/Agent365-nodejs.git",
+    "directory": "packages/agents-a365-observability-extensions-langchain"
+  },
+  "license": "MIT",
+  "author": "Microsoft",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/cjs/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE.md"
+  ],
+  "scripts": {
+    "build": "npm run build:cjs && npm run build:esm",
+    "build:cjs": "npx tsc --project tsconfig.cjs.json",
+    "build:esm": "npx tsc --project tsconfig.esm.json",
+    "build:watch": "npx tsc --watch",
+    "clean": "npx rimraf dist",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "pack": "node ../../copyFiles.js . && pnpm pack --pack-destination=../"
+  },
+  "dependencies": {
+    "@microsoft/agents-a365-observability": "workspace:*",
+    "@opentelemetry/api": "catalog:",
+    "@opentelemetry/instrumentation": "catalog:",
+    "@opentelemetry/core": "catalog:"
+  },
+  "devDependencies": {
+    "@eslint/js": "catalog:",
+    "@types/jest": "catalog:",
+    "@types/node": "catalog:",
+    "@typescript-eslint/eslint-plugin": "catalog:",
+    "@typescript-eslint/parser": "catalog:",
+    "eslint": "catalog:",
+    "jest": "catalog:",
+    "rimraf": "catalog:",
+    "ts-jest": "catalog:",
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:",
+    "@langchain/core": "catalog:"
+  },
+  "peerDependencies": {
+    "@langchain/core": "catalog:"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

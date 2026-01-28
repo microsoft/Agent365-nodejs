@@ -22,10 +22,10 @@ const adapter = new CloudAdapter(authConfig);
 
 const app = express();
 app.use(express.json());
-app.use(authorizeJWT(authConfig));
+app.use(authorizeJWT(authConfig) as any);
 
 app.post('/api/messages', async (req: Request, res: Response) => {
-  await adapter.process(req, res, async (context) => {
+  await adapter.process(req, res as any, async (context) => {
     const app = agentApplication;
     await app.run(context);
   });
