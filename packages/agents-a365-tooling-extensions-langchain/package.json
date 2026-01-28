@@ -44,7 +44,7 @@
     "uuid": "catalog:"
   },
   "peerDependencies": {
-    "@langchain/langgraph": "^1.0.0"
+    "@langchain/langgraph": "catalog:"
   },
   "peerDependenciesMeta": {
     "@langchain/langgraph": {
