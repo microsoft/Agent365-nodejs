@@ -191,6 +191,7 @@ The keyword "Kairo" is legacy and should not appear in any code. Flag and remove
 - **Unused variables**: Prefix with `_` to avoid ESLint errors (configured in `eslint.config.mjs`)
 - **Module format**: This is an ESM project (`"type": "module"` in root `package.json`)
 - **Node.js version**: Requires Node.js >= 18.0.0
+- **Dependency versions**: Never specify version constraints directly in `package.json` files. All dependency versions must be defined in the `catalog:` section of `pnpm-workspace.yaml` and referenced using `catalog:` in package.json files. This applies to `dependencies`, `devDependencies`, and `peerDependencies`.
 
 ## Environment Variables
 
