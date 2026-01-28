@@ -293,9 +293,10 @@ export class McpToolRegistrationService {
     // Apply limit if specified
     const messagesToProcess = limit !== undefined && limit >= 0 ? messages.slice(0, limit) : messages;
 
-    // Set default options
+    // Set default options, preserving any additional properties from toolOptions
     const effectiveOptions: ToolOptions = {
-      orchestratorName: toolOptions?.orchestratorName ?? this.orchestratorName
+      orchestratorName: this.orchestratorName,
+      ...toolOptions
     };
 
     // Convert messages (may result in empty array - that's OK)
