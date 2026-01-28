@@ -1,6 +1,5 @@
-// ------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// ------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 
 import { describe, it, expect, beforeEach, beforeAll, afterAll } from '@jest/globals';
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
@@ -22,6 +21,9 @@ import {
 
 describe('ParentSpanRef - Explicit Parent Span Support', () => {
   let provider: BasicTracerProvider;
+  // The provider we should flush against (either the global SDK provider or our local fallback).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let flushProvider: any;
   let exporter: InMemorySpanExporter;
   let contextManager: AsyncLocalStorageContextManager;
 
@@ -34,10 +36,21 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
 
     exporter = new InMemorySpanExporter();
     const processor = new SimpleSpanProcessor(exporter);
-    provider = new BasicTracerProvider({
-      spanProcessors: [processor]
-    });
-    trace.setGlobalTracerProvider(provider);
+
+    // Prefer wiring our exporter into whatever global provider already exists.
+    // OTel only allows setting the global tracer provider once; other test files may have done so.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const globalProvider: any = trace.getTracerProvider();
+    if (globalProvider && typeof globalProvider.addSpanProcessor === 'function') {
+      globalProvider.addSpanProcessor(processor);
+      flushProvider = globalProvider;
+    } else {
+      provider = new BasicTracerProvider({
+        spanProcessors: [processor]
+      });
+      trace.setGlobalTracerProvider(provider);
+      flushProvider = provider;
+    }
   });
 
   beforeEach(() => {
@@ -46,8 +59,9 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
 
   afterAll(async () => {
     exporter.reset();
-    await provider.shutdown();
+    await provider?.shutdown?.();
     contextManager.disable();
+    otelContext.disable();
   });
 
   const testAgentDetails: AgentDetails = {
@@ -116,7 +130,7 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
       (name: string) => name.toLowerCase().includes('execute_tool'),
     ],
   ])('should create a child span with correct parent relationship (%s)', async (_label, createScope, nameMatches) => {
-    const tracer = provider.getTracer('test');
+    const tracer = trace.getTracer('test');
     const rootSpan = tracer.startSpan('root-span');
     const parentSpanContext = rootSpan.spanContext();
 
@@ -125,13 +139,16 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
       spanId: parentSpanContext.spanId,
     };
 
-    const childScope = createScope(parentRef);
-    expect(childScope.getSpanContext().traceId).toBe(parentSpanContext.traceId);
+    const baseCtx = trace.setSpan(otelContext.active(), rootSpan);
+    await otelContext.with(baseCtx, async () => {
+      const childScope = createScope(parentRef);
+      expect(childScope.getSpanContext().traceId).toBe(parentSpanContext.traceId);
+      childScope.dispose();
+    });
 
-    childScope.dispose();
     rootSpan.end();
 
-    await provider.forceFlush();
+    await flushProvider.forceFlush();
 
     const spans = exporter.getFinishedSpans();
     const childSpan = spans.find((s) => nameMatches(s.name));
@@ -142,7 +159,7 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
 
   describe('runWithParentSpanRef with nested scope creation', () => {
     it('should correctly parent spans created inside runWithParentSpanRef', async () => {
-      const tracer = provider.getTracer('test');
+      const tracer = trace.getTracer('test');
       const rootSpan = tracer.startSpan('root-span');
       const parentSpanContext = rootSpan.spanContext();
       
@@ -151,27 +168,31 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
         spanId: parentSpanContext.spanId,
       };
 
-      // Run a callback with parent context
-      runWithParentSpanRef(parentRef, () => {
-        // Create a scope inside - it should automatically inherit the parent
-        const invokeAgentDetails: InvokeAgentDetails = {
-          agentId: 'nested-agent',
-        };
+      // Ensure the sampled parent span is active so createContextWithParentSpanRef can derive traceFlags.
+      const baseCtx = trace.setSpan(otelContext.active(), rootSpan);
+      await otelContext.with(baseCtx, async () => {
+        // Run a callback with parent context
+        runWithParentSpanRef(parentRef, () => {
+          // Create a scope inside - it should automatically inherit the parent
+          const invokeAgentDetails: InvokeAgentDetails = {
+            agentId: 'nested-agent',
+          };
 
-        const nestedScope = InvokeAgentScope.start(
-          invokeAgentDetails,
-          testTenantDetails
-        );
+          const nestedScope = InvokeAgentScope.start(
+            invokeAgentDetails,
+            testTenantDetails
+          );
 
-        const nestedSpanContext = nestedScope.getSpanContext();
-        expect(nestedSpanContext.traceId).toBe(parentSpanContext.traceId);
+          const nestedSpanContext = nestedScope.getSpanContext();
+          expect(nestedSpanContext.traceId).toBe(parentSpanContext.traceId);
 
-        nestedScope.dispose();
+          nestedScope.dispose();
+        });
       });
 
       rootSpan.end();
 
-      await provider.forceFlush();
+      await flushProvider.forceFlush();
 
       const spans = exporter.getFinishedSpans();
       const nestedSpan = spans.find(s => s.name.includes('invoke_agent'));
@@ -202,13 +223,17 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
         operationName: InferenceOperationType.CHAT,
         model: 'gpt-4',
       };
-      const childScope = InferenceScope.start(inferenceDetails, testAgentDetails, testTenantDetails, undefined, undefined, parentRef);
+      const activeParentSpan = trace.wrapSpanContext(spanContext);
+      const baseCtx = trace.setSpan(otelContext.active(), activeParentSpan);
+      const childScope = otelContext.with(baseCtx, () =>
+        InferenceScope.start(inferenceDetails, testAgentDetails, testTenantDetails, undefined, undefined, parentRef)
+      );
       expect(childScope.getSpanContext().traceId).toBe(spanContext.traceId);
 
       scope.dispose();
       childScope.dispose();
 
-      await provider.forceFlush();
+      await flushProvider.forceFlush();
 
       const spans = exporter.getFinishedSpans();
       const parentSpan = spans.find(s => s.name.toLowerCase().includes('invoke_agent'));

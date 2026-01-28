@@ -1,5 +1,6 @@
 // ------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 // ------------------------------------------------------------------------------
 
 import { context, trace, Context, SpanContext, TraceFlags } from '@opentelemetry/api';
@@ -19,6 +20,18 @@ export interface ParentSpanRef {
    * Span ID (16-character hex string)
    */
   spanId: string;
+
+  /**  * Optional trace flags
+   */
+  traceFlags?: TraceFlags;  
+}
+
+function isValidTraceId(traceId: string): boolean {
+  return /^[0-9a-f]{32}$/i.test(traceId) && traceId !== '00000000000000000000000000000000';
+}
+
+function isValidSpanId(spanId: string): boolean {
+  return /^[0-9a-f]{16}$/i.test(spanId) && spanId !== '0000000000000000';
 }
 
 /**
@@ -32,11 +45,24 @@ export interface ParentSpanRef {
 export function createContextWithParentSpanRef(base: Context, parent: ParentSpanRef): Context {
   logger.info(`[ParentSpanContext] Creating context with parent span: traceId=${parent.traceId}, spanId=${parent.spanId}`);
 
+  if (!isValidTraceId(parent.traceId) || !isValidSpanId(parent.spanId)) {
+    logger.warn(
+      `[ParentSpanContext] Invalid parent span reference; returning base context. traceId=${parent.traceId}, spanId=${parent.spanId}`
+    );
+    return base;
+  }
+
+  // If the base context already has an active span for the same trace, reuse its traceFlags.
+  // Otherwise, default to NONE to avoid up-sampling.
+  const active = trace.getSpan(base)?.spanContext();
+  const derivedFlags = active?.traceId === parent.traceId ? active.traceFlags : undefined;
+  const traceFlags = derivedFlags ?? TraceFlags.NONE;
+
   // Create a SpanContext from the parent reference
   const parentSpanContext: SpanContext = {
     traceId: parent.traceId,
     spanId: parent.spanId,
-    traceFlags: TraceFlags.SAMPLED,
+    traceFlags,
   };
 
   // Create a non-recording span with the parent context
