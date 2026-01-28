@@ -1,7 +1,5 @@
-// ------------------------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
-// ------------------------------------------------------------------------------
 
 import { context, trace, Context, SpanContext, TraceFlags } from '@opentelemetry/api';
 import logger from '../../utils/logging';
