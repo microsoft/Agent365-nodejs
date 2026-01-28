@@ -125,12 +125,26 @@ export function isAgent365ExporterEnabled(): boolean {
  * When enabled, the PerRequestSpanProcessor is used instead of BatchSpanProcessor.
  * The token is passed via OTel Context (async local storage) at export time.
  */
+class PerRequestExportToggle {
+  public isEnabled(): boolean {
+    const value = process.env[OpenTelemetryConstants.ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT]?.toLowerCase() || '';
+    const validValues = ['true', '1', 'yes', 'on'];
+    const enabled: boolean = validValues.includes(value);
+    logger.info(`[Agent365Exporter] Per-request export enabled: ${enabled}`);
+    return enabled;
+  }
+}
+
+/**
+ * Internal toggle instance used by isPerRequestExportEnabled().
+ * Not exported from the package root; intended only for internal/partner scenarios.
+ * Intentionally mutable so hosts can override by deep-importing this module and patching:
+ * - `(perRequestExportToggle as unknown as { isEnabled: () => boolean }).isEnabled = () => true|false`
+ */
+export const perRequestExportToggle = new PerRequestExportToggle();
+
 export function isPerRequestExportEnabled(): boolean {
-  const value = process.env[OpenTelemetryConstants.ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT]?.toLowerCase() || '';
-  const validValues = ['true', '1', 'yes', 'on'];
-  const enabled: boolean = validValues.includes(value);
-  logger.info(`[Agent365Exporter] Per-request export enabled: ${enabled}`);
-  return enabled;
+  return perRequestExportToggle.isEnabled();
 }
 
 /**
