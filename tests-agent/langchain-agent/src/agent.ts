@@ -26,15 +26,15 @@ export class A365Agent extends AgentApplication<TurnState> {
       })
     });
 
-    this.onActivity(ActivityTypes.Message, async (context: TurnContext) => {
-      await this.handleAgentMessageActivity(context);
+    this.onActivity(ActivityTypes.Message, async (context: TurnContext, state: TurnState) => {
+      await this.handleAgentMessageActivity(context, state);
     });
   }
 
   /**
    * Handles incoming user messages and sends responses.
    */
-  async handleAgentMessageActivity(turnContext: TurnContext): Promise<void> {
+  async handleAgentMessageActivity(turnContext: TurnContext, state: TurnState): Promise<void> {
     const userMessage = turnContext.activity.text?.trim() || '';
     if (!userMessage) {
       return;
@@ -42,7 +42,10 @@ export class A365Agent extends AgentApplication<TurnState> {
     // Preload/refresh exporter token
     await this.preloadObservabilityToken(turnContext);
     const client: Client = await getClient();
-    await client.invokeAgent(userMessage);    
+    const response = await client.invokeAgent(userMessage);
+    
+    // Send the response back to the user
+    await turnContext.sendActivity(response);
   }
 
     /**
