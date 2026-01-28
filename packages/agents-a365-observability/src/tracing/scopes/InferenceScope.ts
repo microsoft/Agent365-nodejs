@@ -11,6 +11,7 @@ import {
   TenantDetails,
   SourceMetadata
 } from '../contracts';
+import { ParentSpanRef } from '../context/parent-span-context';
 
 /**
  * Provides OpenTelemetry tracing scope for generative AI inference operations.
@@ -23,6 +24,7 @@ export class InferenceScope extends OpenTelemetryScope {
    * @param tenantDetails The tenant details
    * @param conversationId Optional conversation id to tag on the span (`gen_ai.conversation.id`).
    * @param sourceMetadata Optional source metadata; only `name` (channel name) and `description` (channel link/URL) are used for tagging.
+   * @param parentSpanRef Optional explicit parent span reference for cross-async-boundary tracing.
    * @returns A new InferenceScope instance
    */
   public static start(
@@ -30,9 +32,10 @@ export class InferenceScope extends OpenTelemetryScope {
     agentDetails: AgentDetails,
     tenantDetails: TenantDetails,
     conversationId?: string,
-    sourceMetadata?: Pick<SourceMetadata, "name" | "description">
+    sourceMetadata?: Pick<SourceMetadata, "name" | "description">,
+    parentSpanRef?: ParentSpanRef
   ): InferenceScope {
-    return new InferenceScope(details, agentDetails, tenantDetails, conversationId, sourceMetadata);
+    return new InferenceScope(details, agentDetails, tenantDetails, conversationId, sourceMetadata, parentSpanRef);
   }
 
   private constructor(
@@ -40,14 +43,16 @@ export class InferenceScope extends OpenTelemetryScope {
     agentDetails: AgentDetails,
     tenantDetails: TenantDetails,
     conversationId?: string,
-    sourceMetadata?: Pick<SourceMetadata, "name" | "description">
+    sourceMetadata?: Pick<SourceMetadata, "name" | "description">,
+    parentSpanRef?: ParentSpanRef
   ) {
     super(
       SpanKind.CLIENT,
       details.operationName.toString(),
       `${details.operationName} ${details.model}`,
       agentDetails,
-      tenantDetails
+      tenantDetails,
+      parentSpanRef
     );
 
     // Set core inference information matching C# implementation

@@ -10,6 +10,7 @@ import {
   CallerDetails,
   AgentDetails
 } from '../contracts';
+import { ParentSpanRef } from '../context/parent-span-context';
 import { OpenTelemetryConstants } from '../constants';
 
 /**
@@ -22,6 +23,7 @@ export class InvokeAgentScope extends OpenTelemetryScope {
    * @param tenantDetails The tenant details.
    * @param callerAgentDetails The details of the caller agent.
    * @param callerDetails The details of the non-agentic caller.
+   * @param parentSpanRef Optional explicit parent span reference for cross-async-boundary tracing.
    * @returns A new InvokeAgentScope instance.
    */
   public static start(
@@ -29,8 +31,9 @@ export class InvokeAgentScope extends OpenTelemetryScope {
     tenantDetails: TenantDetails,
     callerAgentDetails?: AgentDetails,
     callerDetails?: CallerDetails,
+    parentSpanRef?: ParentSpanRef
   ): InvokeAgentScope {
-    return new InvokeAgentScope(invokeAgentDetails, tenantDetails, callerAgentDetails, callerDetails);
+    return new InvokeAgentScope(invokeAgentDetails, tenantDetails, callerAgentDetails, callerDetails, parentSpanRef);
   }
 
   private constructor(
@@ -38,6 +41,7 @@ export class InvokeAgentScope extends OpenTelemetryScope {
     tenantDetails: TenantDetails,
     callerAgentDetails?: AgentDetails,
     callerDetails?: CallerDetails,
+    parentSpanRef?: ParentSpanRef
   ) {
     super(
       SpanKind.CLIENT,
@@ -46,7 +50,8 @@ export class InvokeAgentScope extends OpenTelemetryScope {
         ? `${OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME} ${invokeAgentDetails.agentName}`
         : OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME,
       invokeAgentDetails,
-      tenantDetails
+      tenantDetails,
+      parentSpanRef
     );
 
     // Set session ID and endpoint information

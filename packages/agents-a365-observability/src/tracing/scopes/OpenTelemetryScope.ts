@@ -2,9 +2,10 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // ------------------------------------------------------------------------------
 
-import { trace, SpanKind, Span, SpanStatusCode, Attributes, context, AttributeValue } from '@opentelemetry/api';
+import { trace, SpanKind, Span, SpanStatusCode, Attributes, context, AttributeValue, SpanContext } from '@opentelemetry/api';
 import { OpenTelemetryConstants } from '../constants';
 import { AgentDetails, TenantDetails } from '../contracts';
+import { ParentSpanRef, createContextWithParentSpanRef } from '../context/parent-span-context';
 import logger from '../../utils/logging';
 
 /**
@@ -26,15 +27,23 @@ export abstract class OpenTelemetryScope implements Disposable {
    * @param spanName The name of the span for display purposes
    * @param agentDetails Optional agent details
    * @param tenantDetails Optional tenant details
+   * @param parentSpanRef Optional explicit parent span reference for cross-async-boundary tracing
    */
   protected constructor(
     kind: SpanKind,
     operationName: string,
     spanName: string,
     agentDetails?: AgentDetails,
-    tenantDetails?: TenantDetails
+    tenantDetails?: TenantDetails,
+    parentSpanRef?: ParentSpanRef
   ) {
-    const currentContext = context.active();
+    // Determine the context to use for span creation
+    let currentContext = context.active();
+    if (parentSpanRef) {
+      currentContext = createContextWithParentSpanRef(currentContext, parentSpanRef);
+      logger.info(`[A365Observability] Using explicit parent span: traceId=${parentSpanRef.traceId}, spanId=${parentSpanRef.spanId}`);
+    }
+
     logger.info(`[A365Observability] Starting span: ${spanName}, operation: ${operationName} for tenantId: ${tenantDetails?.tenantId || 'unknown'}, agentId: ${agentDetails?.agentId || 'unknown'}`);
 
     // Start span with current context to establish parent-child relationship
@@ -76,6 +85,15 @@ export abstract class OpenTelemetryScope implements Disposable {
   public withActiveSpanAsync<T>(callback: () => Promise<T>): Promise<T> {
     const newContext = trace.setSpan(context.active(), this.span);
     return context.with(newContext, callback);
+  }
+
+  /**
+   * Gets the span context for this scope.
+   * This can be used to create a ParentSpanRef for explicit parent-child linking across async boundaries.
+   * @returns The SpanContext containing traceId and spanId
+   */
+  public getSpanContext(): SpanContext {
+    return this.span.spanContext();
   }
 
   /**
