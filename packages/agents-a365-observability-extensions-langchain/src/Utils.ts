@@ -318,7 +318,14 @@ export function setSystemInstructionsAttribute(run: Run, span: Span) {
   if (prompts) return span.setAttribute(OpenTelemetryConstants.GEN_AI_SYSTEM_INSTRUCTIONS_KEY, prompts);
 
   const messages = Array.isArray(inputs.messages) ? inputs.messages : [];
-  const systemText = messages.filter((m: any) => m.lc_type === "system").map(m => String(m.lc_kwargs?.content ?? "").trim()).filter(Boolean).join("\n");
+  const systemText = messages
+    .filter((m: unknown): m is Record<string, unknown> => typeof m === "object" && m !== null && (m as Record<string, unknown>).lc_type === "system")
+    .map(m => {
+      const kwargs = m.lc_kwargs as Record<string, unknown> | undefined;
+      return String(kwargs?.content ?? "").trim();
+    })
+    .filter(Boolean)
+    .join("\n");
   if (systemText) span.setAttribute(OpenTelemetryConstants.GEN_AI_SYSTEM_INSTRUCTIONS_KEY, systemText);
 }
 
@@ -337,7 +344,13 @@ export function setTokenAttributes(run: Run, span: Span) {
     run.outputs?.messages?.[1]?.usage_metadata || // agent call
     run.outputs?.message?.response_metadata?.usage ||
     run.outputs?.message?.response_metadata?.tokenUsage ||
-    run.outputs?.messages?.map((msg: any) => msg?.response_metadata?.tokenUsage).filter(Boolean)[0];  //mode_request, chain
+    (Array.isArray(run.outputs?.messages) ? run.outputs.messages : [])
+      .map((msg: unknown) => {
+        const msgObj = msg as Record<string, unknown> | undefined;
+        const responseMetadata = msgObj?.response_metadata as Record<string, unknown> | undefined;
+        return responseMetadata?.tokenUsage;
+      })
+      .filter(Boolean)[0];  //mode_request, chain
 
   if (!usage || typeof usage !== "object") {
     return;
@@ -361,6 +374,7 @@ function isLangGraphAgentInvoke(run: Run): boolean {
   if (!run.serialized || typeof run.serialized !== "object" || Array.isArray(run.serialized)) {
     return false;
   }
-  const id = (run.serialized as any).id;
+  const serialized = run.serialized as Record<string, unknown>;
+  const id = serialized.id;
   return Array.isArray(id) && id.includes("langgraph") && id.includes("CompiledStateGraph");
 }
