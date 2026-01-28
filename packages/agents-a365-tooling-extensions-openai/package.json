@@ -38,9 +38,11 @@
     "@microsoft/agents-a365-tooling": "workspace:*",
     "@microsoft/agents-hosting": "catalog:",
     "@openai/agents": "catalog:",
-    "hono": "catalog:"
+    "hono": "catalog:",
+    "uuid": "catalog:"
   },
   "devDependencies": {
+    "@types/uuid": "catalog:",
     "@eslint/js": "catalog:",
     "@types/jest": "catalog:",
     "@types/node": "catalog:",
