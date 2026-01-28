@@ -318,8 +318,11 @@ export function setSystemInstructionsAttribute(run: Run, span: Span) {
   if (prompts) return span.setAttribute(OpenTelemetryConstants.GEN_AI_SYSTEM_INSTRUCTIONS_KEY, prompts);
 
   const messages = Array.isArray(inputs.messages) ? inputs.messages : [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const systemText = messages.filter((m: any) => m.lc_type === "system").map(m => String(m.lc_kwargs?.content ?? "").trim()).filter(Boolean).join("\n");
+  const systemText = messages
+    .filter((m: Record<string, unknown>) => m.lc_type === "system")
+    .map((m: Record<string, unknown>) => String((m.lc_kwargs as Record<string, unknown> | undefined)?.content ?? "").trim())
+    .filter(Boolean)
+    .join("\n");
   if (systemText) span.setAttribute(OpenTelemetryConstants.GEN_AI_SYSTEM_INSTRUCTIONS_KEY, systemText);
 }
 
@@ -338,8 +341,9 @@ export function setTokenAttributes(run: Run, span: Span) {
     run.outputs?.messages?.[1]?.usage_metadata || // agent call
     run.outputs?.message?.response_metadata?.usage ||
     run.outputs?.message?.response_metadata?.tokenUsage ||
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    run.outputs?.messages?.map((msg: any) => msg?.response_metadata?.tokenUsage).filter(Boolean)[0];  //mode_request, chain
+    run.outputs?.messages
+      ?.map((msg: Record<string, unknown>) => (msg.response_metadata as Record<string, unknown> | undefined)?.tokenUsage)
+      .filter(Boolean)[0];  //mode_request, chain
 
   if (!usage || typeof usage !== "object") {
     return;
@@ -363,7 +367,7 @@ function isLangGraphAgentInvoke(run: Run): boolean {
   if (!run.serialized || typeof run.serialized !== "object" || Array.isArray(run.serialized)) {
     return false;
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const id = (run.serialized as any).id;
+  const serialized = run.serialized as Record<string, unknown>;
+  const id = serialized.id;
   return Array.isArray(id) && id.includes("langgraph") && id.includes("CompiledStateGraph");
 }
