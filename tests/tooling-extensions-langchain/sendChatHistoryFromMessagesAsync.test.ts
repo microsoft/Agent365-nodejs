@@ -12,7 +12,7 @@ import {
   createMockImageOnlyMessage
 } from './fixtures';
 import { OperationResult } from '../../packages/agents-a365-runtime/src';
-import { ChatHistoryMessage, ToolOptions, McpToolServerConfigurationService } from '../../packages/agents-a365-tooling/src';
+import { ChatHistoryMessage, McpToolServerConfigurationService } from '../../packages/agents-a365-tooling/src';
 
 describe('McpToolRegistrationService - sendChatHistoryFromMessagesAsync (Level 4 API)', () => {
   let service: McpToolRegistrationService;
