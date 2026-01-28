@@ -27,6 +27,9 @@ catalogs:
     '@langchain/core':
       specifier: ^1.1.8
       version: 1.1.8
+    '@langchain/langgraph':
+      specifier: ^1.0.0
+      version: 1.0.2
     '@langchain/mcp-adapters':
       specifier: ^1.1.1
       version: 1.1.1
@@ -545,7 +548,7 @@ importers:
         specifier: 'catalog:'
         version: 1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3)(zod@4.1.13))
       '@langchain/langgraph':
-        specifier: '>=0.2.0'
+        specifier: 'catalog:'
         version: 1.0.2(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@6.9.1(ws@8.18.3)(zod@4.1.13)))(zod-to-json-schema@3.25.0(zod@4.1.13))(zod@4.1.13)
       '@langchain/mcp-adapters':
         specifier: 'catalog:'
