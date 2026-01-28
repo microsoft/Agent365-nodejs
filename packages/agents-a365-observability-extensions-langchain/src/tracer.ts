@@ -63,9 +63,8 @@ export class LangChainTracer extends BaseTracer {
     if (isTracingSuppressed(context.active())) {
       return;
     }
-            // Skip internal runs
+    // Skip internal runs
     const operation = Utils.getOperationType(run);
-        // Skip internal runs
     if (run.tags?.includes("langsmith:hidden") || run.name?.startsWith("Branch") || operation === "unknown") {
       logger.info(`Skipping internal run: ${run.name} (parent: ${run.parent_run_id})`);
       return;
@@ -77,7 +76,6 @@ export class LangChainTracer extends BaseTracer {
     }
 
     const { span } = entry;
-    console.log(`Last run object [${run.run_type}]: ${run.name}`, JSON.stringify(run, null, 2));
 
     if (run.error) {     
       span.setAttribute(OpenTelemetryConstants.ERROR_MESSAGE_KEY, String(run.error));

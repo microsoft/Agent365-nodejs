@@ -20,14 +20,6 @@ describe("LangChain Observability - InvokeAgentScope Attributes", () => {
 
   describe("InvokeAgentScope - Agent Invoke Execution (LangGraph chain run)", () => {
     it("should extract operation type as agent_invoke for LangGraph chain", () => {
-      const run: Partial<Run> = {
-        run_type: "chain",
-        name: "LangChainA365Agent",
-        serialized: {
-          id: ["langgraph", "pregel", "CompiledStateGraph"],
-        } as any,
-      };
-
       Utils.setOperationTypeAttribute("agent_invoke", mockSpan as Span);
 
       expect(mockSpan.setAttribute).toHaveBeenCalledWith(
