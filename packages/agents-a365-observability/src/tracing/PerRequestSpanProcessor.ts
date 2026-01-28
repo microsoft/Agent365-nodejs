@@ -51,6 +51,10 @@ export class PerRequestSpanProcessor implements SpanProcessor {
   private sweepTimer?: NodeJS.Timeout;
   private isSweeping = false;
 
+  private readonly exporter: SpanExporter;
+  private readonly flushGraceMs: number;
+  private readonly maxTraceAgeMs: number;
+
   private readonly maxBufferedTraces: number;
   private readonly maxSpansPerTrace: number;
   private readonly maxConcurrentExports: number;
@@ -58,11 +62,11 @@ export class PerRequestSpanProcessor implements SpanProcessor {
   private inFlightExports = 0;
   private exportWaiters: Array<() => void> = [];
 
-  constructor(
-    private readonly exporter: SpanExporter,
-    private readonly flushGraceMs: number = DEFAULT_FLUSH_GRACE_MS,
-    private readonly maxTraceAgeMs: number = DEFAULT_MAX_TRACE_AGE_MS
-  ) {
+  constructor(exporter: SpanExporter, flushGraceMs?: number, maxTraceAgeMs?: number) {
+    this.exporter = exporter;
+    this.flushGraceMs = flushGraceMs ?? readEnvInt('A365_PER_REQUEST_FLUSH_GRACE_MS', DEFAULT_FLUSH_GRACE_MS);
+    this.maxTraceAgeMs = maxTraceAgeMs ?? readEnvInt('A365_PER_REQUEST_MAX_TRACE_AGE_MS', DEFAULT_MAX_TRACE_AGE_MS);
+
     // Defaults are intentionally high but bounded; override via env vars if needed.
     // Set to 0 (or negative) to disable a guardrail.
     this.maxBufferedTraces = readEnvInt('A365_PER_REQUEST_MAX_TRACES', DEFAULT_MAX_BUFFERED_TRACES);
