@@ -138,8 +138,8 @@ export class LangChainTraceInstrumentor extends InstrumentationBase<LangChainIns
   }
 }
 
-export function addTracerToHandlers(tracer: Tracer, handlers: CallbackManagerModule.Callbacks | undefined) :  CallbackManagerModule.Callbacks{
- if (handlers == null) {
+export function addTracerToHandlers(tracer: Tracer, handlers: CallbackManagerModule.Callbacks | undefined): CallbackManagerModule.Callbacks {
+  if (handlers == null) {
     return [new LangChainTracer(tracer)];
   }
   
@@ -155,7 +155,7 @@ export function addTracerToHandlers(tracer: Tracer, handlers: CallbackManagerMod
     return handlers;
   }
 
-   if(handlers.inheritableHandlers.some(
+  if (handlers.inheritableHandlers.some(
       (handler) => handler instanceof LangChainTracer,
     )) {
     return handlers;

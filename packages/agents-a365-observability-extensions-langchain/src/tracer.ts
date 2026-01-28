@@ -47,8 +47,8 @@ export class LangChainTracer extends BaseTracer {
 
     const parentCtx = this.getNearestParentSpanContext(run);
     const activeContext = parentCtx
-  ? trace.setSpanContext(context.active(), parentCtx)
-  : context.active();
+      ? trace.setSpanContext(context.active(), parentCtx)
+      : context.active();
 
     const startTime = Date.now();
     const span = this.tracer.startSpan(run.name, {

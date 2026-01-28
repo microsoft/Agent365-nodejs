@@ -11,7 +11,7 @@ export function isString(value: unknown): value is string {
 }
 
 // Operation type mapping
-export function getOperationType(run: Run) : string {
+export function getOperationType(run: Run): string {
   let operation = "unknown";
 
   if (run.run_type === "chain" && isLangGraphAgentInvoke(run)) {
@@ -30,11 +30,11 @@ export function setOperationTypeAttribute(operation: string, span: Span) {
 }
 
 // Agent attributes
- export function setAgentAttributes(run: Run, span: Span) {
-  if(isLangGraphAgentInvoke(run)) {
-  const agentName = run.name;
-  span.setAttribute(OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY, getExecutionType(run));
-  if (isString(agentName)) span.setAttribute(OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY, agentName);
+export function setAgentAttributes(run: Run, span: Span) {
+  if (isLangGraphAgentInvoke(run)) {
+    const agentName = run.name;
+    span.setAttribute(OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY, getExecutionType(run));
+    if (isString(agentName)) span.setAttribute(OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY, agentName);
   }
 }
 
@@ -64,7 +64,7 @@ export function setInputMessagesAttribute(run: Run, span: Span) {
   const isAgentScope = run.run_type === "chain" && isLangGraphAgentInvoke(run);
   const isInferenceScope = run.run_type === "llm";
   
-  const preprocess = isInferenceScope? messages[0] : messages;  
+  const preprocess = isInferenceScope ? messages[0] : messages;
   const processed = preprocess?.map((msg: Record<string, unknown>) => {
       const content = extractMessageContent(msg);
       if (!content) return null;
