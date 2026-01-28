@@ -27,15 +27,15 @@ catalog:
   "@microsoft/agents-activity": "^1.1.0-alpha.85"
 
   # Hono - required peer dependency for MCP SDK and OpenAI agents
-  "hono": "^4.11.4"
+  "hono": "^4.11.7"
 
   # Model Context Protocol SDK
   "@modelcontextprotocol/sdk": "^1.25.2"
 
   # OpenAI Agents packages
-  "@openai/agents": "^0.1.5"
-  "@openai/agents-core": "^0.1.5"
-  "@openai/agents-openai": "^0.1.5"
+  "@openai/agents": "^0.4.0"
+  "@openai/agents-core": "^0.4.0"
+  "@openai/agents-openai": "^0.4.0"
   "openai": "^4.8.0"
 
   # OpenTelemetry packages - align versions
@@ -57,6 +57,7 @@ catalog:
   "@types/jest": "^30.0.0"
   "@types/jsonwebtoken": "^9.0.10"
   "@types/node": "^20.17.0"
+  "@types/uuid": "^9.0.8"
   "@typescript-eslint/eslint-plugin": "^8.47.0"
   "@typescript-eslint/parser": "^8.47.0"
   "cross-env": "^7.0.3"
@@ -70,6 +71,7 @@ catalog:
   "tsx": "^4.21.0"
   "typescript": "^5.9.3"
   "typescript-eslint": "^8.47.0"
+  "uuid": "^9.0.1"
 
 overrides:
   # Zod

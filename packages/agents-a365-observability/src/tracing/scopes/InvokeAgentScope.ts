@@ -8,8 +8,7 @@ import {
   InvokeAgentDetails,
   TenantDetails,
   CallerDetails,
-  AgentDetails,
-  ExecutionType
+  AgentDetails
 } from '../contracts';
 import { OpenTelemetryConstants } from '../constants';
 

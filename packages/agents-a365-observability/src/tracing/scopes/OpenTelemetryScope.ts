@@ -2,7 +2,7 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // ------------------------------------------------------------------------------
 
-import { trace, SpanKind, Span, SpanStatusCode, Attributes, context } from '@opentelemetry/api';
+import { trace, SpanKind, Span, SpanStatusCode, Attributes, context, AttributeValue } from '@opentelemetry/api';
 import { OpenTelemetryConstants } from '../constants';
 import { AgentDetails, TenantDetails } from '../contracts';
 import logger from '../../utils/logging';
@@ -104,21 +104,21 @@ export abstract class OpenTelemetryScope implements Disposable {
    * Records multiple attribute key/value pairs for telemetry tracking.
    * @param attributes Collection of attribute key/value pairs (array or iterable of [key, value] or object map).
    */
-  public recordAttributes(attributes: Iterable<[string, any]> | Record<string, any> | null | undefined): void {
+  public recordAttributes(attributes: Iterable<[string, AttributeValue]> | Record<string, AttributeValue> | null | undefined): void {
     if (!attributes) return;
     // Support both array/iterable of pairs and object maps
     if (Array.isArray(attributes)) {
-      for (const [key, value] of attributes as Array<[string, any]>) {
+      for (const [key, value] of attributes as Array<[string, AttributeValue]>) {
         if (!key || typeof key !== 'string' || !key.trim()) continue;
         this.span.setAttribute(key, value);
       }
     } else if (
       typeof attributes === 'object' &&
-      typeof (attributes as any)[Symbol.iterator] === 'function' &&
+      typeof (attributes as Iterable<[string, AttributeValue]>)[Symbol.iterator] === 'function' &&
       !Array.isArray(attributes) &&
       typeof attributes !== 'string'
     ) {
-      for (const [key, value] of attributes as Iterable<[string, any]>) {
+      for (const [key, value] of attributes as Iterable<[string, AttributeValue]>) {
         if (!key || typeof key !== 'string' || !key.trim()) continue;
         this.span.setAttribute(key, value);
       }
@@ -126,7 +126,7 @@ export abstract class OpenTelemetryScope implements Disposable {
       typeof attributes === 'object') {
       for (const key of Object.keys(attributes)) {
         if (!key || typeof key !== 'string' || !key.trim()) continue;
-        this.span.setAttribute(key, (attributes as Record<string, any>)[key]);
+        this.span.setAttribute(key, (attributes as Record<string, AttributeValue>)[key]);
       }
     }
   }
