@@ -161,7 +161,6 @@ export function addTracerToHandlers(tracer: Tracer, handlers: CallbackManagerMod
     return handlers;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   handlers.addHandler(new LangChainTracer(tracer), true);
   return handlers;
 }

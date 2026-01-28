@@ -133,6 +133,7 @@ describe('addTracerToHandlers', () => {
     // invoke handleLLMStart on all handlers, including LangChainTracer
     
     if (manager) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const fakeLlm = { id: ['langchain', 'test-llm'] } as any;
       await manager.handleLLMStart(fakeLlm, ['prompt'], 'run-id');
       expect(tracerStartTracingCalled).toBe(true);
