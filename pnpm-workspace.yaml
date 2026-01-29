@@ -80,7 +80,7 @@ overrides:
 
   # Development dependencies - align versions
   "@types/uuid": "^9.0.0"
-  "uuid": "^9.0.0"
+  "uuid": "^10.0.0"
 
 # Workspace settings
 linkWorkspacePackages: true
