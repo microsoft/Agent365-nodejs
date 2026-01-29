@@ -16,11 +16,6 @@ export interface LangChainInstrumentationConfig extends InstrumentationConfig {
   enabled?: boolean;
   tracerName?: string;
   tracerVersion?: string;
-  /**
-   * When true, suppresses gen_ai.input.messages attributes for chain invocation.
-   * Defaults to false.
-   */
-  suppressInvokeInput?: boolean;
 }
 
 type CallbackManagerModuleType = typeof CallbackManagerModule;
@@ -63,6 +58,7 @@ export class LangChainTraceInstrumentor extends InstrumentationBase<LangChainIns
 
   static resetInstance(): void {
     LangChainTraceInstrumentor._instance = null;
+    isPatched = false;
   }
 
   protected init(): InstrumentationModuleDefinition {
@@ -82,6 +78,7 @@ export class LangChainTraceInstrumentor extends InstrumentationBase<LangChainIns
     }
 
     this._unwrap(CallbackManager, "_configureSync");
+    isPatched = false;
     logger.info("[LangChainTraceInstrumentor] Unpatched OTEL LangChain instrumentation");
   }
 

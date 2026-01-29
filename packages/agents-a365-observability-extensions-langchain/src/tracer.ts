@@ -78,6 +78,7 @@ export class LangChainTracer extends BaseTracer {
     const { span } = entry;
 
     if (run.error) {     
+      span.setStatus({ code: SpanStatusCode.ERROR });
       span.setAttribute(OpenTelemetryConstants.ERROR_MESSAGE_KEY, String(run.error));
 
     } else {
@@ -103,13 +104,13 @@ export class LangChainTracer extends BaseTracer {
   }
 
   private getNearestParentSpanContext(run: Run) {
-  let pid = run.parent_run_id;
+    let pid = run.parent_run_id;
 
-  while (pid) {
-    const entry = this.runs[pid];
-    if (entry) return entry.span.spanContext();
-    pid = this.parentByRunId[pid];
+    while (pid) {
+      const entry = this.runs[pid];
+      if (entry) return entry.span.spanContext();
+      pid = this.parentByRunId[pid];
+    }
+    return undefined;
   }
-  return undefined;
-}
 }

@@ -37,7 +37,6 @@ lcInstr.enable();
 - `enabled` (default: false): Whether to enable instrumentation on construction.
 - `tracerName`: Custom tracer name.
 - `tracerVersion`: Custom tracer version.
-- `suppressInvokeInput` (default: false): If true, the `gen_ai.input.messages` attribute is not attached.
 
 ## Notes
 

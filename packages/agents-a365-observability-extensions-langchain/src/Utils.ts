@@ -138,9 +138,9 @@ function getMessageType(msg: Record<string, unknown>): string {
   return "unknown";
 }
 
-// Helper: Determine message type
+// Helper: Determine execution type
 function getExecutionType(run: Run): ExecutionType {
-  switch(run?.inputs?.messages[0]?.role) {
+  switch(run?.inputs?.messages?.[0]?.role) {
     case "user":
       return ExecutionType.HumanToAgent;
     case "ai":
