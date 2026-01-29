@@ -40,7 +40,11 @@ export class A365Agent extends AgentApplication<TurnState> {
       return;
     }
     // Preload/refresh exporter token
-    await this.preloadObservabilityToken(turnContext);
+    try {
+      await this.preloadObservabilityToken(turnContext);
+    } catch (error) {
+      console.error('Failed to preload observability token:', error);
+    }
     const client: Client = await getClient();
     const response = await client.invokeAgent(userMessage);
     

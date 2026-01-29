@@ -7,7 +7,13 @@
     "**/?(*.)+(spec|test).ts"
   ],
   "transform": {
-    "^.+\\.ts$": "ts-jest"
+    "^.+\\.ts$": ["ts-jest", {
+      "tsconfig": {
+        "skipLibCheck": true,
+        "esModuleInterop": true,
+        "module": "commonjs"
+      }
+    }]
   },
   "collectCoverageFrom": [
     "src/**/*.ts",

@@ -135,7 +135,7 @@ export class LangChainTraceInstrumentor extends InstrumentationBase<LangChainIns
   }
 }
 
-function addTracerToHandlers(
+export function addTracerToHandlers(
   tracer: Tracer,
   handlers: CallbackManagerModule.Callbacks | undefined
 ): CallbackManagerModule.Callbacks {
