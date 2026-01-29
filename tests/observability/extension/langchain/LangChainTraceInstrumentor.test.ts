@@ -6,8 +6,8 @@ import { trace, Tracer } from '@opentelemetry/api';
 import { BaseCallbackHandler } from '@langchain/core/callbacks/base';
 import * as LangChainCallbacks from '@langchain/core/callbacks/manager';
 import { ObservabilityManager } from '@microsoft/agents-a365-observability';
-import { LangChainTraceInstrumentor, LangChainTracer } from '@microsoft/agents-a365-observability-extensions-langchain';
-import { addTracerToHandlers } from '../../../../packages/agents-a365-observability-extensions-langchain/src/LangChainTraceInstrumentor';
+import { LangChainTraceInstrumentor, addTracerToHandlers } from '../../../../packages/agents-a365-observability-extensions-langchain/src/LangChainTraceInstrumentor';
+import { LangChainTracer } from '../../../../packages/agents-a365-observability-extensions-langchain/src/tracer';
 
 // Configure ObservabilityManager for testing (real configuration, in-memory)
 ObservabilityManager.start({
