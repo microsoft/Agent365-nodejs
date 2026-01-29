@@ -11,7 +11,7 @@ import logger from '../utils/logging';
 const DEFAULT_FLUSH_GRACE_MS = 250;
 
 /** Default maximum age (ms) for a trace before forcing flush */
-const DEFAULT_MAX_TRACE_AGE_MS = 30000;
+const DEFAULT_MAX_TRACE_AGE_MS = 1800000; // 30 minutes
 
 /** Guardrails to prevent unbounded memory growth / export bursts */
 const DEFAULT_MAX_BUFFERED_TRACES = 1000;
@@ -205,9 +205,12 @@ export class PerRequestSpanProcessor implements SpanProcessor {
       const toFlush: Array<{ traceId: string; reason: FlushReason }> = [];
 
       for (const [traceId, trace] of this.traces.entries()) {
-        // 1) Max age safety flush (clears buffers even if spans never end)
+        // 1) Max age: drop the entire trace buffer without exporting to avoid incomplete trace exports
         if (now - trace.startedAtMs >= this.maxTraceAgeMs) {
-          toFlush.push({ traceId, reason: 'max_trace_age' });
+          logger.error(
+            `[PerRequestSpanProcessor] Dropping trace due to maxTraceAge traceId=${traceId} age=${now - trace.startedAtMs}ms maxTraceAgeMs=${this.maxTraceAgeMs} spans=${trace.spans.length}`
+          );
+          this.traces.delete(traceId);
           continue;
         }
 
