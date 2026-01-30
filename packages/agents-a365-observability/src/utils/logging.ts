@@ -179,8 +179,13 @@ let globalLogger: ILogger = new DefaultLogger();
  * @param customLogger The custom logger implementation
  */
 export function setLogger(customLogger: ILogger): void {
-  if (!customLogger) {
-    throw new Error('Custom logger must be provided');
+  if (
+    !customLogger ||
+    typeof customLogger.info !== 'function' ||
+    typeof customLogger.warn !== 'function' ||
+    typeof customLogger.error !== 'function'
+  ) {
+    throw new Error('Custom logger must implement ILogger interface (info, warn, error methods)');
   }
   globalLogger = customLogger;
 }
