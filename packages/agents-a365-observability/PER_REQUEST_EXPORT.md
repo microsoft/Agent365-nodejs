@@ -57,9 +57,4 @@ Per-request buffering can increase memory usage and cause export bursts during t
 - `A365_PER_REQUEST_MAX_TRACES` (default `1000`): caps concurrently buffered traces.
 - `A365_PER_REQUEST_MAX_SPANS_PER_TRACE` (default `5000`): caps buffered ended spans per trace.
 
-Export timing can also be tuned:
-
-- `A365_PER_REQUEST_FLUSH_GRACE_MS` (default `250`): how long to wait after the root span ends before flushing a trace that still has open child spans.
-- `A365_PER_REQUEST_MAX_TRACE_AGE_MS` (default `1800000`): maximum time to keep a trace buffered before dropping (not exporting). (30 minutes)
-
 Set to `0` (or negative) to disable a specific guardrail.

@@ -11,7 +11,7 @@ import logger from '../utils/logging';
 const DEFAULT_FLUSH_GRACE_MS = 250;
 
 /** Default maximum age (ms) for a trace before forcing flush */
-const DEFAULT_MAX_TRACE_AGE_MS = 1800000; // 30 minutes
+const DEFAULT_MAX_TRACE_AGE_MS = 30000;
 
 /** Guardrails to prevent unbounded memory growth / export bursts */
 const DEFAULT_MAX_BUFFERED_TRACES = 1000;
@@ -51,10 +51,6 @@ export class PerRequestSpanProcessor implements SpanProcessor {
   private sweepTimer?: NodeJS.Timeout;
   private isSweeping = false;
 
-  private readonly exporter: SpanExporter;
-  private readonly flushGraceMs: number;
-  private readonly maxTraceAgeMs: number;
-
   private readonly maxBufferedTraces: number;
   private readonly maxSpansPerTrace: number;
   private readonly maxConcurrentExports: number;
@@ -62,11 +58,11 @@ export class PerRequestSpanProcessor implements SpanProcessor {
   private inFlightExports = 0;
   private exportWaiters: Array<() => void> = [];
 
-  constructor(exporter: SpanExporter, flushGraceMs?: number, maxTraceAgeMs?: number) {
-    this.exporter = exporter;
-    this.flushGraceMs = flushGraceMs ?? readEnvInt('A365_PER_REQUEST_FLUSH_GRACE_MS', DEFAULT_FLUSH_GRACE_MS);
-    this.maxTraceAgeMs = maxTraceAgeMs ?? readEnvInt('A365_PER_REQUEST_MAX_TRACE_AGE_MS', DEFAULT_MAX_TRACE_AGE_MS);
-
+  constructor(
+    private readonly exporter: SpanExporter,
+    private readonly flushGraceMs: number = DEFAULT_FLUSH_GRACE_MS,
+    private readonly maxTraceAgeMs: number = DEFAULT_MAX_TRACE_AGE_MS
+  ) {
     // Defaults are intentionally high but bounded; override via env vars if needed.
     // Set to 0 (or negative) to disable a guardrail.
     this.maxBufferedTraces = readEnvInt('A365_PER_REQUEST_MAX_TRACES', DEFAULT_MAX_BUFFERED_TRACES);
@@ -205,12 +201,9 @@ export class PerRequestSpanProcessor implements SpanProcessor {
       const toFlush: Array<{ traceId: string; reason: FlushReason }> = [];
 
       for (const [traceId, trace] of this.traces.entries()) {
-        // 1) Max age: drop the entire trace buffer without exporting to avoid incomplete trace exports
+        // 1) Max age safety flush (clears buffers even if spans never end)
         if (now - trace.startedAtMs >= this.maxTraceAgeMs) {
-          logger.error(
-            `[PerRequestSpanProcessor] Dropping trace due to maxTraceAge traceId=${traceId} age=${now - trace.startedAtMs}ms maxTraceAgeMs=${this.maxTraceAgeMs} spans=${trace.spans.length}`
-          );
-          this.traces.delete(traceId);
+          toFlush.push({ traceId, reason: 'max_trace_age' });
           continue;
         }
 
