@@ -1,35 +1,85 @@
-# Custom Logger Guide
+# Logger Configuration Guide
 
-Simple guide for configuring and using custom loggers in Agent 365 Observability SDK.
+Complete guide for understanding and configuring logging in Agent 365 Observability SDK, including the default logger and custom logger options.
 
-## ✅ Existing Code Still Works (100% Backward Compatible)
 
-Your existing code requires **zero changes**:
 
+## Default Logger:
+
+The SDK includes a **default logger** that is automatically active. Here's what it does:
+
+### 1. Reads Environment Variable
+On startup, it reads `A365_OBSERVABILITY_LOG_LEVEL` to determine which message levels to log:
+- `none` - No logging (default)
+- `info` - Log info messages only
+- `warn` - Log warning messages only  
+- `error` - Log error messages only
+- `info|warn|error` - Log all levels (use pipe `|` to combine)
+
+### 2. Filters Messages
+Based on the environment variable, it decides which messages to output:
+
+| Env Var | Info | Warn | Error |
+|---------|------|------|-------|
+| `none` | ❌ | ❌ | ❌ |
+| `info` | ✅ | ❌ | ❌ |
+| `warn\|error` | ❌ | ✅ | ✅ |
+| `info\|warn\|error` | ✅ | ✅ | ✅ |
+
+### 3. Outputs to Console
+Filtered messages are sent to the appropriate console method:
+- Info → `console.log('[INFO]', message)`
+- Warn → `console.warn('[WARN]', message)`
+- Error → `console.error('[ERROR]', message)`
+
+### 4. Works Automatically
 ```typescript
 import { logger } from '@microsoft/agents-a365-observability';
 
-logger.info('message');    // ✅ Works exactly as before
-logger.warn('warning');    // ✅ Works exactly as before
-logger.error('error');     // ✅ Works exactly as before
+// Uses the default logger automatically - no setup needed
+logger.info('message');   // Logged if A365_OBSERVABILITY_LOG_LEVEL includes 'info'
+logger.warn('warning');   // Logged if A365_OBSERVABILITY_LOG_LEVEL includes 'warn'
+logger.error('error');    // Logged if A365_OBSERVABILITY_LOG_LEVEL includes 'error'
 ```
 
-Environment variable still works:
+## Default Logger Configuration
+
+To control what the default logger outputs:
+
 ```bash
-export A365_OBSERVABILITY_LOG_LEVEL=info|warn|error  # Works as before
+# No logging (default)
+export A365_OBSERVABILITY_LOG_LEVEL=none
+
+# Log all messages
+export A365_OBSERVABILITY_LOG_LEVEL=info|warn|error
+
+# Log only warnings and errors
+export A365_OBSERVABILITY_LOG_LEVEL=warn|error
+
+# Log only errors
+export A365_OBSERVABILITY_LOG_LEVEL=error
 ```
+
+**No code changes needed** - the default logger automatically reads the environment variable on startup.
 
 ## Quick Start: Use Custom Logger
 
-### Option 1: Console Logger (Simplest)
+### Your Custom Logger Implementation
 
 ```typescript
-import { Builder, ConsoleLogger } from '@microsoft/agents-a365-observability';
+import { Builder } from '@microsoft/agents-a365-observability';
+import { ILogger } from '@microsoft/agents-a365-observability/src/utils/logging';
 
-// Enable all console output
+// Create your custom logger
+const myLogger: ILogger = {
+  info: (msg, ...args) => console.log(`[INFO] ${msg}`, ...args),
+  warn: (msg, ...args) => console.warn(`[WARN] ${msg}`, ...args),
+  error: (msg, ...args) => console.error(`[ERROR] ${msg}`, ...args)
+};
+
 new Builder()
   .withService('my-agent', '1.0.0')
-  .withCustomLogger(new ConsoleLogger('[MyApp]', true, true, true))
+  .withCustomLogger(myLogger)
   .build();
 ```
 
@@ -158,17 +208,34 @@ new Builder()
 Change logger at any point in your application:
 
 ```typescript
-import { setLogger, ConsoleLogger } from '@microsoft/agents-a365-observability';
+import { setLogger } from '@microsoft/agents-a365-observability/src/utils/logging';
 
 // Production: verbose logging
 if (process.env.NODE_ENV === 'production') {
-  setLogger(new ConsoleLogger('[Prod]', true, true, true));
+  setLogger({
+    info: (msg, ...args) => console.log(`[Prod-INFO] ${msg}`, ...args),
+    warn: (msg, ...args) => console.warn(`[Prod-WARN] ${msg}`, ...args),
+    error: (msg, ...args) => console.error(`[Prod-ERROR] ${msg}`, ...args)
+  });
 }
 
 // Development: selective logging (warn and error only)
 if (process.env.NODE_ENV === 'development') {
-  setLogger(new ConsoleLogger('[Dev]', false, true, true));
+  setLogger({
+    info: () => {},
+    warn: (msg, ...args) => console.warn(`[Dev-WARN] ${msg}`, ...args),
+    error: (msg, ...args) => console.error(`[Dev-ERROR] ${msg}`, ...args)
+  });
 }
+```
+
+You can also reset to the default logger:
+
+```typescript
+import { resetLogger } from '@microsoft/agents-a365-observability/src/utils/logging';
+
+// Reset to default logger (respects A365_OBSERVABILITY_LOG_LEVEL env var)
+resetLogger();
 ```
 
 ## What Gets Logged
@@ -178,12 +245,6 @@ if (process.env.NODE_ENV === 'development') {
 **Error:** Export failures, auth failures, configuration errors
 
 ### Monitor These Messages
-
-For production tracking:
-- ✅ `"Successfully exported spans"` - Track export rate
-- ❌ `"Failed to export spans"` - Track failures
-- ✅ `"Token resolved successfully"` - Track auth success
-- ❌ `"No token resolved"` - Track auth failures
 
 ## API Reference
 
@@ -214,30 +275,3 @@ export function resetLogger(): void;
 builder.withCustomLogger(customLogger: ILogger): Builder;
 ```
 
-## Import Notes
-
-All custom logger functionality is exported from the main package entry point:
-
-```typescript
-import { 
-  ILogger,           // Interface for custom loggers
-  ConsoleLogger,     // Console-based logger implementation
-  setLogger,         // Set custom logger
-  getLogger,         // Get current logger
-  resetLogger,       // Reset to default logger
-  logger,            // Default logger instance
-  formatError        // Error formatting utility
-} from '@microsoft/agents-a365-observability';
-```
-
-**Important:** Always import from `'@microsoft/agents-a365-observability'` - do **not** import from internal `/dist` paths.
-
-## Summary
-
-| Use Case | Solution |
-|----------|----------|
-| **Console logging with control** | `new ConsoleLogger('[AppName]', true, true, true)` |
-| **Route to existing logger** | Custom object with 3 methods |
-| **Warn only** | `new ConsoleLogger('[A365]', false, true, false)` |
-| **Production monitoring** | Route to Application Insights/Winston/custom service |
-| **Change at runtime** | `setLogger(...)` anywhere in code |
