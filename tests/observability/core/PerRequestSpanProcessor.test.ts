@@ -128,7 +128,9 @@ describe('PerRequestSpanProcessor', () => {
       });
 
       const exportedNames = exportedSpans.flatMap((s) => s.map((sp) => sp.name));
-      // All three traces should be exported (trace-1 was evicted but already flushed)
+      // All three traces should be exported
+      // trace-1 was flushed before eviction (micro-batched on end)
+      // When trace-3 starts, trace-1's entry is evicted from the map
       expect(exportedNames).toContain('trace-1');
       expect(exportedNames).toContain('trace-2');
       expect(exportedNames).toContain('trace-3');
@@ -369,14 +371,15 @@ describe('PerRequestSpanProcessor', () => {
 
       runWithExportToken('test-token', () => {
         const rootSpan = tracer.startSpan('root');
-        tracer.startSpan('child');
+        tracer.startSpan('child'); // Started but never ended
 
-        rootSpan.end(); // Root ends, child pending
-        // Don't end child - let forceFlush handle it
+        rootSpan.end(); // Only root ends
+        // Child span is started but never ended, so it won't be added to queue or exported
       });
 
       await processor.forceFlush();
 
+      // Only the ended root span will be exported (child was never ended)
       expect(exportedSpans.length).toBe(1);
     });
 

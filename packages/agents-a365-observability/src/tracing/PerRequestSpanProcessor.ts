@@ -38,6 +38,12 @@ type TraceEntry = {
  * Exports spans on-end with micro-batching to avoid dropping late-ending spans.
  * Token is not stored; we export under the saved request Context so that getExportToken()
  * can read the token from the active OpenTelemetry Context at export time.
+ * 
+ * Memory considerations:
+ * - Trace entries are retained (not deleted after flush) to handle late-ending spans
+ * - When maxBufferedTraces is reached, LRU eviction removes the least-recently-active entry
+ * - Expected memory footprint: ~1-2KB per trace entry × maxBufferedTraces (default 1000)
+ * - Queue sizes are small (bounded by maxBatchSize=64) to minimize buffering
  */
 export class PerRequestSpanProcessor implements SpanProcessor {
   private traces = new Map<string, TraceEntry>();
@@ -97,6 +103,7 @@ export class PerRequestSpanProcessor implements SpanProcessor {
     // Capture context for export:
     // - If this is the root span, use its context (contains token via ALS)
     // - Otherwise, use the first seen context as a fallback
+    // - Both rootCtx and fallbackCtx may be set; rootCtx takes precedence during export
     if (isRootSpan(span)) {
       entry.rootCtx = ctx;
     } else {
@@ -141,8 +148,10 @@ export class PerRequestSpanProcessor implements SpanProcessor {
         ` root=${isRootSpan(span)} queued=${entry.queue.length}`
     );
 
-    // Flush immediately if batch size reached, otherwise schedule micro-batch
+    // Flush immediately if batch size reached or exceeded, otherwise schedule micro-batch
     if (entry.queue.length >= this.maxBatchSize) {
+      // Reset flushScheduled flag before immediate flush
+      entry.flushScheduled = false;
       void this.flushTrace(traceId);
     } else if (!entry.flushScheduled) {
       this.scheduleMicroBatchFlush(traceId);
@@ -162,13 +171,20 @@ export class PerRequestSpanProcessor implements SpanProcessor {
     const entry = this.traces.get(traceId);
     if (!entry) return;
 
+    // Avoid scheduling duplicate flushes
+    if (entry.flushScheduled) return;
+
     entry.flushScheduled = true;
     setImmediate(() => {
+      // Entry may have been evicted before callback executes
+      if (!this.traces.has(traceId)) return;
       void this.flushTrace(traceId);
     });
   }
 
   private evictLeastRecentlyUsed(): void {
+    // Linear scan to find LRU entry. With maxBufferedTraces=1000, this is acceptable.
+    // For higher limits, consider using a min-heap or doubly-linked list.
     let oldestEntry: { traceId: string; lastActivityMs: number } | undefined;
 
     for (const [traceId, entry] of this.traces.entries()) {
@@ -181,6 +197,11 @@ export class PerRequestSpanProcessor implements SpanProcessor {
       logger.warn(
         `[PerRequestSpanProcessor] Evicting LRU trace traceId=${oldestEntry.traceId} due to maxBufferedTraces=${this.maxBufferedTraces}`
       );
+      
+      // Flush any pending spans before eviction to avoid data loss
+      void this.flushTrace(oldestEntry.traceId);
+      
+      // Delete the entry after flushing
       this.traces.delete(oldestEntry.traceId);
     }
   }
