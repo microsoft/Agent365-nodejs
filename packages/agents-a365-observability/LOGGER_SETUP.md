@@ -28,7 +28,7 @@ export A365_OBSERVABILITY_LOG_LEVEL=info|warn|error  # Works as before
 
 ```typescript
 import { Builder } from '@microsoft/agents-a365-observability';
-import { ConsoleLogger } from 'agents-a365-observability/dist/utils/logging';
+import { ConsoleLogger } from '@microsoft/agents-a365-observability/dist/utils/logging';
 
 // Enable all console output
 new Builder()
@@ -59,7 +59,7 @@ new Builder()
 
 ```typescript
 import { Builder } from '@microsoft/agents-a365-observability';
-import { ConsoleLogger } from 'agents-a365-observability/dist/utils/logging';
+import { ConsoleLogger } from '@microsoft/agents-a365-observability/dist/utils/logging';
 
 new Builder()
   .withService('my-agent', '1.0.0')
@@ -164,7 +164,7 @@ Change logger at any point in your application:
 
 ```typescript
 import { setLogger } from '@microsoft/agents-a365-observability';
-import { ConsoleLogger } from 'agents-a365-observability/dist/utils/logging';
+import { ConsoleLogger } from '@microsoft/agents-a365-observability/dist/utils/logging';
 
 // Production: verbose logging
 if (process.env.NODE_ENV === 'production') {
@@ -224,7 +224,7 @@ builder.withCustomLogger(customLogger: ILogger): Builder;
 
 - `ILogger` interface is **not exported** from main package (keep custom loggers internal)
 - `ConsoleLogger` and utility functions are **internal** to the observability package
-- Import from: `'agents-a365-observability/dist/utils/logging'` for these internal utilities
+- Import from: `'@microsoft/agents-a365-observability/dist/utils/logging'` for these internal utilities
 - Only `logger` and `formatError` are part of the public API
 
 ## Summary
