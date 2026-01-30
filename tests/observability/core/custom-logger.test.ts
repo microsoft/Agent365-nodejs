@@ -1,5 +1,6 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
+// ------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// ------------------------------------------------------------------------------
 
 import { ConsoleLogger, setLogger, getLogger, resetLogger, ILogger } from '@microsoft/agents-a365-observability/src/utils/logging';
 
@@ -107,23 +108,23 @@ describe('Custom Logger Support', () => {
       expect(customLogger.error).toHaveBeenCalledWith('error', { data: 3 });
     });
 
-    it('should support selective level logging', () => {
-      const warnOnly: ILogger = {
+    it('should call all custom logger methods', () => {
+      const customLoggerAllLevels: ILogger = {
         info: jest.fn(),
         warn: jest.fn(),
         error: jest.fn()
       };
 
-      setLogger(warnOnly);
+      setLogger(customLoggerAllLevels);
       const logger = getLogger();
 
       logger.info('info msg');
       logger.warn('warn msg');
       logger.error('error msg');
 
-      expect(warnOnly.info).toHaveBeenCalled();
-      expect(warnOnly.warn).toHaveBeenCalled();
-      expect(warnOnly.error).toHaveBeenCalled();
+      expect(customLoggerAllLevels.info).toHaveBeenCalled();
+      expect(customLoggerAllLevels.warn).toHaveBeenCalled();
+      expect(customLoggerAllLevels.error).toHaveBeenCalled();
     });
   });
 });

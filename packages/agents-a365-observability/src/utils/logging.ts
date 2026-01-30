@@ -1,5 +1,6 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
+// ------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation. All rights reserved.
+// ------------------------------------------------------------------------------
 
 /**
  * Custom logger interface for Agent 365 observability
@@ -88,11 +89,9 @@ export class ConsoleLogger implements ILogger {
  */
 class DefaultLogger implements ILogger {
   private enabledLogLevels: Set<number>;
-  private consoleLogger: ConsoleLogger;
 
   constructor() {
     this.enabledLogLevels = this.parseLogLevel(process.env.A365_OBSERVABILITY_LOG_LEVEL || 'none');
-    this.consoleLogger = new ConsoleLogger('[INFO]', false, false, false);
   }
 
   private parseLogLevel(level: string): Set<number> {
@@ -179,8 +178,13 @@ let globalLogger: ILogger = new DefaultLogger();
  * @param customLogger The custom logger implementation
  */
 export function setLogger(customLogger: ILogger): void {
-  if (!customLogger) {
-    throw new Error('Custom logger must be provided');
+  if (
+    !customLogger ||
+    typeof customLogger.info !== 'function' ||
+    typeof customLogger.warn !== 'function' ||
+    typeof customLogger.error !== 'function'
+  ) {
+    throw new Error('Custom logger must implement ILogger interface (info, warn, error methods)');
   }
   globalLogger = customLogger;
 }

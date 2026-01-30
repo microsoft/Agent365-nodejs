@@ -1,6 +1,3 @@
-// Copyright (c) Microsoft Corporation.
-// Licensed under the MIT License.
-
 # Custom Logger Guide
 
 Simple guide for configuring and using custom loggers in Agent 365 Observability SDK.
@@ -27,8 +24,7 @@ export A365_OBSERVABILITY_LOG_LEVEL=info|warn|error  # Works as before
 ### Option 1: Console Logger (Simplest)
 
 ```typescript
-import { Builder } from '@microsoft/agents-a365-observability';
-import { ConsoleLogger } from '@microsoft/agents-a365-observability/dist/utils/logging';
+import { Builder, ConsoleLogger } from '@microsoft/agents-a365-observability';
 
 // Enable all console output
 new Builder()
@@ -58,8 +54,7 @@ new Builder()
 ### Warn Only
 
 ```typescript
-import { Builder } from '@microsoft/agents-a365-observability';
-import { ConsoleLogger } from '@microsoft/agents-a365-observability/dist/utils/logging';
+import { Builder, ConsoleLogger } from '@microsoft/agents-a365-observability';
 
 new Builder()
   .withService('my-agent', '1.0.0')
@@ -163,8 +158,7 @@ new Builder()
 Change logger at any point in your application:
 
 ```typescript
-import { setLogger } from '@microsoft/agents-a365-observability';
-import { ConsoleLogger } from '@microsoft/agents-a365-observability/dist/utils/logging';
+import { setLogger, ConsoleLogger } from '@microsoft/agents-a365-observability';
 
 // Production: verbose logging
 if (process.env.NODE_ENV === 'production') {
@@ -222,10 +216,21 @@ builder.withCustomLogger(customLogger: ILogger): Builder;
 
 ## Import Notes
 
-- `ILogger` interface is **not exported** from main package (keep custom loggers internal)
-- `ConsoleLogger` and utility functions are **internal** to the observability package
-- Import from: `'@microsoft/agents-a365-observability/dist/utils/logging'` for these internal utilities
-- Only `logger` and `formatError` are part of the public API
+All custom logger functionality is exported from the main package entry point:
+
+```typescript
+import { 
+  ILogger,           // Interface for custom loggers
+  ConsoleLogger,     // Console-based logger implementation
+  setLogger,         // Set custom logger
+  getLogger,         // Get current logger
+  resetLogger,       // Reset to default logger
+  logger,            // Default logger instance
+  formatError        // Error formatting utility
+} from '@microsoft/agents-a365-observability';
+```
+
+**Important:** Always import from `'@microsoft/agents-a365-observability'` - do **not** import from internal `/dist` paths.
 
 ## Summary
 
