@@ -95,48 +95,43 @@ describe('PerRequestSpanProcessor', () => {
       expect(exportedNames).toContain('trace-2');
     });
 
-    it('should drop additional traces beyond maxBufferedTraces (drop case)', async () => {
+    it('should evict LRU trace when maxBufferedTraces exceeded', async () => {
       process.env.A365_PER_REQUEST_MAX_TRACES = '2';
       await recreateProvider(new PerRequestSpanProcessor(mockExporter));
 
       const tracer = provider.getTracer('test');
 
-      // Keep two traces buffered (root ended but child still open), then attempt a third.
+      // Create two traces with distinct activity times
       await new Promise<void>((resolve) => {
         runWithExportToken('token-1', () => {
           const root1 = tracer.startSpan('trace-1', { root: true });
-          const ctx1 = trace.setSpan(context.active(), root1);
-          const child1 = tracer.startSpan('trace-1-child', undefined, ctx1);
           root1.end();
+        });
 
+        // Wait to ensure trace-1 is older than trace-2
+        setTimeout(() => {
           runWithExportToken('token-2', () => {
             const root2 = tracer.startSpan('trace-2', { root: true });
-            const ctx2 = trace.setSpan(context.active(), root2);
-            const child2 = tracer.startSpan('trace-2-child', undefined, ctx2);
             root2.end();
+          });
 
-            // This third trace should be dropped because two traces are already buffered.
+          // Wait again, then start trace-3 which should evict trace-1 (LRU)
+          setTimeout(() => {
             runWithExportToken('token-3', () => {
               const root3 = tracer.startSpan('trace-3', { root: true });
               root3.end();
             });
 
-            // Finish the buffered traces so they can flush.
-            setTimeout(() => {
-              child2.end();
-              child1.end();
-              setTimeout(resolve, 50);
-            }, 10);
-          });
-        });
+            setTimeout(resolve, 100);
+          }, 50);
+        }, 50);
       });
 
       const exportedNames = exportedSpans.flatMap((s) => s.map((sp) => sp.name));
+      // All three traces should be exported (trace-1 was evicted but already flushed)
       expect(exportedNames).toContain('trace-1');
-      expect(exportedNames).toContain('trace-1-child');
       expect(exportedNames).toContain('trace-2');
-      expect(exportedNames).toContain('trace-2-child');
-      expect(exportedNames).not.toContain('trace-3');
+      expect(exportedNames).toContain('trace-3');
     });
 
     it('should cap the number of buffered spans per trace (maxSpansPerTrace)', async () => {
@@ -342,10 +337,9 @@ describe('PerRequestSpanProcessor', () => {
       expect(exportedSpans[2][0].name).toBe('actual-root');
     });
 
-    it('should respect custom grace flush timeout', async () => {
+    it('should export spans via micro-batching with setImmediate', async () => {
       exportedSpans = [];
-      const customGrace = 30;
-      await recreateProvider(new PerRequestSpanProcessor(mockExporter, customGrace));
+      await recreateProvider(new PerRequestSpanProcessor(mockExporter));
 
       const tracer = provider.getTracer('test');
 
@@ -354,18 +348,20 @@ describe('PerRequestSpanProcessor', () => {
           const rootSpan = tracer.startSpan('root');
           const childSpan = tracer.startSpan('child');
           
-          rootSpan.end(); // Root ends, child still pending
+          rootSpan.end();
+          childSpan.end();
           
+          // Spans should be exported via setImmediate (next tick)
           setTimeout(() => {
-            childSpan.end(); // Child ends after grace period should flush
-            setTimeout(() => {
-              resolve();
-            }, 50);
+            resolve();
           }, 50);
         });
       });
 
-      expect(exportedSpans.length).toEqual(2);
+      // Both spans should be exported (micro-batched)
+      const exportedNames = exportedSpans.flatMap((s) => s.map((sp) => sp.name));
+      expect(exportedNames).toContain('root');
+      expect(exportedNames).toContain('child');
     });
 
     it('should handle forceFlush correctly', async () => {
@@ -384,13 +380,14 @@ describe('PerRequestSpanProcessor', () => {
       expect(exportedSpans.length).toBe(1);
     });
 
-    it('should not retain trace buffers after trace completion', async () => {
+    it('should retain trace entries to handle late-ending spans', async () => {
       const tracer = provider.getTracer('test');
 
       await new Promise<void>((resolve) => {
         runWithExportToken('test-token', () => {
-          const rootSpan = tracer.startSpan('root');
-          const childSpan = tracer.startSpan('child');
+          const rootSpan = tracer.startSpan('root', { root: true });
+          const ctxWithRoot = trace.setSpan(context.active(), rootSpan);
+          const childSpan = tracer.startSpan('child', undefined, ctxWithRoot);
 
           childSpan.end();
           rootSpan.end();
@@ -399,91 +396,70 @@ describe('PerRequestSpanProcessor', () => {
         });
       });
 
-      expect(getActiveTraceCount()).toBe(0);
+      // Traces are now retained to handle late spans (not deleted after flush)
+      expect(getActiveTraceCount()).toBe(1);
     });
 
-    it('should drop trace buffers after grace flush if children never end', async () => {
+    it('should handle late-ending spans without dropping them', async () => {
       exportedSpans = [];
-      const customGrace = 10;
-      const customMaxAge = 1000;
-
-      await recreateProvider(new PerRequestSpanProcessor(mockExporter, customGrace, customMaxAge));
+      await recreateProvider(new PerRequestSpanProcessor(mockExporter));
 
       const tracer = provider.getTracer('test');
 
-      // Make the sweep deterministic by controlling time and invoking sweep directly.
-      let now = 1_000_000;
-      const nowSpy = jest.spyOn(Date, 'now').mockImplementation(() => now);
-      try {
+      await new Promise<void>((resolve) => {
         runWithExportToken('test-token', () => {
           const rootSpan = tracer.startSpan('root', { root: true });
           const ctxWithRoot = trace.setSpan(context.active(), rootSpan);
 
-          // Start a child span in the same trace and never end it.
-          // Pass ctxWithRoot explicitly so we don't depend on a global context manager.
-          tracer.startSpan('child', undefined, ctxWithRoot);
+          const child = tracer.startSpan('child', undefined, ctxWithRoot);
 
+          // Root ends first
           rootSpan.end();
+
+          // Child ends after a delay (simulates late-ending span)
+          setTimeout(() => {
+            child.end();
+            setTimeout(resolve, 50);
+          }, 100);
         });
+      });
 
-        // Should have exactly one trace buffered (root + child share traceId).
-        expect(getActiveTraceCount()).toBe(1);
-
-        // Validate the trace is in the expected lifecycle state.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const traces: Map<string, any> = (processor as any).traces;
-        const buf = [...traces.values()][0];
-        expect(buf.rootEnded).toBe(true);
-        expect(buf.openCount).toBeGreaterThan(0);
-        expect(buf.rootEndedAtMs).toBeDefined();
-
-        // Avoid races with the background interval sweeper; drive sweep manually.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const sweepTimer: any = (processor as any).sweepTimer;
-        if (sweepTimer) {
-          clearInterval(sweepTimer);
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (processor as any).sweepTimer = undefined;
-        }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (processor as any).isSweeping = false;
-
-        now += customGrace + 1;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (processor as any).sweep();
-
-        expect(getActiveTraceCount()).toBe(0);
-      } finally {
-        nowSpy.mockRestore();
-      }
+      // Both spans should be exported (no drops for late-ending spans)
+      const exportedNames = exportedSpans.flatMap((s) => s.map((sp) => sp.name));
+      expect(exportedNames).toContain('root');
+      expect(exportedNames).toContain('child');
+      expect(exportedSpans.length).toBeGreaterThanOrEqual(2);
     });
 
-    it('should drop trace buffers after max trace age even if no spans end (prevents unbounded growth)', async () => {
+    it('should flush immediately when maxBatchSize is reached', async () => {
+      process.env.A365_PER_REQUEST_MAX_BATCH_SIZE = '2';
       exportedSpans = [];
-      const customGrace = 250;
-      const customMaxAge = 10;
-
-      await recreateProvider(new PerRequestSpanProcessor(mockExporter, customGrace, customMaxAge));
+      await recreateProvider(new PerRequestSpanProcessor(mockExporter));
 
       const tracer = provider.getTracer('test');
 
-      let now = 2_000_000;
-      const nowSpy = jest.spyOn(Date, 'now').mockImplementation(() => now);
-      try {
+      await new Promise<void>((resolve) => {
         runWithExportToken('test-token', () => {
-          tracer.startSpan('root-never-ended');
+          const rootSpan = tracer.startSpan('root');
+          const child1 = tracer.startSpan('child-1');
+          const child2 = tracer.startSpan('child-2');
+
+          // End spans; first two should flush immediately when batch size reached
+          rootSpan.end();
+          child1.end(); // batch size = 2, should flush immediately
+
+          setTimeout(() => {
+            child2.end(); // should trigger another flush
+            setTimeout(resolve, 50);
+          }, 10);
         });
+      });
 
-        expect(getActiveTraceCount()).toBe(1);
-
-        now += customMaxAge + 1;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (processor as any).sweep();
-
-        expect(getActiveTraceCount()).toBe(0);
-      } finally {
-        nowSpy.mockRestore();
-      }
+      // All spans should be exported
+      const exportedNames = exportedSpans.flatMap((s) => s.map((sp) => sp.name));
+      expect(exportedNames).toContain('root');
+      expect(exportedNames).toContain('child-1');
+      expect(exportedNames).toContain('child-2');
     });
   });
 });
