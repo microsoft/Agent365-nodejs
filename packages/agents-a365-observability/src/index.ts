@@ -38,4 +38,4 @@ export { OpenTelemetryScope } from './tracing/scopes/OpenTelemetryScope';
 export { ExecuteToolScope } from './tracing/scopes/ExecuteToolScope';
 export { InvokeAgentScope } from './tracing/scopes/InvokeAgentScope';
 export { InferenceScope} from './tracing/scopes/InferenceScope';
-export { logger, setLogger, getLogger, resetLogger, ILogger, ConsoleLogger, formatError } from './utils/logging';
+export { logger, setLogger, getLogger, resetLogger, ILogger, formatError } from './utils/logging';

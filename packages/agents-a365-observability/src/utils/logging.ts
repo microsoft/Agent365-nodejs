@@ -40,9 +40,8 @@ export function formatError(error: unknown): string {
 
 /**
  * Console-based logger adapter that wraps console.log, console.warn, console.error
- * Useful for integrating with existing console logging or as a passthrough logger
  */
-export class ConsoleLogger implements ILogger {
+class ConsoleLogger implements ILogger {
   constructor(
     private prefix = '[A365]',
     private useConsoleLog = false,
@@ -94,6 +93,36 @@ class DefaultLogger implements ILogger {
     this.enabledLogLevels = this.parseLogLevel(process.env.A365_OBSERVABILITY_LOG_LEVEL || 'none');
     this.consoleLogger = new ConsoleLogger('[INFO]', false, false, false);
   }
+
+  /**
+   * Console-based logger adapter that wraps console.log, console.warn, console.error
+   */
+  private ConsoleLogger = class ConsoleLogger implements ILogger {
+    constructor(
+      private prefix = '[A365]',
+      private useConsoleLog = false,
+      private useConsoleWarn = false,
+      private useConsoleError = false
+    ) {}
+
+    info(message: string, ...args: unknown[]): void {
+      if (this.useConsoleLog) {
+        console.log(`${this.prefix} ${message}`, ...args);
+      }
+    }
+
+    warn(message: string, ...args: unknown[]): void {
+      if (this.useConsoleWarn) {
+        console.warn(`${this.prefix} ${message}`, ...args);
+      }
+    }
+
+    error(message: string, ...args: unknown[]): void {
+      if (this.useConsoleError) {
+        console.error(`${this.prefix} ${message}`, ...args);
+      }
+    }
+  };
 
   private parseLogLevel(level: string): Set<number> {
     const LOG_LEVELS: Record<string, number> = {
@@ -169,13 +198,6 @@ let globalLogger: ILogger = new DefaultLogger();
  * });
  * ```
  *
- * Or with ConsoleLogger (wraps console.log/warn/error):
- * ```typescript
- * import { setLogger, ConsoleLogger } from '@microsoft/agents-a365-observability';
- * 
- * setLogger(new ConsoleLogger('[A365-SDK]', true, true, true));
- * ```
- *
  * @param customLogger The custom logger implementation
  */
 export function setLogger(customLogger: ILogger): void {
@@ -202,15 +224,6 @@ export function getLogger(): ILogger {
  */
 export function resetLogger(): void {
   globalLogger = new DefaultLogger();
-}
-
-/**
- * Create a logger that logs to console directly (useful for transparent logging)
- * @param prefix Optional prefix for log messages (default: '[A365]')
- * @returns A ConsoleLogger instance
- */
-export function createConsoleLogger(prefix?: string): ConsoleLogger {
-  return new ConsoleLogger(prefix || '[A365]', true, true, true);
 }
 
 /**

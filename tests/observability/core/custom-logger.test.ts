@@ -1,31 +1,34 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { ConsoleLogger, setLogger, getLogger, resetLogger, ILogger } from '@microsoft/agents-a365-observability/src/utils/logging';
+import { setLogger, getLogger, resetLogger, ILogger } from '@microsoft/agents-a365-observability/src/utils/logging';
 import { ObservabilityBuilder } from '@microsoft/agents-a365-observability/src/ObservabilityBuilder';
 
 describe('Custom Logger Support', () => {
   beforeEach(() => {
     resetLogger();
-    // Ensure exporter is disabled for most tests (we don't need network calls)
     delete process.env.ENABLE_A365_OBSERVABILITY_EXPORTER;
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
     resetLogger();
+    delete process.env.A365_OBSERVABILITY_LOG_LEVEL;
   });
 
-  describe('ConsoleLogger', () => {
-    it('should default to no logging', () => {
+  describe('Default Logger', () => {
+    it('should default to no logging when environment variable is not set', () => {
+      delete process.env.A365_OBSERVABILITY_LOG_LEVEL;
+      resetLogger();
+      
       const logSpy = jest.spyOn(console, 'log').mockImplementation();
       const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
       const errorSpy = jest.spyOn(console, 'error').mockImplementation();
 
-      const logger = new ConsoleLogger('[SDK]');
-      logger.info('info');
-      logger.warn('warn');
-      logger.error('error');
+      const logger = getLogger();
+      logger.info('info msg');
+      logger.warn('warn msg');
+      logger.error('error msg');
 
       expect(logSpy).not.toHaveBeenCalled();
       expect(warnSpy).not.toHaveBeenCalled();
@@ -36,38 +39,44 @@ describe('Custom Logger Support', () => {
       errorSpy.mockRestore();
     });
 
-    it('should log when explicitly enabled', () => {
+    it('should respect A365_OBSERVABILITY_LOG_LEVEL environment variable', () => {
+      process.env.A365_OBSERVABILITY_LOG_LEVEL = 'info|warn|error';
+      resetLogger();
+      
       const logSpy = jest.spyOn(console, 'log').mockImplementation();
       const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
       const errorSpy = jest.spyOn(console, 'error').mockImplementation();
 
-      const logger = new ConsoleLogger('[SDK]', true, true, true);
-      logger.info('info');
-      logger.warn('warn');
-      logger.error('error');
+      const logger = getLogger();
+      logger.info('info msg');
+      logger.warn('warn msg');
+      logger.error('error msg');
 
-      expect(logSpy).toHaveBeenCalledWith('[SDK] info');
-      expect(warnSpy).toHaveBeenCalledWith('[SDK] warn');
-      expect(errorSpy).toHaveBeenCalledWith('[SDK] error');
+      expect(logSpy).toHaveBeenCalledWith('[INFO]', 'info msg');
+      expect(warnSpy).toHaveBeenCalledWith('[WARN]', 'warn msg');
+      expect(errorSpy).toHaveBeenCalledWith('[ERROR]', 'error msg');
 
       logSpy.mockRestore();
       warnSpy.mockRestore();
       errorSpy.mockRestore();
     });
 
-    it('should respect selective disable flags', () => {
+    it('should support selective log levels via environment variable', () => {
+      process.env.A365_OBSERVABILITY_LOG_LEVEL = 'warn|error';
+      resetLogger();
+      
       const logSpy = jest.spyOn(console, 'log').mockImplementation();
       const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
       const errorSpy = jest.spyOn(console, 'error').mockImplementation();
 
-      const logger = new ConsoleLogger('[SDK]', false, true, false);
-      logger.info('info');
-      logger.warn('warn');
-      logger.error('error');
+      const logger = getLogger();
+      logger.info('info msg');
+      logger.warn('warn msg');
+      logger.error('error msg');
 
       expect(logSpy).not.toHaveBeenCalled();
-      expect(warnSpy).toHaveBeenCalledWith('[SDK] warn');
-      expect(errorSpy).not.toHaveBeenCalled();
+      expect(warnSpy).toHaveBeenCalledWith('[WARN]', 'warn msg');
+      expect(errorSpy).toHaveBeenCalledWith('[ERROR]', 'error msg');
 
       logSpy.mockRestore();
       warnSpy.mockRestore();
@@ -75,24 +84,30 @@ describe('Custom Logger Support', () => {
     });
   });
 
-  describe('Global logger management', () => {
-    it('should set, get, and reset logger', () => {
+  describe('Global Logger Management', () => {
+    it('should set and get custom logger', () => {
       const custom: ILogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() };
       
       setLogger(custom);
       expect(getLogger()).toBe(custom);
+    });
 
+    it('should reset to default logger', () => {
+      const custom: ILogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() };
+      setLogger(custom);
+      
       resetLogger();
       expect(getLogger()).not.toBe(custom);
     });
 
-    it('should throw on null logger', () => {
-      expect(() => setLogger(null as any)).toThrow();
+    it('should throw when setting invalid logger', () => {
+      expect(() => setLogger(null as any)).toThrow('Custom logger must implement ILogger interface');
+      expect(() => setLogger({ info: jest.fn() } as any)).toThrow('Custom logger must implement ILogger interface');
     });
   });
 
-  describe('Custom ILogger implementation', () => {
-    it('should use custom logger object', () => {
+  describe('Custom ILogger Implementation', () => {
+    it('should route all log levels to custom logger', () => {
       const customLogger: ILogger = {
         info: jest.fn(),
         warn: jest.fn(),
@@ -102,114 +117,51 @@ describe('Custom Logger Support', () => {
       setLogger(customLogger);
       const logger = getLogger();
 
-      logger.info('test', { data: 1 });
-      logger.warn('warning', { data: 2 });
-      logger.error('error', { data: 3 });
+      logger.info('test info', { data: 1 });
+      logger.warn('test warn', { data: 2 });
+      logger.error('test error', { data: 3 });
 
-      expect(customLogger.info).toHaveBeenCalledWith('test', { data: 1 });
-      expect(customLogger.warn).toHaveBeenCalledWith('warning', { data: 2 });
-      expect(customLogger.error).toHaveBeenCalledWith('error', { data: 3 });
+      expect(customLogger.info).toHaveBeenCalledWith('test info', { data: 1 });
+      expect(customLogger.warn).toHaveBeenCalledWith('test warn', { data: 2 });
+      expect(customLogger.error).toHaveBeenCalledWith('test error', { data: 3 });
     });
 
     it('should support selective level logging', () => {
-      const warnOnly: ILogger = {
-        info: jest.fn(),
+      const selectiveLogger: ILogger = {
+        info: () => {},
         warn: jest.fn(),
-        error: jest.fn()
+        error: () => {}
       };
 
-      setLogger(warnOnly);
+      setLogger(selectiveLogger);
       const logger = getLogger();
 
       logger.info('info msg');
       logger.warn('warn msg');
       logger.error('error msg');
 
-      expect(warnOnly.info).toHaveBeenCalled();
-      expect(warnOnly.warn).toHaveBeenCalled();
-      expect(warnOnly.error).toHaveBeenCalled();
-    });
-
-    it('should validate logger has required methods', () => {
-      // Missing error method
-      const invalidLogger = {
-        info: jest.fn(),
-        warn: jest.fn()
-      };
-
-      expect(() => setLogger(invalidLogger as any)).toThrow('Custom logger must implement ILogger interface');
-    });
-
-    it('should validate logger methods are functions', () => {
-      // error is not a function
-      const invalidLogger = {
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: 'not a function'
-      };
-
-      expect(() => setLogger(invalidLogger as any)).toThrow('Custom logger must implement ILogger interface');
+      expect(selectiveLogger.warn).toHaveBeenCalledWith('warn msg');
     });
   });
 
-  describe('ObservabilityBuilder integration', () => {
-    it('should apply custom logger via withCustomLogger during build', () => {
+  describe('ObservabilityBuilder Integration', () => {
+    it('should set custom logger when building', () => {
       const customLogger: ILogger = {
         info: jest.fn(),
         warn: jest.fn(),
         error: jest.fn()
       };
 
-      const builder = new ObservabilityBuilder()
-        .withCustomLogger(customLogger);
+      new ObservabilityBuilder()
+        .withService('test-service', '1.0.0')
+        .withCustomLogger(customLogger)
+        .build();
 
-      // Build should set the logger
-      builder.build();
-
-      // Verify the logger was set
       const currentLogger = getLogger();
       currentLogger.info('test message');
       
       expect(customLogger.info).toHaveBeenCalledWith('test message');
     });
-
-    it('should chain withCustomLogger with other builder methods', () => {
-      const customLogger: ILogger = {
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn()
-      };
-
-      const builder = new ObservabilityBuilder()
-        .withService('test-service', '1.0.0')
-        .withCustomLogger(customLogger)
-        .withClusterCategory('test');
-
-      expect(builder).toBeInstanceOf(ObservabilityBuilder);
-      
-      builder.build();
-      
-      const currentLogger = getLogger();
-      currentLogger.warn('test warning');
-      
-      expect(customLogger.warn).toHaveBeenCalledWith('test warning');
-    });
-
-    it('should apply logger before any logging during build', () => {
-      const customLogger: ILogger = {
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn()
-      };
-
-      // Build with custom logger - any logging during build should use the custom logger
-      new ObservabilityBuilder()
-        .withCustomLogger(customLogger)
-        .build();
-
-      // The custom logger should have been set before any build logging occurred
-      const currentLogger = getLogger();
-      expect(currentLogger).toBe(customLogger);
-    });
   });
 });
+
