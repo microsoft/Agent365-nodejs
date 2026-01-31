@@ -25,6 +25,7 @@ describe('environment-utils', () => {
   describe('getObservabilityAuthenticationScope', () => {
     it('should return production observability scope when override is not set', () => {
       delete process.env.A365_OBSERVABILITY_SCOPES_OVERRIDE;
+      delete process.env.A365_OBSERVABILITY_SCOPE_OVERRIDE;
 
       const scopes = getObservabilityAuthenticationScope();
 
@@ -33,6 +34,7 @@ describe('environment-utils', () => {
     });
 
     it('should return overridden observability scope when A365_OBSERVABILITY_SCOPES_OVERRIDE is set', () => {
+      delete process.env.A365_OBSERVABILITY_SCOPE_OVERRIDE;
       process.env.A365_OBSERVABILITY_SCOPES_OVERRIDE = 'https://override.example.com/.default';
 
       const scopes = getObservabilityAuthenticationScope();
@@ -41,6 +43,7 @@ describe('environment-utils', () => {
     });
 
     it('should support multiple scopes separated by whitespace', () => {
+      delete process.env.A365_OBSERVABILITY_SCOPE_OVERRIDE;
       process.env.A365_OBSERVABILITY_SCOPES_OVERRIDE = 'scope-one/.default scope-two/.default';
 
       const scopes = getObservabilityAuthenticationScope();
@@ -49,7 +52,35 @@ describe('environment-utils', () => {
     });
 
     it('should fall back to production scope when override is empty or whitespace', () => {
+      delete process.env.A365_OBSERVABILITY_SCOPE_OVERRIDE;
       process.env.A365_OBSERVABILITY_SCOPES_OVERRIDE = '   ';
+
+      const scopes = getObservabilityAuthenticationScope();
+
+      expect(scopes).toEqual([PROD_OBSERVABILITY_SCOPE]);
+    });
+
+    it('should return overridden observability scope when A365_OBSERVABILITY_SCOPE_OVERRIDE is set (singular form for .NET SDK compatibility)', () => {
+      delete process.env.A365_OBSERVABILITY_SCOPES_OVERRIDE;
+      process.env.A365_OBSERVABILITY_SCOPE_OVERRIDE = 'https://override.singular.com/.default';
+
+      const scopes = getObservabilityAuthenticationScope();
+
+      expect(scopes).toEqual(['https://override.singular.com/.default']);
+    });
+
+    it('should prioritize A365_OBSERVABILITY_SCOPE_OVERRIDE (singular) over A365_OBSERVABILITY_SCOPES_OVERRIDE (plural) when both are set', () => {
+      process.env.A365_OBSERVABILITY_SCOPE_OVERRIDE = 'https://singular.example.com/.default';
+      process.env.A365_OBSERVABILITY_SCOPES_OVERRIDE = 'https://plural.example.com/.default';
+
+      const scopes = getObservabilityAuthenticationScope();
+
+      expect(scopes).toEqual(['https://singular.example.com/.default']);
+    });
+
+    it('should fall back to production scope when singular override is empty or whitespace', () => {
+      delete process.env.A365_OBSERVABILITY_SCOPES_OVERRIDE;
+      process.env.A365_OBSERVABILITY_SCOPE_OVERRIDE = '   ';
 
       const scopes = getObservabilityAuthenticationScope();
 

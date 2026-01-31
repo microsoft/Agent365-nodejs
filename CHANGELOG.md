@@ -5,6 +5,17 @@ All notable changes to the Agent365 TypeScript SDK will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Support for `A365_OBSERVABILITY_SCOPE_OVERRIDE` (singular) environment variable for cross-SDK compatibility with .NET SDK (PR #133 parity).
+  - The singular form takes precedence when both singular and plural forms are set
+  - Maintains backward compatibility with existing `A365_OBSERVABILITY_SCOPES_OVERRIDE` (plural) that supports multiple whitespace-separated scopes
+  - Updated documentation in `.env.example` files
+
+### Notes
+- This change maintains full backward compatibility. Existing code using `A365_OBSERVABILITY_SCOPES_OVERRIDE` continues to work without any changes.
+
 ## [1.1.0] - 2025-12-09
 
 ### Changed
