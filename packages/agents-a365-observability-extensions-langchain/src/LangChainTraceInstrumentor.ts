@@ -12,23 +12,18 @@ import {
 import { logger, ObservabilityManager } from "@microsoft/agents-a365-observability";
 import { LangChainTracer } from "./tracer";
 
-export interface LangChainInstrumentationConfig extends InstrumentationConfig {
-  enabled?: boolean;
-  tracerName?: string;
-  tracerVersion?: string;
-}
 
 type CallbackManagerModuleType = typeof CallbackManagerModule;
 
 let isPatched = false;
 
-export class LangChainTraceInstrumentor extends InstrumentationBase<LangChainInstrumentationConfig> {
-  private static _instance: LangChainTraceInstrumentor | null = null;
+class LangChainTraceInstrumentorImpl extends InstrumentationBase<InstrumentationConfig> {
+  private static _instance: LangChainTraceInstrumentorImpl | null = null;
   private _hasBeenEnabled = false;
   protected otelTracer: Tracer;
 
-  constructor(config: LangChainInstrumentationConfig = {}) {
-    if (LangChainTraceInstrumentor._instance !== null) {
+  private constructor() {
+    if (LangChainTraceInstrumentorImpl._instance !== null) {
       throw new Error("LangChainTraceInstrumentor can only be instantiated once.");
     }
 
@@ -40,24 +35,31 @@ export class LangChainTraceInstrumentor extends InstrumentationBase<LangChainIns
     }
 
     super("agent365-langchain-instrumentor", "1.0.0", {
-      enabled: false,
-      ...config
+      enabled: true
     });
 
     this.otelTracer = trace.getTracer(
-      this._config.tracerName ?? "agent365-langchain",
-      this._config.tracerVersion
+      "agent365-langchain",
+      "1.0.0"
     );
 
-    LangChainTraceInstrumentor._instance = this;
+    LangChainTraceInstrumentorImpl._instance = this;
+    logger.info("[LangChainTraceInstrumentor] Initialized and automatically enabled");
   }
 
-  static getInstance(): LangChainTraceInstrumentor | null {
-    return LangChainTraceInstrumentor._instance;
+  static getInstance(): LangChainTraceInstrumentorImpl {
+    if (!LangChainTraceInstrumentorImpl._instance) {
+      LangChainTraceInstrumentorImpl._instance = new LangChainTraceInstrumentorImpl();
+    }
+    return LangChainTraceInstrumentorImpl._instance;
+  }
+
+  static hasInstance(): boolean {
+    return LangChainTraceInstrumentorImpl._instance !== null;
   }
 
   static resetInstance(): void {
-    LangChainTraceInstrumentor._instance = null;
+    LangChainTraceInstrumentorImpl._instance = null;
     isPatched = false;
   }
 
@@ -110,7 +112,7 @@ export class LangChainTraceInstrumentor extends InstrumentationBase<LangChainIns
     return module;
   }
 
-  manuallyInstrument(module: CallbackManagerModuleType): void {
+  manuallyInstrumentImpl(module: CallbackManagerModuleType): void {
     logger.info("Manually instrumenting CallbackManagerModule");
     this.patch(module);
   }
@@ -132,6 +134,52 @@ export class LangChainTraceInstrumentor extends InstrumentationBase<LangChainIns
     this._hasBeenEnabled = false;
     logger.info("[LangChainTraceInstrumentor] Disabled LangChain instrumentation");
     super.disable();
+  }
+}
+
+/**
+ * Static wrapper for LangChain tracing instrumentation
+ */
+export class LangChainTraceInstrumentor {
+  private static throwNotInitialized(): never {
+    throw new Error(
+      "LangChainTraceInstrumentor must be initialized first. "
+      + "Call LangChainTraceInstrumentor.Instrument() before using enable/disable."
+    );
+  }
+
+  /**
+   * Initialize and auto-instrument for LangChain 
+   */
+  static Instrument(module: CallbackManagerModuleType): void {
+    LangChainTraceInstrumentorImpl.getInstance().manuallyInstrumentImpl(module);
+  }
+
+  /**
+   * Enable LangChain instrumentation
+   */
+  static enable(): void {
+    if (!LangChainTraceInstrumentorImpl.hasInstance()) {
+      this.throwNotInitialized();
+    }
+    LangChainTraceInstrumentorImpl.getInstance().enable();
+  }
+
+  /**
+   * Disable LangChain instrumentation
+   */
+  static disable(): void {
+    if (!LangChainTraceInstrumentorImpl.hasInstance()) {
+      this.throwNotInitialized();
+    }
+    LangChainTraceInstrumentorImpl.getInstance().disable();
+  }
+
+  /**
+   * Reset the instrumentor instance (for testing)
+   */
+  static resetInstance(): void {
+    LangChainTraceInstrumentorImpl.resetInstance();
   }
 }
 
