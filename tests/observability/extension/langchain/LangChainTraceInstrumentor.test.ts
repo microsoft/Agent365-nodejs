@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { trace, Tracer } from '@opentelemetry/api';
+import { Tracer } from '@opentelemetry/api';
 import { BaseCallbackHandler } from '@langchain/core/callbacks/base';
 import * as LangChainCallbacks from '@langchain/core/callbacks/manager';
 import { ObservabilityManager } from '@microsoft/agents-a365-observability';
