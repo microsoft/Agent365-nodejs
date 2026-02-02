@@ -152,7 +152,7 @@ export class LangChainTraceInstrumentor {
   /**
    * Initialize and auto-instrument for LangChain 
    */
-  static Instrument(module: CallbackManagerModuleType): void {
+  static instrument(module: CallbackManagerModuleType): void {
     LangChainTraceInstrumentorImpl.getInstance().manuallyInstrumentImpl(module);
   }
 

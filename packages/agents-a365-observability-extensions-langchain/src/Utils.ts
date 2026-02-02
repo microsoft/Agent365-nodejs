@@ -33,7 +33,9 @@ export function setOperationTypeAttribute(operation: string, span: Span) {
 export function setAgentAttributes(run: Run, span: Span) {
   if (isLangGraphAgentInvoke(run)) {
     const agentName = run.name;
-    if (isString(agentName)) span.setAttribute(OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY, agentName);
+    if (isString(agentName)) { 
+      span.setAttribute(OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY, agentName);
+    }
   }
 }
 
@@ -46,7 +48,9 @@ export function setToolAttributes(run: Run, span: Span) {
     return;
   }
 
-  if (isString(run.name)) span.setAttribute(OpenTelemetryConstants.GEN_AI_TOOL_NAME_KEY, run.name);
+  if (isString(run.name))  { 
+    span.setAttribute(OpenTelemetryConstants.GEN_AI_TOOL_NAME_KEY, run.name);
+  }
   if (run.inputs) span.setAttribute(OpenTelemetryConstants.GEN_AI_TOOL_ARGS_KEY, JSON.stringify(run.inputs['input'] ?? run.inputs));
   if (run.outputs?.output?.kwargs?.content) span.setAttribute(OpenTelemetryConstants.GEN_AI_TOOL_CALL_RESULT_KEY, JSON.stringify(run.outputs.output.kwargs.content));
   span.setAttribute(OpenTelemetryConstants.GEN_AI_TOOL_TYPE_KEY, "extension");  
@@ -214,16 +218,19 @@ export function setOutputMessagesAttribute(run: Run, span: Span) {
   }
 }
 
-// Model
-export function setModelAttribute(run: Run, span: Span) {
-  const model =
-    [run.outputs?.generations?.[0]?.[0]?.message?.kwargs?.response_metadata?.model_name,
+// Model - Helper to extract model name from run
+export function getModel(run: Run): string | undefined {
+  return [run.outputs?.generations?.[0]?.[0]?.message?.kwargs?.response_metadata?.model_name,
      run.extra?.metadata?.ls_model_name,
      run.extra?.invocation_params?.model,
      run.extra?.invocation_params?.model_name]
       .map((v) => (v != null ? String(v).trim() : ""))
       .find((v) => v.length > 0);
+}
 
+// Model - Set model attribute on span
+export function setModelAttribute(run: Run, span: Span) {
+  const model = getModel(run);
   if (model) span.setAttribute(OpenTelemetryConstants.GEN_AI_REQUEST_MODEL_KEY, model);
 }
 

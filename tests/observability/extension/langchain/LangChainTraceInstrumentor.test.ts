@@ -35,12 +35,12 @@ describe('LangChainTraceInstrumentor', () => {
 
   it('initializes when Instrument is called', () => {
     expect(() => {
-      LangChainTraceInstrumentor.Instrument(LangChainCallbacks as any);
+      LangChainTraceInstrumentor.instrument(LangChainCallbacks as any);
     }).not.toThrow();
   });
 
   it('can enable/disable after initialization', () => {
-    LangChainTraceInstrumentor.Instrument(LangChainCallbacks as any);
+    LangChainTraceInstrumentor.instrument(LangChainCallbacks as any);
     
     expect(() => {
       LangChainTraceInstrumentor.disable();
@@ -94,7 +94,7 @@ describe('addTracerToHandlers', () => {
 
   it('Patches CallbackManager with LangChainTracer when instrumented', async () => {
     // Initialize first
-    LangChainTraceInstrumentor.Instrument(LangChainCallbacks as any);
+    LangChainTraceInstrumentor.instrument(LangChainCallbacks as any);
 
     // Verify tracing works by checking if LangChainTracer is injected
     const inheritableHandlers: LangChainCallbacks.Callbacks = [];

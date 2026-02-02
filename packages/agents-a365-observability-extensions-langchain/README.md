@@ -27,7 +27,7 @@ ObservabilityManager.start({
 });
 
 // 2) set up langchain auto instrument
-LangChainTraceInstrumentor.Instrument(LangChainCallbacks as any);
+LangChainTraceInstrumentor.instrument(LangChainCallbacks as any);
 
 // 3) Use LangChain; spans are created automatically for all Runnable operations
 const result = await chain.invoke(input);

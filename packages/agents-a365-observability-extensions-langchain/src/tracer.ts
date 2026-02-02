@@ -50,8 +50,17 @@ export class LangChainTracer extends BaseTracer {
       ? trace.setSpanContext(context.active(), parentCtx)
       : context.active();
 
+    let spanName = run.name;
+    if (operation === "invoke_agent") {
+      spanName = `${operation} ${run.name}`;
+    } else if (operation === "execute_tool") {
+      spanName = `${operation} ${run.name}`;
+    } else if (operation === "chat") {
+      spanName = `${operation} ${Utils.getModel(run) || run.name}`.trim();
+    }
+
     const startTime = Date.now();
-    const span = this.tracer.startSpan(run.name, {
+    const span = this.tracer.startSpan(spanName, {
       kind: SpanKind.INTERNAL,
       attributes: { [OpenTelemetryConstants.GEN_AI_SYSTEM_KEY]: "langchain" },
     }, activeContext);
