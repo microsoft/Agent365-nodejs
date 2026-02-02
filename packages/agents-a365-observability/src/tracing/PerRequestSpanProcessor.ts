@@ -11,7 +11,7 @@ import logger from '../utils/logging';
 const DEFAULT_FLUSH_GRACE_MS = 250;
 
 /** Default maximum age (ms) for a trace before forcing flush */
-const DEFAULT_MAX_TRACE_AGE_MS = 30000;
+const DEFAULT_MAX_TRACE_AGE_MS = 30 * 60 * 1000; // 30 minutes
 
 /** Guardrails to prevent unbounded memory growth / export bursts */
 const DEFAULT_MAX_BUFFERED_TRACES = 1000;
