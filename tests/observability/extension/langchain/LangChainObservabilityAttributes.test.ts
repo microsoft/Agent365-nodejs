@@ -322,10 +322,6 @@ describe("LangChain Observability - InferenceScope Attributes", () => {
       Utils.setTokenAttributes(run as Run, mockSpan as Span);
 
       expect(mockSpan.setAttribute).toHaveBeenCalledWith(
-        OpenTelemetryConstants.GEN_AI_REQUEST_MAX_TOKENS_KEY,
-        2048
-      );
-      expect(mockSpan.setAttribute).toHaveBeenCalledWith(
         OpenTelemetryConstants.GEN_AI_USAGE_INPUT_TOKENS_KEY,
         356
       );

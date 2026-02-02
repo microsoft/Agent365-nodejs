@@ -16,29 +16,20 @@ Enable the instrumentation early in your application startup:
 
 ```ts
 import { LangChainTraceInstrumentor } from '@microsoft/agents-a365-observability-extensions-langchain';
+import * as LangChainCallbacks from "@langchain/core/callbacks/manager";
 import { ObservabilityManager } from '@microsoft/agents-a365-observability';
 
-ObservabilityManager.configure({
+// 1) Configure the tracing SDK
+ObservabilityManager.start({
+  serviceName: 'Your Service',
+  serviceVersion: '1.0.0'
   // your exporter/provider configuration
 });
 
-const lcInstr = new LangChainTraceInstrumentor({
-  enabled: true,
-  tracerName: 'agent365-langchain'
-});
+// 2) set up langchain auto instrument
+const instrumentor = new LangChainTraceInstrumentor();
+instrumentor.manuallyInstrument(LangChainCallbacks as any);
 
-lcInstr.enable();
-
-// After this, LangChain Runnable.invoke calls will be traced automatically
+// 3) Use LangChain; spans are created automatically for all Runnable operations
+const result = await chain.invoke(input);
 ```
-
-## Configuration
-
-- `enabled` (default: false): Whether to enable instrumentation on construction.
-- `tracerName`: Custom tracer name.
-- `tracerVersion`: Custom tracer version.
-
-## Notes
-
-- This instrumentation patches `@langchain/core` `Runnable.prototype.invoke` for auto-tracing.
-- Model names are inferred from common fields like `modelName` or `model`.

@@ -3,7 +3,7 @@
 
 import { Run } from "@langchain/core/tracers/base";
 import { Span } from "@opentelemetry/api";
-import { ExecutionType, OpenTelemetryConstants } from "@microsoft/agents-a365-observability";
+import { OpenTelemetryConstants } from "@microsoft/agents-a365-observability";
 
 // Type guards
 export function isString(value: unknown): value is string {
@@ -15,11 +15,11 @@ export function getOperationType(run: Run): string {
   let operation = "unknown";
 
   if (run.run_type === "chain" && isLangGraphAgentInvoke(run)) {
-    operation = "invoke_agent";
+    operation = OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME;
   } else if (run.run_type === "tool") {
-    operation = "execute_tool";
+    operation = OpenTelemetryConstants.EXECUTE_TOOL_OPERATION_NAME;
   } else if (run.run_type === "llm") {
-    operation = "chat"; 
+    operation = OpenTelemetryConstants.CHAT_OPERATION_NAME; 
   }
   return operation;
 }
@@ -33,7 +33,6 @@ export function setOperationTypeAttribute(operation: string, span: Span) {
 export function setAgentAttributes(run: Run, span: Span) {
   if (isLangGraphAgentInvoke(run)) {
     const agentName = run.name;
-    span.setAttribute(OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY, getExecutionType(run));
     if (isString(agentName)) span.setAttribute(OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY, agentName);
   }
 }
@@ -55,39 +54,24 @@ export function setToolAttributes(run: Run, span: Span) {
 }
 
 export function setInputMessagesAttribute(run: Run, span: Span) {
+  const operation = getOperationType(run);
+  if (operation === OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME) {
+    return;
+  }
+
   const messages = run.inputs?.messages;
   if (!Array.isArray(messages)) {
     return;
   }
 
-  // Determine scope type from run_type
-  const isAgentScope = run.run_type === "chain" && isLangGraphAgentInvoke(run);
-  const isInferenceScope = run.run_type === "llm";
-  
-  const preprocess = isInferenceScope ? messages[0] : messages;
+  const preprocess = getScopeType(run) === "inference" ? messages[0] : messages;
   const processed = preprocess?.map((msg: Record<string, unknown>) => {
       const content = extractMessageContent(msg);
       if (!content) return null;
 
       const msgType = getMessageType(msg);
-
-      // InvokeAgentScope: user messages only
-      if (isAgentScope) {
-        if (msgType === "user" || msgType === "human") {
-          return content;
-        }
-      }
-      // InferenceScope: user messages only (exclude system)
-      else if (isInferenceScope) {
-        if (msgType === "user" || msgType === "human") {
-          return content;
-        }
-      }
-      // ExecuteToolScope and others: user messages
-      else {
-        if (msgType === "user" || msgType === "human") {
-          return content;
-        }
+      if (shouldIncludeInputMessage(msgType)) {
+        return content;
       }
       return null;
     })
@@ -138,28 +122,49 @@ function getMessageType(msg: Record<string, unknown>): string {
   return "unknown";
 }
 
-// Helper: Determine execution type
-function getExecutionType(run: Run): ExecutionType {
-  switch(run?.inputs?.messages?.[0]?.role) {
-    case "user":
-      return ExecutionType.HumanToAgent;
-    case "ai":
-      return ExecutionType.Agent2Agent;
-    default: return ExecutionType.Unknown;
-  }  
+// Helper: Determine scope type from run
+function getScopeType(run: Run): "agent" | "tool" | "inference" | "unknown" {
+  if (run.run_type === "chain" && isLangGraphAgentInvoke(run)) {
+    return "agent";
+  } else if (run.run_type === "tool") {
+    return "tool";
+  } else if (run.run_type === "llm") {
+    return "inference";
+  }
+  return "unknown";
+}
+
+// Helper: Check if input message should be included based on scope and message type
+function shouldIncludeInputMessage(msgType: string): boolean {
+  // For input messages: all scopes want user/human messages only
+  return msgType === "user" || msgType === "human";
+}
+
+// Helper: Check if output message should be included based on scope and message type
+function shouldIncludeOutputMessage(scopeType: string, msgType: string): boolean {
+  if (scopeType === "agent" || scopeType === "inference") {
+    // Agent and Inference scopes want assistant/AI messages only
+    return msgType === "ai" || msgType === "assistant";
+  } else if (scopeType === "tool") {
+    // Tool scope wants all output messages
+    return true;
+  }
+  // Default: all messages
+  return true;
 }
 
 export function setOutputMessagesAttribute(run: Run, span: Span) {
+  const operation = getOperationType(run);
+  if (operation === OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME) {
+    return;
+  }
+
   const outputs = run.outputs;
   if (!outputs) {
     return;
   }
 
-  // Determine scope type from run_type
-  const isAgentScope = run.run_type === "chain" && isLangGraphAgentInvoke(run);
-  const isToolScope = run.run_type === "tool";
-  const isInferenceScope = run.run_type === "llm";
-
+  const scopeType = getScopeType(run);
   const messages: string[] = [];
 
   // Direct messages array (used in agent/chain outputs)
@@ -169,25 +174,7 @@ export function setOutputMessagesAttribute(run: Run, span: Span) {
       if (!content) return;
 
       const msgType = getMessageType(msg);
-
-      // InvokeAgentScope: assistant/AI messages only
-      if (isAgentScope) {
-        if (msgType === "ai" || msgType === "assistant") {
-          messages.push(content);
-        }
-      }
-      // ExecuteToolScope: all output messages
-      else if (isToolScope) {
-        messages.push(content);
-      }
-      // InferenceScope: assistant/AI messages only
-      else if (isInferenceScope) {
-        if (msgType === "ai" || msgType === "assistant") {
-          messages.push(content);
-        }
-      }
-      // Default: extract all messages
-      else {
+      if (shouldIncludeOutputMessage(scopeType, msgType)) {
         messages.push(content);
       }
     });
@@ -207,30 +194,12 @@ export function setOutputMessagesAttribute(run: Run, span: Span) {
             }
 
             const msgType = getMessageType(msg);
-
-            // InvokeAgentScope: assistant/AI messages only
-            if (isAgentScope) {
-              if (msgType === "ai" || msgType === "assistant") {
-                messages.push(content);
-              }
-            }
-            // ExecuteToolScope: all messages
-            else if (isToolScope) {
-              messages.push(content);
-            }
-            // InferenceScope: assistant/AI messages only
-            else if (isInferenceScope) {
-              if (msgType === "ai" || msgType === "assistant") {
-                messages.push(content);
-              }
-            }
-            // Default: extract all
-            else {
+            if (shouldIncludeOutputMessage(scopeType, msgType)) {
               messages.push(content);
             }
           }
           // Try direct text property (for generation items)
-          else if (isString(item.text) && isInferenceScope) {
+          else if (isString(item.text) && scopeType === "inference") {
             messages.push(item.text);
           }
         });
@@ -244,25 +213,7 @@ export function setOutputMessagesAttribute(run: Run, span: Span) {
     const content = extractMessageContent(msg);
     if (content) {
       const msgType = getMessageType(msg);
-
-      // InvokeAgentScope: assistant/AI messages only
-      if (isAgentScope) {
-        if (msgType === "ai" || msgType === "assistant") {
-          messages.push(content);
-        }
-      }
-      // ExecuteToolScope: all messages
-      else if (isToolScope) {
-        messages.push(content);
-      }
-      // InferenceScope: assistant/AI messages only
-      else if (isInferenceScope) {
-        if (msgType === "ai" || msgType === "assistant") {
-          messages.push(content);
-        }
-      }
-      // Default: extract all
-      else {
+      if (shouldIncludeOutputMessage(scopeType, msgType)) {
         messages.push(content);
       }
     }
@@ -328,10 +279,6 @@ export function setSystemInstructionsAttribute(run: Run, span: Span) {
 
 // Tokens (input and output)
 export function setTokenAttributes(run: Run, span: Span) {
-  const maxTokens = run.extra?.invocation_params?.max_tokens;
-  if (typeof maxTokens === "number") {
-    span.setAttribute(OpenTelemetryConstants.GEN_AI_REQUEST_MAX_TOKENS_KEY, maxTokens);
-  }
 
   // Try multiple paths to find usage metadata using optional chaining
   const usage = 
