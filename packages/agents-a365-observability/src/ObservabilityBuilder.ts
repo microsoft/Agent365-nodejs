@@ -14,7 +14,7 @@ import { resourceFromAttributes } from '@opentelemetry/resources';
 import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
 import { trace } from '@opentelemetry/api';
 import { ClusterCategory } from '@microsoft/agents-a365-runtime';
-import logger from './utils/logging';
+import logger, { setLogger, type ILogger } from './utils/logging';
 /**
  * Configuration options for Agent 365 Observability Builder
  */
@@ -36,6 +36,12 @@ export interface BuilderOptions {
    */
   exporterOptions?: Partial<Agent365ExporterOptions>;
 
+  /**
+   * Optional custom logger implementation for the observability SDK.
+   * If not provided, the SDK uses the default console logger.
+   * Implement ILogger to integrate with other logging services
+   */
+  customLogger?: ILogger;
 }
 
 /**
@@ -89,6 +95,26 @@ export class ObservabilityBuilder {
       ...(this.options.exporterOptions || {}),
       ...exporterOptions
     };
+    return this;
+  }
+
+  /**
+   * Sets a custom logger implementation for the observability SDK
+   * @param customLogger The custom logger implementation (must implement ILogger interface)
+   * @returns The builder instance for method chaining
+   *
+   * Example with Winston:
+   * ```typescript
+   * const winstonLogger = winston.createLogger({...});
+   * builder.withCustomLogger({
+   *   info: (msg, ...args) => winstonLogger.info(msg, ...args),
+   *   warn: (msg, ...args) => winstonLogger.warn(msg, ...args),
+   *   error: (msg, ...args) => winstonLogger.error(msg, ...args)
+   * });
+   * ```
+   */
+  public withCustomLogger(customLogger: ILogger): ObservabilityBuilder {
+    this.options.customLogger = customLogger;
     return this;
   }
 
@@ -157,6 +183,12 @@ export class ObservabilityBuilder {
     if (this.isBuilt) {
       return this.isBuilt;
     }
+
+    // Apply custom logger if provided
+    if (this.options.customLogger) {
+      setLogger(this.options.customLogger);
+    }
+
     // Create processors in the desired order:
     // 1. baggage enricher (copies baggage -> span attributes)
     const spanProcessor = new SpanProcessor();
