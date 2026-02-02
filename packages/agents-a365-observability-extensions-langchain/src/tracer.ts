@@ -7,7 +7,7 @@ import { isTracingSuppressed } from "@opentelemetry/core";
 import { logger, OpenTelemetryConstants } from "@microsoft/agents-a365-observability";
 import * as Utils from "./Utils";
 
-type RunWithSpan = { run: Run; span: Span; startTime: number };
+type RunWithSpan = { run: Run; span: Span; startTime: number; lastAccessTime: number };
 
 export class LangChainTracer extends BaseTracer {
   private tracer: Tracer;
@@ -39,7 +39,7 @@ export class LangChainTracer extends BaseTracer {
      
     const operation = Utils.getOperationType(run);
 
-        // Skip internal runs
+    // Skip internal runs
     if (run.tags?.includes("langsmith:hidden") || run.name?.startsWith("Branch") || operation === "unknown") {
       logger.info(`Skipping internal run: ${run.name} (parent: ${run.parent_run_id})`);
       return;
@@ -56,7 +56,7 @@ export class LangChainTracer extends BaseTracer {
       attributes: { [OpenTelemetryConstants.GEN_AI_SYSTEM_KEY]: "langchain" },
     }, activeContext);
 
-    this.runs[run.id] = { run, span, startTime };
+    this.runs[run.id] = { run, span, startTime, lastAccessTime: startTime };
   }
 
   protected async _endTrace(run: Run) {
@@ -75,32 +75,36 @@ export class LangChainTracer extends BaseTracer {
       return;
     }
 
-    const { span } = entry;
+    try {
+      const { span } = entry;
+      entry.lastAccessTime = Date.now();
 
-    if (run.error) {     
-      span.setStatus({ code: SpanStatusCode.ERROR });
-      span.setAttribute(OpenTelemetryConstants.ERROR_MESSAGE_KEY, String(run.error));
+      if (run.error) {
+        span.setStatus({ code: SpanStatusCode.ERROR });
+        span.setAttribute(OpenTelemetryConstants.ERROR_MESSAGE_KEY, String(run.error));
 
-    } else {
-      span.setStatus({ code: SpanStatusCode.OK });
+      } else {
+        span.setStatus({ code: SpanStatusCode.OK });
+      }
+
+      // Set all attributes
+      Utils.setOperationTypeAttribute(operation, span);
+      Utils.setAgentAttributes(run, span);
+      Utils.setToolAttributes(run, span);
+      Utils.setInputMessagesAttribute(run, span);
+      Utils.setOutputMessagesAttribute(run, span);
+      Utils.setSystemInstructionsAttribute(run, span);
+      Utils.setModelAttribute(run, span);
+      Utils.setProviderNameAttribute(run, span);
+      Utils.setSessionIdAttribute(run, span);
+      Utils.setTokenAttributes(run, span);
+
+      span.end();
+    } finally {
+      delete this.runs[run.id];
+      delete this.parentByRunId[run.id];
+      await super._endTrace(run);
     }
-
-    // Set all attributes
-    Utils.setOperationTypeAttribute(operation, span);
-    Utils.setAgentAttributes(run, span);
-    Utils.setToolAttributes(run, span);
-    Utils.setInputMessagesAttribute(run, span);
-    Utils.setOutputMessagesAttribute(run, span);
-    Utils.setSystemInstructionsAttribute(run, span);
-    Utils.setModelAttribute(run, span);
-    Utils.setProviderNameAttribute(run, span);
-    Utils.setSessionIdAttribute(run, span);
-    Utils.setTokenAttributes(run, span);
-
-    span.end();
-    delete this.runs[run.id];
-    delete this.parentByRunId[run.id];
-    await super._endTrace(run);
   }
 
   private getNearestParentSpanContext(run: Run) {

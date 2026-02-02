@@ -54,11 +54,6 @@ export function setToolAttributes(run: Run, span: Span) {
 }
 
 export function setInputMessagesAttribute(run: Run, span: Span) {
-  const operation = getOperationType(run);
-  if (operation === OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME) {
-    return;
-  }
-
   const messages = run.inputs?.messages;
   if (!Array.isArray(messages)) {
     return;
@@ -154,11 +149,6 @@ function shouldIncludeOutputMessage(scopeType: string, msgType: string): boolean
 }
 
 export function setOutputMessagesAttribute(run: Run, span: Span) {
-  const operation = getOperationType(run);
-  if (operation === OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME) {
-    return;
-  }
-
   const outputs = run.outputs;
   if (!outputs) {
     return;
@@ -279,18 +269,17 @@ export function setSystemInstructionsAttribute(run: Run, span: Span) {
 
 // Tokens (input and output)
 export function setTokenAttributes(run: Run, span: Span) {
-
-  // Try multiple paths to find usage metadata using optional chaining
+  // Try multiple paths to find usage metadata (LLM direct/kwargs/response_metadata, agent calls, and chain/model_request outputs)
   const usage = 
-    run.outputs?.generations?.[0]?.[0]?.message?.usage_metadata || //llm - direct usage_metadata
-    run.outputs?.generations?.[0]?.[0]?.message?.kwargs?.usage_metadata || //llm - kwargs.usage_metadata
-    run.outputs?.generations?.[0]?.[0]?.message?.kwargs?.response_metadata?.tokenUsage || //llm - response_metadata
-    run.outputs?.messages?.[1]?.usage_metadata || // agent call
+    run.outputs?.generations?.[0]?.[0]?.message?.usage_metadata ||
+    run.outputs?.generations?.[0]?.[0]?.message?.kwargs?.usage_metadata ||
+    run.outputs?.generations?.[0]?.[0]?.message?.kwargs?.response_metadata?.tokenUsage ||
+    run.outputs?.messages?.[1]?.usage_metadata ||
     run.outputs?.message?.response_metadata?.usage ||
     run.outputs?.message?.response_metadata?.tokenUsage ||
     run.outputs?.messages
       ?.map((msg: Record<string, unknown>) => (msg.response_metadata as Record<string, unknown> | undefined)?.tokenUsage)
-      .filter(Boolean)[0];  //mode_request, chain
+      .filter(Boolean)[0];
 
   if (!usage || typeof usage !== "object") {
     return;

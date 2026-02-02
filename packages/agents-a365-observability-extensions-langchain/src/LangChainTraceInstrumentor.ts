@@ -15,11 +15,10 @@ import { LangChainTracer } from "./tracer";
 
 type CallbackManagerModuleType = typeof CallbackManagerModule;
 
-let isPatched = false;
-
 class LangChainTraceInstrumentorImpl extends InstrumentationBase<InstrumentationConfig> {
   private static _instance: LangChainTraceInstrumentorImpl | null = null;
   private _hasBeenEnabled = false;
+  private _isPatched = false;
   protected otelTracer: Tracer;
 
   private constructor() {
@@ -59,8 +58,10 @@ class LangChainTraceInstrumentorImpl extends InstrumentationBase<Instrumentation
   }
 
   static resetInstance(): void {
+    if (LangChainTraceInstrumentorImpl._instance) {
+      LangChainTraceInstrumentorImpl._instance._isPatched = false;
+    }
     LangChainTraceInstrumentorImpl._instance = null;
-    isPatched = false;
   }
 
   protected init(): InstrumentationModuleDefinition {
@@ -80,12 +81,12 @@ class LangChainTraceInstrumentorImpl extends InstrumentationBase<Instrumentation
     }
 
     this._unwrap(CallbackManager, "_configureSync");
-    isPatched = false;
+    this._isPatched = false;
     logger.info("[LangChainTraceInstrumentor] Unpatched OTEL LangChain instrumentation");
   }
 
   patch(module: CallbackManagerModuleType): CallbackManagerModuleType {
-    if (isPatched) {
+    if (this._isPatched) {
       return module;
     }
 
@@ -108,7 +109,7 @@ class LangChainTraceInstrumentorImpl extends InstrumentationBase<Instrumentation
     });
 
     logger.info("[LangChainTraceInstrumentor] Patched OTEL LangChain instrumentation");
-    isPatched = true;
+    this._isPatched = true;
     return module;
   }
 
