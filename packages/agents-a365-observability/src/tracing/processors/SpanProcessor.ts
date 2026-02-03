@@ -5,7 +5,7 @@
 import { Context, propagation, Span } from '@opentelemetry/api';
 import { SpanProcessor as BaseSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import { ReadableSpan } from '@opentelemetry/sdk-trace-base';
-import { OpenTelemetryConstants } from '../constants';
+import { OpenTelemetryConstants, OperationSource } from '../constants';
 import { GENERIC_ATTRIBUTES, INVOKE_AGENT_ATTRIBUTES } from './util';
 
 /**
@@ -67,6 +67,14 @@ export class SpanProcessor implements BaseSpanProcessor {
     const targetKeys = new Set<string>(GENERIC_ATTRIBUTES);
     if (isInvokeAgent) {
       INVOKE_AGENT_ATTRIBUTES.forEach(key => targetKeys.add(key));
+    }
+
+    // Set operation source - coalesce baggage value with SDK default
+    if (!existingAttrs.has(OpenTelemetryConstants.OPERATION_SOURCE_KEY)) {
+      const operationSource =
+        baggageMap.get(OpenTelemetryConstants.OPERATION_SOURCE_KEY) ||
+        OperationSource.SDK;
+        span.setAttribute(OpenTelemetryConstants.OPERATION_SOURCE_KEY, operationSource);
     }
 
     // Copy baggage to span attributes
