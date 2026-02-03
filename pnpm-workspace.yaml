@@ -78,6 +78,9 @@ overrides:
   # Zod
   "zod": "^4.1.12"
 
+  # Brace expansion
+  "@isaacs/brace-expansion": "^5.0.1"
+
   # Development dependencies - align versions
   "@types/uuid": "^9.0.0"
   "uuid": "^10.0.0"
