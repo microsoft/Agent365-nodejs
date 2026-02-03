@@ -22,10 +22,12 @@ const adapter = new CloudAdapter(authConfig);
 
 const app = express();
 app.use(express.json());
-app.use(authorizeJWT(authConfig));
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+app.use(authorizeJWT(authConfig) as any);
 
 app.post('/api/messages', async (req: Request, res: Response) => {
-  await adapter.process(req, res, async (context) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await adapter.process(req, res as any, async (context) => {
     const app = agentApplication;
     await app.run(context);
   });
