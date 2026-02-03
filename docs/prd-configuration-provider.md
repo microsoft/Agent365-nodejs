@@ -24,7 +24,7 @@ The Agent365 SDK currently relies on environment variables for all configuration
 3. **Scattered Access**: `process.env` is accessed in 15+ locations across 4 packages
 4. **Testing Friction**: Tests must manipulate `process.env` directly, risking pollution
 5. **No Validation**: Settings are parsed at point-of-use with no centralized validation
-6. **No Lazy Loading**: Some settings are read repeatedly instead of cached
+6. **No Dynamic Resolution**: Settings cannot vary based on request context (e.g., async local storage)
 
 ### User Stories
 
@@ -111,17 +111,22 @@ packages/agents-a365-observability/src/
 
 Configuration is distributed across packages with an **inheritance-based** design. Each package defines only its own settings, and child configurations inherit from parent configurations.
 
+**Key Design Choice**: Overrides are **functions** that are called on each property access. This enables:
+- **Dynamic resolution**: Functions can read from async context (e.g., OpenTelemetry baggage) per-request
+- **Multi-tenant support**: Different values returned based on current request context
+- **Simpler implementation**: No caching/lazy evaluation needed
+
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         Runtime Package                              │
-│  ┌─────────────────┐  ┌─────────────────────────────────────────┐  │
-│  │  Lazy<T>        │  │  IConfigurationProvider<T>              │  │
-│  │  (utility)      │  │  (generic base interface)               │  │
-│  └─────────────────┘  └─────────────────────────────────────────┘  │
+│  ┌─────────────────────────────────────────────────────────────┐   │
+│  │  IConfigurationProvider<T>                                   │   │
+│  │  (generic base interface)                                    │   │
+│  └─────────────────────────────────────────────────────────────┘   │
 │  ┌─────────────────────────────────────────────────────────────┐   │
 │  │  RuntimeConfiguration                                        │   │
-│  │  - clusterCategory                                          │   │
-│  │  - isDevelopmentEnvironment                                 │   │
+│  │  - clusterCategory (calls override function or reads env)   │   │
+│  │  - isDevelopmentEnvironment (derived)                       │   │
 │  └─────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────┘
                               │ extends
@@ -147,30 +152,6 @@ Configuration is distributed across packages with an **inheritance-based** desig
 
 ### 3.2 Core Components (Runtime Package)
 
-#### Lazy<T> Utility Class
-
-```typescript
-// packages/agents-a365-runtime/src/configuration/Lazy.ts
-
-/**
- * Lazy evaluation wrapper - computes value on first access, then caches.
- */
-export class Lazy<T> {
-  private _value?: T;
-  private _evaluated = false;
-
-  constructor(private readonly factory: () => T) {}
-
-  get value(): T {
-    if (!this._evaluated) {
-      this._value = this.factory();
-      this._evaluated = true;
-    }
-    return this._value as T;
-  }
-}
-```
-
 #### IConfigurationProvider<T> Interface
 
 ```typescript
@@ -193,11 +174,12 @@ export interface IConfigurationProvider<T> {
 import { ClusterCategory } from '../power-platform-api-discovery';
 
 /**
- * Runtime configuration options - all optional.
+ * Runtime configuration options - all optional functions.
+ * Functions are called on each property access, enabling dynamic resolution.
  * Unset values fall back to environment variables.
  */
 export type RuntimeConfigurationOptions = {
-  clusterCategory?: ClusterCategory;
+  clusterCategory?: () => ClusterCategory;
 };
 ```
 
@@ -208,27 +190,25 @@ export type RuntimeConfigurationOptions = {
 
 import { ClusterCategory } from '../power-platform-api-discovery';
 import { RuntimeConfigurationOptions } from './RuntimeConfigurationOptions';
-import { Lazy } from './Lazy';
 
 /**
  * Base configuration class for Agent365 SDK.
  * Other packages extend this to add their own settings.
+ *
+ * Override functions are called on each property access, enabling dynamic
+ * resolution from async context (e.g., OpenTelemetry baggage) per-request.
  */
 export class RuntimeConfiguration {
   protected readonly overrides: RuntimeConfigurationOptions;
-
-  private readonly _clusterCategory = new Lazy<ClusterCategory>(() =>
-    this.overrides.clusterCategory
-      ?? (process.env.CLUSTER_CATEGORY?.toLowerCase() as ClusterCategory)
-      ?? 'prod'
-  );
 
   constructor(overrides?: RuntimeConfigurationOptions) {
     this.overrides = overrides ?? {};
   }
 
   get clusterCategory(): ClusterCategory {
-    return this._clusterCategory.value;
+    return this.overrides.clusterCategory?.()
+      ?? (process.env.CLUSTER_CATEGORY?.toLowerCase() as ClusterCategory)
+      ?? 'prod';
   }
 
   get isDevelopmentEnvironment(): boolean {
@@ -244,7 +224,6 @@ export class RuntimeConfiguration {
 
 import { IConfigurationProvider } from './IConfigurationProvider';
 import { RuntimeConfiguration } from './RuntimeConfiguration';
-import { Lazy } from './Lazy';
 
 /**
  * Default provider that returns environment-based configuration.
@@ -253,14 +232,14 @@ import { Lazy } from './Lazy';
 export class DefaultConfigurationProvider<T extends RuntimeConfiguration>
   implements IConfigurationProvider<T> {
 
-  private readonly _configuration: Lazy<T>;
+  private readonly _configuration: T;
 
   constructor(factory: () => T) {
-    this._configuration = new Lazy(factory);
+    this._configuration = factory();
   }
 
   getConfiguration(): T {
-    return this._configuration.value;
+    return this._configuration;
   }
 }
 
@@ -282,10 +261,11 @@ import { RuntimeConfigurationOptions } from '@microsoft/agents-a365-runtime';
 
 /**
  * Tooling configuration options - extends runtime options.
+ * All overrides are functions called on each property access.
  */
 export type ToolingConfigurationOptions = RuntimeConfigurationOptions & {
-  mcpPlatformEndpoint?: string;
-  mcpPlatformAuthenticationScope?: string;
+  mcpPlatformEndpoint?: () => string;
+  mcpPlatformAuthenticationScope?: () => string;
 };
 ```
 
@@ -294,7 +274,7 @@ export type ToolingConfigurationOptions = RuntimeConfigurationOptions & {
 ```typescript
 // packages/agents-a365-tooling/src/configuration/ToolingConfiguration.ts
 
-import { RuntimeConfiguration, Lazy } from '@microsoft/agents-a365-runtime';
+import { RuntimeConfiguration } from '@microsoft/agents-a365-runtime';
 import { ToolingConfigurationOptions } from './ToolingConfigurationOptions';
 
 /**
@@ -307,18 +287,6 @@ export class ToolingConfiguration extends RuntimeConfiguration {
     return this.overrides as ToolingConfigurationOptions;
   }
 
-  private readonly _mcpPlatformEndpoint = new Lazy<string>(() =>
-    this.toolingOverrides.mcpPlatformEndpoint
-      ?? process.env.MCP_PLATFORM_ENDPOINT
-      ?? 'https://agent365.svc.cloud.microsoft'
-  );
-
-  private readonly _mcpPlatformAuthenticationScope = new Lazy<string>(() =>
-    this.toolingOverrides.mcpPlatformAuthenticationScope
-      ?? process.env.MCP_PLATFORM_AUTHENTICATION_SCOPE
-      ?? 'ea9ffc3e-8a23-4a7d-836d-234d7c7565c1/.default'
-  );
-
   constructor(overrides?: ToolingConfigurationOptions) {
     super(overrides);
   }
@@ -326,11 +294,15 @@ export class ToolingConfiguration extends RuntimeConfiguration {
   // Inherited: clusterCategory, isDevelopmentEnvironment
 
   get mcpPlatformEndpoint(): string {
-    return this._mcpPlatformEndpoint.value;
+    return this.toolingOverrides.mcpPlatformEndpoint?.()
+      ?? process.env.MCP_PLATFORM_ENDPOINT
+      ?? 'https://agent365.svc.cloud.microsoft';
   }
 
   get mcpPlatformAuthenticationScope(): string {
-    return this._mcpPlatformAuthenticationScope.value;
+    return this.toolingOverrides.mcpPlatformAuthenticationScope?.()
+      ?? process.env.MCP_PLATFORM_AUTHENTICATION_SCOPE
+      ?? 'ea9ffc3e-8a23-4a7d-836d-234d7c7565c1/.default';
   }
 }
 ```
@@ -358,18 +330,19 @@ import { RuntimeConfigurationOptions } from '@microsoft/agents-a365-runtime';
 
 /**
  * Observability configuration options - extends runtime options.
+ * All overrides are functions called on each property access.
  */
 export type ObservabilityConfigurationOptions = RuntimeConfigurationOptions & {
-  observabilityAuthenticationScopes?: string[];
-  isObservabilityExporterEnabled?: boolean;
-  isPerRequestExportEnabled?: boolean;
-  useCustomDomainForObservability?: boolean;
-  observabilityDomainOverride?: string | null;
-  observabilityLogLevel?: string;
+  observabilityAuthenticationScopes?: () => string[];
+  isObservabilityExporterEnabled?: () => boolean;
+  isPerRequestExportEnabled?: () => boolean;
+  useCustomDomainForObservability?: () => boolean;
+  observabilityDomainOverride?: () => string | null;
+  observabilityLogLevel?: () => string;
   // Per-Request Processor (Advanced)
-  perRequestMaxTraces?: number;
-  perRequestMaxSpansPerTrace?: number;
-  perRequestMaxConcurrentExports?: number;
+  perRequestMaxTraces?: () => number;
+  perRequestMaxSpansPerTrace?: () => number;
+  perRequestMaxConcurrentExports?: () => number;
 };
 ```
 
@@ -378,7 +351,7 @@ export type ObservabilityConfigurationOptions = RuntimeConfigurationOptions & {
 ```typescript
 // packages/agents-a365-observability/src/configuration/ObservabilityConfiguration.ts
 
-import { RuntimeConfiguration, Lazy } from '@microsoft/agents-a365-runtime';
+import { RuntimeConfiguration } from '@microsoft/agents-a365-runtime';
 import { ObservabilityConfigurationOptions } from './ObservabilityConfigurationOptions';
 
 /**
@@ -390,74 +363,6 @@ export class ObservabilityConfiguration extends RuntimeConfiguration {
     return this.overrides as ObservabilityConfigurationOptions;
   }
 
-  private readonly _observabilityAuthenticationScopes = new Lazy<readonly string[]>(() => {
-    if (this.observabilityOverrides.observabilityAuthenticationScopes !== undefined) {
-      return this.observabilityOverrides.observabilityAuthenticationScopes;
-    }
-    const override = process.env.A365_OBSERVABILITY_SCOPES_OVERRIDE;
-    if (override?.trim()) {
-      return override.trim().split(/\s+/);
-    }
-    return ['https://api.powerplatform.com/.default'];
-  });
-
-  private readonly _isObservabilityExporterEnabled = new Lazy<boolean>(() => {
-    if (this.observabilityOverrides.isObservabilityExporterEnabled !== undefined) {
-      return this.observabilityOverrides.isObservabilityExporterEnabled;
-    }
-    const value = process.env.ENABLE_A365_OBSERVABILITY_EXPORTER?.toLowerCase() ?? '';
-    return ['true', '1', 'yes', 'on'].includes(value);
-  });
-
-  private readonly _isPerRequestExportEnabled = new Lazy<boolean>(() => {
-    if (this.observabilityOverrides.isPerRequestExportEnabled !== undefined) {
-      return this.observabilityOverrides.isPerRequestExportEnabled;
-    }
-    const value = process.env.ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT?.toLowerCase() ?? '';
-    return ['true', '1', 'yes', 'on'].includes(value);
-  });
-
-  private readonly _useCustomDomainForObservability = new Lazy<boolean>(() => {
-    if (this.observabilityOverrides.useCustomDomainForObservability !== undefined) {
-      return this.observabilityOverrides.useCustomDomainForObservability;
-    }
-    const value = process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN?.toLowerCase() ?? '';
-    return ['true', '1', 'yes', 'on'].includes(value);
-  });
-
-  private readonly _observabilityDomainOverride = new Lazy<string | null>(() => {
-    if (this.observabilityOverrides.observabilityDomainOverride !== undefined) {
-      return this.observabilityOverrides.observabilityDomainOverride;
-    }
-    const override = process.env.A365_OBSERVABILITY_DOMAIN_OVERRIDE;
-    if (override?.trim()) {
-      return override.trim().replace(/\/+$/, '');
-    }
-    return null;
-  });
-
-  private readonly _observabilityLogLevel = new Lazy<string>(() =>
-    this.observabilityOverrides.observabilityLogLevel
-      ?? process.env.A365_OBSERVABILITY_LOG_LEVEL
-      ?? 'none'
-  );
-
-  // Per-Request Processor settings
-  private readonly _perRequestMaxTraces = new Lazy<number>(() =>
-    this.observabilityOverrides.perRequestMaxTraces
-      ?? parseInt(process.env.A365_PER_REQUEST_MAX_TRACES ?? '1000', 10)
-  );
-
-  private readonly _perRequestMaxSpansPerTrace = new Lazy<number>(() =>
-    this.observabilityOverrides.perRequestMaxSpansPerTrace
-      ?? parseInt(process.env.A365_PER_REQUEST_MAX_SPANS_PER_TRACE ?? '5000', 10)
-  );
-
-  private readonly _perRequestMaxConcurrentExports = new Lazy<number>(() =>
-    this.observabilityOverrides.perRequestMaxConcurrentExports
-      ?? parseInt(process.env.A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS ?? '20', 10)
-  );
-
   constructor(overrides?: ObservabilityConfigurationOptions) {
     super(overrides);
   }
@@ -465,31 +370,76 @@ export class ObservabilityConfiguration extends RuntimeConfiguration {
   // Inherited: clusterCategory, isDevelopmentEnvironment
 
   get observabilityAuthenticationScopes(): readonly string[] {
-    return this._observabilityAuthenticationScopes.value;
+    const result = this.observabilityOverrides.observabilityAuthenticationScopes?.();
+    if (result !== undefined) {
+      return result;
+    }
+    const override = process.env.A365_OBSERVABILITY_SCOPES_OVERRIDE;
+    if (override?.trim()) {
+      return override.trim().split(/\s+/);
+    }
+    return ['https://api.powerplatform.com/.default'];
   }
+
   get isObservabilityExporterEnabled(): boolean {
-    return this._isObservabilityExporterEnabled.value;
+    const result = this.observabilityOverrides.isObservabilityExporterEnabled?.();
+    if (result !== undefined) {
+      return result;
+    }
+    const value = process.env.ENABLE_A365_OBSERVABILITY_EXPORTER?.toLowerCase() ?? '';
+    return ['true', '1', 'yes', 'on'].includes(value);
   }
+
   get isPerRequestExportEnabled(): boolean {
-    return this._isPerRequestExportEnabled.value;
+    const result = this.observabilityOverrides.isPerRequestExportEnabled?.();
+    if (result !== undefined) {
+      return result;
+    }
+    const value = process.env.ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT?.toLowerCase() ?? '';
+    return ['true', '1', 'yes', 'on'].includes(value);
   }
+
   get useCustomDomainForObservability(): boolean {
-    return this._useCustomDomainForObservability.value;
+    const result = this.observabilityOverrides.useCustomDomainForObservability?.();
+    if (result !== undefined) {
+      return result;
+    }
+    const value = process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN?.toLowerCase() ?? '';
+    return ['true', '1', 'yes', 'on'].includes(value);
   }
+
   get observabilityDomainOverride(): string | null {
-    return this._observabilityDomainOverride.value;
+    const result = this.observabilityOverrides.observabilityDomainOverride?.();
+    if (result !== undefined) {
+      return result;
+    }
+    const override = process.env.A365_OBSERVABILITY_DOMAIN_OVERRIDE;
+    if (override?.trim()) {
+      return override.trim().replace(/\/+$/, '');
+    }
+    return null;
   }
+
   get observabilityLogLevel(): string {
-    return this._observabilityLogLevel.value;
+    return this.observabilityOverrides.observabilityLogLevel?.()
+      ?? process.env.A365_OBSERVABILITY_LOG_LEVEL
+      ?? 'none';
   }
+
+  // Per-Request Processor settings
   get perRequestMaxTraces(): number {
-    return this._perRequestMaxTraces.value;
+    return this.observabilityOverrides.perRequestMaxTraces?.()
+      ?? parseInt(process.env.A365_PER_REQUEST_MAX_TRACES ?? '1000', 10);
   }
+
   get perRequestMaxSpansPerTrace(): number {
-    return this._perRequestMaxSpansPerTrace.value;
+    return this.observabilityOverrides.perRequestMaxSpansPerTrace?.()
+      ?? parseInt(process.env.A365_PER_REQUEST_MAX_SPANS_PER_TRACE ?? '5000', 10);
   }
+
   get perRequestMaxConcurrentExports(): number {
-    return this._perRequestMaxConcurrentExports.value;
+    return this.observabilityOverrides.perRequestMaxConcurrentExports?.()
+      ?? parseInt(process.env.A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS ?? '20', 10);
   }
 }
 ```
@@ -499,23 +449,16 @@ export class ObservabilityConfiguration extends RuntimeConfiguration {
 ```typescript
 // packages/agents-a365-tooling-extensions-openai/src/configuration/OpenAIToolingConfiguration.ts
 
-import { Lazy } from '@microsoft/agents-a365-runtime';
 import { ToolingConfiguration, ToolingConfigurationOptions } from '@microsoft/agents-a365-tooling';
 
 export type OpenAIToolingConfigurationOptions = ToolingConfigurationOptions & {
-  openAIModel?: string;
+  openAIModel?: () => string;
 };
 
 export class OpenAIToolingConfiguration extends ToolingConfiguration {
   protected get openAIToolingOverrides(): OpenAIToolingConfigurationOptions {
     return this.overrides as OpenAIToolingConfigurationOptions;
   }
-
-  private readonly _openAIModel = new Lazy<string>(() =>
-    this.openAIToolingOverrides.openAIModel
-      ?? process.env.OPENAI_MODEL
-      ?? 'gpt-4'
-  );
 
   constructor(overrides?: OpenAIToolingConfigurationOptions) {
     super(overrides);
@@ -524,7 +467,9 @@ export class OpenAIToolingConfiguration extends ToolingConfiguration {
   // Inherited: clusterCategory, isDevelopmentEnvironment, mcpPlatformEndpoint, mcpPlatformAuthenticationScope
 
   get openAIModel(): string {
-    return this._openAIModel.value;
+    return this.openAIToolingOverrides.openAIModel?.()
+      ?? process.env.OPENAI_MODEL
+      ?? 'gpt-4';
   }
 }
 ```
@@ -537,11 +482,27 @@ const config = new ToolingConfiguration();
 console.log(config.clusterCategory);      // From runtime (inherited)
 console.log(config.mcpPlatformEndpoint);  // From tooling
 
-// With overrides at any level
+// With static overrides - wrap values in arrow functions
 const config = new OpenAIToolingConfiguration({
-  clusterCategory: 'gov',                 // Runtime setting
-  mcpPlatformEndpoint: 'https://custom',  // Tooling setting
-  openAIModel: 'gpt-4-turbo'              // OpenAI setting
+  clusterCategory: () => 'gov',                    // Runtime setting
+  mcpPlatformEndpoint: () => 'https://custom',     // Tooling setting
+  openAIModel: () => 'gpt-4-turbo'                 // OpenAI setting
+});
+
+// Dynamic overrides - read from async context per-request
+import { context } from '@opentelemetry/api';
+
+const TENANT_CONFIG_KEY = context.createKey('tenant-config');
+
+const config = new ToolingConfiguration({
+  clusterCategory: () => {
+    const tenantConfig = context.active().getValue(TENANT_CONFIG_KEY);
+    return tenantConfig?.clusterCategory ?? 'prod';
+  },
+  mcpPlatformEndpoint: () => {
+    const tenantConfig = context.active().getValue(TENANT_CONFIG_KEY);
+    return tenantConfig?.mcpEndpoint ?? 'https://agent365.svc.cloud.microsoft';
+  }
 });
 
 // Inject into services
@@ -571,7 +532,6 @@ class McpToolServerConfigurationService {
 packages/agents-a365-runtime/src/
 ├── configuration/
 │   ├── index.ts
-│   ├── Lazy.ts
 │   ├── IConfigurationProvider.ts
 │   ├── RuntimeConfigurationOptions.ts
 │   ├── RuntimeConfiguration.ts
@@ -608,9 +568,11 @@ packages/agents-a365-tooling-extensions-openai/src/
 | **Package ownership** | Each package defines only its own settings |
 | **Single options object** | All overrides passed to constructor at once |
 | **Type-safe** | Options types extend each other |
-| **Lazy evaluation** | Settings computed once on first access |
+| **Dynamic resolution** | Functions called on each access - can read from async context |
+| **Multi-tenant support** | Different values returned based on current request context |
 | **Env var fallback** | Works out of the box without any overrides |
 | **Testable** | Can override any setting for testing |
+| **Simple implementation** | No caching/lazy evaluation complexity |
 
 ---
 
@@ -704,15 +666,13 @@ describe('isAgent365ExporterEnabled', () => {
 **Step 1: Runtime Package (Foundation)**
 
 Create configuration module in `agents-a365-runtime`:
-- `Lazy.ts` - Lazy evaluation utility
 - `IConfigurationProvider.ts` - Generic provider interface
-- `RuntimeConfigurationOptions.ts` - Options type
+- `RuntimeConfigurationOptions.ts` - Options type (functions)
 - `RuntimeConfiguration.ts` - Base configuration class
 - `DefaultConfigurationProvider.ts` - Default provider implementation
 - `index.ts` - Re-exports
 
 Write unit tests:
-- `tests/runtime/configuration/Lazy.test.ts`
 - `tests/runtime/configuration/RuntimeConfiguration.test.ts`
 - `tests/runtime/configuration/DefaultConfigurationProvider.test.ts`
 
@@ -887,8 +847,8 @@ export function isAgent365ExporterEnabled(): boolean {
 ```typescript
 // Runtime Configuration Tests
 describe('RuntimeConfiguration', () => {
-  it('should use override value when provided', () => {
-    const config = new RuntimeConfiguration({ clusterCategory: 'gov' });
+  it('should use override function when provided', () => {
+    const config = new RuntimeConfiguration({ clusterCategory: () => 'gov' });
     expect(config.clusterCategory).toBe('gov');
   });
 
@@ -904,38 +864,58 @@ describe('RuntimeConfiguration', () => {
     expect(config.clusterCategory).toBe('prod');
   });
 
-  it('should cache value after first access (lazy evaluation)', () => {
-    const config = new RuntimeConfiguration({});
-    const first = config.clusterCategory;
-    process.env.CLUSTER_CATEGORY = 'changed';
-    const second = config.clusterCategory;
-    expect(first).toBe(second); // Cached, not re-read
+  it('should call override function on each access (dynamic resolution)', () => {
+    let callCount = 0;
+    const config = new RuntimeConfiguration({
+      clusterCategory: () => {
+        callCount++;
+        return 'gov';
+      }
+    });
+    config.clusterCategory;
+    config.clusterCategory;
+    expect(callCount).toBe(2); // Called twice, not cached
+  });
+
+  it('should support dynamic values from async context', () => {
+    let currentTenant = 'tenant-a';
+    const tenantConfigs = {
+      'tenant-a': 'prod',
+      'tenant-b': 'gov'
+    };
+    const config = new RuntimeConfiguration({
+      clusterCategory: () => tenantConfigs[currentTenant] as ClusterCategory
+    });
+
+    expect(config.clusterCategory).toBe('prod');
+    currentTenant = 'tenant-b';
+    expect(config.clusterCategory).toBe('gov'); // Dynamic!
   });
 
   it('should derive isDevelopmentEnvironment from clusterCategory', () => {
-    expect(new RuntimeConfiguration({ clusterCategory: 'local' }).isDevelopmentEnvironment).toBe(true);
-    expect(new RuntimeConfiguration({ clusterCategory: 'dev' }).isDevelopmentEnvironment).toBe(true);
-    expect(new RuntimeConfiguration({ clusterCategory: 'prod' }).isDevelopmentEnvironment).toBe(false);
+    expect(new RuntimeConfiguration({ clusterCategory: () => 'local' }).isDevelopmentEnvironment).toBe(true);
+    expect(new RuntimeConfiguration({ clusterCategory: () => 'dev' }).isDevelopmentEnvironment).toBe(true);
+    expect(new RuntimeConfiguration({ clusterCategory: () => 'prod' }).isDevelopmentEnvironment).toBe(false);
   });
 });
 
 // Tooling Configuration Tests (Inheritance)
 describe('ToolingConfiguration', () => {
   it('should inherit runtime settings', () => {
-    const config = new ToolingConfiguration({ clusterCategory: 'gov' });
+    const config = new ToolingConfiguration({ clusterCategory: () => 'gov' });
     expect(config.clusterCategory).toBe('gov');
     expect(config.isDevelopmentEnvironment).toBe(false);
   });
 
   it('should have tooling-specific settings', () => {
-    const config = new ToolingConfiguration({ mcpPlatformEndpoint: 'https://custom.endpoint' });
+    const config = new ToolingConfiguration({ mcpPlatformEndpoint: () => 'https://custom.endpoint' });
     expect(config.mcpPlatformEndpoint).toBe('https://custom.endpoint');
   });
 
   it('should allow overriding both runtime and tooling settings', () => {
     const config = new ToolingConfiguration({
-      clusterCategory: 'dev',
-      mcpPlatformEndpoint: 'https://dev.endpoint'
+      clusterCategory: () => 'dev',
+      mcpPlatformEndpoint: () => 'https://dev.endpoint'
     });
     expect(config.clusterCategory).toBe('dev');
     expect(config.isDevelopmentEnvironment).toBe(true);
@@ -946,12 +926,12 @@ describe('ToolingConfiguration', () => {
 // Observability Configuration Tests (Inheritance)
 describe('ObservabilityConfiguration', () => {
   it('should inherit runtime settings', () => {
-    const config = new ObservabilityConfiguration({ clusterCategory: 'gov' });
+    const config = new ObservabilityConfiguration({ clusterCategory: () => 'gov' });
     expect(config.clusterCategory).toBe('gov');
   });
 
   it('should have observability-specific settings', () => {
-    const config = new ObservabilityConfiguration({ isObservabilityExporterEnabled: true });
+    const config = new ObservabilityConfiguration({ isObservabilityExporterEnabled: () => true });
     expect(config.isObservabilityExporterEnabled).toBe(true);
   });
 });
@@ -979,7 +959,6 @@ Before implementing the configuration provider:
 
 | Component | Required Coverage |
 |-----------|------------------|
-| `Lazy.ts` | 100% |
 | `RuntimeConfiguration.ts` | 100% |
 | `RuntimeConfigurationOptions.ts` | N/A (type only) |
 | `IConfigurationProvider.ts` | N/A (interface only) |
@@ -1079,7 +1058,8 @@ This rule should be added as part of Phase 4 after all `process.env` reads have 
 
 | Question | Decision |
 |----------|----------|
-| Should `Lazy<T>` be exported publicly? | **No** - Keep internal for now |
+| Override values or functions? | **Functions only** - Enables dynamic resolution from async context |
+| Caching/lazy evaluation? | **No caching** - Functions called on each access for multi-tenant support |
 | Should we add validation? | **No** - Keep current behavior |
 | Should hardcoded constants become configurable? | **No** - Keep as hardcoded constants |
 | Per-request processor settings? | **Include from start** - Maintain consistency |
