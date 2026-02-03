@@ -113,3 +113,23 @@ export class OpenTelemetryConstants {
   public static readonly CUSTOM_PARENT_SPAN_ID_KEY = 'custom.parent.span.id';
   public static readonly CUSTOM_SPAN_NAME_KEY = 'custom.span.name';
 }
+
+/**
+ * Enumeration representing the source of an operation.
+ */
+export enum OperationSource {
+  /**
+   * Operation executed by SDK.
+   */
+  SDK = 'SDK',
+
+  /**
+   * Operation executed by Gateway.
+   */
+  GATEWAY = 'Gateway',
+
+  /**
+   * Operation executed by MCP Server.
+   */
+  MCP_SERVER = 'MCPServer',
+}
