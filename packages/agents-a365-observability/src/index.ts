@@ -15,6 +15,9 @@ export { BaggageBuilder, BaggageScope } from './tracing/middleware/BaggageBuilde
 // Per-request export utilities
 export { runWithExportToken, getExportToken } from './tracing/context/token-context';
 
+// Parent span context utilities
+export { ParentSpanRef, runWithParentSpanRef, createContextWithParentSpanRef } from './tracing/context/parent-span-context';
+
 // Contracts and interfaces
 export {
   ExecutionType,
@@ -38,4 +41,4 @@ export { OpenTelemetryScope } from './tracing/scopes/OpenTelemetryScope';
 export { ExecuteToolScope } from './tracing/scopes/ExecuteToolScope';
 export { InvokeAgentScope } from './tracing/scopes/InvokeAgentScope';
 export { InferenceScope} from './tracing/scopes/InferenceScope';
-export { logger, formatError } from './utils/logging';
+export { logger, setLogger, getLogger, resetLogger, ILogger, formatError } from './utils/logging';

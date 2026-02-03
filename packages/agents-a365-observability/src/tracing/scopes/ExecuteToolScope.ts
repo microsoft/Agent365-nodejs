@@ -5,6 +5,7 @@
 import { SpanKind } from '@opentelemetry/api';
 import { OpenTelemetryScope } from './OpenTelemetryScope';
 import { ToolCallDetails, AgentDetails, TenantDetails, SourceMetadata } from '../contracts';
+import { ParentSpanRef } from '../context/parent-span-context';
 import { OpenTelemetryConstants } from '../constants';
 
 /**
@@ -18,6 +19,7 @@ export class ExecuteToolScope extends OpenTelemetryScope {
    * @param tenantDetails The tenant details
    * @param conversationId Optional conversation id to tag on the span (`gen_ai.conversation.id`).
    * @param sourceMetadata Optional source metadata; only `name` (channel name) and `description` (channel link/URL) are used for tagging.
+   * @param parentSpanRef Optional explicit parent span reference for cross-async-boundary tracing.
    * @returns A new ExecuteToolScope instance.
    */
   public static start(
@@ -25,9 +27,10 @@ export class ExecuteToolScope extends OpenTelemetryScope {
     agentDetails: AgentDetails,
     tenantDetails: TenantDetails,
     conversationId?: string,
-    sourceMetadata?: Pick<SourceMetadata, "name" | "description"> 
+    sourceMetadata?: Pick<SourceMetadata, "name" | "description">,
+    parentSpanRef?: ParentSpanRef
   ): ExecuteToolScope {
-    return new ExecuteToolScope(details, agentDetails, tenantDetails, conversationId, sourceMetadata);
+    return new ExecuteToolScope(details, agentDetails, tenantDetails, conversationId, sourceMetadata, parentSpanRef);
   }
 
   private constructor(
@@ -35,14 +38,16 @@ export class ExecuteToolScope extends OpenTelemetryScope {
     agentDetails: AgentDetails,
     tenantDetails: TenantDetails,
     conversationId?: string,
-    sourceMetadata?: Pick<SourceMetadata, "name" | "description">
+    sourceMetadata?: Pick<SourceMetadata, "name" | "description">,
+    parentSpanRef?: ParentSpanRef
   ) {
     super(
       SpanKind.INTERNAL,
       OpenTelemetryConstants.EXECUTE_TOOL_OPERATION_NAME,
       `${OpenTelemetryConstants.EXECUTE_TOOL_OPERATION_NAME} ${details.toolName}`,
       agentDetails,
-      tenantDetails
+      tenantDetails,
+      parentSpanRef
     );
 
     // Destructure the details object to match C# pattern
