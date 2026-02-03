@@ -75,6 +75,9 @@ catalog:
   "uuid": "^9.0.1"
 
 overrides:
+  # Brace expansion - update for bug fixes
+  "@isaacs/brace-expansion": "^5.0.1"
+
   # Zod
   "zod": "^4.1.12"
 
