@@ -1,8 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { McpToolServerConfigurationService, McpClientTool, Utility, MCPServerConfig, ToolOptions, ToolingConfiguration, defaultToolingConfigurationProvider } from '@microsoft/agents-a365-tooling';
+import { McpToolServerConfigurationService, McpClientTool, Utility, MCPServerConfig, ToolOptions } from '@microsoft/agents-a365-tooling';
 import { AgenticAuthenticationService, Utility as RuntimeUtility, IConfigurationProvider } from '@microsoft/agents-a365-runtime';
+import { ClaudeToolingConfiguration, defaultClaudeToolingConfigurationProvider } from './configuration';
 
 // Agents SDK
 import { TurnContext, Authorization } from '@microsoft/agents-hosting';
@@ -16,15 +17,15 @@ import type { McpServerConfig, Options } from '@anthropic-ai/claude-agent-sdk';
  */
 export class McpToolRegistrationService {
   private readonly configService: McpToolServerConfigurationService;
-  private readonly configProvider: IConfigurationProvider<ToolingConfiguration>;
+  private readonly configProvider: IConfigurationProvider<ClaudeToolingConfiguration>;
   private readonly orchestratorName: string = "Claude";
 
   /**
    * Construct a McpToolRegistrationService.
-   * @param configProvider Optional configuration provider. Defaults to defaultToolingConfigurationProvider if not specified.
+   * @param configProvider Optional configuration provider. Defaults to defaultClaudeToolingConfigurationProvider if not specified.
    */
-  constructor(configProvider?: IConfigurationProvider<ToolingConfiguration>) {
-    this.configProvider = configProvider ?? defaultToolingConfigurationProvider;
+  constructor(configProvider?: IConfigurationProvider<ClaudeToolingConfiguration>) {
+    this.configProvider = configProvider ?? defaultClaudeToolingConfigurationProvider;
     this.configService = new McpToolServerConfigurationService(this.configProvider);
   }
 
