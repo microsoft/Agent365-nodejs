@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 import { TurnContext } from '@microsoft/agents-hosting';
+import { ChannelAccount } from '@microsoft/agents-activity';
 import { Utility as RuntimeUtility } from '@microsoft/agents-a365-runtime';
 
 import { ToolOptions } from './contracts';
@@ -13,6 +14,8 @@ export class Utility {
   public static readonly HEADER_CHANNEL_ID = 'x-ms-channel-id';
   public static readonly HEADER_SUBCHANNEL_ID = 'x-ms-subchannel-id';
   public static readonly HEADER_USER_AGENT = 'User-Agent';
+  /** Header name for sending the agent identifier to MCP platform for logging/analytics. */
+  public static readonly HEADER_AGENT_ID = 'x-ms-agentid';
 
   /**
    * Compose standard headers for MCP tooling requests.
@@ -32,6 +35,12 @@ export class Utility {
 
     if (authToken) {
       headers['Authorization'] = `Bearer ${authToken}`;
+
+      // Add x-ms-agentid header with priority fallback (only when authToken present)
+      const agentId = this.resolveAgentIdForHeader(authToken, turnContext);
+      if (agentId) {
+        headers[Utility.HEADER_AGENT_ID] = agentId;
+      }
     }
 
     const channelId = turnContext?.activity?.channelId as string | undefined;
@@ -50,6 +59,39 @@ export class Utility {
     }
 
     return headers;
+  }
+
+  /**
+   * Resolves the best available agent identifier for the x-ms-agentid header.
+   * Priority: TurnContext.agenticAppBlueprintId > token claims (xms_par_app_azp > appid > azp) > application name
+   *
+   * Note: This differs from RuntimeUtility.ResolveAgentIdentity() which resolves the agenticAppId
+   * for URL construction. This method resolves the identifier specifically for the x-ms-agentid header.
+   *
+   * @param authToken The authentication token to extract claims from.
+   * @param turnContext Optional TurnContext to extract agent blueprint ID from.
+   * @returns Agent ID string or undefined if not available.
+   */
+  private static resolveAgentIdForHeader(
+    authToken: string,
+    turnContext?: TurnContext
+  ): string | undefined {
+    // Priority 1: Agent Blueprint ID from TurnContext
+    // The 'from' property may include agenticAppBlueprintId when the request originates from an agentic app
+    const blueprintId = (turnContext?.activity?.from as ChannelAccount | undefined)?.agenticAppBlueprintId;
+    if (blueprintId) {
+      return blueprintId;
+    }
+
+    // Priority 2 & 3: Agent ID from token (xms_par_app_azp > appid > azp)
+    // Single decode, checks claims in priority order
+    const agentId = RuntimeUtility.getAgentIdFromToken(authToken);
+    if (agentId) {
+      return agentId;
+    }
+
+    // Priority 4: Application name from npm_package_name or package.json
+    return RuntimeUtility.getApplicationName();
   }
 
   /**
