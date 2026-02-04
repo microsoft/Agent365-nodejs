@@ -14,6 +14,24 @@ import { RuntimeConfigurationOptions } from './RuntimeConfigurationOptions';
 export class RuntimeConfiguration {
   protected readonly overrides: RuntimeConfigurationOptions;
 
+  /**
+   * Parse an environment variable as a boolean.
+   * Recognizes 'true', '1', 'yes', 'on' (case-insensitive) as true; all other values as false.
+   */
+  public static parseEnvBoolean(envValue: string | undefined): boolean {
+    if (!envValue) return false;
+    return ['true', '1', 'yes', 'on'].includes(envValue.toLowerCase());
+  }
+
+  /**
+   * Parse an environment variable as an integer, returning fallback if invalid or not set.
+   */
+  public static parseEnvInt(envValue: string | undefined, fallback: number): number {
+    if (!envValue) return fallback;
+    const parsed = parseInt(envValue, 10);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+
   constructor(overrides?: RuntimeConfigurationOptions) {
     this.overrides = overrides ?? {};
   }

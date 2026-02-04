@@ -255,3 +255,81 @@ describe('defaultRuntimeConfigurationProvider', () => {
     expect(config).toBeInstanceOf(RuntimeConfiguration);
   });
 });
+
+describe('RuntimeConfiguration static utility methods', () => {
+  describe('parseEnvBoolean', () => {
+    it('should return false for undefined', () => {
+      expect(RuntimeConfiguration.parseEnvBoolean(undefined)).toBe(false);
+    });
+
+    it('should return false for empty string', () => {
+      expect(RuntimeConfiguration.parseEnvBoolean('')).toBe(false);
+    });
+
+    it.each(['true', 'TRUE', 'True', 'TrUe'])('should return true for "%s"', (value) => {
+      expect(RuntimeConfiguration.parseEnvBoolean(value)).toBe(true);
+    });
+
+    it.each(['1'])('should return true for "%s"', (value) => {
+      expect(RuntimeConfiguration.parseEnvBoolean(value)).toBe(true);
+    });
+
+    it.each(['yes', 'YES', 'Yes'])('should return true for "%s"', (value) => {
+      expect(RuntimeConfiguration.parseEnvBoolean(value)).toBe(true);
+    });
+
+    it.each(['on', 'ON', 'On'])('should return true for "%s"', (value) => {
+      expect(RuntimeConfiguration.parseEnvBoolean(value)).toBe(true);
+    });
+
+    it.each(['false', 'FALSE', '0', 'no', 'off', 'random', 'anything'])('should return false for "%s"', (value) => {
+      expect(RuntimeConfiguration.parseEnvBoolean(value)).toBe(false);
+    });
+  });
+
+  describe('parseEnvInt', () => {
+    it('should return fallback for undefined', () => {
+      expect(RuntimeConfiguration.parseEnvInt(undefined, 42)).toBe(42);
+    });
+
+    it('should return fallback for empty string', () => {
+      expect(RuntimeConfiguration.parseEnvInt('', 42)).toBe(42);
+    });
+
+    it('should parse valid integer string', () => {
+      expect(RuntimeConfiguration.parseEnvInt('123', 0)).toBe(123);
+    });
+
+    it('should parse negative integer', () => {
+      expect(RuntimeConfiguration.parseEnvInt('-456', 0)).toBe(-456);
+    });
+
+    it('should parse zero', () => {
+      expect(RuntimeConfiguration.parseEnvInt('0', 42)).toBe(0);
+    });
+
+    it('should return fallback for non-numeric string', () => {
+      expect(RuntimeConfiguration.parseEnvInt('abc', 42)).toBe(42);
+    });
+
+    it('should return fallback for NaN result', () => {
+      expect(RuntimeConfiguration.parseEnvInt('not-a-number', 99)).toBe(99);
+    });
+
+    it('should truncate decimal values (parseInt behavior)', () => {
+      expect(RuntimeConfiguration.parseEnvInt('3.14', 0)).toBe(3);
+    });
+
+    it('should parse string with leading zeros', () => {
+      expect(RuntimeConfiguration.parseEnvInt('007', 0)).toBe(7);
+    });
+
+    it('should return fallback for Infinity', () => {
+      expect(RuntimeConfiguration.parseEnvInt('Infinity', 42)).toBe(42);
+    });
+
+    it('should handle large integers', () => {
+      expect(RuntimeConfiguration.parseEnvInt('1000000', 0)).toBe(1000000);
+    });
+  });
+});

@@ -11,15 +11,6 @@ const DEFAULT_MAX_SPANS_PER_TRACE = 5000;
 const DEFAULT_MAX_CONCURRENT_EXPORTS = 20;
 
 /**
- * Parse an environment variable as an integer, returning fallback if invalid or not set.
- */
-function parseEnvInt(envValue: string | undefined, fallback: number): number {
-  if (!envValue) return fallback;
-  const parsed = parseInt(envValue, 10);
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
-
-/**
  * Configuration for observability package.
  * Inherits runtime settings and adds observability-specific settings.
  */
@@ -52,29 +43,20 @@ export class ObservabilityConfiguration extends RuntimeConfiguration {
 
   get isObservabilityExporterEnabled(): boolean {
     const result = this.observabilityOverrides.isObservabilityExporterEnabled?.();
-    if (result !== undefined) {
-      return result;
-    }
-    const value = process.env.ENABLE_A365_OBSERVABILITY_EXPORTER?.toLowerCase() ?? '';
-    return ['true', '1', 'yes', 'on'].includes(value);
+    if (result !== undefined) return result;
+    return RuntimeConfiguration.parseEnvBoolean(process.env.ENABLE_A365_OBSERVABILITY_EXPORTER);
   }
 
   get isPerRequestExportEnabled(): boolean {
     const result = this.observabilityOverrides.isPerRequestExportEnabled?.();
-    if (result !== undefined) {
-      return result;
-    }
-    const value = process.env.ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT?.toLowerCase() ?? '';
-    return ['true', '1', 'yes', 'on'].includes(value);
+    if (result !== undefined) return result;
+    return RuntimeConfiguration.parseEnvBoolean(process.env.ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT);
   }
 
   get useCustomDomainForObservability(): boolean {
     const result = this.observabilityOverrides.useCustomDomainForObservability?.();
-    if (result !== undefined) {
-      return result;
-    }
-    const value = process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN?.toLowerCase() ?? '';
-    return ['true', '1', 'yes', 'on'].includes(value);
+    if (result !== undefined) return result;
+    return RuntimeConfiguration.parseEnvBoolean(process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN);
   }
 
   get observabilityDomainOverride(): string | null {
@@ -98,16 +80,16 @@ export class ObservabilityConfiguration extends RuntimeConfiguration {
   // Per-Request Processor settings
   get perRequestMaxTraces(): number {
     return this.observabilityOverrides.perRequestMaxTraces?.()
-      ?? parseEnvInt(process.env.A365_PER_REQUEST_MAX_TRACES, DEFAULT_MAX_BUFFERED_TRACES);
+      ?? RuntimeConfiguration.parseEnvInt(process.env.A365_PER_REQUEST_MAX_TRACES, DEFAULT_MAX_BUFFERED_TRACES);
   }
 
   get perRequestMaxSpansPerTrace(): number {
     return this.observabilityOverrides.perRequestMaxSpansPerTrace?.()
-      ?? parseEnvInt(process.env.A365_PER_REQUEST_MAX_SPANS_PER_TRACE, DEFAULT_MAX_SPANS_PER_TRACE);
+      ?? RuntimeConfiguration.parseEnvInt(process.env.A365_PER_REQUEST_MAX_SPANS_PER_TRACE, DEFAULT_MAX_SPANS_PER_TRACE);
   }
 
   get perRequestMaxConcurrentExports(): number {
     return this.observabilityOverrides.perRequestMaxConcurrentExports?.()
-      ?? parseEnvInt(process.env.A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS, DEFAULT_MAX_CONCURRENT_EXPORTS);
+      ?? RuntimeConfiguration.parseEnvInt(process.env.A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS, DEFAULT_MAX_CONCURRENT_EXPORTS);
   }
 }
