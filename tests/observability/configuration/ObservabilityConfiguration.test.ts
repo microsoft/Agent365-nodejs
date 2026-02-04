@@ -52,6 +52,18 @@ describe('ObservabilityConfiguration', () => {
       expect(config.observabilityAuthenticationScopes).toEqual(['https://api.powerplatform.com/.default']);
     });
 
+    it('should fall back to default when env var is empty string', () => {
+      process.env.A365_OBSERVABILITY_SCOPES_OVERRIDE = '';
+      const config = new ObservabilityConfiguration();
+      expect(config.observabilityAuthenticationScopes).toEqual(['https://api.powerplatform.com/.default']);
+    });
+
+    it('should fall back to default when env var is whitespace only', () => {
+      process.env.A365_OBSERVABILITY_SCOPES_OVERRIDE = '   ';
+      const config = new ObservabilityConfiguration();
+      expect(config.observabilityAuthenticationScopes).toEqual(['https://api.powerplatform.com/.default']);
+    });
+
     it('should return readonly array', () => {
       const config = new ObservabilityConfiguration({});
       const scopes = config.observabilityAuthenticationScopes;
@@ -266,6 +278,19 @@ describe('ObservabilityConfiguration', () => {
       const config = new ObservabilityConfiguration({});
       expect(config.perRequestMaxTraces).toBe(1000);
     });
+
+    it('should accept negative values from env var', () => {
+      process.env.A365_PER_REQUEST_MAX_TRACES = '-100';
+      const config = new ObservabilityConfiguration({});
+      // Note: Negative values are currently accepted. Consider rejecting for "max" settings.
+      expect(config.perRequestMaxTraces).toBe(-100);
+    });
+
+    it('should accept zero from env var', () => {
+      process.env.A365_PER_REQUEST_MAX_TRACES = '0';
+      const config = new ObservabilityConfiguration({});
+      expect(config.perRequestMaxTraces).toBe(0);
+    });
   });
 
   describe('perRequestMaxSpansPerTrace', () => {
@@ -293,6 +318,19 @@ describe('ObservabilityConfiguration', () => {
       const config = new ObservabilityConfiguration({});
       expect(config.perRequestMaxSpansPerTrace).toBe(5000);
     });
+
+    it('should accept negative values from env var', () => {
+      process.env.A365_PER_REQUEST_MAX_SPANS_PER_TRACE = '-500';
+      const config = new ObservabilityConfiguration({});
+      // Note: Negative values are currently accepted. Consider rejecting for "max" settings.
+      expect(config.perRequestMaxSpansPerTrace).toBe(-500);
+    });
+
+    it('should accept zero from env var', () => {
+      process.env.A365_PER_REQUEST_MAX_SPANS_PER_TRACE = '0';
+      const config = new ObservabilityConfiguration({});
+      expect(config.perRequestMaxSpansPerTrace).toBe(0);
+    });
   });
 
   describe('perRequestMaxConcurrentExports', () => {
@@ -319,6 +357,19 @@ describe('ObservabilityConfiguration', () => {
       process.env.A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS = '';
       const config = new ObservabilityConfiguration({});
       expect(config.perRequestMaxConcurrentExports).toBe(20);
+    });
+
+    it('should accept negative values from env var', () => {
+      process.env.A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS = '-10';
+      const config = new ObservabilityConfiguration({});
+      // Note: Negative values are currently accepted. Consider rejecting for "max" settings.
+      expect(config.perRequestMaxConcurrentExports).toBe(-10);
+    });
+
+    it('should accept zero from env var', () => {
+      process.env.A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS = '0';
+      const config = new ObservabilityConfiguration({});
+      expect(config.perRequestMaxConcurrentExports).toBe(0);
     });
   });
 });
