@@ -86,14 +86,14 @@ describe('Custom Logger Support', () => {
 
   describe('Global Logger Management', () => {
     it('should set and get custom logger', () => {
-      const custom: ILogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() };
+      const custom: ILogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), event: jest.fn() };
       
       setLogger(custom);
       expect(getLogger()).toBe(custom);
     });
 
     it('should reset to default logger', () => {
-      const custom: ILogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() };
+      const custom: ILogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), event: jest.fn() };
       setLogger(custom);
       
       resetLogger();
@@ -111,7 +111,8 @@ describe('Custom Logger Support', () => {
       const customLogger: ILogger = {
         info: jest.fn(),
         warn: jest.fn(),
-        error: jest.fn()
+        error: jest.fn(),
+        event: jest.fn()
       };
 
       setLogger(customLogger);
@@ -130,7 +131,8 @@ describe('Custom Logger Support', () => {
       const selectiveLogger: ILogger = {
         info: () => {},
         warn: jest.fn(),
-        error: () => {}
+        error: () => {},
+        event: () => {}
       };
 
       setLogger(selectiveLogger);
@@ -149,7 +151,8 @@ describe('Custom Logger Support', () => {
       const customLogger: ILogger = {
         info: jest.fn(),
         warn: jest.fn(),
-        error: jest.fn()
+        error: jest.fn(),
+        event: jest.fn()
       };
 
       new ObservabilityBuilder()
