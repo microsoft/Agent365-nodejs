@@ -28,6 +28,15 @@ export const DEVELOPMENT_ENVIRONMENT_NAME = 'Development';
  *
  * @returns The authentication scopes for the current environment.
  * @deprecated Use ObservabilityConfiguration.observabilityAuthenticationScopes instead.
+ *
+ * @example
+ * // Before:
+ * import { getObservabilityAuthenticationScope } from '@microsoft/agents-a365-runtime';
+ * const scopes = getObservabilityAuthenticationScope();
+ *
+ * // After:
+ * import { defaultObservabilityConfigurationProvider } from '@microsoft/agents-a365-observability';
+ * const scopes = [...defaultObservabilityConfigurationProvider.getConfiguration().observabilityAuthenticationScopes];
  */
 export function getObservabilityAuthenticationScope(): string[] {
   // Returns production default - use ObservabilityConfiguration for proper env var support
@@ -37,11 +46,18 @@ export function getObservabilityAuthenticationScope(): string[] {
 /**
  * Gets the cluster category from environment variables.
  *
- * Note: For new code, prefer using RuntimeConfiguration.clusterCategory
- *
  * @param configProvider Optional configuration provider. Defaults to defaultRuntimeConfigurationProvider if not specified.
  * @returns The cluster category from CLUSTER_CATEGORY env var, defaults to 'prod'.
  * @deprecated Use RuntimeConfiguration.clusterCategory instead.
+ *
+ * @example
+ * // Before:
+ * import { getClusterCategory } from '@microsoft/agents-a365-runtime';
+ * const cluster = getClusterCategory();
+ *
+ * // After:
+ * import { defaultRuntimeConfigurationProvider } from '@microsoft/agents-a365-runtime';
+ * const cluster = defaultRuntimeConfigurationProvider.getConfiguration().clusterCategory;
  */
 export function getClusterCategory(
   configProvider?: IConfigurationProvider<RuntimeConfiguration>
@@ -53,11 +69,18 @@ export function getClusterCategory(
 /**
  * Returns true if the current environment is a development environment.
  *
- * Note: For new code, prefer using RuntimeConfiguration.isDevelopmentEnvironment
- *
  * @param configProvider Optional configuration provider. Defaults to defaultRuntimeConfigurationProvider if not specified.
  * @returns True if the current environment is development, false otherwise.
  * @deprecated Use RuntimeConfiguration.isDevelopmentEnvironment instead.
+ *
+ * @example
+ * // Before:
+ * import { isDevelopmentEnvironment } from '@microsoft/agents-a365-runtime';
+ * if (isDevelopmentEnvironment()) { ... }
+ *
+ * // After:
+ * import { defaultRuntimeConfigurationProvider } from '@microsoft/agents-a365-runtime';
+ * if (defaultRuntimeConfigurationProvider.getConfiguration().isDevelopmentEnvironment) { ... }
  */
 export function isDevelopmentEnvironment(
   configProvider?: IConfigurationProvider<RuntimeConfiguration>
@@ -71,6 +94,15 @@ export function isDevelopmentEnvironment(
  *
  * @returns The MCP platform authentication scope.
  * @deprecated Use ToolingConfiguration.mcpPlatformAuthenticationScope instead.
+ *
+ * @example
+ * // Before:
+ * import { getMcpPlatformAuthenticationScope } from '@microsoft/agents-a365-runtime';
+ * const scope = getMcpPlatformAuthenticationScope();
+ *
+ * // After:
+ * import { defaultToolingConfigurationProvider } from '@microsoft/agents-a365-tooling';
+ * const scope = defaultToolingConfigurationProvider.getConfiguration().mcpPlatformAuthenticationScope;
  */
 export function getMcpPlatformAuthenticationScope(): string {
   // Returns production default - use ToolingConfiguration for proper env var support
