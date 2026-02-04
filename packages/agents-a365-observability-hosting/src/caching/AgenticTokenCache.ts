@@ -14,7 +14,18 @@ interface CacheEntry {
     acquiredOn?: number;
 }
 
-class AgenticTokenCache {
+/**
+ * Cache for agentic authentication tokens used by observability services.
+ *
+ * For custom configuration, create a new instance with your own configuration provider:
+ * ```typescript
+ * const customCache = new AgenticTokenCache(myConfigProvider);
+ * ```
+ *
+ * For default configuration using environment variables, use the exported
+ * `AgenticTokenCacheInstance` singleton.
+ */
+export class AgenticTokenCache {
     private readonly _map = new Map<string, CacheEntry>();
     private readonly _defaultRefreshSkewMs = 60_000;
     private readonly _defaultMaxTokenAgeMs = 3_600_000;
@@ -206,5 +217,21 @@ class AgenticTokenCache {
     }
 }
 
+/**
+ * Default singleton instance of AgenticTokenCache using the default configuration provider.
+ *
+ * This instance uses `defaultObservabilityConfigurationProvider` which reads from
+ * environment variables. It is suitable for:
+ * - Single-tenant deployments
+ * - Multi-tenant deployments using dynamic override functions in the configuration
+ *
+ * **For custom configuration:** Create a new `AgenticTokenCache` instance with your
+ * own `IConfigurationProvider<ObservabilityConfiguration>`:
+ * ```typescript
+ * import { AgenticTokenCache } from '@microsoft/agents-a365-observability-hosting';
+ *
+ * const customCache = new AgenticTokenCache(myCustomConfigProvider);
+ * ```
+ */
 export const AgenticTokenCacheInstance = new AgenticTokenCache();
 export default AgenticTokenCacheInstance;
