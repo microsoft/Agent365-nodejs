@@ -68,7 +68,7 @@ export A365_OBSERVABILITY_LOG_LEVEL=error
 
 ```typescript
 import { Builder } from '@microsoft/agents-a365-observability';
-import { ILogger } from '@microsoft/agents-a365-observability/src/utils/logging';
+import { ILogger } from '@microsoft/agents-a365-observability';
 
 // Create your custom logger
 const myLogger: ILogger = {
@@ -208,7 +208,7 @@ new Builder()
 Change logger at any point in your application:
 
 ```typescript
-import { setLogger } from '@microsoft/agents-a365-observability/src/utils/logging';
+import { setLogger } from '@microsoft/agents-a365-observability';
 
 // Production: verbose logging
 if (process.env.NODE_ENV === 'production') {
@@ -232,7 +232,7 @@ if (process.env.NODE_ENV === 'development') {
 You can also reset to the default logger:
 
 ```typescript
-import { resetLogger } from '@microsoft/agents-a365-observability/src/utils/logging';
+import { resetLogger } from '@microsoft/agents-a365-observability';
 
 // Reset to default logger (respects A365_OBSERVABILITY_LOG_LEVEL env var)
 resetLogger();
