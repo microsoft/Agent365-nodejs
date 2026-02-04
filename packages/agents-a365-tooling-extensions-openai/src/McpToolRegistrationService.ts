@@ -3,7 +3,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { McpToolServerConfigurationService, Utility, ToolOptions, ChatHistoryMessage } from '@microsoft/agents-a365-tooling';
-import { AgenticAuthenticationService, Utility as RuntimeUtility, OperationResult, OperationError, IConfigurationProvider } from '@microsoft/agents-a365-runtime';
+import { AgenticAuthenticationService, OperationResult, OperationError, IConfigurationProvider } from '@microsoft/agents-a365-runtime';
 import { OpenAIToolingConfiguration, defaultOpenAIToolingConfigurationProvider } from './configuration';
 
 // Agents SDK
@@ -62,9 +62,8 @@ export class McpToolRegistrationService {
     // Validate the authentication token
     Utility.ValidateAuthToken(authToken);
 
-    const agenticAppId = RuntimeUtility.ResolveAgentIdentity(turnContext, authToken);
     const options: ToolOptions = { orchestratorName: this.orchestratorName };
-    const servers = await this.configService.listToolServers(agenticAppId, authToken, options);
+    const servers = await this.configService.listToolServers(turnContext, authorization, authHandlerName, authToken, options);
     const mcpServers: MCPServerStreamableHttp[] = [];
 
     for (const server of servers) {

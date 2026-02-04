@@ -3,7 +3,7 @@
 
 // Microsoft Agent 365 SDK
 import { McpToolServerConfigurationService, Utility, ToolOptions, ChatHistoryMessage } from '@microsoft/agents-a365-tooling';
-import { AgenticAuthenticationService, Utility as RuntimeUtility, OperationResult, OperationError, IConfigurationProvider } from '@microsoft/agents-a365-runtime';
+import { AgenticAuthenticationService, OperationResult, OperationError, IConfigurationProvider } from '@microsoft/agents-a365-runtime';
 import { LangChainToolingConfiguration, defaultLangChainToolingConfigurationProvider } from './configuration';
 
 // Agents SDK
@@ -74,9 +74,8 @@ export class McpToolRegistrationService {
     // Validate the authentication token
     Utility.ValidateAuthToken(authToken);
 
-    const agenticAppId = RuntimeUtility.ResolveAgentIdentity(turnContext, authToken);
     const options: ToolOptions = { orchestratorName: this.orchestratorName };
-    const servers = await this.configService.listToolServers(agenticAppId, authToken, options);
+    const servers = await this.configService.listToolServers(turnContext, authorization, authHandlerName, authToken, options);
     const mcpServers: Record<string, Connection> = {};
 
     for (const server of servers) {
