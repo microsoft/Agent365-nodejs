@@ -46,43 +46,6 @@ export function formatError(error: unknown): string {
   return String(error);
 }
 
-/**
- * Console-based logger adapter that wraps console.log, console.warn, console.error
- */
-class ConsoleLogger implements ILogger {
-  constructor(
-    private prefix = '[A365]',
-    private useConsoleLog = false,
-    private useConsoleWarn = false,
-    private useConsoleError = false
-  ) {}
-
-  info(message: string, ...args: unknown[]): void {
-    if (this.useConsoleLog) {
-      console.log(`${this.prefix} ${message}`, ...args);
-    }
-  }
-
-  warn(message: string, ...args: unknown[]): void {
-    if (this.useConsoleWarn) {
-      console.warn(`${this.prefix} ${message}`, ...args);
-    }
-  }
-
-  error(message: string, ...args: unknown[]): void {
-    if (this.useConsoleError) {
-      console.error(`${this.prefix} ${message}`, ...args);
-    }
-  }
-
-  event(name: string, success: boolean, duration: number): void {
-    const status = success ? 'succeeded' : 'failed';
-    if (this.useConsoleLog || this.useConsoleWarn) {
-      const logFn = success ? console.log : console.warn;
-      logFn(`${this.prefix} Event: ${name} ${status} in ${duration}ms`);
-    }
-  }
-}
 
 /**
  * Default console-based logger implementation with environment variable control
@@ -103,11 +66,9 @@ class ConsoleLogger implements ILogger {
  */
 class DefaultLogger implements ILogger {
   private enabledLogLevels: Set<number>;
-  private consoleLogger: ConsoleLogger;
 
   constructor() {
-    this.enabledLogLevels = this.parseLogLevel(process.env.A365_OBSERVABILITY_LOG_LEVEL || 'none');
-    this.consoleLogger = new ConsoleLogger('[INFO]', false, false, false);
+    this.enabledLogLevels = this.parseLogLevel(process.env.A365_OBSERVABILITY_LOG_LEVEL || 'none');   
   }
 
   private parseLogLevel(level: string): Set<number> {
@@ -156,11 +117,10 @@ class DefaultLogger implements ILogger {
 
   event(name: string, success: boolean, duration: number): void {
     const status = success ? 'succeeded' : 'failed';
-    const prefix = '[EVENT]';
     const logLevelNeeded = success ? 1 : 3;
     if (this.enabledLogLevels.has(logLevelNeeded)) {
       const logFn = success ? console.log : console.error;
-      logFn(`${prefix}: ${name} ${status} in ${duration}ms`);
+      logFn(`[EVENT]: ${name} ${status} in ${duration}ms`);
     }
   }
 }

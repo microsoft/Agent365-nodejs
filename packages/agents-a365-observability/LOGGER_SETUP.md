@@ -94,8 +94,8 @@ The logger also supports event logging with success status and duration:
 
 ```typescript
 // Log event with success and duration
-logger.event('export-operation', true, 1250);  // Outputs: "Event: export-operation succeeded in 1250ms"
-logger.event('export-operation', false, 1250); // Outputs: "Event: export-operation failed in 1250ms"
+logger.event('export-operation', true, 1250);  // Outputs: "[Event]: export-operation succeeded in 1250ms"
+logger.event('export-operation', false, 1250); // Outputs: "[Event]: export-operation failed in 1250ms"
 ```
 
 ### Option 2: Your Existing Logger
@@ -109,36 +109,10 @@ new Builder()
   .withCustomLogger({
     info: (msg, ...args) => myExistingLogger.info(msg, ...args),
     warn: (msg, ...args) => myExistingLogger.warn(msg, ...args),
-    error: (msg, ...args) => myExistingLogger.error(msg, ...args)
+    error: (msg, ...args) => myExistingLogger.error(msg, ...args),
+    event: (name, success, duration) => myExistingLogger.event(name, success, duration)
   })
   .build();
-```
-
-## Selective Logging (Log Only Specific Levels)
-
-### Warn Only
-
-```typescript
-import { Builder, ConsoleLogger } from '@microsoft/agents-a365-observability';
-
-new Builder()
-  .withService('my-agent', '1.0.0')
-  .withCustomLogger(new ConsoleLogger('[A365]', false, true, false))
-  .build();
-
-// Constructor: ConsoleLogger(prefix, enableInfo, enableWarn, enableError)
-```
-
-### Error Only
-
-```typescript
-new ConsoleLogger('[A365]', false, false, true)
-```
-
-### Info Only
-
-```typescript
-new ConsoleLogger('[A365]', true, false, false)
 ```
 
 ### Custom Logic (Filter by Content)
@@ -154,7 +128,12 @@ new Builder()
         console.warn(msg, ...args);
       }
     },
-    error: (msg, ...args) => console.error(msg, ...args)
+    error: (msg, ...args) => console.error(msg, ...args),
+    event: (name, success, duration) => {
+      if (!success) {
+        console.error(`[Event] ${name} failed in ${duration}ms`);
+      }
+    }
   })
   .build();
 ```
@@ -172,7 +151,10 @@ new Builder()
   .withCustomLogger({
     info: (msg, ...args) => appInsights.trackTrace(msg, 1, { args }),
     warn: (msg, ...args) => appInsights.trackTrace(msg, 2, { args }),
-    error: (msg, ...args) => appInsights.trackTrace(msg, 3, { args })
+    error: (msg, ...args) => appInsights.trackTrace(msg, 3, { args }),
+    event: (name, success, duration) => {
+      appInsights.trackEvent('agent-event', { name, success: String(success), duration });
+    }
   })
   .build();
 ```
@@ -197,7 +179,11 @@ new Builder()
   .withCustomLogger({
     info: (msg, ...args) => logger.info(msg, ...args),
     warn: (msg, ...args) => logger.warn(msg, ...args),
-    error: (msg, ...args) => logger.error(msg, ...args)
+    error: (msg, ...args) => logger.error(msg, ...args),
+    event: (name, success, duration) => {
+      const status = success ? 'succeeded' : 'failed';
+      logger.info(`Event: ${name} ${status} in ${duration}ms`);
+    }
   })
   .build();
 ```
@@ -213,6 +199,9 @@ new Builder()
     error: (msg, ...args) => {
       myLoggingService.send('error', msg, args);
       alertingService.notify(msg);  // Alert on errors
+    },
+    event: (name, success, duration) => {
+      myLoggingService.send(success ? 'event-success' : 'event-failure', `${name} in ${duration}ms`, []);
     }
   })
   .build();
@@ -230,7 +219,11 @@ if (process.env.NODE_ENV === 'production') {
   setLogger({
     info: (msg, ...args) => console.log(`[Prod-INFO] ${msg}`, ...args),
     warn: (msg, ...args) => console.warn(`[Prod-WARN] ${msg}`, ...args),
-    error: (msg, ...args) => console.error(`[Prod-ERROR] ${msg}`, ...args)
+    error: (msg, ...args) => console.error(`[Prod-ERROR] ${msg}`, ...args),
+    event: (name, success, duration) => {
+      const status = success ? 'succeeded' : 'failed';
+      console.log(`[Prod-EVENT] ${name} ${status} in ${duration}ms`);
+    }
   });
 }
 
@@ -239,7 +232,12 @@ if (process.env.NODE_ENV === 'development') {
   setLogger({
     info: () => {},
     warn: (msg, ...args) => console.warn(`[Dev-WARN] ${msg}`, ...args),
-    error: (msg, ...args) => console.error(`[Dev-ERROR] ${msg}`, ...args)
+    error: (msg, ...args) => console.error(`[Dev-ERROR] ${msg}`, ...args),
+    event: (name, success, duration) => {
+      if (!success) {
+        console.warn(`[Dev-EVENT] ${name} failed in ${duration}ms`);
+      }
+    }
   });
 }
 ```
@@ -266,32 +264,31 @@ The `Agent365Exporter` logs events at multiple levels using standardized event n
 
 1. **Overall Export Event** (`EXPORT`) - for the entire batch export operation:
    ```
-   Event: agent365-export succeeded in 2500ms
-   Event: agent365-export failed in 2500ms
+   [Event]: agent365-export succeeded in 2500ms
+   [Event]: agent365-export failed in 2500ms
    ```
 
 2. **Group Export Events** (`EXPORT_GROUP`) - for each tenant/agent group:
    ```
-   Event: export-group-tenant-123-agent-456 succeeded in 1200ms
-   Event: export-group-tenant-123-agent-456 failed in 1200ms
+   [Event]: export-group-tenant-123-agent-456 succeeded in 1200ms
+   [Event]: export-group-tenant-123-agent-456 failed in 1200ms
    ```
 
-3. **Skip Span Events** (`SKIP_SPAN_MISSING_IDENTITY`) - when spans are skipped during partitioning:
+3. **Partition Span Events** (`EXPORT_PARTITION_SPAN_BY_IDENTITY`) - for span partitions by identify( only failure will be logged for this event)
    ```
-   Event: export-partition-span-by-identity failed in 0ms
+   [Event]: export-partition-span-by-identity failed in 0ms
    ```
 
-### ExporterEventNames Constants
+### Exporter Event Names
 
-The exporter uses standardized event name constants for consistency:
-
+The exporter uses standardized event name constants for consistency. 
 ```typescript
 import { ExporterEventNames } from '@microsoft/agents-a365-observability';
 
 // Available event names:
 ExporterEventNames.EXPORT                    // 'agent365-export'
 ExporterEventNames.EXPORT_GROUP              // 'export-group' (use with tenant/agent ID)
-ExporterEventNames.SKIP_SPAN_MISSING_IDENTITY // 'export-partition-span-by-identity'
+ExporterEventNames.EXPORT_PARTITION_SPAN_BY_IDENTITY // 'export-partition-span-by-identity'
 ```
 
 ## API Reference
@@ -303,16 +300,6 @@ export interface ILogger {
   warn(message: string, ...args: unknown[]): void;
   error(message: string, ...args: unknown[]): void;
   event(name: string, success: boolean, duration: number): void;
-}
-
-// Classes
-export class ConsoleLogger implements ILogger {
-  constructor(
-    prefix?: string,
-    useConsoleLog?: boolean,
-    useConsoleWarn?: boolean,
-    useConsoleError?: boolean
-  )
 }
 
 // Functions (internal use)
