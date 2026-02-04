@@ -383,4 +383,92 @@ describe('logging', () => {
       expect(consoleLogSpy).toHaveBeenCalledTimes(2);
     });
   });
+
+  describe('setLogger and getLogger', () => {
+    it('should allow setting a custom logger', async () => {
+      const { setLogger, getLogger, logger } = await import('@microsoft/agents-a365-observability/src/utils/logging');
+
+      const customLogger = {
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn()
+      };
+
+      setLogger(customLogger);
+
+      logger.info('Test message', 'arg1');
+      logger.warn('Warning message');
+      logger.error('Error message');
+
+      expect(customLogger.info).toHaveBeenCalledWith('Test message', 'arg1');
+      expect(customLogger.warn).toHaveBeenCalledWith('Warning message');
+      expect(customLogger.error).toHaveBeenCalledWith('Error message');
+
+      // getLogger should return the custom logger
+      expect(getLogger()).toBe(customLogger);
+    });
+
+    it('should throw when setting invalid logger (null)', async () => {
+      const { setLogger } = await import('@microsoft/agents-a365-observability/src/utils/logging');
+
+      expect(() => setLogger(null as never)).toThrow('Custom logger must implement ILogger interface');
+    });
+
+    it('should throw when setting logger missing info method', async () => {
+      const { setLogger } = await import('@microsoft/agents-a365-observability/src/utils/logging');
+
+      const invalidLogger = {
+        warn: jest.fn(),
+        error: jest.fn()
+      };
+
+      expect(() => setLogger(invalidLogger as never)).toThrow('Custom logger must implement ILogger interface');
+    });
+
+    it('should throw when setting logger missing warn method', async () => {
+      const { setLogger } = await import('@microsoft/agents-a365-observability/src/utils/logging');
+
+      const invalidLogger = {
+        info: jest.fn(),
+        error: jest.fn()
+      };
+
+      expect(() => setLogger(invalidLogger as never)).toThrow('Custom logger must implement ILogger interface');
+    });
+
+    it('should throw when setting logger missing error method', async () => {
+      const { setLogger } = await import('@microsoft/agents-a365-observability/src/utils/logging');
+
+      const invalidLogger = {
+        info: jest.fn(),
+        warn: jest.fn()
+      };
+
+      expect(() => setLogger(invalidLogger as never)).toThrow('Custom logger must implement ILogger interface');
+    });
+  });
+
+  describe('resetLogger', () => {
+    it('should reset to default logger', async () => {
+      process.env.A365_OBSERVABILITY_LOG_LEVEL = 'info';
+      const { setLogger, resetLogger, logger } = await import('@microsoft/agents-a365-observability/src/utils/logging');
+
+      const customLogger = {
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn()
+      };
+
+      setLogger(customLogger);
+      logger.info('Custom logger call');
+      expect(customLogger.info).toHaveBeenCalled();
+
+      // Reset to default
+      resetLogger();
+
+      // Now should use default logger (console)
+      logger.info('Default logger call');
+      expect(consoleLogSpy).toHaveBeenCalledWith('[INFO]', 'Default logger call');
+    });
+  });
 });
