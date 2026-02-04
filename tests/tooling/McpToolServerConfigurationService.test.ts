@@ -248,7 +248,7 @@ describe('McpToolServerConfigurationService', () => {
 
       // Assert
       expect(servers).toHaveLength(2);
-      
+
       // First server should have headers preserved
       expect(servers[0].mcpServerName).toBe('serverWithHeaders');
       expect(servers[0].url).toBe('http://localhost:3000/custom-mcp');
@@ -256,11 +256,76 @@ describe('McpToolServerConfigurationService', () => {
         'Authorization': 'Bearer token123',
         'X-Custom-Header': 'custom-value'
       });
-      
+
       // Second server should have undefined headers
       expect(servers[1].mcpServerName).toBe('serverWithoutHeaders');
       expect(servers[1].url).toBe('http://localhost:4000/another-mcp');
       expect(servers[1].headers).toBeUndefined();
+    });
+
+    it('should return empty array and log error when manifest contains invalid JSON', async () => {
+      // Arrange
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue('{ invalid json }');
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+      // Act
+      const servers = await service.listToolServers('test-agent-id', 'mock-auth-token');
+
+      // Assert
+      expect(servers).toHaveLength(0);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Error reading or parsing ToolingManifest.json')
+      );
+    });
+  });
+
+  describe('isDevScenario detection', () => {
+    it.each([
+      ['Development', true],
+      ['development', true],
+      ['DEVELOPMENT', true],
+      ['DeVeLoPmEnT', true],
+    ])('should detect development mode when NODE_ENV is "%s"', async (nodeEnv, expected) => {
+      // Arrange
+      process.env.NODE_ENV = nodeEnv;
+      const manifestContent = { mcpServers: [{ mcpServerName: 'testServer', url: 'http://test.com' }] };
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(manifestContent));
+
+      // Act
+      const servers = await service.listToolServers('test-agent-id', 'mock-auth-token');
+
+      // Assert - if dev scenario, it reads from manifest and returns the server
+      if (expected) {
+        expect(servers).toHaveLength(1);
+        expect(servers[0].mcpServerName).toBe('testServer');
+      }
+    });
+
+    it.each([
+      ['production'],
+      ['Production'],
+      ['PRODUCTION'],
+      ['staging'],
+      ['test'],
+      [''],
+    ])('should use gateway (not manifest) when NODE_ENV is "%s"', async (nodeEnv) => {
+      // Arrange
+      process.env.NODE_ENV = nodeEnv;
+
+      // Act & Assert - In production mode, the service calls the gateway which requires auth token
+      // The error "Authentication token is required" comes from Utility.ValidateAuthToken
+      // which is only called in production mode (gateway path)
+      await expect(service.listToolServers('test-agent-id', '')).rejects.toThrow('Authentication token is required');
+    });
+
+    it('should use gateway (not manifest) when NODE_ENV is undefined', async () => {
+      // Arrange
+      delete process.env.NODE_ENV;
+
+      // Act & Assert - In production mode (default), the service calls the gateway which requires auth token
+      await expect(service.listToolServers('test-agent-id', '')).rejects.toThrow('Authentication token is required');
     });
   });
 });

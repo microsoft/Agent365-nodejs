@@ -7,7 +7,7 @@
 | Status | Draft |
 | Author | Agent365 Team |
 | Created | 2026-02-02 |
-| Last Updated | 2026-02-03 |
+| Last Updated | 2026-02-04 |
 
 ---
 
@@ -44,22 +44,22 @@ The Agent365 SDK currently relies on environment variables for all configuration
 
 | Setting | Env Variable | Default | Type | Used In |
 |---------|--------------|---------|------|---------|
-| Cluster Category | `CLUSTER_CATEGORY` | `'prod'` | `ClusterCategory` | environment-utils.ts |
-| Development Mode | `NODE_ENV` | `''` (prod) | `string` | McpToolServerConfigurationService.ts |
+| Cluster Category | `CLUSTER_CATEGORY` | `'prod'` | `ClusterCategory` | RuntimeConfiguration |
 
 #### Tooling Settings
 
 | Setting | Env Variable | Default | Type | Used In |
 |---------|--------------|---------|------|---------|
-| MCP Platform Endpoint | `MCP_PLATFORM_ENDPOINT` | `'https://agent365.svc.cloud.microsoft'` | `string` | Utility.ts |
-| MCP Platform Auth Scope | `MCP_PLATFORM_AUTHENTICATION_SCOPE` | `'ea9ffc3e-8a23-4a7d-836d-234d7c7565c1/.default'` | `string` | environment-utils.ts |
+| MCP Platform Endpoint | `MCP_PLATFORM_ENDPOINT` | `'https://agent365.svc.cloud.microsoft'` | `string` | ToolingConfiguration |
+| MCP Platform Auth Scope | `MCP_PLATFORM_AUTHENTICATION_SCOPE` | `'ea9ffc3e-8a23-4a7d-836d-234d7c7565c1/.default'` | `string` | ToolingConfiguration |
+| Use Tooling Manifest | `NODE_ENV` | `false` (true if NODE_ENV='development') | `boolean` | ToolingConfiguration |
 
 #### Observability Settings
 
 | Setting | Env Variable | Default | Type | Used In |
 |---------|--------------|---------|------|---------|
-| Observability Auth Scopes | `A365_OBSERVABILITY_SCOPES_OVERRIDE` | `['https://api.powerplatform.com/.default']` | `string[]` | environment-utils.ts |
-| Exporter Enabled | `ENABLE_A365_OBSERVABILITY_EXPORTER` | `false` | `boolean` | exporter/utils.ts |
+| Observability Auth Scopes | `A365_OBSERVABILITY_SCOPES_OVERRIDE` | `['https://api.powerplatform.com/.default']` | `string[]` | ObservabilityConfiguration |
+| Exporter Enabled | `ENABLE_A365_OBSERVABILITY_EXPORTER` | `false` | `boolean` | ObservabilityConfiguration |
 | Per-Request Export | `ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT` | `false` | `boolean` | exporter/utils.ts |
 | Use Custom Domain | `A365_OBSERVABILITY_USE_CUSTOM_DOMAIN` | `false` | `boolean` | exporter/utils.ts |
 | Domain Override | `A365_OBSERVABILITY_DOMAIN_OVERRIDE` | `null` | `string \| null` | exporter/utils.ts |
@@ -127,6 +127,8 @@ Configuration is distributed across packages with an **inheritance-based** desig
 │  │  RuntimeConfiguration                                        │   │
 │  │  - clusterCategory (calls override function or reads env)   │   │
 │  │  - isDevelopmentEnvironment (derived)                       │   │
+│  │  - mcpPlatformAuthScope (used by AgenticAuthenticationSvc)  │   │
+│  │  - observabilityAuthScopes (used by AgenticTokenCache)      │   │
 │  └─────────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────────┘
                               │ extends
@@ -137,8 +139,7 @@ Configuration is distributed across packages with an **inheritance-based** desig
 │  ┌───────────────────────┐  │     │  ┌───────────────────────┐  │
 │  │ ToolingConfiguration  │  │     │  │ ObservabilityConfig   │  │
 │  │ extends Runtime       │  │     │  │ extends Runtime       │  │
-│  │ + mcpPlatformEndpoint │  │     │  │ + authScopes          │  │
-│  │ + mcpPlatformAuthScope│  │     │  │ + exporterEnabled     │  │
+│  │ + mcpPlatformEndpoint │  │     │  │ + exporterEnabled     │  │
 │  └───────────────────────┘  │     │  │ + perRequestExport    │  │
 │            │ extends        │     │  │ + customDomain        │  │
 │            ▼                │     │  │ + domainOverride      │  │
@@ -214,6 +215,11 @@ export class RuntimeConfiguration {
   get isDevelopmentEnvironment(): boolean {
     return ['local', 'dev'].includes(this.clusterCategory);
   }
+
+  get isNodeEnvDevelopment(): boolean {
+    const nodeEnv = process.env.NODE_ENV ?? '';
+    return nodeEnv.toLowerCase() === 'development';
+  }
 }
 ```
 
@@ -265,7 +271,16 @@ import { RuntimeConfigurationOptions } from '@microsoft/agents-a365-runtime';
  */
 export type ToolingConfigurationOptions = RuntimeConfigurationOptions & {
   mcpPlatformEndpoint?: () => string;
+  /**
+   * Override for MCP platform authentication scope.
+   * Falls back to MCP_PLATFORM_AUTHENTICATION_SCOPE env var, then production default.
+   */
   mcpPlatformAuthenticationScope?: () => string;
+  /**
+   * Override for using local manifest vs gateway discovery.
+   * Falls back to NODE_ENV === 'development' check.
+   */
+  useToolingManifest?: () => boolean;
 };
 ```
 
@@ -276,6 +291,9 @@ export type ToolingConfigurationOptions = RuntimeConfigurationOptions & {
 
 import { RuntimeConfiguration } from '@microsoft/agents-a365-runtime';
 import { ToolingConfigurationOptions } from './ToolingConfigurationOptions';
+
+// Default MCP platform authentication scope
+const PROD_MCP_PLATFORM_AUTHENTICATION_SCOPE = 'ea9ffc3e-8a23-4a7d-836d-234d7c7565c1/.default';
 
 /**
  * Configuration for tooling package.
@@ -291,7 +309,7 @@ export class ToolingConfiguration extends RuntimeConfiguration {
     super(overrides);
   }
 
-  // Inherited: clusterCategory, isDevelopmentEnvironment
+  // Inherited: clusterCategory, isDevelopmentEnvironment, isNodeEnvDevelopment
 
   get mcpPlatformEndpoint(): string {
     return this.toolingOverrides.mcpPlatformEndpoint?.()
@@ -299,10 +317,28 @@ export class ToolingConfiguration extends RuntimeConfiguration {
       ?? 'https://agent365.svc.cloud.microsoft';
   }
 
+  /**
+   * Gets the MCP platform authentication scope.
+   * Used by AgenticAuthenticationService for token exchange.
+   */
   get mcpPlatformAuthenticationScope(): string {
-    return this.toolingOverrides.mcpPlatformAuthenticationScope?.()
-      ?? process.env.MCP_PLATFORM_AUTHENTICATION_SCOPE
-      ?? 'ea9ffc3e-8a23-4a7d-836d-234d7c7565c1/.default';
+    const override = this.toolingOverrides.mcpPlatformAuthenticationScope?.();
+    if (override) return override;
+
+    const envValue = process.env.MCP_PLATFORM_AUTHENTICATION_SCOPE;
+    if (envValue) return envValue;
+
+    return PROD_MCP_PLATFORM_AUTHENTICATION_SCOPE;
+  }
+
+  /**
+   * Whether to use the local ToolingManifest.json file instead of gateway discovery.
+   * Returns true when NODE_ENV is set to 'development' (case-insensitive).
+   */
+  get useToolingManifest(): boolean {
+    const override = this.toolingOverrides.useToolingManifest?.();
+    if (override !== undefined) return override;
+    return this.isNodeEnvDevelopment;
   }
 }
 ```
@@ -333,6 +369,10 @@ import { RuntimeConfigurationOptions } from '@microsoft/agents-a365-runtime';
  * All overrides are functions called on each property access.
  */
 export type ObservabilityConfigurationOptions = RuntimeConfigurationOptions & {
+  /**
+   * Override for observability authentication scopes.
+   * Falls back to A365_OBSERVABILITY_SCOPES_OVERRIDE env var, then production default.
+   */
   observabilityAuthenticationScopes?: () => string[];
   isObservabilityExporterEnabled?: () => boolean;
   isPerRequestExportEnabled?: () => boolean;
@@ -354,6 +394,9 @@ export type ObservabilityConfigurationOptions = RuntimeConfigurationOptions & {
 import { RuntimeConfiguration } from '@microsoft/agents-a365-runtime';
 import { ObservabilityConfigurationOptions } from './ObservabilityConfigurationOptions';
 
+// Default observability authentication scope
+const PROD_OBSERVABILITY_SCOPE = 'https://api.powerplatform.com/.default';
+
 /**
  * Configuration for observability package.
  * Inherits runtime settings and adds observability-specific settings.
@@ -367,8 +410,12 @@ export class ObservabilityConfiguration extends RuntimeConfiguration {
     super(overrides);
   }
 
-  // Inherited: clusterCategory, isDevelopmentEnvironment
+  // Inherited: clusterCategory, isDevelopmentEnvironment, isNodeEnvDevelopment
 
+  /**
+   * Gets the observability authentication scopes.
+   * Used by AgenticTokenCache for observability service authentication.
+   */
   get observabilityAuthenticationScopes(): readonly string[] {
     const result = this.observabilityOverrides.observabilityAuthenticationScopes?.();
     if (result !== undefined) {
@@ -378,7 +425,7 @@ export class ObservabilityConfiguration extends RuntimeConfiguration {
     if (override?.trim()) {
       return override.trim().split(/\s+/);
     }
-    return ['https://api.powerplatform.com/.default'];
+    return [PROD_OBSERVABILITY_SCOPE];
   }
 
   get isObservabilityExporterEnabled(): boolean {
@@ -464,7 +511,7 @@ export class OpenAIToolingConfiguration extends ToolingConfiguration {
     super(overrides);
   }
 
-  // Inherited: clusterCategory, isDevelopmentEnvironment, mcpPlatformEndpoint, mcpPlatformAuthenticationScope
+  // Inherited: clusterCategory, isDevelopmentEnvironment, isNodeEnvDevelopment, mcpPlatformEndpoint, mcpPlatformAuthenticationScope, useToolingManifest
 
   get openAIModel(): string {
     return this.openAIToolingOverrides.openAIModel?.()
@@ -721,7 +768,7 @@ After each step:
    └── environment-utils.ts - Deprecate functions, delegate to RuntimeConfiguration
 
 2. agents-a365-tooling
-   ├── Utility.ts - Use ToolingConfiguration for getMcpPlatformBaseUrl()
+   ├── Utility.ts - Deprecate URL construction methods (use McpToolServerConfigurationService instead)
    └── McpToolServerConfigurationService.ts - Accept IConfigurationProvider<ToolingConfiguration>
 
 3. agents-a365-observability
@@ -779,28 +826,16 @@ class McpToolServerConfigurationService {
 
 **After:**
 ```typescript
-import { IConfigurationProvider, defaultToolingConfigurationProvider } from './configuration';
-import { ToolingConfiguration } from './configuration/ToolingConfiguration';
+import { defaultToolingConfigurationProvider } from './configuration';
 
 class McpToolServerConfigurationService {
-  constructor(
-    private readonly configProvider: IConfigurationProvider<ToolingConfiguration> =
-      defaultToolingConfigurationProvider
-  ) {}
-
-  private get config(): ToolingConfiguration {
-    return this.configProvider.getConfiguration();
-  }
-
   private isDevScenario(): boolean {
-    return this.config.isDevelopmentEnvironment;  // Inherited from RuntimeConfiguration
-  }
-
-  private getMcpPlatformBaseUrl(): string {
-    return this.config.mcpPlatformEndpoint;       // From ToolingConfiguration
+    return defaultToolingConfigurationProvider.getConfiguration().useToolingManifest;
   }
 }
 ```
+
+Note: `useToolingManifest` is a ToolingConfiguration property that checks `NODE_ENV === 'development'`.
 
 #### 4.3.4 Migration Pattern for Observability
 
@@ -1035,7 +1070,9 @@ To enforce this, add an ESLint rule to prevent future violations:
         property: 'env',
         message: 'Use configuration classes instead of direct process.env access.'
       }
-    ]
+    ],
+    // Prevent usage of deprecated methods - causes compile-time errors
+    '@typescript-eslint/no-deprecated': 'error'
   },
   overrides: [
     {
@@ -1043,14 +1080,43 @@ To enforce this, add an ESLint rule to prevent future violations:
       rules: {
         'no-restricted-properties': 'off'  // Allow in configuration classes
       }
+    },
+    {
+      files: ['**/tests/**/*.ts', '**/tests-agent/**/*.ts', '**/*.test.ts', '**/*.spec.ts'],
+      rules: {
+        'no-restricted-properties': 'off',  // Allow in test files and samples
+        '@typescript-eslint/no-deprecated': 'off'  // Allow deprecated usage in tests
+      }
+    },
+    {
+      files: ['**/agents-a365-tooling/src/Utility.ts'],
+      rules: {
+        '@typescript-eslint/no-deprecated': 'off'  // Allow internal deprecated calls
+      }
     }
   ]
 }
 ```
 
-**Note**: This rule catches the common `process.env.SOMETHING` pattern but won't catch destructuring (`const { env } = process`) or indirect access. These edge cases are unlikely to occur accidentally.
+**Note**: The `no-restricted-properties` rule catches the common `process.env.SOMETHING` pattern but won't catch destructuring (`const { env } = process`) or indirect access. These edge cases are unlikely to occur accidentally.
 
-This rule should be added as part of Phase 4 after all `process.env` reads have been migrated to configuration classes.
+**Status (Updated 2026-02-04)**: Both ESLint rules have been implemented and are actively enforcing restrictions:
+- `environment-utils.ts`: Now delegates to configuration classes
+- `McpToolServerConfigurationService.ts`: Now uses `ToolingConfiguration.useToolingManifest`
+- `Utility.ts`: URL construction methods are deprecated (use `McpToolServerConfigurationService` instead)
+
+### 7.2 Deprecated Utility Methods
+
+The following `Utility` class methods are deprecated and will cause ESLint errors if used in source code:
+
+| Method | Replacement |
+|--------|-------------|
+| `GetToolingGatewayForDigitalWorker()` | `McpToolServerConfigurationService.listToolServers()` |
+| `GetMcpBaseUrl()` | Use `McpToolServerConfigurationService` |
+| `BuildMcpServerUrl()` | Use `McpToolServerConfigurationService` |
+| `GetChatHistoryEndpoint()` | `McpToolServerConfigurationService.sendChatHistory()` |
+
+These methods remain available for backward compatibility but should not be used in new code.
 
 ---
 
@@ -1073,9 +1139,9 @@ This rule should be added as part of Phase 4 after all `process.env` reads have 
 | Variable | Type | Default | Category |
 |----------|------|---------|----------|
 | `CLUSTER_CATEGORY` | string | `'prod'` | runtime |
-| `NODE_ENV` | string | `''` | runtime |
 | `MCP_PLATFORM_ENDPOINT` | string | `'https://agent365...'` | tooling |
 | `MCP_PLATFORM_AUTHENTICATION_SCOPE` | string | `'ea9ffc3e-...'` | tooling |
+| `NODE_ENV` | string | `''` | tooling (useToolingManifest) |
 | `A365_OBSERVABILITY_SCOPES_OVERRIDE` | string (space-sep) | prod scope | observability |
 | `ENABLE_A365_OBSERVABILITY_EXPORTER` | boolean | `false` | observability |
 | `ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT` | boolean | `false` | observability |

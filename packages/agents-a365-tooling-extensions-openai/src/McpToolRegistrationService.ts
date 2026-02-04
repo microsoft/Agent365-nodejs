@@ -2,8 +2,8 @@
 // Licensed under the MIT License.
 
 import { v4 as uuidv4 } from 'uuid';
-import { McpToolServerConfigurationService, Utility, ToolOptions, ChatHistoryMessage } from '@microsoft/agents-a365-tooling';
-import { AgenticAuthenticationService, Utility as RuntimeUtility, OperationResult, OperationError } from '@microsoft/agents-a365-runtime';
+import { McpToolServerConfigurationService, Utility, ToolOptions, ChatHistoryMessage, ToolingConfiguration, defaultToolingConfigurationProvider } from '@microsoft/agents-a365-tooling';
+import { AgenticAuthenticationService, Utility as RuntimeUtility, OperationResult, OperationError, IConfigurationProvider } from '@microsoft/agents-a365-runtime';
 
 // Agents SDK
 import { TurnContext, Authorization } from '@microsoft/agents-hosting';
@@ -17,8 +17,18 @@ import { OpenAIConversationsSession } from '@openai/agents-openai';
  * Uses listToolServers to fetch server configs.
  */
 export class McpToolRegistrationService {
-  private configService: McpToolServerConfigurationService = new McpToolServerConfigurationService();
+  private readonly configService: McpToolServerConfigurationService;
+  private readonly configProvider: IConfigurationProvider<ToolingConfiguration>;
   private readonly orchestratorName: string = "OpenAI";
+
+  /**
+   * Construct a McpToolRegistrationService.
+   * @param configProvider Optional configuration provider. Defaults to defaultToolingConfigurationProvider if not specified.
+   */
+  constructor(configProvider?: IConfigurationProvider<ToolingConfiguration>) {
+    this.configProvider = configProvider ?? defaultToolingConfigurationProvider;
+    this.configService = new McpToolServerConfigurationService(this.configProvider);
+  }
 
 
   /**
@@ -44,7 +54,8 @@ export class McpToolRegistrationService {
     }
 
     if (!authToken) {
-      authToken = await AgenticAuthenticationService.GetAgenticUserToken(authorization, authHandlerName, turnContext);
+      const scope = this.configProvider.getConfiguration().mcpPlatformAuthenticationScope;
+      authToken = await AgenticAuthenticationService.GetAgenticUserToken(authorization, authHandlerName, turnContext, [scope]);
     }
 
     // Validate the authentication token

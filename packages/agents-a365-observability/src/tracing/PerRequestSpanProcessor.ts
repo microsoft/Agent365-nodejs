@@ -5,25 +5,15 @@
 
 import { context, type Context } from '@opentelemetry/api';
 import type { ReadableSpan, SpanProcessor, SpanExporter } from '@opentelemetry/sdk-trace-base';
+import { IConfigurationProvider } from '@microsoft/agents-a365-runtime';
 import logger from '../utils/logging';
+import { ObservabilityConfiguration, defaultObservabilityConfigurationProvider } from '../configuration';
 
 /** Default grace period (ms) to wait for child spans after root span ends */
 const DEFAULT_FLUSH_GRACE_MS = 250;
 
 /** Default maximum age (ms) for a trace before forcing flush */
 const DEFAULT_MAX_TRACE_AGE_MS = 30 * 60 * 1000; // 30 minutes
-
-/** Guardrails to prevent unbounded memory growth / export bursts */
-const DEFAULT_MAX_BUFFERED_TRACES = 1000;
-const DEFAULT_MAX_SPANS_PER_TRACE = 5000;
-const DEFAULT_MAX_CONCURRENT_EXPORTS = 20;
-
-function readEnvInt(name: string, fallback: number): number {
-  const raw = process.env[name];
-  if (!raw) return fallback;
-  const parsed = Number.parseInt(raw, 10);
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
 
 function isRootSpan(span: ReadableSpan): boolean {
   return !span.parentSpanContext;
@@ -58,16 +48,26 @@ export class PerRequestSpanProcessor implements SpanProcessor {
   private inFlightExports = 0;
   private exportWaiters: Array<() => void> = [];
 
+  /**
+   * Construct a PerRequestSpanProcessor.
+   * @param exporter The span exporter to use.
+   * @param flushGraceMs Grace period (ms) to wait for child spans after root span ends.
+   * @param maxTraceAgeMs Maximum age (ms) for a trace before forcing flush.
+   * @param configProvider Optional configuration provider. Defaults to defaultObservabilityConfigurationProvider if not specified.
+   */
   constructor(
     private readonly exporter: SpanExporter,
     private readonly flushGraceMs: number = DEFAULT_FLUSH_GRACE_MS,
-    private readonly maxTraceAgeMs: number = DEFAULT_MAX_TRACE_AGE_MS
+    private readonly maxTraceAgeMs: number = DEFAULT_MAX_TRACE_AGE_MS,
+    configProvider?: IConfigurationProvider<ObservabilityConfiguration>
   ) {
-    // Defaults are intentionally high but bounded; override via env vars if needed.
+    // Defaults are intentionally high but bounded; override via configuration if needed.
     // Set to 0 (or negative) to disable a guardrail.
-    this.maxBufferedTraces = readEnvInt('A365_PER_REQUEST_MAX_TRACES', DEFAULT_MAX_BUFFERED_TRACES);
-    this.maxSpansPerTrace = readEnvInt('A365_PER_REQUEST_MAX_SPANS_PER_TRACE', DEFAULT_MAX_SPANS_PER_TRACE);
-    this.maxConcurrentExports = readEnvInt('A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS', DEFAULT_MAX_CONCURRENT_EXPORTS);
+    const effectiveConfigProvider = configProvider ?? defaultObservabilityConfigurationProvider;
+    const config = effectiveConfigProvider.getConfiguration();
+    this.maxBufferedTraces = config.perRequestMaxTraces;
+    this.maxSpansPerTrace = config.perRequestMaxSpansPerTrace;
+    this.maxConcurrentExports = config.perRequestMaxConcurrentExports;
   }
 
   onStart(span: ReadableSpan, ctx: Context): void {

@@ -5,10 +5,11 @@ import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
 import { TurnContext } from '@microsoft/agents-hosting';
-import { OperationResult, OperationError } from '@microsoft/agents-a365-runtime';
+import { OperationResult, OperationError, IConfigurationProvider } from '@microsoft/agents-a365-runtime';
 import { MCPServerConfig, MCPServerManifestEntry, McpClientTool, ToolOptions } from './contracts';
 import { ChatHistoryMessage, ChatMessageRequest } from './models/index';
 import { Utility } from './Utility';
+import { ToolingConfiguration, defaultToolingConfigurationProvider } from './configuration';
 
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -19,11 +20,14 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
  */
 export class McpToolServerConfigurationService {
   private readonly logger = console;
+  private readonly configProvider: IConfigurationProvider<ToolingConfiguration>;
 
   /**
    * Construct a McpToolServerConfigurationService.
+   * @param configProvider Optional configuration provider. Defaults to defaultToolingConfigurationProvider if not specified.
    */
-  constructor() {
+  constructor(configProvider?: IConfigurationProvider<ToolingConfiguration>) {
+    this.configProvider = configProvider ?? defaultToolingConfigurationProvider;
   }
 
   /**
@@ -140,7 +144,7 @@ export class McpToolServerConfigurationService {
     }
 
     // Get the endpoint URL
-    const endpoint = Utility.GetChatHistoryEndpoint();
+    const endpoint = this.getChatHistoryEndpoint();
 
     this.logger.info(`Sending chat history to endpoint: ${endpoint}`);
 
@@ -199,7 +203,7 @@ export class McpToolServerConfigurationService {
     // Validate the authentication token
     Utility.ValidateAuthToken(authToken);
 
-    const configEndpoint = Utility.GetToolingGatewayForDigitalWorker(agenticAppId);
+    const configEndpoint = this.getToolingGatewayUrl(agenticAppId);
 
     try {
       const response = await axios.get(
@@ -267,7 +271,7 @@ export class McpToolServerConfigurationService {
         }
         return {
           mcpServerName: serverName,
-          url: s.url || Utility.BuildMcpServerUrl(serverName),
+          url: s.url || this.buildMcpServerUrl(serverName),
           headers: s.headers
         };
       });
@@ -279,12 +283,39 @@ export class McpToolServerConfigurationService {
   }
 
   /**
-   * Detect if the process is running in a development scenario based on environment variables.
+   * Detect if the process is running in a development scenario based on configuration.
    *
-   * @returns {boolean} True when running in a development environment.
+   * @returns {boolean} True when running in a development environment (NODE_ENV=Development).
    */
   private isDevScenario(): boolean {
-    const environment = process.env.NODE_ENV || '';
-    return environment.toLowerCase() === 'development';
+    return this.configProvider.getConfiguration().useToolingManifest;
+  }
+
+  /**
+   * Gets the base URL for MCP platform from configuration.
+   */
+  private getMcpPlatformBaseUrl(): string {
+    return this.configProvider.getConfiguration().mcpPlatformEndpoint;
+  }
+
+  /**
+   * Construct the tooling gateway URL for a given agent identity.
+   */
+  private getToolingGatewayUrl(agenticAppId: string): string {
+    return `${this.getMcpPlatformBaseUrl()}/agents/${agenticAppId}/mcpServers`;
+  }
+
+  /**
+   * Build the full URL for accessing a specific MCP server.
+   */
+  private buildMcpServerUrl(serverName: string): string {
+    return `${this.getMcpPlatformBaseUrl()}/agents/servers/${serverName}`;
+  }
+
+  /**
+   * Constructs the endpoint URL for sending chat history.
+   */
+  private getChatHistoryEndpoint(): string {
+    return `${this.getMcpPlatformBaseUrl()}/agents/real-time-threat-protection/chat-message`;
   }
 }

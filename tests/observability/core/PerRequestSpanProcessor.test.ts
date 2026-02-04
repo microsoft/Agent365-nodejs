@@ -485,5 +485,81 @@ describe('PerRequestSpanProcessor', () => {
         nowSpy.mockRestore();
       }
     });
+
+    it('should use default values when env vars are not set', async () => {
+      delete process.env.A365_PER_REQUEST_MAX_TRACES;
+      delete process.env.A365_PER_REQUEST_MAX_SPANS_PER_TRACE;
+      delete process.env.A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS;
+
+      await recreateProvider(new PerRequestSpanProcessor(mockExporter));
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const proc = processor as any;
+      expect(proc.maxBufferedTraces).toBe(1000);
+      expect(proc.maxSpansPerTrace).toBe(5000);
+      expect(proc.maxConcurrentExports).toBe(20);
+    });
+
+    it('should fallback to defaults for invalid env var values', async () => {
+      process.env.A365_PER_REQUEST_MAX_TRACES = 'not-a-number';
+      process.env.A365_PER_REQUEST_MAX_SPANS_PER_TRACE = '';
+      process.env.A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS = 'NaN';
+
+      await recreateProvider(new PerRequestSpanProcessor(mockExporter));
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const proc = processor as any;
+      expect(proc.maxBufferedTraces).toBe(1000);
+      expect(proc.maxSpansPerTrace).toBe(5000);
+      expect(proc.maxConcurrentExports).toBe(20);
+    });
+
+    it('should parse valid numeric string env vars correctly', async () => {
+      process.env.A365_PER_REQUEST_MAX_TRACES = '50';
+      process.env.A365_PER_REQUEST_MAX_SPANS_PER_TRACE = '100';
+      process.env.A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS = '5';
+
+      await recreateProvider(new PerRequestSpanProcessor(mockExporter));
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const proc = processor as any;
+      expect(proc.maxBufferedTraces).toBe(50);
+      expect(proc.maxSpansPerTrace).toBe(100);
+      expect(proc.maxConcurrentExports).toBe(5);
+    });
+
+    it('should handle shutdown gracefully', async () => {
+      const tracer = provider.getTracer('test');
+
+      runWithExportToken('test-token', () => {
+        const span = tracer.startSpan('root');
+        span.end();
+      });
+
+      // Shutdown should complete without throwing
+      await expect(processor.shutdown()).resolves.not.toThrow();
+    });
+
+    it('should handle onStart with null parentSpanContext as root span', async () => {
+      const tracer = provider.getTracer('test');
+
+      await new Promise<void>((resolve) => {
+        runWithExportToken('test-token', () => {
+          // Root span has no parent
+          const rootSpan = tracer.startSpan('root', { root: true });
+          rootSpan.end();
+
+          setTimeout(() => resolve(), 50);
+        });
+      });
+
+      expect(exportedSpans.length).toBe(1);
+      expect(exportedSpans[0][0].name).toBe('root');
+    });
+
+    it('should handle empty traces array in forceFlush', async () => {
+      // No spans created, forceFlush should still complete
+      await expect(processor.forceFlush()).resolves.not.toThrow();
+    });
   });
 });

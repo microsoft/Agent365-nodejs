@@ -4,8 +4,8 @@
 // ------------------------------------------------------------------------------
 
 import { TurnContext, Authorization } from '@microsoft/agents-hosting';
-import { getObservabilityAuthenticationScope } from '@microsoft/agents-a365-runtime';
-import { logger, formatError } from '@microsoft/agents-a365-observability';
+import { logger, formatError, ObservabilityConfiguration, defaultObservabilityConfigurationProvider } from '@microsoft/agents-a365-observability';
+import { IConfigurationProvider } from '@microsoft/agents-a365-runtime';
 
 interface CacheEntry {
     scopes: string[];
@@ -19,6 +19,15 @@ class AgenticTokenCache {
     private readonly _defaultRefreshSkewMs = 60_000;
     private readonly _defaultMaxTokenAgeMs = 3_600_000;
     private readonly _keyLocks = new Map<string, Promise<unknown>>();
+    private readonly _configProvider: IConfigurationProvider<ObservabilityConfiguration>;
+
+    /**
+     * Construct an AgenticTokenCache.
+     * @param configProvider Optional configuration provider. Defaults to defaultObservabilityConfigurationProvider if not specified.
+     */
+    constructor(configProvider?: IConfigurationProvider<ObservabilityConfiguration>) {
+        this._configProvider = configProvider ?? defaultObservabilityConfigurationProvider;
+    }
 
     public static makeKey(agentId: string, tenantId: string): string {
         return `${agentId}:${tenantId}`;
@@ -59,7 +68,7 @@ class AgenticTokenCache {
         return this.withKeyLock<void>(key, async () => {
             let entry = this._map.get(key);
             if (!entry) {
-                const effectiveScopes = (scopes && scopes.length > 0) ? scopes : getObservabilityAuthenticationScope();
+                const effectiveScopes = (scopes && scopes.length > 0) ? scopes : [...this._configProvider.getConfiguration().observabilityAuthenticationScopes];
                 if (!Array.isArray(effectiveScopes) || effectiveScopes.length === 0) {
                     logger.error('[AgenticTokenCache] No valid scopes');
                     return;

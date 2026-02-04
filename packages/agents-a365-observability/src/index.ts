@@ -41,4 +41,8 @@ export { OpenTelemetryScope } from './tracing/scopes/OpenTelemetryScope';
 export { ExecuteToolScope } from './tracing/scopes/ExecuteToolScope';
 export { InvokeAgentScope } from './tracing/scopes/InvokeAgentScope';
 export { InferenceScope} from './tracing/scopes/InferenceScope';
-export { logger, formatError } from './utils/logging';
+export { logger, createLogger, formatError } from './utils/logging';
+export type { Logger } from './utils/logging';
+
+// Configuration
+export * from './configuration';

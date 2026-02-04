@@ -2,8 +2,8 @@
 // Licensed under the MIT License.
 
 // Microsoft Agent 365 SDK
-import { McpToolServerConfigurationService, Utility, ToolOptions, ChatHistoryMessage } from '@microsoft/agents-a365-tooling';
-import { AgenticAuthenticationService, Utility as RuntimeUtility, OperationResult, OperationError } from '@microsoft/agents-a365-runtime';
+import { McpToolServerConfigurationService, Utility, ToolOptions, ChatHistoryMessage, ToolingConfiguration, defaultToolingConfigurationProvider } from '@microsoft/agents-a365-tooling';
+import { AgenticAuthenticationService, Utility as RuntimeUtility, OperationResult, OperationError, IConfigurationProvider } from '@microsoft/agents-a365-runtime';
 
 // Agents SDK
 import { TurnContext, Authorization } from '@microsoft/agents-hosting';
@@ -30,8 +30,18 @@ import type { CompiledStateGraph, StateSnapshot } from '@langchain/langgraph';
  * real-time threat protection (RTP) analysis.
  */
 export class McpToolRegistrationService {
-  private configService: McpToolServerConfigurationService  = new McpToolServerConfigurationService();
+  private readonly configService: McpToolServerConfigurationService;
+  private readonly configProvider: IConfigurationProvider<ToolingConfiguration>;
   private readonly orchestratorName: string = "LangChain";
+
+  /**
+   * Construct a McpToolRegistrationService.
+   * @param configProvider Optional configuration provider. Defaults to defaultToolingConfigurationProvider if not specified.
+   */
+  constructor(configProvider?: IConfigurationProvider<ToolingConfiguration>) {
+    this.configProvider = configProvider ?? defaultToolingConfigurationProvider;
+    this.configService = new McpToolServerConfigurationService(this.configProvider);
+  }
 
   /**
    * Registers MCP tool servers and updates agent options with discovered tools and server configs.
@@ -56,7 +66,8 @@ export class McpToolRegistrationService {
     }
 
     if (!authToken) {
-      authToken = await AgenticAuthenticationService.GetAgenticUserToken(authorization, authHandlerName, turnContext);
+      const scope = this.configProvider.getConfiguration().mcpPlatformAuthenticationScope;
+      authToken = await AgenticAuthenticationService.GetAgenticUserToken(authorization, authHandlerName, turnContext, [scope]);
     }
 
     // Validate the authentication token
@@ -360,6 +371,7 @@ export class McpToolRegistrationService {
    * @returns The mapped role string.
    */
   private mapRole(message: BaseMessage): string {
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- LangChain API deprecation, not our code
     const type = message.getType();
 
     switch (type) {
