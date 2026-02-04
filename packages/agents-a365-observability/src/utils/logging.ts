@@ -26,6 +26,14 @@ export interface ILogger {
    * @param args Optional arguments to include in the log
    */
   error(message: string, ...args: unknown[]): void;
+
+  /**
+   * Log an event with success status and duration
+   * @param name The event name
+   * @param success Whether the event succeeded
+   * @param duration The event duration in milliseconds
+   */
+  event(name: string, success: boolean, duration: number): void;
 }
 
 /**
@@ -66,6 +74,14 @@ class ConsoleLogger implements ILogger {
       console.error(`${this.prefix} ${message}`, ...args);
     }
   }
+
+  event(name: string, success: boolean, duration: number): void {
+    const status = success ? 'succeeded' : 'failed';
+    if (this.useConsoleLog || this.useConsoleWarn) {
+      const logFn = success ? console.log : console.warn;
+      logFn(`${this.prefix} Event: ${name} ${status} in ${duration}ms`);
+    }
+  }
 }
 
 /**
@@ -93,36 +109,6 @@ class DefaultLogger implements ILogger {
     this.enabledLogLevels = this.parseLogLevel(process.env.A365_OBSERVABILITY_LOG_LEVEL || 'none');
     this.consoleLogger = new ConsoleLogger('[INFO]', false, false, false);
   }
-
-  /**
-   * Console-based logger adapter that wraps console.log, console.warn, console.error
-   */
-  private ConsoleLogger = class ConsoleLogger implements ILogger {
-    constructor(
-      private prefix = '[A365]',
-      private useConsoleLog = false,
-      private useConsoleWarn = false,
-      private useConsoleError = false
-    ) {}
-
-    info(message: string, ...args: unknown[]): void {
-      if (this.useConsoleLog) {
-        console.log(`${this.prefix} ${message}`, ...args);
-      }
-    }
-
-    warn(message: string, ...args: unknown[]): void {
-      if (this.useConsoleWarn) {
-        console.warn(`${this.prefix} ${message}`, ...args);
-      }
-    }
-
-    error(message: string, ...args: unknown[]): void {
-      if (this.useConsoleError) {
-        console.error(`${this.prefix} ${message}`, ...args);
-      }
-    }
-  };
 
   private parseLogLevel(level: string): Set<number> {
     const LOG_LEVELS: Record<string, number> = {
@@ -165,6 +151,16 @@ class DefaultLogger implements ILogger {
   error(message: string, ...args: unknown[]): void {
     if (this.enabledLogLevels.has(3)) {
       console.error('[ERROR]', message, ...args);
+    }
+  }
+
+  event(name: string, success: boolean, duration: number): void {
+    const status = success ? 'succeeded' : 'failed';
+    const prefix = '[EVENT]';
+    const logLevelNeeded = success ? 1 : 3;
+    if (this.enabledLogLevels.has(logLevelNeeded)) {
+      const logFn = success ? console.log : console.error;
+      logFn(`${prefix}: ${name} ${status} in ${duration}ms`);
     }
   }
 }
@@ -232,7 +228,8 @@ export function resetLogger(): void {
 export const logger: ILogger = {
   info: (message: string, ...args: unknown[]) => globalLogger.info(message, ...args),
   warn: (message: string, ...args: unknown[]) => globalLogger.warn(message, ...args),
-  error: (message: string, ...args: unknown[]) => globalLogger.error(message, ...args)
+  error: (message: string, ...args: unknown[]) => globalLogger.error(message, ...args),
+  event: (name: string, success: boolean, duration: number) => globalLogger.event(name, success, duration)
 };
 
 export default logger;

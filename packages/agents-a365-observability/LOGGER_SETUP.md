@@ -40,6 +40,7 @@ import { logger } from '@microsoft/agents-a365-observability';
 logger.info('message');   // Logged if A365_OBSERVABILITY_LOG_LEVEL includes 'info'
 logger.warn('warning');   // Logged if A365_OBSERVABILITY_LOG_LEVEL includes 'warn'
 logger.error('error');    // Logged if A365_OBSERVABILITY_LOG_LEVEL includes 'error'
+logger.event('my-event', true, 150); // Log event with name, success status, and duration (ms)
 ```
 
 ## Default Logger Configuration
@@ -68,19 +69,33 @@ export A365_OBSERVABILITY_LOG_LEVEL=error
 
 ```typescript
 import { Builder } from '@microsoft/agents-a365-observability';
-import { ILogger } from '@microsoft/agents-a365-observability';
+import type { ILogger } from '@microsoft/agents-a365-observability';
 
 // Create your custom logger
 const myLogger: ILogger = {
   info: (msg, ...args) => console.log(`[INFO] ${msg}`, ...args),
   warn: (msg, ...args) => console.warn(`[WARN] ${msg}`, ...args),
-  error: (msg, ...args) => console.error(`[ERROR] ${msg}`, ...args)
+  error: (msg, ...args) => console.error(`[ERROR] ${msg}`, ...args),
+  event: (name, success, duration) => {
+    const status = success ? 'succeeded' : 'failed';
+    console.log(`[EVENT] ${name} ${status} in ${duration}ms`);
+  }
 };
 
 new Builder()
   .withService('my-agent', '1.0.0')
   .withCustomLogger(myLogger)
   .build();
+```
+
+### Event Logging
+
+The logger also supports event logging with success status and duration:
+
+```typescript
+// Log event with success and duration
+logger.event('export-operation', true, 1250);  // Outputs: "Event: export-operation succeeded in 1250ms"
+logger.event('export-operation', false, 1250); // Outputs: "Event: export-operation failed in 1250ms"
 ```
 
 ### Option 2: Your Existing Logger
@@ -243,8 +258,41 @@ resetLogger();
 **Info:** Token resolution, export success, trace lifecycle  
 **Warn:** Dropped spans, max spans exceeded, buffer issues  
 **Error:** Export failures, auth failures, configuration errors
+**Event:** Export operations (with success/failure status and duration)
 
-### Monitor These Messages
+### Event Logging in Agent365Exporter
+
+The `Agent365Exporter` logs events at multiple levels using standardized event names from `ExporterEventNames`:
+
+1. **Overall Export Event** (`EXPORT`) - for the entire batch export operation:
+   ```
+   Event: agent365-export succeeded in 2500ms
+   Event: agent365-export failed in 2500ms
+   ```
+
+2. **Group Export Events** (`EXPORT_GROUP`) - for each tenant/agent group:
+   ```
+   Event: export-group-tenant-123-agent-456 succeeded in 1200ms
+   Event: export-group-tenant-123-agent-456 failed in 1200ms
+   ```
+
+3. **Skip Span Events** (`SKIP_SPAN_MISSING_IDENTITY`) - when spans are skipped during partitioning:
+   ```
+   Event: export-partition-span-by-identity failed in 0ms
+   ```
+
+### ExporterEventNames Constants
+
+The exporter uses standardized event name constants for consistency:
+
+```typescript
+import { ExporterEventNames } from '@microsoft/agents-a365-observability';
+
+// Available event names:
+ExporterEventNames.EXPORT                    // 'agent365-export'
+ExporterEventNames.EXPORT_GROUP              // 'export-group' (use with tenant/agent ID)
+ExporterEventNames.SKIP_SPAN_MISSING_IDENTITY // 'export-partition-span-by-identity'
+```
 
 ## API Reference
 
@@ -254,6 +302,7 @@ export interface ILogger {
   info(message: string, ...args: unknown[]): void;
   warn(message: string, ...args: unknown[]): void;
   error(message: string, ...args: unknown[]): void;
+  event(name: string, success: boolean, duration: number): void;
 }
 
 // Classes

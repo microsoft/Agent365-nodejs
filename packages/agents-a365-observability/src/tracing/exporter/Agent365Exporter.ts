@@ -22,6 +22,7 @@ import {
 import { getExportToken } from '../context/token-context';
 import logger, { formatError } from '../../utils/logging';
 import { Agent365ExporterOptions } from './Agent365ExporterOptions';
+import { ExporterEventNames } from './ExporterEventNames';
 
 const DEFAULT_HTTP_TIMEOUT_SECONDS = 30000; // 30 seconds in ms
 const DEFAULT_MAX_RETRIES = 3;
@@ -112,6 +113,8 @@ export class Agent365Exporter implements SpanExporter {
       return;
     }
 
+    const startTime = Date.now();
+
     try {
       logger.info(`[Agent365Exporter] Exporting ${spans.length} spans`);
       const groups = partitionByIdentity(spans);
@@ -135,13 +138,18 @@ export class Agent365Exporter implements SpanExporter {
       }
 
       await Promise.all(promises);
-      logger.info(`[Agent365Exporter] Export completed. Success: ${!anyFailure}`);
+      const duration = Date.now() - startTime;
+      const success = !anyFailure;
+      logger.info(`[Agent365Exporter] Export completed. Success: ${success}`);
+      logger.event(ExporterEventNames.EXPORT, success, duration);
       resultCallback({
-        code: anyFailure ? ExportResultCode.FAILED : ExportResultCode.SUCCESS
+        code: success ? ExportResultCode.SUCCESS : ExportResultCode.FAILED
       });
 
     } catch (_error) {
       // Exporters should not raise; signal failure
+      const duration = Date.now() - startTime;
+      logger.event(ExporterEventNames.EXPORT, false, duration);
       resultCallback({ code: ExportResultCode.FAILED });
     }
   }
@@ -152,6 +160,8 @@ export class Agent365Exporter implements SpanExporter {
   private async exportGroup(identityKey: string, spans: ReadableSpan[]): Promise<void> {
     const { tenantId, agentId } = parseIdentityKey(identityKey);
     logger.info(`[Agent365Exporter] Exporting ${spans.length} spans for tenantId: ${tenantId}, agentId: ${agentId}`);
+
+    const startTime = Date.now();
 
     const payload = this.buildExportRequest(spans);
     const body = JSON.stringify(payload);
@@ -216,11 +226,14 @@ export class Agent365Exporter implements SpanExporter {
 
     // Basic retry loop
     const ok = await this.postWithRetries(url, body, headers);
+    const duration = Date.now() - startTime;
     if (!ok) {
       logger.error('[Agent365Exporter] Failed to export spans');
+      logger.event(`${ExporterEventNames.EXPORT_GROUP}-${tenantId}-${agentId}`, false, duration);
       throw new Error('Failed to export spans');
     }
     logger.info('[Agent365Exporter] Successfully exported spans');
+    logger.event(`${ExporterEventNames.EXPORT_GROUP}-${tenantId}-${agentId}`, true, duration);
   }
 
   /**

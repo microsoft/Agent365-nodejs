@@ -7,6 +7,7 @@ import { SpanKind, SpanStatusCode } from '@opentelemetry/api';
 import { ClusterCategory } from '@microsoft/agents-a365-runtime';
 import { OpenTelemetryConstants } from '../constants';
 import logger from '../../utils/logging';
+import { ExporterEventNames } from './ExporterEventNames';
 
 /**
  * Convert trace ID to hex string format
@@ -95,7 +96,8 @@ export function partitionByIdentity(
 
     if (!tenant || !agent) {
       skippedCount++;
-      logger.warn(`[Agent365Exporter] Skipping span without tenant or agent ID. Span name: ${span.name}`);
+      logger.error(`[Agent365Exporter] Skipping span without tenant or agent ID. Span name: ${span.name}`);
+      logger.event(ExporterEventNames.EXPORT_PARTITION_SPAN_BY_IDENTITY, false, 0);
       continue;
     }
 
