@@ -201,9 +201,10 @@ export function setLogger(customLogger: ILogger): void {
     !customLogger ||
     typeof customLogger.info !== 'function' ||
     typeof customLogger.warn !== 'function' ||
-    typeof customLogger.error !== 'function'
+    typeof customLogger.error !== 'function' ||
+    typeof customLogger.event !== 'function'
   ) {
-    throw new Error('Custom logger must implement ILogger interface (info, warn, error methods)');
+    throw new Error('Custom logger must implement ILogger interface (info, warn, error, event methods)');
   }
   globalLogger = customLogger;
 }
