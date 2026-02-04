@@ -9,6 +9,7 @@ export class OpenTelemetryConstants {
   // Span operation names
   public static readonly INVOKE_AGENT_OPERATION_NAME = 'invoke_agent';
   public static readonly EXECUTE_TOOL_OPERATION_NAME = 'execute_tool';
+  public static readonly CHAT_OPERATION_NAME = 'chat';
 
   // OpenTelemetry semantic conventions
   public static readonly ERROR_TYPE_KEY = 'error.type';
@@ -111,4 +112,24 @@ export class OpenTelemetryConstants {
   // Custom parent id and parent name key
   public static readonly CUSTOM_PARENT_SPAN_ID_KEY = 'custom.parent.span.id';
   public static readonly CUSTOM_SPAN_NAME_KEY = 'custom.span.name';
+}
+
+/**
+ * Enumeration representing the source of an operation.
+ */
+export enum OperationSource {
+  /**
+   * Operation executed by SDK.
+   */
+  SDK = 'SDK',
+
+  /**
+   * Operation executed by Gateway.
+   */
+  GATEWAY = 'Gateway',
+
+  /**
+   * Operation executed by MCP Server.
+   */
+  MCP_SERVER = 'MCPServer',
 }

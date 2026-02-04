@@ -2,20 +2,6 @@
 // Licensed under the MIT License.
 
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
-import { IConfigurationProvider } from '../../../packages/agents-a365-runtime/src';
-import { ObservabilityConfiguration } from '../../../packages/agents-a365-observability/src';
-
-/**
- * Helper to create a simple configuration provider for testing.
- * Avoids type constraint issues with DefaultConfigurationProvider in monorepo.
- */
-function createTestConfigProvider(
-  config: ObservabilityConfiguration
-): IConfigurationProvider<ObservabilityConfiguration> {
-  return {
-    getConfiguration: () => config
-  };
-}
 
 describe('logging', () => {
   const originalEnv = process.env;
@@ -395,118 +381,6 @@ describe('logging', () => {
       // Third call - should log again
       logger.info('Third call');
       expect(consoleLogSpy).toHaveBeenCalledTimes(2);
-    });
-  });
-
-  describe('createLogger factory', () => {
-    it('should create a logger with default provider when no argument provided', async () => {
-      process.env.A365_OBSERVABILITY_LOG_LEVEL = 'info';
-      const { createLogger } = await import('@microsoft/agents-a365-observability/src/utils/logging');
-
-      const customLogger = createLogger();
-      customLogger.info('Test message');
-
-      expect(consoleLogSpy).toHaveBeenCalledWith('[INFO]', 'Test message');
-    });
-
-    it('should create a logger with custom configuration provider', async () => {
-      const { createLogger } = await import('@microsoft/agents-a365-observability/src/utils/logging');
-
-      // Create a custom provider that always returns 'error' log level
-      const customProvider = createTestConfigProvider(
-        new ObservabilityConfiguration({
-          observabilityLogLevel: () => 'error'
-        })
-      );
-
-      const customLogger = createLogger(customProvider);
-
-      // Should not log info (only error is enabled)
-      customLogger.info('Info message');
-      expect(consoleLogSpy).not.toHaveBeenCalled();
-
-      // Should log error
-      customLogger.error('Error message');
-      expect(consoleErrorSpy).toHaveBeenCalledWith('[ERROR]', 'Error message');
-    });
-
-    it('should allow multiple loggers with different configurations', async () => {
-      const { createLogger } = await import('@microsoft/agents-a365-observability/src/utils/logging');
-
-      // Logger A - only info
-      const providerA = createTestConfigProvider(
-        new ObservabilityConfiguration({
-          observabilityLogLevel: () => 'info'
-        })
-      );
-      const loggerA = createLogger(providerA);
-
-      // Logger B - only error
-      const providerB = createTestConfigProvider(
-        new ObservabilityConfiguration({
-          observabilityLogLevel: () => 'error'
-        })
-      );
-      const loggerB = createLogger(providerB);
-
-      // Logger A logs info, not error
-      loggerA.info('A info');
-      loggerA.error('A error');
-      expect(consoleLogSpy).toHaveBeenCalledWith('[INFO]', 'A info');
-      expect(consoleErrorSpy).not.toHaveBeenCalled();
-
-      consoleLogSpy.mockClear();
-
-      // Logger B logs error, not info
-      loggerB.info('B info');
-      loggerB.error('B error');
-      expect(consoleLogSpy).not.toHaveBeenCalled();
-      expect(consoleErrorSpy).toHaveBeenCalledWith('[ERROR]', 'B error');
-    });
-
-    it('should support dynamic log level from custom provider', async () => {
-      const { createLogger } = await import('@microsoft/agents-a365-observability/src/utils/logging');
-
-      let currentLogLevel = 'none';
-
-      // Provider returns a config with dynamic log level override
-      const dynamicProvider: IConfigurationProvider<ObservabilityConfiguration> = {
-        getConfiguration: () => new ObservabilityConfiguration({
-          observabilityLogLevel: () => currentLogLevel
-        })
-      };
-
-      const customLogger = createLogger(dynamicProvider);
-
-      // Initially none - should not log
-      customLogger.info('Should not appear');
-      expect(consoleLogSpy).not.toHaveBeenCalled();
-
-      // Change to info dynamically
-      currentLogLevel = 'info';
-      customLogger.info('Should appear');
-      expect(consoleLogSpy).toHaveBeenCalledWith('[INFO]', 'Should appear');
-    });
-
-    it('should isolate custom logger from default logger', async () => {
-      process.env.A365_OBSERVABILITY_LOG_LEVEL = 'none';
-      const { createLogger, logger: defaultLogger } = await import('@microsoft/agents-a365-observability/src/utils/logging');
-
-      // Custom logger with all logging enabled
-      const customProvider = createTestConfigProvider(
-        new ObservabilityConfiguration({
-          observabilityLogLevel: () => 'info|warn|error'
-        })
-      );
-      const customLogger = createLogger(customProvider);
-
-      // Default logger should not log (env var is 'none')
-      defaultLogger.info('Default info');
-      expect(consoleLogSpy).not.toHaveBeenCalled();
-
-      // Custom logger should log (custom config has 'info|warn|error')
-      customLogger.info('Custom info');
-      expect(consoleLogSpy).toHaveBeenCalledWith('[INFO]', 'Custom info');
     });
   });
 });

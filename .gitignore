@@ -101,3 +101,5 @@ coverage/
 # OS-specific files
 .DS_Store
 Thumbs.db
+# Test agent sample apps (keep locally, don't commit to SDK)
+tests-agent/
