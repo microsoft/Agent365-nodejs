@@ -2,8 +2,9 @@
 // Licensed under the MIT License.
 
 import { v4 as uuidv4 } from 'uuid';
-import { McpToolServerConfigurationService, Utility, ToolOptions, ChatHistoryMessage, ToolingConfiguration, defaultToolingConfigurationProvider } from '@microsoft/agents-a365-tooling';
+import { McpToolServerConfigurationService, Utility, ToolOptions, ChatHistoryMessage } from '@microsoft/agents-a365-tooling';
 import { AgenticAuthenticationService, Utility as RuntimeUtility, OperationResult, OperationError, IConfigurationProvider } from '@microsoft/agents-a365-runtime';
+import { OpenAIToolingConfiguration, defaultOpenAIToolingConfigurationProvider } from './configuration';
 
 // Agents SDK
 import { TurnContext, Authorization } from '@microsoft/agents-hosting';
@@ -18,15 +19,15 @@ import { OpenAIConversationsSession } from '@openai/agents-openai';
  */
 export class McpToolRegistrationService {
   private readonly configService: McpToolServerConfigurationService;
-  private readonly configProvider: IConfigurationProvider<ToolingConfiguration>;
+  private readonly configProvider: IConfigurationProvider<OpenAIToolingConfiguration>;
   private readonly orchestratorName: string = "OpenAI";
 
   /**
    * Construct a McpToolRegistrationService.
-   * @param configProvider Optional configuration provider. Defaults to defaultToolingConfigurationProvider if not specified.
+   * @param configProvider Optional configuration provider. Defaults to defaultOpenAIToolingConfigurationProvider if not specified.
    */
-  constructor(configProvider?: IConfigurationProvider<ToolingConfiguration>) {
-    this.configProvider = configProvider ?? defaultToolingConfigurationProvider;
+  constructor(configProvider?: IConfigurationProvider<OpenAIToolingConfiguration>) {
+    this.configProvider = configProvider ?? defaultOpenAIToolingConfigurationProvider;
     this.configService = new McpToolServerConfigurationService(this.configProvider);
   }
 

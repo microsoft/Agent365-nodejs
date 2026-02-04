@@ -2,8 +2,9 @@
 // Licensed under the MIT License.
 
 // Microsoft Agent 365 SDK
-import { McpToolServerConfigurationService, Utility, ToolOptions, ChatHistoryMessage, ToolingConfiguration, defaultToolingConfigurationProvider } from '@microsoft/agents-a365-tooling';
+import { McpToolServerConfigurationService, Utility, ToolOptions, ChatHistoryMessage } from '@microsoft/agents-a365-tooling';
 import { AgenticAuthenticationService, Utility as RuntimeUtility, OperationResult, OperationError, IConfigurationProvider } from '@microsoft/agents-a365-runtime';
+import { LangChainToolingConfiguration, defaultLangChainToolingConfigurationProvider } from './configuration';
 
 // Agents SDK
 import { TurnContext, Authorization } from '@microsoft/agents-hosting';
@@ -31,15 +32,15 @@ import type { CompiledStateGraph, StateSnapshot } from '@langchain/langgraph';
  */
 export class McpToolRegistrationService {
   private readonly configService: McpToolServerConfigurationService;
-  private readonly configProvider: IConfigurationProvider<ToolingConfiguration>;
+  private readonly configProvider: IConfigurationProvider<LangChainToolingConfiguration>;
   private readonly orchestratorName: string = "LangChain";
 
   /**
    * Construct a McpToolRegistrationService.
-   * @param configProvider Optional configuration provider. Defaults to defaultToolingConfigurationProvider if not specified.
+   * @param configProvider Optional configuration provider. Defaults to defaultLangChainToolingConfigurationProvider if not specified.
    */
-  constructor(configProvider?: IConfigurationProvider<ToolingConfiguration>) {
-    this.configProvider = configProvider ?? defaultToolingConfigurationProvider;
+  constructor(configProvider?: IConfigurationProvider<LangChainToolingConfiguration>) {
+    this.configProvider = configProvider ?? defaultLangChainToolingConfigurationProvider;
     this.configService = new McpToolServerConfigurationService(this.configProvider);
   }
 
