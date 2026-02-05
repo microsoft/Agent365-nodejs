@@ -99,5 +99,23 @@ describe('AgenticAuthenticationService', () => {
         { scopes: testScopes }
       );
     });
+
+    it('should use default MCP platform scope when called without scopes (deprecated overload)', async () => {
+      mockAuthorization.exchangeToken.mockResolvedValue({ token: 'test-token' } as unknown as Awaited<ReturnType<Authorization['exchangeToken']>>);
+
+      // Call the deprecated 3-parameter overload (no scopes)
+      await AgenticAuthenticationService.GetAgenticUserToken(
+        mockAuthorization,
+        mockAuthHandlerName,
+        mockTurnContext
+      );
+
+      // Verify it uses the default MCP platform authentication scope
+      expect(mockAuthorization.exchangeToken).toHaveBeenCalledWith(
+        mockTurnContext,
+        mockAuthHandlerName,
+        { scopes: ['ea9ffc3e-8a23-4a7d-836d-234d7c7565c1/.default'] }
+      );
+    });
   });
 });

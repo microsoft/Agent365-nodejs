@@ -4,6 +4,7 @@
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { SpanKind, SpanStatusCode } from '@opentelemetry/api';
 import { ReadableSpan } from '@opentelemetry/sdk-trace-base';
+import { ClusterCategory } from '@microsoft/agents-a365-runtime';
 
 describe('exporter/utils', () => {
   const originalEnv = process.env;
@@ -273,7 +274,7 @@ describe('exporter/utils', () => {
   describe('resolveAgent365Endpoint', () => {
     it('should return production endpoint for prod cluster', async () => {
       const { resolveAgent365Endpoint } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
-      expect(resolveAgent365Endpoint('prod')).toBe('https://agent365.svc.cloud.microsoft');
+      expect(resolveAgent365Endpoint(ClusterCategory.prod)).toBe('https://agent365.svc.cloud.microsoft');
     });
 
     it('should return production endpoint for unknown cluster category', async () => {
@@ -282,7 +283,11 @@ describe('exporter/utils', () => {
       expect(resolveAgent365Endpoint('unknown' as never)).toBe('https://agent365.svc.cloud.microsoft');
     });
 
-    it.each(['local', 'dev', 'test', 'preprod', 'gov', 'high', 'dod', 'mooncake', 'ex', 'rx'] as const)(
+    it.each([
+      ClusterCategory.local, ClusterCategory.dev, ClusterCategory.test, ClusterCategory.preprod,
+      ClusterCategory.gov, ClusterCategory.high, ClusterCategory.dod, ClusterCategory.mooncake,
+      ClusterCategory.ex, ClusterCategory.rx
+    ])(
       'should return production endpoint for %s cluster (current implementation)',
       async (cluster) => {
         const { resolveAgent365Endpoint } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');

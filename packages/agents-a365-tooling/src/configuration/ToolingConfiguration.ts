@@ -34,7 +34,7 @@ export class ToolingConfiguration extends RuntimeConfiguration {
 
   get mcpPlatformEndpoint(): string {
     const override = this.toolingOverrides.mcpPlatformEndpoint?.();
-    if (override !== undefined) return normalizeUrl(override);
+    if (override) return normalizeUrl(override);
 
     const envValue = process.env.MCP_PLATFORM_ENDPOINT?.trim();
     if (envValue) return normalizeUrl(envValue);
@@ -60,7 +60,7 @@ export class ToolingConfiguration extends RuntimeConfiguration {
    */
   get mcpPlatformAuthenticationScope(): string {
     const override = this.toolingOverrides.mcpPlatformAuthenticationScope?.();
-    if (override !== undefined) return override;
+    if (override) return override;
 
     const envValue = process.env.MCP_PLATFORM_AUTHENTICATION_SCOPE;
     if (envValue) return envValue;

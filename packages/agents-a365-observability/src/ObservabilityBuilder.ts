@@ -128,7 +128,7 @@ export class ObservabilityBuilder {
     if (this.options.exporterOptions) {
       Object.assign(opts, this.options.exporterOptions);
     }
-    opts.clusterCategory = this.options.clusterCategory || opts.clusterCategory || 'prod';
+    opts.clusterCategory = this.options.clusterCategory || opts.clusterCategory || ClusterCategory.prod;
     if (this.options.tokenResolver) {
       opts.tokenResolver = this.options.tokenResolver;
     }
@@ -150,7 +150,7 @@ export class ObservabilityBuilder {
     if (this.options.exporterOptions) {
       Object.assign(opts, this.options.exporterOptions);
     }
-    opts.clusterCategory = this.options.clusterCategory || opts.clusterCategory || 'prod';
+    opts.clusterCategory = this.options.clusterCategory || opts.clusterCategory || ClusterCategory.prod;
     
     // For per-request export, token is retrieved from OTel Context by Agent365Exporter
     // using getExportToken(), so no tokenResolver is needed here

@@ -44,34 +44,40 @@ The Agent365 SDK currently relies on environment variables for all configuration
 
 | Setting | Env Variable | Default | Type | Used In |
 |---------|--------------|---------|------|---------|
-| Cluster Category | `CLUSTER_CATEGORY` | `'prod'` | `ClusterCategory` | RuntimeConfiguration |
+| `clusterCategory` | `CLUSTER_CATEGORY` | `'prod'` | `ClusterCategory` | RuntimeConfiguration |
+| `isDevelopmentEnvironment` | _(derived)_ | `false` | `boolean` | RuntimeConfiguration |
+| `isNodeEnvDevelopment` | `NODE_ENV` | `false` (true if NODE_ENV='development') | `boolean` | RuntimeConfiguration |
+
+**Derived Properties:**
+- `isDevelopmentEnvironment`: Returns `true` when `clusterCategory` is `'local'` or `'dev'`
+- `isNodeEnvDevelopment`: Returns `true` when `NODE_ENV` equals `'development'` (case-insensitive). Used by `ToolingConfiguration.useToolingManifest`.
 
 #### Tooling Settings
 
 | Setting | Env Variable | Default | Type | Used In |
 |---------|--------------|---------|------|---------|
-| MCP Platform Endpoint | `MCP_PLATFORM_ENDPOINT` | `'https://agent365.svc.cloud.microsoft'` | `string` | ToolingConfiguration |
-| MCP Platform Auth Scope | `MCP_PLATFORM_AUTHENTICATION_SCOPE` | `'ea9ffc3e-8a23-4a7d-836d-234d7c7565c1/.default'` | `string` | ToolingConfiguration |
-| Use Tooling Manifest | `NODE_ENV` | `false` (true if NODE_ENV='development') | `boolean` | ToolingConfiguration |
+| `mcpPlatformEndpoint` | `MCP_PLATFORM_ENDPOINT` | `'https://agent365.svc.cloud.microsoft'` | `string` | ToolingConfiguration |
+| `mcpPlatformAuthenticationScope` | `MCP_PLATFORM_AUTHENTICATION_SCOPE` | `'ea9ffc3e-8a23-4a7d-836d-234d7c7565c1/.default'` | `string` | ToolingConfiguration |
+| `useToolingManifest` | `NODE_ENV` | `false` (true if NODE_ENV='development') | `boolean` | ToolingConfiguration |
 
 #### Observability Settings
 
 | Setting | Env Variable | Default | Type | Used In |
 |---------|--------------|---------|------|---------|
-| Observability Auth Scopes | `A365_OBSERVABILITY_SCOPES_OVERRIDE` | `['https://api.powerplatform.com/.default']` | `string[]` | ObservabilityConfiguration |
-| Exporter Enabled | `ENABLE_A365_OBSERVABILITY_EXPORTER` | `false` | `boolean` | ObservabilityConfiguration |
-| Per-Request Export | `ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT` | `false` | `boolean` | exporter/utils.ts |
-| Use Custom Domain | `A365_OBSERVABILITY_USE_CUSTOM_DOMAIN` | `false` | `boolean` | exporter/utils.ts |
-| Domain Override | `A365_OBSERVABILITY_DOMAIN_OVERRIDE` | `null` | `string \| null` | exporter/utils.ts |
-| Log Level | `A365_OBSERVABILITY_LOG_LEVEL` | `'none'` | `string` | logging.ts |
+| `observabilityAuthenticationScopes` | `A365_OBSERVABILITY_SCOPES_OVERRIDE` | `['https://api.powerplatform.com/.default']` | `string[]` | ObservabilityConfiguration |
+| `isObservabilityExporterEnabled` | `ENABLE_A365_OBSERVABILITY_EXPORTER` | `false` | `boolean` | ObservabilityConfiguration |
+| `isPerRequestExportEnabled` | `ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT` | `false` | `boolean` | ObservabilityConfiguration |
+| `useCustomDomainForObservability` | `A365_OBSERVABILITY_USE_CUSTOM_DOMAIN` | `false` | `boolean` | ObservabilityConfiguration |
+| `observabilityDomainOverride` | `A365_OBSERVABILITY_DOMAIN_OVERRIDE` | `null` | `string \| null` | ObservabilityConfiguration |
+| `observabilityLogLevel` | `A365_OBSERVABILITY_LOG_LEVEL` | `'none'` | `string` | ObservabilityConfiguration |
 
 #### Per-Request Processor Settings (Advanced)
 
 | Setting | Env Variable | Default | Type | Used In |
 |---------|--------------|---------|------|---------|
-| Max Buffered Traces | `A365_PER_REQUEST_MAX_TRACES` | `1000` | `number` | PerRequestSpanProcessor.ts |
-| Max Spans Per Trace | `A365_PER_REQUEST_MAX_SPANS_PER_TRACE` | `5000` | `number` | PerRequestSpanProcessor.ts |
-| Max Concurrent Exports | `A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS` | `20` | `number` | PerRequestSpanProcessor.ts |
+| `perRequestMaxTraces` | `A365_PER_REQUEST_MAX_TRACES` | `1000` | `number` | ObservabilityConfiguration |
+| `perRequestMaxSpansPerTrace` | `A365_PER_REQUEST_MAX_SPANS_PER_TRACE` | `5000` | `number` | ObservabilityConfiguration |
+| `perRequestMaxConcurrentExports` | `A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS` | `20` | `number` | ObservabilityConfiguration |
 
 ### 2.2 Hardcoded Constants (Not Configurable)
 
@@ -145,8 +151,7 @@ Configuration is distributed across packages with an **inheritance-based** desig
 │            ▼                │     │  │ + domainOverride      │  │
 │  ┌───────────────────────┐  │     │  │ + logLevel            │  │
 │  │ OpenAIToolingConfig   │  │     │  └───────────────────────┘  │
-│  │ + openAIModel         │  │     │                             │
-│  │ + openAIApiKey        │  │     │                             │
+│  │ (empty - future use)  │  │     │                             │
 │  └───────────────────────┘  │     │                             │
 └─────────────────────────────┘     └─────────────────────────────┘
 ```
@@ -181,6 +186,7 @@ import { ClusterCategory } from '../power-platform-api-discovery';
  */
 export type RuntimeConfigurationOptions = {
   clusterCategory?: () => ClusterCategory;
+  isNodeEnvDevelopment?: () => boolean;
 };
 ```
 
@@ -217,6 +223,9 @@ export class RuntimeConfiguration {
   }
 
   get isNodeEnvDevelopment(): boolean {
+    const override = this.overrides.isNodeEnvDevelopment?.();
+    if (override !== undefined) return override;
+
     const nodeEnv = process.env.NODE_ENV ?? '';
     return nodeEnv.toLowerCase() === 'development';
   }
@@ -493,7 +502,10 @@ export class ObservabilityConfiguration extends RuntimeConfiguration {
 
 ### 3.5 Extension Package Example (OpenAI Tooling)
 
+> **Note**: This section shows an **illustrative example** of how extension packages could add their own settings. The actual `OpenAIToolingConfiguration` implementation currently has no custom properties beyond what it inherits from `ToolingConfiguration`. The `openAIModel` property shown below is hypothetical and demonstrates the extension pattern for when such settings are needed in the future.
+
 ```typescript
+// ILLUSTRATIVE EXAMPLE - showing how extension-specific settings could be added
 // packages/agents-a365-tooling-extensions-openai/src/configuration/OpenAIToolingConfiguration.ts
 
 import { ToolingConfiguration, ToolingConfigurationOptions } from '@microsoft/agents-a365-tooling';
@@ -605,7 +617,30 @@ packages/agents-a365-tooling-extensions-openai/src/
 │   ├── OpenAIToolingConfigurationOptions.ts
 │   └── OpenAIToolingConfiguration.ts
 └── index.ts  # Add: export * from './configuration'
+
+packages/agents-a365-tooling-extensions-claude/src/
+├── configuration/
+│   ├── index.ts
+│   ├── ClaudeToolingConfigurationOptions.ts
+│   └── ClaudeToolingConfiguration.ts
+└── index.ts  # Add: export * from './configuration'
+
+packages/agents-a365-tooling-extensions-langchain/src/
+├── configuration/
+│   ├── index.ts
+│   ├── LangChainToolingConfigurationOptions.ts
+│   └── LangChainToolingConfiguration.ts
+└── index.ts  # Add: export * from './configuration'
+
+packages/agents-a365-observability-extensions-openai/src/
+├── configuration/
+│   ├── index.ts
+│   ├── OpenAIObservabilityConfigurationOptions.ts
+│   └── OpenAIObservabilityConfiguration.ts
+└── index.ts  # Add: export * from './configuration'
 ```
+
+> **Note**: All extension configuration classes (`ClaudeToolingConfiguration`, `LangChainToolingConfiguration`, `OpenAIToolingConfiguration`, `OpenAIObservabilityConfiguration`) currently have no custom properties beyond what they inherit. They exist as extension points for future package-specific settings and to enable type-safe dependency injection.
 
 ### 3.8 Key Design Benefits
 
@@ -807,6 +842,19 @@ export function getClusterCategory(): ClusterCategory {
   return defaultRuntimeConfigurationProvider.getConfiguration().clusterCategory;
 }
 ```
+
+> **Note: Cross-Package Delegation Limitation**
+>
+> Some deprecated utility functions in `environment-utils.ts` cannot delegate to configuration providers because their configuration classes are in different packages, which would create circular dependencies:
+>
+> | Function | Configuration Property | Package | Can Delegate? |
+> |----------|------------------------|---------|---------------|
+> | `getClusterCategory()` | `RuntimeConfiguration.clusterCategory` | runtime | ✓ Yes |
+> | `isDevelopmentEnvironment()` | `RuntimeConfiguration.isDevelopmentEnvironment` | runtime | ✓ Yes |
+> | `getObservabilityAuthenticationScope()` | `ObservabilityConfiguration.observabilityAuthenticationScopes` | observability | ✗ No - circular dep |
+> | `getMcpPlatformAuthenticationScope()` | `ToolingConfiguration.mcpPlatformAuthenticationScope` | tooling | ✗ No - circular dep |
+>
+> The functions that cannot delegate return **hardcoded production defaults** and include comments directing users to the appropriate configuration class for proper environment variable support.
 
 #### 4.3.3 Migration Pattern for Services
 

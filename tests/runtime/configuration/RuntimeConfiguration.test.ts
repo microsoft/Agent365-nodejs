@@ -22,7 +22,7 @@ describe('RuntimeConfiguration', () => {
 
   describe('clusterCategory', () => {
     it('should use override function when provided', () => {
-      const config = new RuntimeConfiguration({ clusterCategory: () => 'gov' });
+      const config = new RuntimeConfiguration({ clusterCategory: () => ClusterCategory.gov });
       expect(config.clusterCategory).toBe('gov');
     });
 
@@ -43,7 +43,7 @@ describe('RuntimeConfiguration', () => {
       const config = new RuntimeConfiguration({
         clusterCategory: () => {
           callCount++;
-          return 'gov';
+          return ClusterCategory.gov;
         }
       });
       config.clusterCategory;
@@ -54,8 +54,8 @@ describe('RuntimeConfiguration', () => {
     it('should support dynamic values from external state', () => {
       let currentTenant = 'tenant-a';
       const tenantConfigs: Record<string, ClusterCategory> = {
-        'tenant-a': 'prod',
-        'tenant-b': 'gov'
+        'tenant-a': ClusterCategory.prod,
+        'tenant-b': ClusterCategory.gov
       };
       const config = new RuntimeConfiguration({
         clusterCategory: () => tenantConfigs[currentTenant]
@@ -86,37 +86,45 @@ describe('RuntimeConfiguration', () => {
       const config = new RuntimeConfiguration({});
       expect(config.clusterCategory).toBe(category);
     });
+
+    it.each([
+      'invalid', 'foobar', 'production', 'development', 'staging', 'INVALID'
+    ])('should fall back to prod for invalid cluster category: %s', (invalidCategory) => {
+      process.env.CLUSTER_CATEGORY = invalidCategory;
+      const config = new RuntimeConfiguration({});
+      expect(config.clusterCategory).toBe('prod');
+    });
   });
 
   describe('isDevelopmentEnvironment', () => {
     it('should return true for local cluster', () => {
-      expect(new RuntimeConfiguration({ clusterCategory: () => 'local' }).isDevelopmentEnvironment).toBe(true);
+      expect(new RuntimeConfiguration({ clusterCategory: () => ClusterCategory.local }).isDevelopmentEnvironment).toBe(true);
     });
 
     it('should return true for dev cluster', () => {
-      expect(new RuntimeConfiguration({ clusterCategory: () => 'dev' }).isDevelopmentEnvironment).toBe(true);
+      expect(new RuntimeConfiguration({ clusterCategory: () => ClusterCategory.dev }).isDevelopmentEnvironment).toBe(true);
     });
 
     it('should return false for prod cluster', () => {
-      expect(new RuntimeConfiguration({ clusterCategory: () => 'prod' }).isDevelopmentEnvironment).toBe(false);
+      expect(new RuntimeConfiguration({ clusterCategory: () => ClusterCategory.prod }).isDevelopmentEnvironment).toBe(false);
     });
 
     it('should return false for test cluster', () => {
-      expect(new RuntimeConfiguration({ clusterCategory: () => 'test' }).isDevelopmentEnvironment).toBe(false);
+      expect(new RuntimeConfiguration({ clusterCategory: () => ClusterCategory.test }).isDevelopmentEnvironment).toBe(false);
     });
 
     it('should return false for gov cluster', () => {
-      expect(new RuntimeConfiguration({ clusterCategory: () => 'gov' }).isDevelopmentEnvironment).toBe(false);
+      expect(new RuntimeConfiguration({ clusterCategory: () => ClusterCategory.gov }).isDevelopmentEnvironment).toBe(false);
     });
 
     it('should derive from clusterCategory dynamically', () => {
-      let currentCluster: ClusterCategory = 'prod';
+      let currentCluster: ClusterCategory = ClusterCategory.prod;
       const config = new RuntimeConfiguration({
         clusterCategory: () => currentCluster
       });
 
       expect(config.isDevelopmentEnvironment).toBe(false);
-      currentCluster = 'dev';
+      currentCluster = ClusterCategory.dev;
       expect(config.isDevelopmentEnvironment).toBe(true);
     });
   });
@@ -229,7 +237,7 @@ describe('DefaultConfigurationProvider', () => {
 
   it('should create configuration using the provided factory', () => {
     const provider = new DefaultConfigurationProvider(() =>
-      new RuntimeConfiguration({ clusterCategory: () => 'gov' })
+      new RuntimeConfiguration({ clusterCategory: () => ClusterCategory.gov })
     );
     expect(provider.getConfiguration().clusterCategory).toBe('gov');
   });

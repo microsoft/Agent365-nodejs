@@ -7,7 +7,7 @@ import {
   defaultLangChainToolingConfigurationProvider
 } from '../../../packages/agents-a365-tooling-extensions-langchain/src';
 import { ToolingConfiguration } from '../../../packages/agents-a365-tooling/src';
-import { RuntimeConfiguration, DefaultConfigurationProvider } from '../../../packages/agents-a365-runtime/src';
+import { RuntimeConfiguration, DefaultConfigurationProvider, ClusterCategory } from '../../../packages/agents-a365-runtime/src';
 
 describe('LangChainToolingConfiguration', () => {
   const originalEnv = process.env;
@@ -41,8 +41,8 @@ describe('LangChainToolingConfiguration', () => {
 
   describe('inherited runtime settings', () => {
     it('should inherit clusterCategory from override', () => {
-      const config = new LangChainToolingConfiguration({ clusterCategory: () => 'gov' });
-      expect(config.clusterCategory).toBe('gov');
+      const config = new LangChainToolingConfiguration({ clusterCategory: () => ClusterCategory.gov });
+      expect(config.clusterCategory).toBe(ClusterCategory.gov);
     });
 
     it('should inherit clusterCategory from env var', () => {
@@ -52,7 +52,7 @@ describe('LangChainToolingConfiguration', () => {
     });
 
     it('should inherit isDevelopmentEnvironment', () => {
-      const config = new LangChainToolingConfiguration({ clusterCategory: () => 'local' });
+      const config = new LangChainToolingConfiguration({ clusterCategory: () => ClusterCategory.local });
       expect(config.isDevelopmentEnvironment).toBe(true);
     });
   });
@@ -81,11 +81,11 @@ describe('LangChainToolingConfiguration', () => {
   describe('combined overrides', () => {
     it('should allow overriding runtime, tooling settings together', () => {
       const config = new LangChainToolingConfiguration({
-        clusterCategory: () => 'dev',
+        clusterCategory: () => ClusterCategory.dev,
         mcpPlatformEndpoint: () => 'https://dev.endpoint',
         mcpPlatformAuthenticationScope: () => 'dev-scope/.default'
       });
-      expect(config.clusterCategory).toBe('dev');
+      expect(config.clusterCategory).toBe(ClusterCategory.dev);
       expect(config.isDevelopmentEnvironment).toBe(true);
       expect(config.mcpPlatformEndpoint).toBe('https://dev.endpoint');
       expect(config.mcpPlatformAuthenticationScope).toBe('dev-scope/.default');

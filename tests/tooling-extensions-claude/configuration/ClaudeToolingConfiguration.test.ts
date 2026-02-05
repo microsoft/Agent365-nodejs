@@ -7,7 +7,7 @@ import {
   defaultClaudeToolingConfigurationProvider
 } from '../../../packages/agents-a365-tooling-extensions-claude/src';
 import { ToolingConfiguration } from '../../../packages/agents-a365-tooling/src';
-import { RuntimeConfiguration, DefaultConfigurationProvider } from '../../../packages/agents-a365-runtime/src';
+import { RuntimeConfiguration, DefaultConfigurationProvider, ClusterCategory } from '../../../packages/agents-a365-runtime/src';
 
 describe('ClaudeToolingConfiguration', () => {
   const originalEnv = process.env;
@@ -41,8 +41,8 @@ describe('ClaudeToolingConfiguration', () => {
 
   describe('inherited runtime settings', () => {
     it('should inherit clusterCategory from override', () => {
-      const config = new ClaudeToolingConfiguration({ clusterCategory: () => 'gov' });
-      expect(config.clusterCategory).toBe('gov');
+      const config = new ClaudeToolingConfiguration({ clusterCategory: () => ClusterCategory.gov });
+      expect(config.clusterCategory).toBe(ClusterCategory.gov);
     });
 
     it('should inherit clusterCategory from env var', () => {
@@ -52,7 +52,7 @@ describe('ClaudeToolingConfiguration', () => {
     });
 
     it('should inherit isDevelopmentEnvironment', () => {
-      const config = new ClaudeToolingConfiguration({ clusterCategory: () => 'local' });
+      const config = new ClaudeToolingConfiguration({ clusterCategory: () => ClusterCategory.local });
       expect(config.isDevelopmentEnvironment).toBe(true);
     });
   });
@@ -81,11 +81,11 @@ describe('ClaudeToolingConfiguration', () => {
   describe('combined overrides', () => {
     it('should allow overriding runtime, tooling settings together', () => {
       const config = new ClaudeToolingConfiguration({
-        clusterCategory: () => 'dev',
+        clusterCategory: () => ClusterCategory.dev,
         mcpPlatformEndpoint: () => 'https://dev.endpoint',
         mcpPlatformAuthenticationScope: () => 'dev-scope/.default'
       });
-      expect(config.clusterCategory).toBe('dev');
+      expect(config.clusterCategory).toBe(ClusterCategory.dev);
       expect(config.isDevelopmentEnvironment).toBe(true);
       expect(config.mcpPlatformEndpoint).toBe('https://dev.endpoint');
       expect(config.mcpPlatformAuthenticationScope).toBe('dev-scope/.default');

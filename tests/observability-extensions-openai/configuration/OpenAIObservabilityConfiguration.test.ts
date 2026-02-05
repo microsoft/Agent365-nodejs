@@ -7,7 +7,7 @@ import {
   defaultOpenAIObservabilityConfigurationProvider
 } from '../../../packages/agents-a365-observability-extensions-openai/src';
 import { ObservabilityConfiguration } from '../../../packages/agents-a365-observability/src';
-import { RuntimeConfiguration, DefaultConfigurationProvider } from '../../../packages/agents-a365-runtime/src';
+import { RuntimeConfiguration, DefaultConfigurationProvider, ClusterCategory } from '../../../packages/agents-a365-runtime/src';
 
 describe('OpenAIObservabilityConfiguration', () => {
   const originalEnv = process.env;
@@ -41,8 +41,8 @@ describe('OpenAIObservabilityConfiguration', () => {
 
   describe('inherited runtime settings', () => {
     it('should inherit clusterCategory from override', () => {
-      const config = new OpenAIObservabilityConfiguration({ clusterCategory: () => 'gov' });
-      expect(config.clusterCategory).toBe('gov');
+      const config = new OpenAIObservabilityConfiguration({ clusterCategory: () => ClusterCategory.gov });
+      expect(config.clusterCategory).toBe(ClusterCategory.gov);
     });
 
     it('should inherit clusterCategory from env var', () => {
@@ -52,7 +52,7 @@ describe('OpenAIObservabilityConfiguration', () => {
     });
 
     it('should inherit isDevelopmentEnvironment', () => {
-      const config = new OpenAIObservabilityConfiguration({ clusterCategory: () => 'local' });
+      const config = new OpenAIObservabilityConfiguration({ clusterCategory: () => ClusterCategory.local });
       expect(config.isDevelopmentEnvironment).toBe(true);
     });
   });
@@ -132,11 +132,11 @@ describe('OpenAIObservabilityConfiguration', () => {
   describe('combined overrides', () => {
     it('should allow overriding runtime and observability settings together', () => {
       const config = new OpenAIObservabilityConfiguration({
-        clusterCategory: () => 'dev',
+        clusterCategory: () => ClusterCategory.dev,
         isObservabilityExporterEnabled: () => true,
         observabilityLogLevel: () => 'info'
       });
-      expect(config.clusterCategory).toBe('dev');
+      expect(config.clusterCategory).toBe(ClusterCategory.dev);
       expect(config.isDevelopmentEnvironment).toBe(true);
       expect(config.isObservabilityExporterEnabled).toBe(true);
       expect(config.observabilityLogLevel).toBe('info');

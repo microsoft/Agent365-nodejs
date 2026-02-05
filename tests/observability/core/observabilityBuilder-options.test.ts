@@ -3,6 +3,7 @@
 // ------------------------------------------------------------------------------
 
 import { ObservabilityBuilder } from '@microsoft/agents-a365-observability/src/ObservabilityBuilder';
+import { ClusterCategory } from '@microsoft/agents-a365-runtime';
 
 // Mock the Agent365Exporter so we can capture the constructed options without performing network calls.
 jest.mock('@microsoft/agents-a365-observability/src/tracing/exporter/Agent365Exporter', () => {
@@ -42,10 +43,10 @@ describe('ObservabilityBuilder exporterOptions merging', () => {
         exporterTimeoutMilliseconds: 2222,
         maxExportBatchSize: 33,
         // These should be overridden by explicit builder methods below
-        clusterCategory: 'dev' as any,
+        clusterCategory: ClusterCategory.dev,
         tokenResolver: () => 'token-from-exporterOptions'
       })
-      .withClusterCategory('test')
+      .withClusterCategory(ClusterCategory.test)
       .withTokenResolver(() => 'token-from-builder');
 
     const built = builder.build();

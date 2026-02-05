@@ -6,7 +6,7 @@ import {
   ObservabilityConfiguration,
   defaultObservabilityConfigurationProvider
 } from '../../../packages/agents-a365-observability/src';
-import { RuntimeConfiguration, DefaultConfigurationProvider } from '../../../packages/agents-a365-runtime/src';
+import { RuntimeConfiguration, DefaultConfigurationProvider, ClusterCategory } from '../../../packages/agents-a365-runtime/src';
 
 describe('ObservabilityConfiguration', () => {
   const originalEnv = process.env;
@@ -21,8 +21,8 @@ describe('ObservabilityConfiguration', () => {
 
   describe('inheritance from RuntimeConfiguration', () => {
     it('should inherit runtime settings', () => {
-      const config = new ObservabilityConfiguration({ clusterCategory: () => 'gov' });
-      expect(config.clusterCategory).toBe('gov');
+      const config = new ObservabilityConfiguration({ clusterCategory: () => ClusterCategory.gov });
+      expect(config.clusterCategory).toBe(ClusterCategory.gov);
       expect(config.isDevelopmentEnvironment).toBe(false);
     });
 
@@ -279,17 +279,23 @@ describe('ObservabilityConfiguration', () => {
       expect(config.perRequestMaxTraces).toBe(1000);
     });
 
-    it('should accept negative values from env var', () => {
+    it('should fall back to default for negative values from env var', () => {
       process.env.A365_PER_REQUEST_MAX_TRACES = '-100';
       const config = new ObservabilityConfiguration({});
-      // Note: Negative values are currently accepted. Consider rejecting for "max" settings.
-      expect(config.perRequestMaxTraces).toBe(-100);
+      expect(config.perRequestMaxTraces).toBe(1000);
     });
 
-    it('should accept zero from env var', () => {
+    it('should fall back to default for zero from env var', () => {
       process.env.A365_PER_REQUEST_MAX_TRACES = '0';
       const config = new ObservabilityConfiguration({});
-      expect(config.perRequestMaxTraces).toBe(0);
+      expect(config.perRequestMaxTraces).toBe(1000);
+    });
+
+    it('should fall back to default for negative override', () => {
+      const config = new ObservabilityConfiguration({
+        perRequestMaxTraces: () => -50
+      });
+      expect(config.perRequestMaxTraces).toBe(1000);
     });
   });
 
@@ -319,17 +325,23 @@ describe('ObservabilityConfiguration', () => {
       expect(config.perRequestMaxSpansPerTrace).toBe(5000);
     });
 
-    it('should accept negative values from env var', () => {
+    it('should fall back to default for negative values from env var', () => {
       process.env.A365_PER_REQUEST_MAX_SPANS_PER_TRACE = '-500';
       const config = new ObservabilityConfiguration({});
-      // Note: Negative values are currently accepted. Consider rejecting for "max" settings.
-      expect(config.perRequestMaxSpansPerTrace).toBe(-500);
+      expect(config.perRequestMaxSpansPerTrace).toBe(5000);
     });
 
-    it('should accept zero from env var', () => {
+    it('should fall back to default for zero from env var', () => {
       process.env.A365_PER_REQUEST_MAX_SPANS_PER_TRACE = '0';
       const config = new ObservabilityConfiguration({});
-      expect(config.perRequestMaxSpansPerTrace).toBe(0);
+      expect(config.perRequestMaxSpansPerTrace).toBe(5000);
+    });
+
+    it('should fall back to default for negative override', () => {
+      const config = new ObservabilityConfiguration({
+        perRequestMaxSpansPerTrace: () => -100
+      });
+      expect(config.perRequestMaxSpansPerTrace).toBe(5000);
     });
   });
 
@@ -359,17 +371,23 @@ describe('ObservabilityConfiguration', () => {
       expect(config.perRequestMaxConcurrentExports).toBe(20);
     });
 
-    it('should accept negative values from env var', () => {
+    it('should fall back to default for negative values from env var', () => {
       process.env.A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS = '-10';
       const config = new ObservabilityConfiguration({});
-      // Note: Negative values are currently accepted. Consider rejecting for "max" settings.
-      expect(config.perRequestMaxConcurrentExports).toBe(-10);
+      expect(config.perRequestMaxConcurrentExports).toBe(20);
     });
 
-    it('should accept zero from env var', () => {
+    it('should fall back to default for zero from env var', () => {
       process.env.A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS = '0';
       const config = new ObservabilityConfiguration({});
-      expect(config.perRequestMaxConcurrentExports).toBe(0);
+      expect(config.perRequestMaxConcurrentExports).toBe(20);
+    });
+
+    it('should fall back to default for negative override', () => {
+      const config = new ObservabilityConfiguration({
+        perRequestMaxConcurrentExports: () => -5
+      });
+      expect(config.perRequestMaxConcurrentExports).toBe(20);
     });
   });
 });

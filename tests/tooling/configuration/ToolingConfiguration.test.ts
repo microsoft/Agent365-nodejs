@@ -6,7 +6,7 @@ import {
   ToolingConfiguration,
   defaultToolingConfigurationProvider
 } from '../../../packages/agents-a365-tooling/src';
-import { RuntimeConfiguration, DefaultConfigurationProvider } from '../../../packages/agents-a365-runtime/src';
+import { RuntimeConfiguration, DefaultConfigurationProvider, ClusterCategory } from '../../../packages/agents-a365-runtime/src';
 
 describe('ToolingConfiguration', () => {
   const originalEnv = process.env;
@@ -21,8 +21,8 @@ describe('ToolingConfiguration', () => {
 
   describe('inheritance from RuntimeConfiguration', () => {
     it('should inherit runtime settings', () => {
-      const config = new ToolingConfiguration({ clusterCategory: () => 'gov' });
-      expect(config.clusterCategory).toBe('gov');
+      const config = new ToolingConfiguration({ clusterCategory: () => ClusterCategory.gov });
+      expect(config.clusterCategory).toBe(ClusterCategory.gov);
       expect(config.isDevelopmentEnvironment).toBe(false);
     });
 
@@ -62,6 +62,22 @@ describe('ToolingConfiguration', () => {
     it('should fall back to default when env var is empty string', () => {
       process.env.MCP_PLATFORM_ENDPOINT = '';
       const config = new ToolingConfiguration({});
+      expect(config.mcpPlatformEndpoint).toBe('https://agent365.svc.cloud.microsoft');
+    });
+
+    it('should fall back to env var when override returns empty string', () => {
+      process.env.MCP_PLATFORM_ENDPOINT = 'https://env.endpoint';
+      const config = new ToolingConfiguration({
+        mcpPlatformEndpoint: () => ''
+      });
+      expect(config.mcpPlatformEndpoint).toBe('https://env.endpoint');
+    });
+
+    it('should fall back to default when override returns empty string and no env var', () => {
+      delete process.env.MCP_PLATFORM_ENDPOINT;
+      const config = new ToolingConfiguration({
+        mcpPlatformEndpoint: () => ''
+      });
       expect(config.mcpPlatformEndpoint).toBe('https://agent365.svc.cloud.microsoft');
     });
 
@@ -121,6 +137,22 @@ describe('ToolingConfiguration', () => {
     it('should fall back to default when env var is empty string', () => {
       process.env.MCP_PLATFORM_AUTHENTICATION_SCOPE = '';
       const config = new ToolingConfiguration({});
+      expect(config.mcpPlatformAuthenticationScope).toBe('ea9ffc3e-8a23-4a7d-836d-234d7c7565c1/.default');
+    });
+
+    it('should fall back to env var when override returns empty string', () => {
+      process.env.MCP_PLATFORM_AUTHENTICATION_SCOPE = 'env-scope/.default';
+      const config = new ToolingConfiguration({
+        mcpPlatformAuthenticationScope: () => ''
+      });
+      expect(config.mcpPlatformAuthenticationScope).toBe('env-scope/.default');
+    });
+
+    it('should fall back to default when override returns empty string and no env var', () => {
+      delete process.env.MCP_PLATFORM_AUTHENTICATION_SCOPE;
+      const config = new ToolingConfiguration({
+        mcpPlatformAuthenticationScope: () => ''
+      });
       expect(config.mcpPlatformAuthenticationScope).toBe('ea9ffc3e-8a23-4a7d-836d-234d7c7565c1/.default');
     });
   });
@@ -195,10 +227,10 @@ describe('ToolingConfiguration', () => {
   describe('combined overrides', () => {
     it('should allow overriding both runtime and tooling settings', () => {
       const config = new ToolingConfiguration({
-        clusterCategory: () => 'dev',
+        clusterCategory: () => ClusterCategory.dev,
         mcpPlatformEndpoint: () => 'https://dev.endpoint'
       });
-      expect(config.clusterCategory).toBe('dev');
+      expect(config.clusterCategory).toBe(ClusterCategory.dev);
       expect(config.isDevelopmentEnvironment).toBe(true);
       expect(config.mcpPlatformEndpoint).toBe('https://dev.endpoint');
     });

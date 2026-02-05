@@ -42,9 +42,13 @@ export class RuntimeConfiguration {
     }
     const envValue = process.env.CLUSTER_CATEGORY;
     if (envValue) {
-      return envValue.toLowerCase() as ClusterCategory;
+      const normalized = envValue.toLowerCase();
+      if (Object.values(ClusterCategory).includes(normalized as ClusterCategory)) {
+        return normalized as ClusterCategory;
+      }
+      // Invalid value - fall through to default
     }
-    return 'prod';
+    return ClusterCategory.prod;
   }
 
   /**
@@ -52,7 +56,7 @@ export class RuntimeConfiguration {
    * Based on clusterCategory.
    */
   get isDevelopmentEnvironment(): boolean {
-    return ['local', 'dev'].includes(this.clusterCategory);
+    return [ClusterCategory.local, ClusterCategory.dev].includes(this.clusterCategory);
   }
 
   /**

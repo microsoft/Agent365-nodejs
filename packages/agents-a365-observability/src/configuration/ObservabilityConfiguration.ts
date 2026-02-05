@@ -79,17 +79,20 @@ export class ObservabilityConfiguration extends RuntimeConfiguration {
 
   // Per-Request Processor settings
   get perRequestMaxTraces(): number {
-    return this.observabilityOverrides.perRequestMaxTraces?.()
+    const value = this.observabilityOverrides.perRequestMaxTraces?.()
       ?? RuntimeConfiguration.parseEnvInt(process.env.A365_PER_REQUEST_MAX_TRACES, DEFAULT_MAX_BUFFERED_TRACES);
+    return value > 0 ? value : DEFAULT_MAX_BUFFERED_TRACES;
   }
 
   get perRequestMaxSpansPerTrace(): number {
-    return this.observabilityOverrides.perRequestMaxSpansPerTrace?.()
+    const value = this.observabilityOverrides.perRequestMaxSpansPerTrace?.()
       ?? RuntimeConfiguration.parseEnvInt(process.env.A365_PER_REQUEST_MAX_SPANS_PER_TRACE, DEFAULT_MAX_SPANS_PER_TRACE);
+    return value > 0 ? value : DEFAULT_MAX_SPANS_PER_TRACE;
   }
 
   get perRequestMaxConcurrentExports(): number {
-    return this.observabilityOverrides.perRequestMaxConcurrentExports?.()
+    const value = this.observabilityOverrides.perRequestMaxConcurrentExports?.()
       ?? RuntimeConfiguration.parseEnvInt(process.env.A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS, DEFAULT_MAX_CONCURRENT_EXPORTS);
+    return value > 0 ? value : DEFAULT_MAX_CONCURRENT_EXPORTS;
   }
 }

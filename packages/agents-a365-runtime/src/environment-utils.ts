@@ -1,6 +1,5 @@
-// ------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// ------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 
 /**
  * Utility logic for environment-related operations.
@@ -15,8 +14,25 @@
 import { RuntimeConfiguration, defaultRuntimeConfigurationProvider } from './configuration';
 import { IConfigurationProvider } from './configuration/IConfigurationProvider';
 
+/**
+ * Production observability authentication scope.
+ * @deprecated This constant is exported for backward compatibility only.
+ * For new code, use `ObservabilityConfiguration.observabilityAuthenticationScopes` instead.
+ */
 export const PROD_OBSERVABILITY_SCOPE = 'https://api.powerplatform.com/.default';
+
+/**
+ * Production MCP platform authentication scope.
+ * @deprecated This constant is exported for backward compatibility only.
+ * For new code, use `ToolingConfiguration.mcpPlatformAuthenticationScope` instead.
+ */
 export const PROD_MCP_PLATFORM_AUTHENTICATION_SCOPE = 'ea9ffc3e-8a23-4a7d-836d-234d7c7565c1/.default';
+
+/**
+ * Default cluster category for production environments.
+ * @deprecated This constant is exported for backward compatibility only.
+ * For new code, use `RuntimeConfiguration.clusterCategory` instead.
+ */
 export const PROD_OBSERVABILITY_CLUSTER_CATEGORY = 'prod';
 
 // Default environment names
@@ -40,6 +56,7 @@ export const DEVELOPMENT_ENVIRONMENT_NAME = 'Development';
  */
 export function getObservabilityAuthenticationScope(): string[] {
   // Returns production default - use ObservabilityConfiguration for proper env var support
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- Intentional: deprecated function using deprecated constant
   return [PROD_OBSERVABILITY_SCOPE];
 }
 
@@ -106,5 +123,6 @@ export function isDevelopmentEnvironment(
  */
 export function getMcpPlatformAuthenticationScope(): string {
   // Returns production default - use ToolingConfiguration for proper env var support
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- Intentional: deprecated function using deprecated constant
   return PROD_MCP_PLATFORM_AUTHENTICATION_SCOPE;
 }
