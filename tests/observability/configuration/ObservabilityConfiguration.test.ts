@@ -40,6 +40,22 @@ describe('ObservabilityConfiguration', () => {
       expect(config.observabilityAuthenticationScopes).toEqual(['scope1/.default', 'scope2/.default']);
     });
 
+    it('should fall back to env var when override returns undefined', () => {
+      process.env.A365_OBSERVABILITY_SCOPES_OVERRIDE = 'custom-scope/.default';
+      const config = new ObservabilityConfiguration({
+        observabilityAuthenticationScopes: () => undefined as unknown as string[]
+      });
+      expect(config.observabilityAuthenticationScopes).toEqual(['custom-scope/.default']);
+    });
+
+    it('should fall back to default when override returns undefined and no env var', () => {
+      delete process.env.A365_OBSERVABILITY_SCOPES_OVERRIDE;
+      const config = new ObservabilityConfiguration({
+        observabilityAuthenticationScopes: () => undefined as unknown as string[]
+      });
+      expect(config.observabilityAuthenticationScopes).toEqual(['https://api.powerplatform.com/.default']);
+    });
+
     it('should fall back to env var when override not provided', () => {
       process.env.A365_OBSERVABILITY_SCOPES_OVERRIDE = 'scope-a/.default scope-b/.default';
       const config = new ObservabilityConfiguration({});

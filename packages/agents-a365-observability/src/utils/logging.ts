@@ -92,7 +92,7 @@ function parseLogLevel(level: string): Set<number> {
  *   warn|error = warn and error messages
  *   info|warn|error = all message types
  */
-class DefaultLogger implements ILogger {
+export class DefaultLogger implements ILogger {
   constructor(
     private readonly configProvider: IConfigurationProvider<ObservabilityConfiguration> = defaultObservabilityConfigurationProvider
   ) {}

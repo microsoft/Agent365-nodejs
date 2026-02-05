@@ -194,6 +194,22 @@ describe('RuntimeConfiguration', () => {
       config.isNodeEnvDevelopment;
       expect(callCount).toBe(2);
     });
+
+    it('should fall back to env var when override returns undefined', () => {
+      process.env.NODE_ENV = 'development';
+      const config = new RuntimeConfiguration({
+        isNodeEnvDevelopment: () => undefined as unknown as boolean
+      });
+      expect(config.isNodeEnvDevelopment).toBe(true); // Falls through to env var
+    });
+
+    it('should fall back to env var (false) when override returns undefined and NODE_ENV is production', () => {
+      process.env.NODE_ENV = 'production';
+      const config = new RuntimeConfiguration({
+        isNodeEnvDevelopment: () => undefined as unknown as boolean
+      });
+      expect(config.isNodeEnvDevelopment).toBe(false); // Falls through to env var
+    });
   });
 
   describe('constructor', () => {

@@ -471,4 +471,115 @@ describe('logging', () => {
       expect(consoleLogSpy).toHaveBeenCalledWith('[INFO]', 'Default logger call');
     });
   });
+
+  describe('DefaultLogger with custom configuration provider', () => {
+    it('should use custom configuration provider for log level resolution', async () => {
+      const { DefaultLogger } = await import('@microsoft/agents-a365-observability/src/utils/logging');
+      const { ObservabilityConfiguration } = await import('@microsoft/agents-a365-observability/src/configuration');
+      const { DefaultConfigurationProvider } = await import('@microsoft/agents-a365-runtime');
+
+      // Create a custom configuration that returns 'info' log level
+      const customConfig = new ObservabilityConfiguration({
+        observabilityLogLevel: () => 'info'
+      });
+      const customProvider = new DefaultConfigurationProvider(() => customConfig);
+
+      // Create DefaultLogger with custom provider
+      const customLogger = new DefaultLogger(customProvider);
+
+      // Should log info messages based on custom config
+      customLogger.info('Test info message');
+      expect(consoleLogSpy).toHaveBeenCalledWith('[INFO]', 'Test info message');
+
+      // Should not log error (since level is 'info' only)
+      customLogger.error('Test error message');
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
+    });
+
+    it('should use different log levels for different configuration providers', async () => {
+      const { DefaultLogger } = await import('@microsoft/agents-a365-observability/src/utils/logging');
+      const { ObservabilityConfiguration } = await import('@microsoft/agents-a365-observability/src/configuration');
+      const { DefaultConfigurationProvider } = await import('@microsoft/agents-a365-runtime');
+
+      // Provider 1: info only
+      const config1 = new ObservabilityConfiguration({
+        observabilityLogLevel: () => 'info'
+      });
+      const provider1 = new DefaultConfigurationProvider(() => config1);
+      const logger1 = new DefaultLogger(provider1);
+
+      // Provider 2: error only
+      const config2 = new ObservabilityConfiguration({
+        observabilityLogLevel: () => 'error'
+      });
+      const provider2 = new DefaultConfigurationProvider(() => config2);
+      const logger2 = new DefaultLogger(provider2);
+
+      // Logger1 should log info but not error
+      logger1.info('Logger1 info');
+      logger1.error('Logger1 error');
+      expect(consoleLogSpy).toHaveBeenCalledWith('[INFO]', 'Logger1 info');
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
+
+      consoleLogSpy.mockClear();
+
+      // Logger2 should log error but not info
+      logger2.info('Logger2 info');
+      logger2.error('Logger2 error');
+      expect(consoleLogSpy).not.toHaveBeenCalled();
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[ERROR]', 'Logger2 error');
+    });
+
+    it('should support dynamic log level changes via override function', async () => {
+      const { DefaultLogger } = await import('@microsoft/agents-a365-observability/src/utils/logging');
+      const { ObservabilityConfiguration } = await import('@microsoft/agents-a365-observability/src/configuration');
+      const { DefaultConfigurationProvider } = await import('@microsoft/agents-a365-runtime');
+
+      // Dynamic log level that can be changed at runtime
+      let currentLogLevel = 'none';
+
+      const dynamicConfig = new ObservabilityConfiguration({
+        observabilityLogLevel: () => currentLogLevel
+      });
+      const dynamicProvider = new DefaultConfigurationProvider(() => dynamicConfig);
+      const logger = new DefaultLogger(dynamicProvider);
+
+      // Initially none - no logging
+      logger.info('Should not appear');
+      expect(consoleLogSpy).not.toHaveBeenCalled();
+
+      // Change to info
+      currentLogLevel = 'info';
+      logger.info('Should appear now');
+      expect(consoleLogSpy).toHaveBeenCalledWith('[INFO]', 'Should appear now');
+
+      // Change to error only
+      currentLogLevel = 'error';
+      consoleLogSpy.mockClear();
+      logger.info('Should not appear');
+      logger.error('Error should appear');
+      expect(consoleLogSpy).not.toHaveBeenCalled();
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[ERROR]', 'Error should appear');
+    });
+
+    it('should support pipe-separated log levels via custom config', async () => {
+      const { DefaultLogger } = await import('@microsoft/agents-a365-observability/src/utils/logging');
+      const { ObservabilityConfiguration } = await import('@microsoft/agents-a365-observability/src/configuration');
+      const { DefaultConfigurationProvider } = await import('@microsoft/agents-a365-runtime');
+
+      const customConfig = new ObservabilityConfiguration({
+        observabilityLogLevel: () => 'warn|error'
+      });
+      const customProvider = new DefaultConfigurationProvider(() => customConfig);
+      const logger = new DefaultLogger(customProvider);
+
+      logger.info('Info message');
+      logger.warn('Warn message');
+      logger.error('Error message');
+
+      expect(consoleLogSpy).not.toHaveBeenCalled();
+      expect(consoleWarnSpy).toHaveBeenCalledWith('[WARN]', 'Warn message');
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[ERROR]', 'Error message');
+    });
+  });
 });

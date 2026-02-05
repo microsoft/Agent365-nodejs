@@ -369,6 +369,64 @@ const tenantProvider = createRuntimeConfigurationProvider(options);
 const tenantConfig = tenantProvider.getConfiguration();
 ```
 
+**Configuration Resolution Order:**
+
+Each configuration property follows a consistent resolution chain. The first non-undefined value wins:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    Configuration Resolution Order                        │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│   ┌──────────────────────┐                                               │
+│   │  Override Function   │  ← Called on EVERY property access            │
+│   │  (if provided)       │    Enables per-request/per-tenant values      │
+│   └──────────┬───────────┘                                               │
+│              │                                                           │
+│              ▼ returns undefined?                                        │
+│              │                                                           │
+│   ┌──────────────────────┐                                               │
+│   │  Environment Variable│  ← Process-level configuration                │
+│   │  (if set and valid)  │    Standard 12-factor app approach            │
+│   └──────────┬───────────┘                                               │
+│              │                                                           │
+│              ▼ not set or invalid?                                       │
+│              │                                                           │
+│   ┌──────────────────────┐                                               │
+│   │   Default Value      │  ← Built-in production defaults               │
+│   │   (always defined)   │    Safe fallback for all properties           │
+│   └──────────────────────┘                                               │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Example Resolution:**
+
+```typescript
+// Configuration class getter implementation pattern:
+get clusterCategory(): ClusterCategory {
+  // 1. Check override function
+  const override = this.overrides.clusterCategory?.();
+  if (override !== undefined) return override;     // ← Override wins
+
+  // 2. Check environment variable
+  const envValue = process.env.CLUSTER_CATEGORY;
+  if (isValidClusterCategory(envValue)) return envValue;  // ← Env var wins
+
+  // 3. Return default
+  return ClusterCategory.prod;                     // ← Default fallback
+}
+```
+
+**Key Characteristics:**
+
+| Aspect | Behavior |
+|--------|----------|
+| **Dynamic resolution** | Override functions called on each access, not cached |
+| **Undefined vs false** | `undefined` falls through; explicit `false` is used |
+| **Validation** | Invalid env var values fall through to defaults |
+| **Thread safety** | Safe for concurrent access (no shared mutable state) |
+
 **Inheritance Hierarchy:**
 - `RuntimeConfiguration` → `ToolingConfiguration`, `ObservabilityConfiguration`
 - Each child package extends the base with additional settings
