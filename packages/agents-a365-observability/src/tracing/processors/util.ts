@@ -41,6 +41,7 @@ export const INVOKE_AGENT_ATTRIBUTES: readonly string[] = [
   // Caller Agent (A2A) attributes
   consts.GEN_AI_CALLER_AGENT_ID_KEY,
   consts.GEN_AI_CALLER_AGENT_NAME_KEY,
+  consts.GEN_AI_CALLER_AGENT_TYPE_KEY,
   consts.GEN_AI_CALLER_AGENT_USER_ID_KEY,
   consts.GEN_AI_CALLER_AGENT_UPN_KEY,
   consts.GEN_AI_CALLER_AGENT_TENANT_ID_KEY,
