@@ -81,6 +81,7 @@ export class OpenTelemetryConstants {
   public static readonly GEN_AI_CALLER_AGENT_TENANT_ID_KEY = 'gen_ai.caller.agent.tenantid';
   public static readonly GEN_AI_CALLER_AGENT_NAME_KEY = 'gen_ai.caller.agent.name';
   public static readonly GEN_AI_CALLER_AGENT_ID_KEY = 'gen_ai.caller.agent.id';
+  public static readonly GEN_AI_CALLER_AGENT_TYPE_KEY = 'gen_ai.caller.agent.type';
   public static readonly GEN_AI_CALLER_AGENT_APPLICATION_ID_KEY = 'gen_ai.caller.agent.applicationid';
   public static readonly GEN_AI_CALLER_AGENT_CLIENT_IP_KEY = 'gen_ai.caller.agent.user.client.ip';
   public static readonly GEN_AI_CALLER_AGENT_PLATFORM_ID_KEY = 'gen_ai.caller.agent.platformid';
