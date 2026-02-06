@@ -28,12 +28,15 @@ export interface ILogger {
   error(message: string, ...args: unknown[]): void;
 
   /**
-   * Log an event with success status and duration
-   * @param name The event name
-   * @param success Whether the event succeeded
-   * @param duration The event duration in milliseconds
+   * Log an event with standardized parameters
+   * @param eventType Standardized event name/category (e.g., ExporterEventNames.EXPORT)
+   * @param isSuccess Whether the operation/event succeeded
+   * @param durationMs Duration of the operation/event in milliseconds
+   * @param message Optional message or additional details about the event, especially useful for errors or failures
+   * @param correlationId Optional correlation identifier to connect events/logs across components
+
    */
-  event(name: string, success: boolean, duration: number): void;
+  event(eventType: string, isSuccess: boolean, durationMs: number, message?: string, correlationId?: string): void;
 }
 
 /**
@@ -115,12 +118,14 @@ class DefaultLogger implements ILogger {
     }
   }
 
-  event(name: string, success: boolean, duration: number): void {
-    const status = success ? 'succeeded' : 'failed';
-    const logLevelNeeded = success ? 1 : 3;
+  event(eventType: string, isSuccess: boolean, durationMs: number, correlationId?: string, message?: string): void {
+    const status = isSuccess ? 'succeeded' : 'failed';
+    const logLevelNeeded = isSuccess ? 1 : 3;
     if (this.enabledLogLevels.has(logLevelNeeded)) {
-      const logFn = success ? console.log : console.error;
-      logFn(`[EVENT]: ${name} ${status} in ${duration}ms`);
+      const logFn = isSuccess ? console.log : console.error;
+      const correlationInfo = correlationId ? ` [${correlationId}]` : '';
+      const messageInfo = message ? ` - ${message}` : '';
+      logFn(`[EVENT]: ${eventType} ${status} in ${durationMs}ms${correlationInfo}${messageInfo}`);
     }
   }
 }
@@ -190,7 +195,8 @@ export const logger: ILogger = {
   info: (message: string, ...args: unknown[]) => globalLogger.info(message, ...args),
   warn: (message: string, ...args: unknown[]) => globalLogger.warn(message, ...args),
   error: (message: string, ...args: unknown[]) => globalLogger.error(message, ...args),
-  event: (name: string, success: boolean, duration: number) => globalLogger.event(name, success, duration)
+  event: (eventType: string, isSuccess: boolean, durationMs: number, correlationId?: string, message?: string) => 
+    globalLogger.event(eventType, isSuccess, durationMs, correlationId, message)
 };
 
 export default logger;

@@ -17,7 +17,7 @@ export const ExporterEventNames = {
   EXPORT_GROUP: 'export-group',
 
   /**
-   * Partition spans by identity (tenant or agent ID) before export event
+   * Tracked spans being skipped due to missing tenant or agent ID. Before export event, spans are partitioned by identity (tenant or agent ID) first. 
    */
-  EXPORT_PARTITION_SPAN_BY_IDENTITY: 'export-partition-span-by-identity'
+  EXPORT_PARTITION_SPAN_MISSING_IDENTITY: 'export-partition-span-missing-identity'
 } as const;

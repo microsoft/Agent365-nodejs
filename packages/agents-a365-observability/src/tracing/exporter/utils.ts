@@ -96,8 +96,6 @@ export function partitionByIdentity(
 
     if (!tenant || !agent) {
       skippedCount++;
-      logger.error(`[Agent365Exporter] Skipping span without tenant or agent ID. Span name: ${span.name}`);
-      logger.event(ExporterEventNames.EXPORT_PARTITION_SPAN_BY_IDENTITY, false, 0);
       continue;
     }
 
@@ -105,6 +103,10 @@ export function partitionByIdentity(
     const existing = groups.get(key) || [];
     existing.push(span);
     groups.set(key, existing);
+  }
+
+  if(skippedCount > 0) {
+    logger.event(ExporterEventNames.EXPORT_PARTITION_SPAN_MISSING_IDENTITY, false, 0, `${skippedCount} spans are skipped due to missing tenant or agent ID`);
   }
 
   logger.info(`[Agent365Exporter] Partitioned into ${groups.size} identity groups (${skippedCount} spans skipped)`);
