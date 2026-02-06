@@ -40,7 +40,7 @@ import { logger } from '@microsoft/agents-a365-observability';
 logger.info('message');   // Logged if A365_OBSERVABILITY_LOG_LEVEL includes 'info'
 logger.warn('warning');   // Logged if A365_OBSERVABILITY_LOG_LEVEL includes 'warn'
 logger.error('error');    // Logged if A365_OBSERVABILITY_LOG_LEVEL includes 'error'
-logger.event('my-event', true, 150); // Log event with name, success status, and duration (ms)
+logger.event('my-event', true, 150, 'Operation completed'); // Log event with type, success, duration, and optional message
 ```
 
 ## Default Logger Configuration
@@ -299,7 +299,13 @@ export interface ILogger {
   info(message: string, ...args: unknown[]): void;
   warn(message: string, ...args: unknown[]): void;
   error(message: string, ...args: unknown[]): void;
-  event(name: string, success: boolean, duration: number): void;
+  event(
+    eventType: string,
+    isSuccess: boolean,
+    durationMs: number,
+    message?: string,
+    correlationId?: string
+  ): void;
 }
 
 // Functions (internal use)

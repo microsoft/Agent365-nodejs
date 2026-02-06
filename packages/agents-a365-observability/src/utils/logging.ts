@@ -118,14 +118,14 @@ class DefaultLogger implements ILogger {
     }
   }
 
-  event(eventType: string, isSuccess: boolean, durationMs: number, correlationId?: string, message?: string): void {
+  event(eventType: string, isSuccess: boolean, durationMs: number, message?: string, correlationId?: string): void {
     const status = isSuccess ? 'succeeded' : 'failed';
     const logLevelNeeded = isSuccess ? 1 : 3;
     if (this.enabledLogLevels.has(logLevelNeeded)) {
       const logFn = isSuccess ? console.log : console.error;
-      const correlationInfo = correlationId ? ` [${correlationId}]` : '';
       const messageInfo = message ? ` - ${message}` : '';
-      logFn(`[EVENT]: ${eventType} ${status} in ${durationMs}ms${correlationInfo}${messageInfo}`);
+      const correlationInfo = correlationId ? ` [${correlationId}]` : '';
+      logFn(`[EVENT]: ${eventType} ${status} in ${durationMs}ms${messageInfo}${correlationInfo}`);
     }
   }
 }
@@ -155,7 +155,10 @@ let globalLogger: ILogger = new DefaultLogger();
  * setLogger({
  *   info: (msg, ...args) => winstonLogger.info(msg, ...args),
  *   warn: (msg, ...args) => winstonLogger.warn(msg, ...args),
- *   error: (msg, ...args) => winstonLogger.error(msg, ...args)
+ *   error: (msg, ...args) => winstonLogger.error(msg, ...args),
+ *   event: (eventType, isSuccess, durationMs, message, correlationId) => {
+ *     winstonLogger.log({ level: isSuccess ? 'info' : 'error', eventType, isSuccess, durationMs, message, correlationId });
+ *   }
  * });
  * ```
  *
@@ -169,7 +172,7 @@ export function setLogger(customLogger: ILogger): void {
     typeof customLogger.error !== 'function' ||
     typeof customLogger.event !== 'function'
   ) {
-    throw new Error('Custom logger must implement ILogger interface (info, warn, error, event methods)');
+    throw new Error('Custom logger must implement ILogger interface with all methods: info, warn, error, and event');
   }
   globalLogger = customLogger;
 }

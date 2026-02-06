@@ -140,7 +140,8 @@ export class Agent365Exporter implements SpanExporter {
       await Promise.all(promises);
       const duration = Date.now() - startTime;
       const success = !anyFailure;
-      logger.event(ExporterEventNames.EXPORT, success, duration, 'All spans exported successfully');
+      const message = success ? 'All spans exported successfully' : 'Not all spans exported successfully';
+      logger.event(ExporterEventNames.EXPORT, success, duration, message);
       resultCallback({
         code: success ? ExportResultCode.SUCCESS : ExportResultCode.FAILED
       });
@@ -148,7 +149,7 @@ export class Agent365Exporter implements SpanExporter {
     } catch (_error) {
       // Exporters should not raise; signal failure
       const duration = Date.now() - startTime;
-      logger.event(ExporterEventNames.EXPORT, false, duration, 'Not all spans exported successfully');
+      logger.event(ExporterEventNames.EXPORT, false, duration, 'Export operation failed');
       resultCallback({ code: ExportResultCode.FAILED });
     }
   }
@@ -218,7 +219,8 @@ export class Agent365Exporter implements SpanExporter {
       headers['authorization'] = `Bearer ${token}`;
     }
     else {
-      logger.event(`${ExporterEventNames.EXPORT_GROUP}-${tenantId}-${agentId}`, false, 0, 'skip exporting: ' + (tokenNotResolvedReason || 'Token not resolved for export request'));
+      const skipReason = tokenNotResolvedReason || 'Token not resolved for export request';
+      logger.event(`${ExporterEventNames.EXPORT_GROUP}-${tenantId}-${agentId}`, false, 0, `skip exporting: ${skipReason}`);
       return;
     }
 
@@ -231,10 +233,10 @@ export class Agent365Exporter implements SpanExporter {
     const { ok, correlationId } = await this.postWithRetries(url, body, headers);
     const duration = Date.now() - startTime;
     if (!ok) {
-      logger.event(`${ExporterEventNames.EXPORT_GROUP}-${tenantId}-${agentId}`, false, duration, correlationId);
+      logger.event(`${ExporterEventNames.EXPORT_GROUP}-${tenantId}-${agentId}`, false, duration, undefined, correlationId);
       throw new Error('Failed to export spans');
     }
-    logger.event(`${ExporterEventNames.EXPORT_GROUP}-${tenantId}-${agentId}`, true, duration, correlationId);
+    logger.event(`${ExporterEventNames.EXPORT_GROUP}-${tenantId}-${agentId}`, true, duration, 'Spans exported successfully', correlationId);
   }
 
   /**
