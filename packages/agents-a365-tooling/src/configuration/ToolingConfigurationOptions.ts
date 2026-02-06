@@ -9,7 +9,6 @@ import { RuntimeConfigurationOptions } from '@microsoft/agents-a365-runtime';
  *
  * Inherited from RuntimeConfigurationOptions:
  * - clusterCategory
- * - isDevelopmentEnvironment
  * - isNodeEnvDevelopment
  */
 export type ToolingConfigurationOptions = RuntimeConfigurationOptions & {

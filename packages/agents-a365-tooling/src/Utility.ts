@@ -195,7 +195,7 @@ export class Utility {
     configProvider?: IConfigurationProvider<ToolingConfiguration>
   ): string {
     const baseUrl = this.GetMcpBaseUrl(configProvider);
-    return `${baseUrl}/${serverName}`;
+    return `${baseUrl}/${serverName}/`;
   }
 
   /**

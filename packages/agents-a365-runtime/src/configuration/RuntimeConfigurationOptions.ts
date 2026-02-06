@@ -16,10 +16,10 @@ export type RuntimeConfigurationOptions = {
    *
    * @example
    * // Static override
-   * { clusterCategory: () => 'gov' }
+   * { clusterCategory: () => ClusterCategory.gov }
    *
    * // Dynamic per-tenant override using async context
-   * { clusterCategory: () => context.active().getValue(TENANT_CONFIG_KEY)?.cluster ?? 'prod' }
+   * { clusterCategory: () => context.active().getValue(TENANT_CONFIG_KEY)?.cluster ?? ClusterCategory.prod }
    */
   clusterCategory?: () => ClusterCategory;
   /**

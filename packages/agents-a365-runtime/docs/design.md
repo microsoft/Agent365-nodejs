@@ -113,6 +113,7 @@ The runtime package provides a configuration system that supports programmatic o
 ```typescript
 import {
   RuntimeConfiguration,
+  ClusterCategory,
   defaultRuntimeConfigurationProvider,
 } from '@microsoft/agents-a365-runtime';
 
@@ -137,16 +138,19 @@ const isNodeDev = config.isNodeEnvDevelopment;
 ```typescript
 // Create configuration with programmatic overrides
 const config = new RuntimeConfiguration({
-  clusterCategory: () => 'gov',
+  clusterCategory: () => ClusterCategory.gov,
   isNodeEnvDevelopment: () => false,
 });
 
 // Dynamic per-tenant configuration
-const tenantConfigs = { 'tenant-a': 'prod', 'tenant-b': 'gov' };
+const tenantConfigs: Record<string, ClusterCategory> = {
+  'tenant-a': ClusterCategory.prod,
+  'tenant-b': ClusterCategory.gov,
+};
 let currentTenant = 'tenant-a';
 
 const dynamicConfig = new RuntimeConfiguration({
-  clusterCategory: () => tenantConfigs[currentTenant] as ClusterCategory,
+  clusterCategory: () => tenantConfigs[currentTenant],
 });
 ```
 

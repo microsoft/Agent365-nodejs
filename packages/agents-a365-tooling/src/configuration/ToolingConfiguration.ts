@@ -57,12 +57,13 @@ export class ToolingConfiguration extends RuntimeConfiguration {
   /**
    * Gets the MCP platform authentication scope.
    * Used by AgenticAuthenticationService for token exchange.
+   * Trims whitespace to prevent token exchange failures.
    */
   get mcpPlatformAuthenticationScope(): string {
-    const override = this.toolingOverrides.mcpPlatformAuthenticationScope?.();
+    const override = this.toolingOverrides.mcpPlatformAuthenticationScope?.()?.trim();
     if (override) return override;
 
-    const envValue = process.env.MCP_PLATFORM_AUTHENTICATION_SCOPE;
+    const envValue = process.env.MCP_PLATFORM_AUTHENTICATION_SCOPE?.trim();
     if (envValue) return envValue;
 
     return PROD_MCP_PLATFORM_AUTHENTICATION_SCOPE;

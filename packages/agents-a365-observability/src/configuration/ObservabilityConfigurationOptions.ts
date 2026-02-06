@@ -9,8 +9,10 @@ import { RuntimeConfigurationOptions } from '@microsoft/agents-a365-runtime';
  *
  * Inherited from RuntimeConfigurationOptions:
  * - clusterCategory
- * - isDevelopmentEnvironment
  * - isNodeEnvDevelopment
+ *
+ * Note: `isDevelopmentEnvironment` is a derived getter on the configuration class
+ * (based on clusterCategory), not an overridable option.
  */
 export type ObservabilityConfigurationOptions = RuntimeConfigurationOptions & {
   /**

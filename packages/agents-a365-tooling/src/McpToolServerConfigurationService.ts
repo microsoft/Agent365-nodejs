@@ -380,7 +380,7 @@ export class McpToolServerConfigurationService {
    * Build the full URL for accessing a specific MCP server.
    */
   private buildMcpServerUrl(serverName: string): string {
-    return `${this.getMcpPlatformBaseUrl()}/agents/servers/${serverName}`;
+    return `${this.getMcpPlatformBaseUrl()}/agents/servers/${serverName}/`;
   }
 
   /**
