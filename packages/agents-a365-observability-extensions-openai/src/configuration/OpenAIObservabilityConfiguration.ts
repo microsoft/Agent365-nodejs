@@ -57,7 +57,6 @@ export class OpenAIObservabilityConfiguration extends ObservabilityConfiguration
   }
 
   // Inherited: clusterCategory, isDevelopmentEnvironment, observabilityAuthenticationScopes,
-  // isObservabilityExporterEnabled, isPerRequestExportEnabled, useCustomDomainForObservability,
-  // observabilityDomainOverride, observabilityLogLevel, perRequestMaxTraces,
-  // perRequestMaxSpansPerTrace, perRequestMaxConcurrentExports
+  // isObservabilityExporterEnabled, useCustomDomainForObservability,
+  // observabilityDomainOverride, observabilityLogLevel
 }

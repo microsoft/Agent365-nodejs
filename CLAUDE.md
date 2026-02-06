@@ -143,8 +143,10 @@ Foundation package with no SDK dependencies. Provides:
 
 ### Observability (`@microsoft/agents-a365-observability`)
 OpenTelemetry-based distributed tracing:
-- **`ObservabilityConfiguration`**: Configuration with `observabilityAuthenticationScopes`, `isObservabilityExporterEnabled`, `isPerRequestExportEnabled`, `observabilityLogLevel`, etc.
+- **`ObservabilityConfiguration`**: Configuration with `observabilityAuthenticationScopes`, `isObservabilityExporterEnabled`, `observabilityLogLevel`, etc.
+- **`PerRequestSpanProcessorConfiguration`**: Extends `ObservabilityConfiguration` with per-request processor settings (`isPerRequestExportEnabled`, `perRequestMaxTraces`, `perRequestMaxSpansPerTrace`, `perRequestMaxConcurrentExports`). Separated from `ObservabilityConfiguration` because these settings are only relevant when using `PerRequestSpanProcessor`.
 - **`defaultObservabilityConfigurationProvider`**: Singleton configuration provider for observability settings
+- **`defaultPerRequestSpanProcessorConfigurationProvider`**: Singleton configuration provider for per-request span processor settings
 - **`ObservabilityManager`**: Main entry point (singleton)
 - **`ObservabilityBuilder`**: Fluent configuration API
 - **Scope classes**:
@@ -214,9 +216,9 @@ The keyword "Kairo" is legacy and should not appear in any code. Flag and remove
 | `A365_OBSERVABILITY_USE_CUSTOM_DOMAIN` | Use custom domain for export | `true`, `false` (default) |
 | `A365_OBSERVABILITY_DOMAIN_OVERRIDE` | Custom domain URL override | URL string |
 | `A365_OBSERVABILITY_LOG_LEVEL` | Internal logging level | `none` (default), `error`, `warn`, `info`, `debug` |
-| `A365_PER_REQUEST_MAX_TRACES` | Max buffered traces per request | Number (default: 1000) |
-| `A365_PER_REQUEST_MAX_SPANS_PER_TRACE` | Max spans per trace | Number (default: 5000) |
-| `A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS` | Max concurrent exports | Number (default: 20) |
+| `A365_PER_REQUEST_MAX_TRACES` | Max buffered traces per request (`PerRequestSpanProcessorConfiguration`) | Number (default: 1000) |
+| `A365_PER_REQUEST_MAX_SPANS_PER_TRACE` | Max spans per trace (`PerRequestSpanProcessorConfiguration`) | Number (default: 5000) |
+| `A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS` | Max concurrent exports (`PerRequestSpanProcessorConfiguration`) | Number (default: 20) |
 
 ## Testing
 

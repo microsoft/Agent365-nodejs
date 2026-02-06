@@ -66,7 +66,6 @@ The Agent365 SDK currently relies on environment variables for all configuration
 |---------|--------------|---------|------|---------|
 | `observabilityAuthenticationScopes` | `A365_OBSERVABILITY_SCOPES_OVERRIDE` | `['https://api.powerplatform.com/.default']` | `string[]` | ObservabilityConfiguration |
 | `isObservabilityExporterEnabled` | `ENABLE_A365_OBSERVABILITY_EXPORTER` | `false` | `boolean` | ObservabilityConfiguration |
-| `isPerRequestExportEnabled` | `ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT` | `false` | `boolean` | ObservabilityConfiguration |
 | `useCustomDomainForObservability` | `A365_OBSERVABILITY_USE_CUSTOM_DOMAIN` | `false` | `boolean` | ObservabilityConfiguration |
 | `observabilityDomainOverride` | `A365_OBSERVABILITY_DOMAIN_OVERRIDE` | `null` | `string \| null` | ObservabilityConfiguration |
 | `observabilityLogLevel` | `A365_OBSERVABILITY_LOG_LEVEL` | `'none'` | `string` | ObservabilityConfiguration |
@@ -75,9 +74,10 @@ The Agent365 SDK currently relies on environment variables for all configuration
 
 | Setting | Env Variable | Default | Type | Used In |
 |---------|--------------|---------|------|---------|
-| `perRequestMaxTraces` | `A365_PER_REQUEST_MAX_TRACES` | `1000` | `number` | ObservabilityConfiguration |
-| `perRequestMaxSpansPerTrace` | `A365_PER_REQUEST_MAX_SPANS_PER_TRACE` | `5000` | `number` | ObservabilityConfiguration |
-| `perRequestMaxConcurrentExports` | `A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS` | `20` | `number` | ObservabilityConfiguration |
+| `isPerRequestExportEnabled` | `ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT` | `false` | `boolean` | PerRequestSpanProcessorConfiguration |
+| `perRequestMaxTraces` | `A365_PER_REQUEST_MAX_TRACES` | `1000` | `number` | PerRequestSpanProcessorConfiguration |
+| `perRequestMaxSpansPerTrace` | `A365_PER_REQUEST_MAX_SPANS_PER_TRACE` | `5000` | `number` | PerRequestSpanProcessorConfiguration |
+| `perRequestMaxConcurrentExports` | `A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS` | `20` | `number` | PerRequestSpanProcessorConfiguration |
 
 ### 2.2 Hardcoded Constants (Not Configurable)
 
@@ -106,7 +106,8 @@ packages/agents-a365-tooling/src/
 packages/agents-a365-observability/src/
 ├── utils/logging.ts              # 1 env var (line 70)
 ├── tracing/exporter/utils.ts     # 4 env vars (lines 116, 129, 142, 168)
-└── tracing/PerRequestSpanProcessor.ts # 3 env vars (lines 68-70)
+├── tracing/PerRequestSpanProcessor.ts # Uses PerRequestSpanProcessorConfiguration
+└── configuration/PerRequestSpanProcessorConfiguration.ts # 4 env vars (isPerRequestExportEnabled + perRequest*)
 ```
 
 ---
@@ -140,20 +141,27 @@ Configuration is distributed across packages with an **inheritance-based** desig
                               │ extends
         ┌─────────────────────┴─────────────────────┐
         ▼                                           ▼
-┌─────────────────────────────┐     ┌─────────────────────────────┐
-│     Tooling Package         │     │   Observability Package     │
-│  ┌───────────────────────┐  │     │  ┌───────────────────────┐  │
-│  │ ToolingConfiguration  │  │     │  │ ObservabilityConfig   │  │
-│  │ extends Runtime       │  │     │  │ extends Runtime       │  │
-│  │ + mcpPlatformEndpoint │  │     │  │ + exporterEnabled     │  │
-│  └───────────────────────┘  │     │  │ + perRequestExport    │  │
-│            │ extends        │     │  │ + customDomain        │  │
-│            ▼                │     │  │ + domainOverride      │  │
-│  ┌───────────────────────┐  │     │  │ + logLevel            │  │
-│  │ OpenAIToolingConfig   │  │     │  └───────────────────────┘  │
-│  │ (empty - future use)  │  │     │                             │
-│  └───────────────────────┘  │     │                             │
-└─────────────────────────────┘     └─────────────────────────────┘
+┌─────────────────────────────┐     ┌──────────────────────────────────┐
+│     Tooling Package         │     │   Observability Package          │
+│  ┌───────────────────────┐  │     │  ┌────────────────────────────┐  │
+│  │ ToolingConfiguration  │  │     │  │ ObservabilityConfig        │  │
+│  │ extends Runtime       │  │     │  │ extends Runtime            │  │
+│  │ + mcpPlatformEndpoint │  │     │  │ + exporterEnabled          │  │
+│  └───────────────────────┘  │     │  │ + perRequestExport         │  │
+│            │ extends        │     │  │ + customDomain             │  │
+│            ▼                │     │  │ + domainOverride           │  │
+│  ┌───────────────────────┐  │     │  │ + logLevel                │  │
+│  │ OpenAIToolingConfig   │  │     │  └────────────────────────────┘  │
+│  │ (empty - future use)  │  │     │            │ extends             │
+│  └───────────────────────┘  │     │            ▼                     │
+│                             │     │  ┌────────────────────────────┐  │
+│                             │     │  │ PerRequestSpanProcessor    │  │
+│                             │     │  │ Configuration              │  │
+│                             │     │  │ + perRequestMaxTraces      │  │
+│                             │     │  │ + perRequestMaxSpans       │  │
+│                             │     │  │ + perRequestMaxExports     │  │
+│                             │     │  └────────────────────────────┘  │
+└─────────────────────────────┘     └──────────────────────────────────┘
 ```
 
 ### 3.2 Core Components (Runtime Package)
@@ -384,14 +392,9 @@ export type ObservabilityConfigurationOptions = RuntimeConfigurationOptions & {
    */
   observabilityAuthenticationScopes?: () => string[];
   isObservabilityExporterEnabled?: () => boolean;
-  isPerRequestExportEnabled?: () => boolean;
   useCustomDomainForObservability?: () => boolean;
   observabilityDomainOverride?: () => string | null;
   observabilityLogLevel?: () => string;
-  // Per-Request Processor (Advanced)
-  perRequestMaxTraces?: () => number;
-  perRequestMaxSpansPerTrace?: () => number;
-  perRequestMaxConcurrentExports?: () => number;
 };
 ```
 
@@ -446,15 +449,6 @@ export class ObservabilityConfiguration extends RuntimeConfiguration {
     return ['true', '1', 'yes', 'on'].includes(value);
   }
 
-  get isPerRequestExportEnabled(): boolean {
-    const result = this.observabilityOverrides.isPerRequestExportEnabled?.();
-    if (result !== undefined) {
-      return result;
-    }
-    const value = process.env.ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT?.toLowerCase() ?? '';
-    return ['true', '1', 'yes', 'on'].includes(value);
-  }
-
   get useCustomDomainForObservability(): boolean {
     const result = this.observabilityOverrides.useCustomDomainForObservability?.();
     if (result !== undefined) {
@@ -480,22 +474,6 @@ export class ObservabilityConfiguration extends RuntimeConfiguration {
     return this.observabilityOverrides.observabilityLogLevel?.()
       ?? process.env.A365_OBSERVABILITY_LOG_LEVEL
       ?? 'none';
-  }
-
-  // Per-Request Processor settings
-  get perRequestMaxTraces(): number {
-    return this.observabilityOverrides.perRequestMaxTraces?.()
-      ?? parseInt(process.env.A365_PER_REQUEST_MAX_TRACES ?? '1000', 10);
-  }
-
-  get perRequestMaxSpansPerTrace(): number {
-    return this.observabilityOverrides.perRequestMaxSpansPerTrace?.()
-      ?? parseInt(process.env.A365_PER_REQUEST_MAX_SPANS_PER_TRACE ?? '5000', 10);
-  }
-
-  get perRequestMaxConcurrentExports(): number {
-    return this.observabilityOverrides.perRequestMaxConcurrentExports?.()
-      ?? parseInt(process.env.A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS ?? '20', 10);
   }
 }
 ```
@@ -608,7 +586,9 @@ packages/agents-a365-observability/src/
 ├── configuration/
 │   ├── index.ts
 │   ├── ObservabilityConfigurationOptions.ts
-│   └── ObservabilityConfiguration.ts
+│   ├── ObservabilityConfiguration.ts
+│   ├── PerRequestSpanProcessorConfigurationOptions.ts
+│   └── PerRequestSpanProcessorConfiguration.ts
 └── index.ts  # Add: export * from './configuration'
 
 packages/agents-a365-tooling-extensions-openai/src/
@@ -673,7 +653,7 @@ packages/agents-a365-observability-extensions-openai/src/
 | McpToolServerConfigurationService (prod mode) | 10% | 80% | Gateway discovery |
 | exporter/utils.ts | 80% | 100% | Boolean parsing variants |
 | logging.ts | 0% | 100% | **CRITICAL - No tests exist** |
-| PerRequestSpanProcessor settings | 0% | 80% | Env var parsing |
+| PerRequestSpanProcessorConfiguration settings | 0% | 80% | Env var parsing |
 
 #### 4.1.2 New Test Files Required
 
@@ -809,7 +789,7 @@ After each step:
 3. agents-a365-observability
    ├── utils/logging.ts - Use ObservabilityConfiguration
    ├── tracing/exporter/utils.ts - Use ObservabilityConfiguration
-   ├── tracing/PerRequestSpanProcessor.ts - Use ObservabilityConfiguration
+   ├── tracing/PerRequestSpanProcessor.ts - Use PerRequestSpanProcessorConfiguration
    └── ObservabilityBuilder.ts - Accept IConfigurationProvider<ObservabilityConfiguration>
 
 4. Extension packages
@@ -1176,7 +1156,7 @@ These methods remain available for backward compatibility but should not be used
 | Caching/lazy evaluation? | **No caching** - Functions called on each access for multi-tenant support |
 | Should we add validation? | **No** - Keep current behavior |
 | Should hardcoded constants become configurable? | **No** - Keep as hardcoded constants |
-| Per-request processor settings? | **Include from start** - Maintain consistency |
+| Per-request processor settings? | **Separate class** - `PerRequestSpanProcessorConfiguration` extends `ObservabilityConfiguration` to avoid exposing niche settings |
 | Deprecation strategy for utility functions? | **Remove immediately** - Functions not expected to be used by customers |
 | Extension packages configuration? | **Create from start** - Makes it easier to add settings later |
 
@@ -1192,10 +1172,10 @@ These methods remain available for backward compatibility but should not be used
 | `NODE_ENV` | string | `''` | tooling (useToolingManifest) |
 | `A365_OBSERVABILITY_SCOPES_OVERRIDE` | string (space-sep) | prod scope | observability |
 | `ENABLE_A365_OBSERVABILITY_EXPORTER` | boolean | `false` | observability |
-| `ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT` | boolean | `false` | observability |
+| `ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT` | boolean | `false` | observability (PerRequestSpanProcessorConfiguration) |
 | `A365_OBSERVABILITY_USE_CUSTOM_DOMAIN` | boolean | `false` | observability |
 | `A365_OBSERVABILITY_DOMAIN_OVERRIDE` | string | `null` | observability |
 | `A365_OBSERVABILITY_LOG_LEVEL` | string | `'none'` | observability |
-| `A365_PER_REQUEST_MAX_TRACES` | number | `1000` | observability |
-| `A365_PER_REQUEST_MAX_SPANS_PER_TRACE` | number | `5000` | observability |
-| `A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS` | number | `20` | observability |
+| `A365_PER_REQUEST_MAX_TRACES` | number | `1000` | observability (PerRequestSpanProcessorConfiguration) |
+| `A365_PER_REQUEST_MAX_SPANS_PER_TRACE` | number | `5000` | observability (PerRequestSpanProcessorConfiguration) |
+| `A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS` | number | `20` | observability (PerRequestSpanProcessorConfiguration) |

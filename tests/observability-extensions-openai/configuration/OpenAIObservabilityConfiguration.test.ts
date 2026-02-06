@@ -71,13 +71,6 @@ describe('OpenAIObservabilityConfiguration', () => {
       expect(config.observabilityAuthenticationScopes).toEqual(['custom-scope/.default']);
     });
 
-    it('should inherit isPerRequestExportEnabled from override', () => {
-      const config = new OpenAIObservabilityConfiguration({
-        isPerRequestExportEnabled: () => true
-      });
-      expect(config.isPerRequestExportEnabled).toBe(true);
-    });
-
     it('should inherit useCustomDomainForObservability from override', () => {
       const config = new OpenAIObservabilityConfiguration({
         useCustomDomainForObservability: () => true
@@ -103,29 +96,6 @@ describe('OpenAIObservabilityConfiguration', () => {
       delete process.env.ENABLE_A365_OBSERVABILITY_EXPORTER;
       const config = new OpenAIObservabilityConfiguration({});
       expect(config.isObservabilityExporterEnabled).toBe(false);
-    });
-  });
-
-  describe('per-request processor settings', () => {
-    it('should inherit perRequestMaxTraces from override', () => {
-      const config = new OpenAIObservabilityConfiguration({
-        perRequestMaxTraces: () => 500
-      });
-      expect(config.perRequestMaxTraces).toBe(500);
-    });
-
-    it('should inherit perRequestMaxSpansPerTrace from override', () => {
-      const config = new OpenAIObservabilityConfiguration({
-        perRequestMaxSpansPerTrace: () => 2500
-      });
-      expect(config.perRequestMaxSpansPerTrace).toBe(2500);
-    });
-
-    it('should inherit perRequestMaxConcurrentExports from override', () => {
-      const config = new OpenAIObservabilityConfiguration({
-        perRequestMaxConcurrentExports: () => 10
-      });
-      expect(config.perRequestMaxConcurrentExports).toBe(10);
     });
   });
 

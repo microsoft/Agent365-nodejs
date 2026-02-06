@@ -7,11 +7,6 @@ import { ObservabilityConfigurationOptions } from './ObservabilityConfigurationO
 // Default constants
 const PROD_OBSERVABILITY_SCOPE = 'https://api.powerplatform.com/.default';
 
-/** Guardrails to prevent unbounded memory growth / export bursts. Used for PerRequestSpanProcessor only. */
-const DEFAULT_MAX_BUFFERED_TRACES = 1000;
-const DEFAULT_MAX_SPANS_PER_TRACE = 5000;
-const DEFAULT_MAX_CONCURRENT_EXPORTS = 20;
-
 /**
  * Configuration for observability package.
  * Inherits runtime settings and adds observability-specific settings.
@@ -49,12 +44,6 @@ export class ObservabilityConfiguration extends RuntimeConfiguration {
     return RuntimeConfiguration.parseEnvBoolean(process.env.ENABLE_A365_OBSERVABILITY_EXPORTER);
   }
 
-  get isPerRequestExportEnabled(): boolean {
-    const result = this.observabilityOverrides.isPerRequestExportEnabled?.();
-    if (result !== undefined) return result;
-    return RuntimeConfiguration.parseEnvBoolean(process.env.ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT);
-  }
-
   get useCustomDomainForObservability(): boolean {
     const result = this.observabilityOverrides.useCustomDomainForObservability?.();
     if (result !== undefined) return result;
@@ -77,24 +66,5 @@ export class ObservabilityConfiguration extends RuntimeConfiguration {
     return this.observabilityOverrides.observabilityLogLevel?.()
       ?? process.env.A365_OBSERVABILITY_LOG_LEVEL
       ?? 'none';
-  }
-
-  // Per-Request Processor settings
-  get perRequestMaxTraces(): number {
-    const value = this.observabilityOverrides.perRequestMaxTraces?.()
-      ?? RuntimeConfiguration.parseEnvInt(process.env.A365_PER_REQUEST_MAX_TRACES, DEFAULT_MAX_BUFFERED_TRACES);
-    return value > 0 ? value : DEFAULT_MAX_BUFFERED_TRACES;
-  }
-
-  get perRequestMaxSpansPerTrace(): number {
-    const value = this.observabilityOverrides.perRequestMaxSpansPerTrace?.()
-      ?? RuntimeConfiguration.parseEnvInt(process.env.A365_PER_REQUEST_MAX_SPANS_PER_TRACE, DEFAULT_MAX_SPANS_PER_TRACE);
-    return value > 0 ? value : DEFAULT_MAX_SPANS_PER_TRACE;
-  }
-
-  get perRequestMaxConcurrentExports(): number {
-    const value = this.observabilityOverrides.perRequestMaxConcurrentExports?.()
-      ?? RuntimeConfiguration.parseEnvInt(process.env.A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS, DEFAULT_MAX_CONCURRENT_EXPORTS);
-    return value > 0 ? value : DEFAULT_MAX_CONCURRENT_EXPORTS;
   }
 }

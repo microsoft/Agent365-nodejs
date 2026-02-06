@@ -7,7 +7,7 @@ import { context, type Context } from '@opentelemetry/api';
 import type { ReadableSpan, SpanProcessor, SpanExporter } from '@opentelemetry/sdk-trace-base';
 import { IConfigurationProvider } from '@microsoft/agents-a365-runtime';
 import logger from '../utils/logging';
-import { ObservabilityConfiguration, defaultObservabilityConfigurationProvider } from '../configuration';
+import { PerRequestSpanProcessorConfiguration, defaultPerRequestSpanProcessorConfigurationProvider } from '../configuration';
 
 /** Default grace period (ms) to wait for child spans after root span ends */
 const DEFAULT_FLUSH_GRACE_MS = 250;
@@ -53,17 +53,17 @@ export class PerRequestSpanProcessor implements SpanProcessor {
    * @param exporter The span exporter to use.
    * @param flushGraceMs Grace period (ms) to wait for child spans after root span ends.
    * @param maxTraceAgeMs Maximum age (ms) for a trace before forcing flush.
-   * @param configProvider Optional configuration provider. Defaults to defaultObservabilityConfigurationProvider if not specified.
+   * @param configProvider Optional configuration provider. Defaults to defaultPerRequestSpanProcessorConfigurationProvider if not specified.
    */
   constructor(
     private readonly exporter: SpanExporter,
     private readonly flushGraceMs: number = DEFAULT_FLUSH_GRACE_MS,
     private readonly maxTraceAgeMs: number = DEFAULT_MAX_TRACE_AGE_MS,
-    configProvider?: IConfigurationProvider<ObservabilityConfiguration>
+    configProvider?: IConfigurationProvider<PerRequestSpanProcessorConfiguration>
   ) {
     // Defaults are intentionally high but bounded; override via configuration if needed.
     // Set to 0 (or negative) to disable a guardrail.
-    const effectiveConfigProvider = configProvider ?? defaultObservabilityConfigurationProvider;
+    const effectiveConfigProvider = configProvider ?? defaultPerRequestSpanProcessorConfigurationProvider;
     const config = effectiveConfigProvider.getConfiguration();
     this.maxBufferedTraces = config.perRequestMaxTraces;
     this.maxSpansPerTrace = config.perRequestMaxSpansPerTrace;

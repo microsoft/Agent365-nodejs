@@ -7,7 +7,12 @@ import { SpanKind, SpanStatusCode } from '@opentelemetry/api';
 import { ClusterCategory, IConfigurationProvider } from '@microsoft/agents-a365-runtime';
 import { OpenTelemetryConstants } from '../constants';
 import logger from '../../utils/logging';
-import { ObservabilityConfiguration, defaultObservabilityConfigurationProvider } from '../../configuration';
+import {
+  ObservabilityConfiguration,
+  defaultObservabilityConfigurationProvider,
+  PerRequestSpanProcessorConfiguration,
+  defaultPerRequestSpanProcessorConfigurationProvider
+} from '../../configuration';
 
 /**
  * Convert trace ID to hex string format
@@ -127,12 +132,12 @@ export function isAgent365ExporterEnabled(
  * Check if per-request export is enabled via environment variable.
  * When enabled, the PerRequestSpanProcessor is used instead of BatchSpanProcessor.
  * The token is passed via OTel Context (async local storage) at export time.
- * @param configProvider Optional configuration provider. Defaults to defaultObservabilityConfigurationProvider if not specified.
+ * @param configProvider Optional configuration provider. Defaults to defaultPerRequestSpanProcessorConfigurationProvider if not specified.
  */
 export function isPerRequestExportEnabled(
-  configProvider?: IConfigurationProvider<ObservabilityConfiguration>
+  configProvider?: IConfigurationProvider<PerRequestSpanProcessorConfiguration>
 ): boolean {
-  const provider = configProvider ?? defaultObservabilityConfigurationProvider;
+  const provider = configProvider ?? defaultPerRequestSpanProcessorConfigurationProvider;
   const enabled = provider.getConfiguration().isPerRequestExportEnabled;
   logger.info(`[Agent365Exporter] Per-request export enabled: ${enabled}`);
   return enabled;
