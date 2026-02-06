@@ -353,19 +353,20 @@ The SDK uses a hierarchical configuration system with function-based overrides f
 import {
   RuntimeConfiguration,
   RuntimeConfigurationOptions,
-  createRuntimeConfigurationProvider,
+  DefaultConfigurationProvider,
+  defaultRuntimeConfigurationProvider,
 } from '@microsoft/agents-a365-runtime';
 
 // Simple usage: default configuration with environment variables
-import { defaultRuntimeConfigurationProvider } from '@microsoft/agents-a365-runtime';
 const config = defaultRuntimeConfigurationProvider.getConfiguration();
 
 // Multi-tenant: per-request configuration with dynamic overrides
 const options: RuntimeConfigurationOptions = {
   clusterCategory: () => getTenantCluster(currentTenantId),
-  mcpPlatformAuthenticationScope: () => getTenantScope(currentTenantId),
 };
-const tenantProvider = createRuntimeConfigurationProvider(options);
+const tenantProvider = new DefaultConfigurationProvider(
+  () => new RuntimeConfiguration(options)
+);
 const tenantConfig = tenantProvider.getConfiguration();
 ```
 
