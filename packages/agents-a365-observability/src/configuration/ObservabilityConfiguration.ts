@@ -6,6 +6,8 @@ import { ObservabilityConfigurationOptions } from './ObservabilityConfigurationO
 
 // Default constants
 const PROD_OBSERVABILITY_SCOPE = 'https://api.powerplatform.com/.default';
+
+/** Guardrails to prevent unbounded memory growth / export bursts. Used for PerRequestSpanProcessor only. */
 const DEFAULT_MAX_BUFFERED_TRACES = 1000;
 const DEFAULT_MAX_SPANS_PER_TRACE = 5000;
 const DEFAULT_MAX_CONCURRENT_EXPORTS = 20;
