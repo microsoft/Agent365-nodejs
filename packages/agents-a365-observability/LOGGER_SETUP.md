@@ -31,6 +31,7 @@ Filtered messages are sent to the appropriate console method:
 - Info → `console.log('[INFO]', message)`
 - Warn → `console.warn('[WARN]', message)`
 - Error → `console.error('[ERROR]', message)`
+- Event → `console.log('[EVENT]: eventType status in durationMs ms [message] [correlationId]')`
 
 ### 4. Works Automatically
 ```typescript
@@ -260,36 +261,7 @@ resetLogger();
 
 ### Event Logging in Agent365Exporter
 
-The `Agent365Exporter` logs events at multiple levels using standardized event names from `ExporterEventNames`:
-
-1. **Overall Export Event** (`EXPORT`) - for the entire batch export operation:
-   ```
-   [Event]: agent365-export succeeded in 2500ms
-   [Event]: agent365-export failed in 2500ms
-   ```
-
-2. **Group Export Events** (`EXPORT_GROUP`) - for each tenant/agent group:
-   ```
-   [Event]: export-group-tenant-123-agent-456 succeeded in 1200ms
-   [Event]: export-group-tenant-123-agent-456 failed in 1200ms
-   ```
-
-3. **Partition Span Events** (`EXPORT_PARTITION_SPAN_BY_IDENTITY`) - for span partitions by identify( only failure will be logged for this event)
-   ```
-   [Event]: export-partition-span-by-identity failed in 0ms
-   ```
-
-### Exporter Event Names
-
-The exporter uses standardized event name constants for consistency. 
-```typescript
-import { ExporterEventNames } from '@microsoft/agents-a365-observability';
-
-// Available event names:
-ExporterEventNames.EXPORT                    // 'agent365-export'
-ExporterEventNames.EXPORT_GROUP              // 'export-group' (use with tenant/agent ID)
-ExporterEventNames.EXPORT_PARTITION_SPAN_BY_IDENTITY // 'export-partition-span-by-identity'
-```
+The `Agent365Exporter` logs events at multiple levels using standardized event names from `ExporterEventNames`.
 
 ## API Reference
 

@@ -149,7 +149,7 @@ export class Agent365Exporter implements SpanExporter {
     } catch (_error) {
       // Exporters should not raise; signal failure
       const duration = Date.now() - startTime;
-      logger.event(ExporterEventNames.EXPORT, false, duration, 'Export operation failed');
+      logger.event(ExporterEventNames.EXPORT, false, duration, `Export failed with error: ${formatError(_error)}`);
       resultCallback({ code: ExportResultCode.FAILED });
     }
   }
