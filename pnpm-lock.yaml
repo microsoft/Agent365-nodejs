@@ -36,9 +36,6 @@ catalogs:
     '@microsoft/agents-hosting':
       specifier: ^1.1.0-alpha.85
       version: 1.1.0-alpha.85
-    '@modelcontextprotocol/sdk':
-      specifier: ^1.26.0
-      version: 1.26.0
     '@openai/agents':
       specifier: ^0.4.0
       version: 0.4.2
@@ -94,8 +91,8 @@ catalogs:
       specifier: ^9.39.1
       version: 9.39.1
     express:
-      specifier: ^5.2.0
-      version: 5.2.0
+      specifier: ^5.2.1
+      version: 5.2.1
     jest:
       specifier: ^30.2.0
       version: 30.2.0
@@ -125,6 +122,7 @@ catalogs:
       version: 8.47.0
 
 overrides:
+  '@modelcontextprotocol/sdk': ^1.26.0
   '@types/uuid': ^9.0.8
   hono: ^4.11.7
   uuid: ^10.0.0
@@ -338,7 +336,7 @@ importers:
         version: link:../agents-a365-runtime
       '@openai/agents':
         specifier: 'catalog:'
-        version: 0.4.2(@cfworker/json-schema@4.1.1)(hono@4.11.7)(ws@8.18.3)(zod@4.1.13)
+        version: 0.4.2(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.13)
       '@opentelemetry/api':
         specifier: 'catalog:'
         version: 1.9.0
@@ -487,11 +485,11 @@ importers:
         specifier: 'catalog:'
         version: 1.1.0-alpha.85
       '@modelcontextprotocol/sdk':
-        specifier: 'catalog:'
+        specifier: ^1.26.0
         version: 1.26.0(@cfworker/json-schema@4.1.1)(zod@4.1.13)
       express:
         specifier: 'catalog:'
-        version: 5.2.0
+        version: 5.2.1
       hono:
         specifier: ^4.11.7
         version: 4.11.7
@@ -545,7 +543,7 @@ importers:
         specifier: 'catalog:'
         version: 1.1.0-alpha.85
       '@modelcontextprotocol/sdk':
-        specifier: 'catalog:'
+        specifier: ^1.26.0
         version: 1.26.0(@cfworker/json-schema@4.1.1)(zod@4.1.13)
     devDependencies:
       '@eslint/js':
@@ -592,7 +590,7 @@ importers:
         version: 1.1.2(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@6.16.0(ws@8.18.3)(zod@4.1.13)))(zod-to-json-schema@3.25.1(zod@4.1.13))(zod@4.1.13)
       '@langchain/mcp-adapters':
         specifier: 'catalog:'
-        version: 1.1.1(@cfworker/json-schema@4.1.1)(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@6.16.0(ws@8.18.3)(zod@4.1.13)))(@langchain/langgraph@1.1.2(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@6.16.0(ws@8.18.3)(zod@4.1.13)))(zod-to-json-schema@3.25.1(zod@4.1.13))(zod@4.1.13))(hono@4.11.7)
+        version: 1.1.1(@cfworker/json-schema@4.1.1)(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@6.16.0(ws@8.18.3)(zod@4.1.13)))(@langchain/langgraph@1.1.2(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@6.16.0(ws@8.18.3)(zod@4.1.13)))(zod-to-json-schema@3.25.1(zod@4.1.13))(zod@4.1.13))
       '@microsoft/agents-a365-runtime':
         specifier: workspace:*
         version: link:../agents-a365-runtime
@@ -662,7 +660,7 @@ importers:
         version: 1.1.0-alpha.85
       '@openai/agents':
         specifier: 'catalog:'
-        version: 0.4.2(@cfworker/json-schema@4.1.1)(hono@4.11.7)(ws@8.18.3)(zod@4.1.13)
+        version: 0.4.2(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.13)
       hono:
         specifier: ^4.11.7
         version: 4.11.7
@@ -731,14 +729,14 @@ importers:
         specifier: 'catalog:'
         version: 1.1.0-alpha.85
       '@modelcontextprotocol/sdk':
-        specifier: 'catalog:'
+        specifier: ^1.26.0
         version: 1.26.0(@cfworker/json-schema@4.1.1)(zod@4.1.13)
       '@openai/agents':
         specifier: 'catalog:'
-        version: 0.4.2(@cfworker/json-schema@4.1.1)(hono@4.11.7)(ws@8.18.3)(zod@4.1.13)
+        version: 0.4.2(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.13)
       '@openai/agents-openai':
         specifier: 'catalog:'
-        version: 0.4.2(@cfworker/json-schema@4.1.1)(hono@4.11.7)(ws@8.18.3)(zod@4.1.13)
+        version: 0.4.2(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.13)
       '@opentelemetry/api':
         specifier: 'catalog:'
         version: 1.9.0
@@ -1140,12 +1138,6 @@ packages:
     engines: {node: '>=6'}
     hasBin: true
 
-  '@hono/node-server@1.19.7':
-    resolution: {integrity: sha512-vUcD0uauS7EU2caukW8z5lJKtoGMokxNbJtBiwHgpqxEXokaHCBkQUmCHhjFB1VUTWdqj25QoMkMKzgjq+uhrw==}
-    engines: {node: '>=18.14.1'}
-    peerDependencies:
-      hono: ^4.11.7
-
   '@hono/node-server@1.19.9':
     resolution: {integrity: sha512-vHL6w3ecZsky+8P5MD+eFfaGTyCeOHUIFYMGpQGbrBTSmNNoxv0if69rEZ5giu36weC5saFuznL411gRX7bJDw==}
     engines: {node: '>=18.14.1'}
@@ -1402,16 +1394,6 @@ packages:
   '@microsoft/agents-hosting@1.1.0-alpha.85':
     resolution: {integrity: sha512-1Ii92EJSaQTuqjOBWUqoioClum+6Dh82uBmzoExMi3ZDJ9UTV6Kqg4W1h4PYhUZPmqIP3HLSVNvty84Gx/mqYg==}
     engines: {node: '>=20.0.0'}
-
-  '@modelcontextprotocol/sdk@1.25.2':
-    resolution: {integrity: sha512-LZFeo4F9M5qOhC/Uc1aQSrBHxMrvxett+9KLHt7OhcExtoiRN9DKgbZffMP/nxjutWDQpfMDfP3nkHI4X9ijww==}
-    engines: {node: '>=18'}
-    peerDependencies:
-      '@cfworker/json-schema': ^4.1.1
-      zod: ^4.1.12
-    peerDependenciesMeta:
-      '@cfworker/json-schema':
-        optional: true
 
   '@modelcontextprotocol/sdk@1.26.0':
     resolution: {integrity: sha512-Y5RmPncpiDtTXDbLKswIJzTqu2hyBKxTNsgKqKclDbhIgg1wgtf1fRuvxgTnRfcnxtvvgbIEcqUOzZrJ6iSReg==}
@@ -2492,21 +2474,11 @@ packages:
     resolution: {integrity: sha512-u/feCi0GPsI+988gU2FLcsHyAHTU0MX1Wg68NhAnN7z/+C5wqG+CY8J53N9ioe8RXgaoz0nBR/TYMf3AycUuPw==}
     engines: {node: ^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0}
 
-  express-rate-limit@7.5.1:
-    resolution: {integrity: sha512-7iN8iPMDzOMHPUYllBEsQdWVB6fPDMPqwjBaFrgr4Jgr/+okjvzAy+UHlYYL/Vs0OsOrMkwS6PJDkFlJwoxUnw==}
-    engines: {node: '>= 16'}
-    peerDependencies:
-      express: '>= 4.11'
-
   express-rate-limit@8.2.1:
     resolution: {integrity: sha512-PCZEIEIxqwhzw4KF0n7QF4QqruVTcF73O5kFKUnGOyjbCCgizBBiFaYpd/fnBLUMPw/BWw9OsiN7GgrNYr7j6g==}
     engines: {node: '>= 16'}
     peerDependencies:
       express: '>= 4.11'
-
-  express@5.2.0:
-    resolution: {integrity: sha512-XdpJDLxfztVY59X0zPI6sibRiGcxhTPXRD3IhJmjKf2jwMvkRGV1j7loB8U+heeamoU3XvihAaGRTR4aXXUN3A==}
-    engines: {node: '>= 18'}
 
   express@5.2.1:
     resolution: {integrity: sha512-hIS4idWWai69NezIdRt2xFVofaF4j+6INOpJlVOLDO8zXGpUVEVzIYk12UUi2JzjEzWL3IOAxcTubgz9Po0yXw==}
@@ -3882,11 +3854,6 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
 
-  zod-to-json-schema@3.25.0:
-    resolution: {integrity: sha512-HvWtU2UG41LALjajJrML6uQejQhNJx+JBO9IflpSja4R03iNWfKXrj6W2h7ljuLyc1nKS+9yDyL/9tD1U/yBnQ==}
-    peerDependencies:
-      zod: ^4.1.12
-
   zod-to-json-schema@3.25.1:
     resolution: {integrity: sha512-pM/SU9d3YAggzi6MtR4h7ruuQlqKtad8e9S0fmxcMi+ueAK5Korys/aWcV9LIIHTVbj01NdzxcnXSN+O74ZIVA==}
     peerDependencies:
@@ -4352,10 +4319,6 @@ snapshots:
       protobufjs: 7.5.4
       yargs: 17.7.2
 
-  '@hono/node-server@1.19.7(hono@4.11.7)':
-    dependencies:
-      hono: 4.11.7
-
   '@hono/node-server@1.19.9(hono@4.11.7)':
     dependencies:
       hono: 4.11.7
@@ -4690,18 +4653,17 @@ snapshots:
       - react
       - react-dom
 
-  '@langchain/mcp-adapters@1.1.1(@cfworker/json-schema@4.1.1)(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@6.16.0(ws@8.18.3)(zod@4.1.13)))(@langchain/langgraph@1.1.2(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@6.16.0(ws@8.18.3)(zod@4.1.13)))(zod-to-json-schema@3.25.1(zod@4.1.13))(zod@4.1.13))(hono@4.11.7)':
+  '@langchain/mcp-adapters@1.1.1(@cfworker/json-schema@4.1.1)(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@6.16.0(ws@8.18.3)(zod@4.1.13)))(@langchain/langgraph@1.1.2(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@6.16.0(ws@8.18.3)(zod@4.1.13)))(zod-to-json-schema@3.25.1(zod@4.1.13))(zod@4.1.13))':
     dependencies:
       '@langchain/core': 1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@6.16.0(ws@8.18.3)(zod@4.1.13))
       '@langchain/langgraph': 1.1.2(@langchain/core@1.1.8(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.2.0(@opentelemetry/api@1.9.0))(openai@6.16.0(ws@8.18.3)(zod@4.1.13)))(zod-to-json-schema@3.25.1(zod@4.1.13))(zod@4.1.13)
-      '@modelcontextprotocol/sdk': 1.25.2(@cfworker/json-schema@4.1.1)(hono@4.11.7)(zod@4.1.13)
+      '@modelcontextprotocol/sdk': 1.26.0(@cfworker/json-schema@4.1.1)(zod@4.1.13)
       debug: 4.4.3
       zod: 4.1.13
     optionalDependencies:
       extended-eventsource: 1.7.0
     transitivePeerDependencies:
       - '@cfworker/json-schema'
-      - hono
       - supports-color
 
   '@microsoft/agents-activity@1.1.0-alpha.85':
@@ -4723,30 +4685,6 @@ snapshots:
       object-path: 0.11.8
     transitivePeerDependencies:
       - debug
-      - supports-color
-
-  '@modelcontextprotocol/sdk@1.25.2(@cfworker/json-schema@4.1.1)(hono@4.11.7)(zod@4.1.13)':
-    dependencies:
-      '@hono/node-server': 1.19.7(hono@4.11.7)
-      ajv: 8.17.1
-      ajv-formats: 3.0.1(ajv@8.17.1)
-      content-type: 1.0.5
-      cors: 2.8.5
-      cross-spawn: 7.0.6
-      eventsource: 3.0.7
-      eventsource-parser: 3.0.6
-      express: 5.2.0
-      express-rate-limit: 7.5.1(express@5.2.0)
-      jose: 6.1.3
-      json-schema-typed: 8.0.2
-      pkce-challenge: 5.0.0
-      raw-body: 3.0.2
-      zod: 4.1.13
-      zod-to-json-schema: 3.25.0(zod@4.1.13)
-    optionalDependencies:
-      '@cfworker/json-schema': 4.1.1
-    transitivePeerDependencies:
-      - hono
       - supports-color
 
   '@modelcontextprotocol/sdk@1.26.0(@cfworker/json-schema@4.1.1)(zod@4.1.13)':
@@ -4792,34 +4730,32 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.19.1
 
-  '@openai/agents-core@0.4.2(@cfworker/json-schema@4.1.1)(hono@4.11.7)(ws@8.18.3)(zod@4.1.13)':
+  '@openai/agents-core@0.4.2(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.13)':
     dependencies:
       debug: 4.4.3
       openai: 6.9.1(ws@8.18.3)(zod@4.1.13)
     optionalDependencies:
-      '@modelcontextprotocol/sdk': 1.25.2(@cfworker/json-schema@4.1.1)(hono@4.11.7)(zod@4.1.13)
+      '@modelcontextprotocol/sdk': 1.26.0(@cfworker/json-schema@4.1.1)(zod@4.1.13)
       zod: 4.1.13
     transitivePeerDependencies:
       - '@cfworker/json-schema'
-      - hono
       - supports-color
       - ws
 
-  '@openai/agents-openai@0.4.2(@cfworker/json-schema@4.1.1)(hono@4.11.7)(ws@8.18.3)(zod@4.1.13)':
+  '@openai/agents-openai@0.4.2(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.13)':
     dependencies:
-      '@openai/agents-core': 0.4.2(@cfworker/json-schema@4.1.1)(hono@4.11.7)(ws@8.18.3)(zod@4.1.13)
+      '@openai/agents-core': 0.4.2(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.13)
       debug: 4.4.3
       openai: 6.9.1(ws@8.18.3)(zod@4.1.13)
       zod: 4.1.13
     transitivePeerDependencies:
       - '@cfworker/json-schema'
-      - hono
       - supports-color
       - ws
 
-  '@openai/agents-realtime@0.4.2(@cfworker/json-schema@4.1.1)(hono@4.11.7)(zod@4.1.13)':
+  '@openai/agents-realtime@0.4.2(@cfworker/json-schema@4.1.1)(zod@4.1.13)':
     dependencies:
-      '@openai/agents-core': 0.4.2(@cfworker/json-schema@4.1.1)(hono@4.11.7)(ws@8.18.3)(zod@4.1.13)
+      '@openai/agents-core': 0.4.2(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.13)
       '@types/ws': 8.18.1
       debug: 4.4.3
       ws: 8.18.3
@@ -4827,22 +4763,20 @@ snapshots:
     transitivePeerDependencies:
       - '@cfworker/json-schema'
       - bufferutil
-      - hono
       - supports-color
       - utf-8-validate
 
-  '@openai/agents@0.4.2(@cfworker/json-schema@4.1.1)(hono@4.11.7)(ws@8.18.3)(zod@4.1.13)':
+  '@openai/agents@0.4.2(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.13)':
     dependencies:
-      '@openai/agents-core': 0.4.2(@cfworker/json-schema@4.1.1)(hono@4.11.7)(ws@8.18.3)(zod@4.1.13)
-      '@openai/agents-openai': 0.4.2(@cfworker/json-schema@4.1.1)(hono@4.11.7)(ws@8.18.3)(zod@4.1.13)
-      '@openai/agents-realtime': 0.4.2(@cfworker/json-schema@4.1.1)(hono@4.11.7)(zod@4.1.13)
+      '@openai/agents-core': 0.4.2(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.13)
+      '@openai/agents-openai': 0.4.2(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.13)
+      '@openai/agents-realtime': 0.4.2(@cfworker/json-schema@4.1.1)(zod@4.1.13)
       debug: 4.4.3
       openai: 6.9.1(ws@8.18.3)(zod@4.1.13)
       zod: 4.1.13
     transitivePeerDependencies:
       - '@cfworker/json-schema'
       - bufferutil
-      - hono
       - supports-color
       - utf-8-validate
       - ws
@@ -5970,47 +5904,10 @@ snapshots:
       jest-mock: 30.2.0
       jest-util: 30.2.0
 
-  express-rate-limit@7.5.1(express@5.2.0):
-    dependencies:
-      express: 5.2.0
-
   express-rate-limit@8.2.1(express@5.2.1):
     dependencies:
       express: 5.2.1
       ip-address: 10.0.1
-
-  express@5.2.0:
-    dependencies:
-      accepts: 2.0.0
-      body-parser: 2.2.1
-      content-disposition: 1.0.1
-      content-type: 1.0.5
-      cookie: 0.7.2
-      cookie-signature: 1.2.2
-      debug: 4.4.3
-      depd: 2.0.0
-      encodeurl: 2.0.0
-      escape-html: 1.0.3
-      etag: 1.8.1
-      finalhandler: 2.1.1
-      fresh: 2.0.0
-      http-errors: 2.0.1
-      merge-descriptors: 2.0.0
-      mime-types: 3.0.2
-      on-finished: 2.4.1
-      once: 1.4.0
-      parseurl: 1.3.3
-      proxy-addr: 2.0.7
-      qs: 6.14.1
-      range-parser: 1.2.1
-      router: 2.2.0
-      send: 1.2.0
-      serve-static: 2.2.0
-      statuses: 2.0.2
-      type-is: 2.0.1
-      vary: 1.1.2
-    transitivePeerDependencies:
-      - supports-color
 
   express@5.2.1:
     dependencies:
@@ -7539,10 +7436,6 @@ snapshots:
     optional: true
 
   yocto-queue@0.1.0: {}
-
-  zod-to-json-schema@3.25.0(zod@4.1.13):
-    dependencies:
-      zod: 4.1.13
 
   zod-to-json-schema@3.25.1(zod@4.1.13):
     dependencies:

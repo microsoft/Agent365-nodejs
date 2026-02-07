@@ -12,7 +12,7 @@ catalog:
   "@azure/monitor-opentelemetry-exporter": "^1.0.0-beta.32"
   
   # Express framework
-  "express": "^5.2.0"
+  "express": "^5.2.1"
 
   # JSON Web Token
   "jsonwebtoken": "^9.0.3"
@@ -27,7 +27,7 @@ catalog:
   "@microsoft/agents-hosting": "^1.1.0-alpha.85"
   "@microsoft/agents-activity": "^1.1.0-alpha.85"
 
-  # Hono - required peer dependency for MCP SDK and OpenAI agents
+  # Hono - required peer dependency for @openai/agents (bundled as a dependency in @modelcontextprotocol/sdk since 1.26.0)
   "hono": "^4.11.7"
 
   # Model Context Protocol SDK
@@ -75,6 +75,9 @@ catalog:
   "uuid": "^9.0.1"
 
 overrides:
+  # MCP SDK - force single version across all dependents (e.g. @langchain/mcp-adapters)
+  "@modelcontextprotocol/sdk": "^1.26.0"
+
   # Brace expansion - update for bug fixes
   "@isaacs/brace-expansion": "^5.0.1"
 
