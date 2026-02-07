@@ -391,7 +391,8 @@ describe('logging', () => {
       const customLogger = {
         info: jest.fn(),
         warn: jest.fn(),
-        error: jest.fn()
+        error: jest.fn(),
+        event: jest.fn()
       };
 
       setLogger(customLogger);
@@ -456,7 +457,8 @@ describe('logging', () => {
       const customLogger = {
         info: jest.fn(),
         warn: jest.fn(),
-        error: jest.fn()
+        error: jest.fn(),
+        event: jest.fn()
       };
 
       setLogger(customLogger);
