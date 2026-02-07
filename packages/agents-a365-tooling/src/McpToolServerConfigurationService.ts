@@ -4,11 +4,12 @@
 import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
-import { TurnContext } from '@microsoft/agents-hosting';
-import { OperationResult, OperationError } from '@microsoft/agents-a365-runtime';
+import { TurnContext, Authorization } from '@microsoft/agents-hosting';
+import { OperationResult, OperationError, IConfigurationProvider, AgenticAuthenticationService, Utility as RuntimeUtility } from '@microsoft/agents-a365-runtime';
 import { MCPServerConfig, MCPServerManifestEntry, McpClientTool, ToolOptions } from './contracts';
 import { ChatHistoryMessage, ChatMessageRequest } from './models/index';
 import { Utility } from './Utility';
+import { ToolingConfiguration, defaultToolingConfigurationProvider } from './configuration';
 
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -19,18 +20,22 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
  */
 export class McpToolServerConfigurationService {
   private readonly logger = console;
+  private readonly configProvider: IConfigurationProvider<ToolingConfiguration>;
 
   /**
    * Construct a McpToolServerConfigurationService.
+   * @param configProvider Optional configuration provider. Defaults to defaultToolingConfigurationProvider if not specified.
    */
-  constructor() {
+  constructor(configProvider?: IConfigurationProvider<ToolingConfiguration>) {
+    this.configProvider = configProvider ?? defaultToolingConfigurationProvider;
   }
 
   /**
    * Return MCP server definitions for the given agent. In development (NODE_ENV=Development) this reads the local ToolingManifest.json; otherwise it queries the remote tooling gateway.
    *
+   * @deprecated Use the overload with TurnContext and Authorization parameters instead to enable x-ms-agentid header support and automatic token generation.
    * @param agenticAppId The agentic app id for which to discover servers.
-   * @param authToken Optional bearer token used when querying the remote tooling gateway.
+   * @param authToken Bearer token used when querying the remote tooling gateway.
    * @returns A promise resolving to an array of normalized MCP server configuration objects.
    */
   async listToolServers(agenticAppId: string, authToken: string): Promise<MCPServerConfig[]>;
@@ -38,16 +43,85 @@ export class McpToolServerConfigurationService {
   /**
    * Return MCP server definitions for the given agent. In development (NODE_ENV=Development) this reads the local ToolingManifest.json; otherwise it queries the remote tooling gateway.
    *
+   * @deprecated Use the overload with TurnContext and Authorization parameters instead to enable x-ms-agentid header support and automatic token generation.
    * @param agenticAppId The agentic app id for which to discover servers.
-   * @param authToken Optional bearer token used when querying the remote tooling gateway.
+   * @param authToken Bearer token used when querying the remote tooling gateway.
    * @param options Optional tool options when calling the gateway.
    * @returns A promise resolving to an array of normalized MCP server configuration objects.
    */
   async listToolServers(agenticAppId: string, authToken: string, options?: ToolOptions): Promise<MCPServerConfig[]>;
 
-  async listToolServers(agenticAppId: string, authToken: string, options?: ToolOptions): Promise<MCPServerConfig[]> {
-    return await (this.isDevScenario() ? this.getMCPServerConfigsFromManifest() :
-      this.getMCPServerConfigsFromToolingGateway(agenticAppId, authToken, options));
+  /**
+   * Return MCP server definitions for the given agent. In development (NODE_ENV=Development) this reads the local ToolingManifest.json; otherwise it queries the remote tooling gateway.
+   * This overload automatically resolves the agenticAppId from the TurnContext and generates the auth token if not provided.
+   *
+   * @param turnContext The TurnContext of the current request.
+   * @param authorization Authorization object for token exchange.
+   * @param authHandlerName The name of the auth handler to use for token exchange.
+   * @param authToken Optional bearer token. If not provided, will be auto-generated via token exchange.
+   * @param options Optional tool options when calling the gateway.
+   * @returns A promise resolving to an array of normalized MCP server configuration objects.
+   */
+  async listToolServers(turnContext: TurnContext, authorization: Authorization, authHandlerName: string, authToken?: string, options?: ToolOptions): Promise<MCPServerConfig[]>;
+
+  async listToolServers(
+    agenticAppIdOrTurnContext: string | TurnContext,
+    authTokenOrAuthorization: string | Authorization,
+    optionsOrAuthHandlerName?: ToolOptions | string,
+    authTokenOrOptions?: string | ToolOptions,
+    options?: ToolOptions
+  ): Promise<MCPServerConfig[]> {
+    // Detect which signature is being used based on the type of the first parameter
+    if (typeof agenticAppIdOrTurnContext === 'string') {
+      // LEGACY PATH: listToolServers(agenticAppId, authToken, options?)
+      const agenticAppId = agenticAppIdOrTurnContext;
+
+      // Runtime validation for legacy signature parameters
+      if (typeof authTokenOrAuthorization !== 'string') {
+        throw new Error('authToken must be a string when using the legacy listToolServers(agenticAppId, authToken) signature');
+      }
+      const authToken = authTokenOrAuthorization;
+      const toolOptions = optionsOrAuthHandlerName as ToolOptions | undefined;
+
+      return await (this.isDevScenario()
+        ? this.getMCPServerConfigsFromManifest()
+        : this.getMCPServerConfigsFromToolingGateway(agenticAppId, authToken, undefined, toolOptions));
+    } else {
+      // NEW PATH: listToolServers(turnContext, authorization, authHandlerName, authToken?, options?)
+      const turnContext = agenticAppIdOrTurnContext;
+
+      // Runtime validation for new signature parameters
+      if (typeof authTokenOrAuthorization === 'string') {
+        throw new Error('authorization must be an Authorization object when using the new listToolServers(turnContext, authorization, authHandlerName) signature');
+      }
+      if (typeof optionsOrAuthHandlerName !== 'string') {
+        throw new Error('authHandlerName must be a string when using the new listToolServers(turnContext, authorization, authHandlerName) signature');
+      }
+
+      const authorization = authTokenOrAuthorization;
+      const authHandlerName = optionsOrAuthHandlerName;
+      let authToken = authTokenOrOptions as string | undefined;
+      const toolOptions = options;
+
+      // Auto-generate token if not provided
+      if (!authToken) {
+        const scopes = [this.configProvider.getConfiguration().mcpPlatformAuthenticationScope];
+        authToken = await AgenticAuthenticationService.GetAgenticUserToken(authorization, authHandlerName, turnContext, scopes);
+        if (!authToken) {
+          throw new Error('Failed to obtain authentication token from token exchange');
+        }
+      }
+
+      // Note: Token validation (format/expiration) is performed inside getMCPServerConfigsFromToolingGateway()
+      // to avoid duplicate validation (it's also called by the legacy path)
+
+      // Resolve agenticAppId from TurnContext
+      const agenticAppId = RuntimeUtility.ResolveAgentIdentity(turnContext, authToken);
+
+      return await (this.isDevScenario()
+        ? this.getMCPServerConfigsFromManifest()
+        : this.getMCPServerConfigsFromToolingGateway(agenticAppId, authToken, turnContext, toolOptions));
+    }
   }
 
   /**
@@ -140,7 +214,7 @@ export class McpToolServerConfigurationService {
     }
 
     // Get the endpoint URL
-    const endpoint = Utility.GetChatHistoryEndpoint();
+    const endpoint = this.getChatHistoryEndpoint();
 
     this.logger.info(`Sending chat history to endpoint: ${endpoint}`);
 
@@ -192,20 +266,21 @@ export class McpToolServerConfigurationService {
    *
    * @param agenticAppId The agentic app id used by the tooling gateway to scope results.
    * @param authToken Optional Bearer token to include in the Authorization header when calling the gateway.
+   * @param turnContext Optional TurnContext for extracting agent blueprint ID for request headers.
    * @param options Optional tool options when calling the gateway.
    * @throws Error when the gateway call fails or returns an unexpected payload.
    */
-  private async getMCPServerConfigsFromToolingGateway(agenticAppId: string, authToken: string, options?: ToolOptions): Promise<MCPServerConfig[]> {
+  private async getMCPServerConfigsFromToolingGateway(agenticAppId: string, authToken: string, turnContext?: TurnContext, options?: ToolOptions): Promise<MCPServerConfig[]> {
     // Validate the authentication token
     Utility.ValidateAuthToken(authToken);
 
-    const configEndpoint = Utility.GetToolingGatewayForDigitalWorker(agenticAppId);
+    const configEndpoint = this.getToolingGatewayUrl(agenticAppId);
 
     try {
       const response = await axios.get(
         configEndpoint,
         {
-          headers: Utility.GetToolRequestHeaders(authToken, undefined, options),
+          headers: Utility.GetToolRequestHeaders(authToken, turnContext, options),
           timeout: 10000 // 10 seconds timeout
         }
       );
@@ -267,7 +342,7 @@ export class McpToolServerConfigurationService {
         }
         return {
           mcpServerName: serverName,
-          url: s.url || Utility.BuildMcpServerUrl(serverName),
+          url: s.url || this.buildMcpServerUrl(serverName),
           headers: s.headers
         };
       });
@@ -279,12 +354,39 @@ export class McpToolServerConfigurationService {
   }
 
   /**
-   * Detect if the process is running in a development scenario based on environment variables.
+   * Detect if the process is running in a development scenario based on configuration.
    *
-   * @returns {boolean} True when running in a development environment.
+   * @returns {boolean} True when running in a development environment (NODE_ENV=Development).
    */
   private isDevScenario(): boolean {
-    const environment = process.env.NODE_ENV || '';
-    return environment.toLowerCase() === 'development';
+    return this.configProvider.getConfiguration().useToolingManifest;
+  }
+
+  /**
+   * Gets the base URL for MCP platform from configuration.
+   */
+  private getMcpPlatformBaseUrl(): string {
+    return this.configProvider.getConfiguration().mcpPlatformEndpoint;
+  }
+
+  /**
+   * Construct the tooling gateway URL for a given agent identity.
+   */
+  private getToolingGatewayUrl(agenticAppId: string): string {
+    return `${this.getMcpPlatformBaseUrl()}/agents/${agenticAppId}/mcpServers`;
+  }
+
+  /**
+   * Build the full URL for accessing a specific MCP server.
+   */
+  private buildMcpServerUrl(serverName: string): string {
+    return `${this.getMcpPlatformBaseUrl()}/agents/servers/${serverName}/`;
+  }
+
+  /**
+   * Constructs the endpoint URL for sending chat history.
+   */
+  private getChatHistoryEndpoint(): string {
+    return `${this.getMcpPlatformBaseUrl()}/agents/real-time-threat-protection/chat-message`;
   }
 }

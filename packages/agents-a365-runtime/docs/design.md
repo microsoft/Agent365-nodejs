@@ -11,17 +11,18 @@ The runtime package provides foundational utilities shared across the Microsoft 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Public API                                │
-│  Utility | AgenticAuthenticationService | PowerPlatformApiDiscovery │
+│  Utility | AgenticAuthenticationService | RuntimeConfiguration   │
+│  PowerPlatformApiDiscovery                                       │
 └─────────────────────────────────────────────────────────────────┘
                               │
            ┌──────────────────┼──────────────────┐
            ▼                  ▼                  ▼
 ┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐
-│     Utility      │ │   Authentication │ │  API Discovery   │
+│     Utility      │ │  Configuration   │ │  API Discovery   │
 │                  │ │                  │ │                  │
-│ - Token decode   │ │ - Token exchange │ │ - Endpoint URLs  │
-│ - Agent identity │ │ - Scopes         │ │ - Cluster config │
-│ - User-Agent     │ │                  │ │                  │
+│ - Token decode   │ │ - Cluster cat.   │ │ - Endpoint URLs  │
+│ - Agent identity │ │ - isDevEnv       │ │ - Cluster config │
+│ - User-Agent     │ │ - isNodeEnvDev   │ │                  │
 └──────────────────┘ └──────────────────┘ └──────────────────┘
 ```
 
@@ -52,22 +53,6 @@ const userAgent = Utility.GetUserAgentHeader('MyOrchestrator');
 | `GetAppIdFromToken(token)` | Decode JWT and extract `appid` or `azp` claim |
 | `ResolveAgentIdentity(context, authToken)` | Get agent identity from agentic request or token |
 | `GetUserAgentHeader(orchestrator?)` | Generate formatted User-Agent string |
-
-### AgenticAuthenticationService ([agentic-authorization-service.ts](../src/agentic-authorization-service.ts))
-
-Handles token exchange for MCP platform authentication:
-
-```typescript
-import { AgenticAuthenticationService } from '@microsoft/agents-a365-runtime';
-
-const token = await AgenticAuthenticationService.GetAgenticUserToken(
-  authorization,
-  authHandlerName,
-  turnContext
-);
-```
-
-The service retrieves the MCP platform authentication scope from environment configuration and exchanges the user's token for a scoped access token.
 
 ### PowerPlatformApiDiscovery ([power-platform-api-discovery.ts](../src/power-platform-api-discovery.ts))
 
@@ -103,41 +88,96 @@ const islandEndpoint = discovery.getTenantIslandClusterEndpoint(tenantId);
 | `ex` | `api.powerplatform.eaglex.ic.gov` |
 | `rx` | `api.powerplatform.microsoft.scloud` |
 
-### Environment Utilities ([environment-utils.ts](../src/environment-utils.ts))
+### AgenticAuthenticationService ([agentic-authorization-service.ts](../src/agentic-authorization-service.ts))
 
-Helper functions for environment-specific configuration:
+Handles token exchange for platform authentication:
+
+```typescript
+import { AgenticAuthenticationService } from '@microsoft/agents-a365-runtime';
+
+// Get token with specified scopes
+const token = await AgenticAuthenticationService.GetAgenticUserToken(
+  authorization,
+  authHandlerName,
+  turnContext,
+  ['scope1/.default', 'scope2/.default']  // Scopes to request
+);
+```
+
+The service exchanges the user's token for a scoped access token. Callers should obtain the appropriate scopes from their domain-specific configuration (e.g., `ToolingConfiguration.mcpPlatformAuthenticationScope` for MCP platform authentication).
+
+### Configuration ([configuration/](../src/configuration/))
+
+The runtime package provides a configuration system that supports programmatic overrides and environment variable fallbacks:
 
 ```typescript
 import {
-  getObservabilityAuthenticationScope,
-  getClusterCategory,
-  isDevelopmentEnvironment,
-  getMcpPlatformAuthenticationScope,
+  RuntimeConfiguration,
+  ClusterCategory,
+  defaultRuntimeConfigurationProvider,
 } from '@microsoft/agents-a365-runtime';
 
-// Get observability auth scopes (supports override via env var)
-const scopes = getObservabilityAuthenticationScope();
-// => ["https://api.powerplatform.com/.default"]
+// Using the default configuration provider (reads from env vars)
+const config = defaultRuntimeConfigurationProvider.getConfiguration();
 
-// Get cluster category from CLUSTER_CATEGORY env var
-const cluster = getClusterCategory();
-// => "prod" (default)
+// Get cluster category
+const cluster = config.clusterCategory;
+// => "prod" (default, or from CLUSTER_CATEGORY env var)
 
-// Check if running in development
-const isDev = isDevelopmentEnvironment();
+// Check if running in development cluster
+const isDev = config.isDevelopmentEnvironment;
 // => true if cluster is "local" or "dev"
 
-// Get MCP platform auth scope
-const mcpScope = getMcpPlatformAuthenticationScope();
+// Check if NODE_ENV is 'development'
+const isNodeDev = config.isNodeEnvDevelopment;
+// => true if NODE_ENV === 'development'
+```
+
+**Custom Configuration with Overrides:**
+
+```typescript
+// Create configuration with programmatic overrides
+const config = new RuntimeConfiguration({
+  clusterCategory: () => ClusterCategory.gov,
+  isNodeEnvDevelopment: () => false,
+});
+
+// Dynamic per-tenant configuration
+const tenantConfigs: Record<string, ClusterCategory> = {
+  'tenant-a': ClusterCategory.prod,
+  'tenant-b': ClusterCategory.gov,
+};
+let currentTenant = 'tenant-a';
+
+const dynamicConfig = new RuntimeConfiguration({
+  clusterCategory: () => tenantConfigs[currentTenant],
+});
 ```
 
 **Environment Variables:**
 
 | Variable | Purpose | Default |
 |----------|---------|---------|
-| `A365_OBSERVABILITY_SCOPES_OVERRIDE` | Override observability auth scopes | Production scope |
 | `CLUSTER_CATEGORY` | Environment cluster category | `prod` |
-| `MCP_PLATFORM_AUTHENTICATION_SCOPE` | MCP platform auth scope | Production scope |
+| `NODE_ENV` | Node.js environment (`development` enables local mode) | - |
+
+### Environment Utilities ([environment-utils.ts](../src/environment-utils.ts)) - Deprecated
+
+> **Note:** These functions are deprecated. Use the appropriate configuration class instead:
+> - `RuntimeConfiguration` for `clusterCategory` and `isDevelopmentEnvironment`
+> - `ToolingConfiguration` for `mcpPlatformAuthenticationScope`
+> - `ObservabilityConfiguration` for `observabilityAuthenticationScopes`
+
+```typescript
+import {
+  getObservabilityAuthenticationScope,  // @deprecated - use ObservabilityConfiguration
+  getClusterCategory,                    // @deprecated - use RuntimeConfiguration
+  isDevelopmentEnvironment,              // @deprecated - use RuntimeConfiguration
+  getMcpPlatformAuthenticationScope,     // @deprecated - use ToolingConfiguration
+} from '@microsoft/agents-a365-runtime';
+```
+
+These functions are maintained only for backward compatibility. The `getClusterCategory` and `isDevelopmentEnvironment` functions delegate to `defaultRuntimeConfigurationProvider`, while the auth scope functions return hardcoded production defaults.
 
 ## Type Definitions
 
@@ -170,16 +210,38 @@ The `Utility` class uses static methods for stateless operations, making it easy
 const appId = Utility.GetAppIdFromToken(token);
 ```
 
-### Environment-Based Configuration
+### Configuration Provider Pattern
 
-Configuration is environment-aware with sensible defaults:
+Configuration is centralized in configuration classes with function-based overrides for dynamic resolution:
 
 ```typescript
-export function getClusterCategory(): string {
-  const clusterCategory = process.env.CLUSTER_CATEGORY;
-  return clusterCategory?.toLowerCase() ?? 'prod';
+export class RuntimeConfiguration {
+  protected readonly overrides: RuntimeConfigurationOptions;
+
+  constructor(overrides?: RuntimeConfigurationOptions) {
+    this.overrides = overrides ?? {};
+  }
+
+  get clusterCategory(): ClusterCategory {
+    // Override function called on each access (enables per-request resolution)
+    if (this.overrides.clusterCategory) {
+      return this.overrides.clusterCategory();
+    }
+    // Fall back to environment variable
+    const envValue = process.env.CLUSTER_CATEGORY;
+    if (envValue) {
+      return envValue.toLowerCase() as ClusterCategory;
+    }
+    // Default value
+    return 'prod';
+  }
 }
 ```
+
+This pattern enables:
+- **Multi-tenant support**: Different values per request via async context
+- **Testability**: Easy to override for testing without modifying env vars
+- **Centralized access**: All env var reads in one place (enforced by ESLint)
 
 ### Defensive Token Handling
 
@@ -208,8 +270,16 @@ src/
 ├── utility.ts                        # Utility class
 ├── agentic-authorization-service.ts  # Token exchange service
 ├── power-platform-api-discovery.ts   # Endpoint discovery
-├── environment-utils.ts              # Environment helpers
-└── version.ts                        # Package version constant
+├── environment-utils.ts              # Environment helpers (deprecated)
+├── version.ts                        # Package version constant
+├── operation-error.ts                # Operation error types
+├── operation-result.ts               # Operation result types
+├── configuration/
+│   ├── index.ts                      # Configuration exports
+│   ├── IConfigurationProvider.ts     # Generic provider interface
+│   ├── RuntimeConfiguration.ts       # Base configuration class
+│   ├── RuntimeConfigurationOptions.ts # Options type definition
+│   └── DefaultConfigurationProvider.ts # Default provider implementation
 ```
 
 ## Dependencies
