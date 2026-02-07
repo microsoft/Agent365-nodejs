@@ -24,6 +24,9 @@ catalogs:
     '@langchain/core':
       specifier: ^1.1.8
       version: 1.1.8
+    '@langchain/langgraph':
+      specifier: ^1.0.0
+      version: 1.1.2
     '@langchain/mcp-adapters':
       specifier: ^1.1.1
       version: 1.1.1
@@ -330,6 +333,9 @@ importers:
       '@microsoft/agents-a365-observability':
         specifier: workspace:*
         version: link:../agents-a365-observability
+      '@microsoft/agents-a365-runtime':
+        specifier: workspace:*
+        version: link:../agents-a365-runtime
       '@openai/agents':
         specifier: 'catalog:'
         version: 0.4.2(@cfworker/json-schema@4.1.1)(hono@4.11.7)(ws@8.18.3)(zod@4.1.13)

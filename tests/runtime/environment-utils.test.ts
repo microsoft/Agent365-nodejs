@@ -22,37 +22,23 @@ describe('environment-utils', () => {
     process.env = originalEnv;
   });
 
-  describe('getObservabilityAuthenticationScope', () => {
-    it('should return production observability scope when override is not set', () => {
-      delete process.env.A365_OBSERVABILITY_SCOPES_OVERRIDE;
-
+  describe('getObservabilityAuthenticationScope (deprecated)', () => {
+    it('should always return production observability scope (hardcoded default)', () => {
+      // This function is deprecated and now returns a hardcoded default
+      // Use ObservabilityConfiguration for env var support
       const scopes = getObservabilityAuthenticationScope();
 
       expect(scopes).toEqual([PROD_OBSERVABILITY_SCOPE]);
       expect(scopes[0]).toEqual('https://api.powerplatform.com/.default');
     });
 
-    it('should return overridden observability scope when A365_OBSERVABILITY_SCOPES_OVERRIDE is set', () => {
+    it('should ignore A365_OBSERVABILITY_SCOPES_OVERRIDE env var (deprecated behavior)', () => {
+      // The deprecated function no longer reads from env vars
       process.env.A365_OBSERVABILITY_SCOPES_OVERRIDE = 'https://override.example.com/.default';
 
       const scopes = getObservabilityAuthenticationScope();
 
-      expect(scopes).toEqual(['https://override.example.com/.default']);
-    });
-
-    it('should support multiple scopes separated by whitespace', () => {
-      process.env.A365_OBSERVABILITY_SCOPES_OVERRIDE = 'scope-one/.default scope-two/.default';
-
-      const scopes = getObservabilityAuthenticationScope();
-
-      expect(scopes).toEqual(['scope-one/.default', 'scope-two/.default']);
-    });
-
-    it('should fall back to production scope when override is empty or whitespace', () => {
-      process.env.A365_OBSERVABILITY_SCOPES_OVERRIDE = '   ';
-
-      const scopes = getObservabilityAuthenticationScope();
-
+      // Should still return the hardcoded default, not the env var value
       expect(scopes).toEqual([PROD_OBSERVABILITY_SCOPE]);
     });
   });
@@ -64,46 +50,59 @@ describe('environment-utils', () => {
       expect(getClusterCategory()).toEqual('prod');
     });
 
-    it('should return lowercase cluster category from environment', () => {
-      process.env.CLUSTER_CATEGORY = 'DEV';
+    it('should return the configured cluster category from environment variable', () => {
+      process.env.CLUSTER_CATEGORY = 'dev';
 
       expect(getClusterCategory()).toEqual('dev');
     });
 
-    it.each([
-      { input: 'local', expected: 'local' },
-      { input: 'dev', expected: 'dev' },
-      { input: 'test', expected: 'test' },
-      { input: 'PROD', expected: 'prod' },
-      { input: 'Gov', expected: 'gov' },
-    ])('should return $expected for input $input', ({ input, expected }) => {
-      process.env.CLUSTER_CATEGORY = input;
+    it('should convert cluster category to lowercase', () => {
+      process.env.CLUSTER_CATEGORY = 'GOV';
 
-      expect(getClusterCategory()).toEqual(expected);
+      expect(getClusterCategory()).toEqual('gov');
+    });
+
+    it('should return prod when CLUSTER_CATEGORY is empty string', () => {
+      process.env.CLUSTER_CATEGORY = '';
+
+      expect(getClusterCategory()).toEqual('prod');
+    });
+
+    it.each([
+      'local',
+      'dev',
+      'test',
+      'preprod',
+      'firstrelease',
+      'prod',
+      'gov',
+      'high',
+      'dod',
+      'mooncake',
+      'ex',
+      'rx',
+    ])('should return valid cluster category: %s', (category) => {
+      process.env.CLUSTER_CATEGORY = category;
+
+      expect(getClusterCategory()).toEqual(category);
     });
   });
 
   describe('isDevelopmentEnvironment', () => {
-    it('should return true for local cluster', () => {
+    it('should return true when cluster category is local', () => {
       process.env.CLUSTER_CATEGORY = 'local';
 
       expect(isDevelopmentEnvironment()).toBe(true);
     });
 
-    it('should return true for dev cluster', () => {
+    it('should return true when cluster category is dev', () => {
       process.env.CLUSTER_CATEGORY = 'dev';
 
       expect(isDevelopmentEnvironment()).toBe(true);
     });
 
-    it('should return false for prod cluster', () => {
+    it('should return false when cluster category is prod', () => {
       process.env.CLUSTER_CATEGORY = 'prod';
-
-      expect(isDevelopmentEnvironment()).toBe(false);
-    });
-
-    it('should return false for test cluster', () => {
-      process.env.CLUSTER_CATEGORY = 'test';
 
       expect(isDevelopmentEnvironment()).toBe(false);
     });
@@ -126,25 +125,34 @@ describe('environment-utils', () => {
 
       expect(isDevelopmentEnvironment()).toBe(expected);
     });
+
+    it.each([
+      { cluster: 'LOCAL', expected: true },
+      { cluster: 'DEV', expected: true },
+      { cluster: 'Local', expected: true },
+      { cluster: 'Dev', expected: true },
+    ])('should handle uppercase cluster category: $cluster returns $expected', ({ cluster, expected }) => {
+      process.env.CLUSTER_CATEGORY = cluster;
+
+      expect(isDevelopmentEnvironment()).toBe(expected);
+    });
   });
 
-  describe('getMcpPlatformAuthenticationScope', () => {
-    it('should return production scope when environment variable is not set', () => {
+  describe('getMcpPlatformAuthenticationScope (deprecated)', () => {
+    it('should always return production scope (hardcoded default)', () => {
+      // This function is deprecated and now returns a hardcoded default
+      // Use ToolingConfiguration for env var support
       delete process.env.MCP_PLATFORM_AUTHENTICATION_SCOPE;
 
       expect(getMcpPlatformAuthenticationScope()).toEqual(PROD_MCP_PLATFORM_AUTHENTICATION_SCOPE);
       expect(getMcpPlatformAuthenticationScope()).toEqual('ea9ffc3e-8a23-4a7d-836d-234d7c7565c1/.default');
     });
 
-    it('should return custom scope from environment variable', () => {
+    it('should ignore MCP_PLATFORM_AUTHENTICATION_SCOPE env var (deprecated behavior)', () => {
+      // The deprecated function no longer reads from env vars
       process.env.MCP_PLATFORM_AUTHENTICATION_SCOPE = 'custom-scope/.default';
 
-      expect(getMcpPlatformAuthenticationScope()).toEqual('custom-scope/.default');
-    });
-
-    it('should return empty string if environment variable is empty', () => {
-      process.env.MCP_PLATFORM_AUTHENTICATION_SCOPE = '';
-
+      // Should still return the hardcoded default, not the env var value
       expect(getMcpPlatformAuthenticationScope()).toEqual(PROD_MCP_PLATFORM_AUTHENTICATION_SCOPE);
     });
   });

@@ -1,0 +1,9 @@
+{
+    "codeReview.agents": [
+        "architecture-reviewer",
+        "code-reviewer",
+        "test-coverage-reviewer"
+    ],
+    "jest.jestCommandLine": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config=tests/jest.config.cjs",
+    "jest.rootPath": "."
+}

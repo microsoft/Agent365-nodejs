@@ -67,14 +67,14 @@ Core utilities shared across the SDK.
 | `AgenticAuthenticationService` | Token exchange for MCP platform authentication |
 | `PowerPlatformApiDiscovery` | Endpoint discovery for different cloud environments |
 
-**Environment Utilities:**
+**Configuration:**
 
-| Function | Purpose |
+| Property | Purpose |
 |----------|---------|
-| `getObservabilityAuthenticationScope()` | Get auth scopes for observability service |
-| `getClusterCategory()` | Get environment classification (prod, dev, local) |
-| `isDevelopmentEnvironment()` | Check if running in development mode |
-| `getMcpPlatformAuthenticationScope()` | Get MCP platform authentication scope |
+| `clusterCategory` | Environment classification (prod, dev, local) |
+| `isDevelopmentEnvironment` | Check if running in development mode |
+| `mcpPlatformAuthenticationScope` | MCP platform authentication scope |
+| `observabilityAuthenticationScopes` | Auth scopes for observability service |
 
 **Usage Example:**
 
@@ -82,8 +82,13 @@ Core utilities shared across the SDK.
 import {
   Utility,
   PowerPlatformApiDiscovery,
-  getClusterCategory,
+  defaultRuntimeConfigurationProvider,
 } from '@microsoft/agents-a365-runtime';
+
+// Access configuration via the default provider
+const config = defaultRuntimeConfigurationProvider.getConfiguration();
+console.log(`Cluster: ${config.clusterCategory}`);
+console.log(`Is dev: ${config.isDevelopmentEnvironment}`);
 
 // Decode agent identity from JWT token
 const appId = Utility.GetAppIdFromToken(jwtToken);
@@ -92,7 +97,7 @@ const appId = Utility.GetAppIdFromToken(jwtToken);
 const agentId = Utility.ResolveAgentIdentity(turnContext, authToken);
 
 // Discover Power Platform endpoints
-const discovery = new PowerPlatformApiDiscovery('prod');
+const discovery = new PowerPlatformApiDiscovery(config.clusterCategory);
 const endpoint = discovery.getTenantIslandClusterEndpoint(tenantId);
 
 // Generate User-Agent header
@@ -340,7 +345,94 @@ async listToolServers(agenticAppId: string, authToken: string): Promise<MCPServe
 }
 ```
 
-### 5. Extension Methods Pattern
+### 5. Configuration Provider Pattern
+
+The SDK uses a hierarchical configuration system with function-based overrides for multi-tenant support:
+
+```typescript
+import {
+  RuntimeConfiguration,
+  RuntimeConfigurationOptions,
+  DefaultConfigurationProvider,
+  defaultRuntimeConfigurationProvider,
+} from '@microsoft/agents-a365-runtime';
+
+// Simple usage: default configuration with environment variables
+const config = defaultRuntimeConfigurationProvider.getConfiguration();
+
+// Multi-tenant: per-request configuration with dynamic overrides
+const options: RuntimeConfigurationOptions = {
+  clusterCategory: () => getTenantCluster(currentTenantId),
+};
+const tenantProvider = new DefaultConfigurationProvider(
+  () => new RuntimeConfiguration(options)
+);
+const tenantConfig = tenantProvider.getConfiguration();
+```
+
+**Configuration Resolution Order:**
+
+Each configuration property follows a consistent resolution chain. The first non-undefined value wins:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                    Configuration Resolution Order                        │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│   ┌──────────────────────┐                                               │
+│   │  Override Function   │  ← Called on EVERY property access            │
+│   │  (if provided)       │    Enables per-request/per-tenant values      │
+│   └──────────┬───────────┘                                               │
+│              │                                                           │
+│              ▼ returns undefined?                                        │
+│              │                                                           │
+│   ┌──────────────────────┐                                               │
+│   │  Environment Variable│  ← Process-level configuration                │
+│   │  (if set and valid)  │    Standard 12-factor app approach            │
+│   └──────────┬───────────┘                                               │
+│              │                                                           │
+│              ▼ not set or invalid?                                       │
+│              │                                                           │
+│   ┌──────────────────────┐                                               │
+│   │   Default Value      │  ← Built-in production defaults               │
+│   │   (always defined)   │    Safe fallback for all properties           │
+│   └──────────────────────┘                                               │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Example Resolution:**
+
+```typescript
+// Configuration class getter implementation pattern:
+get clusterCategory(): ClusterCategory {
+  // 1. Check override function
+  const override = this.overrides.clusterCategory?.();
+  if (override !== undefined) return override;     // ← Override wins
+
+  // 2. Check environment variable
+  const envValue = process.env.CLUSTER_CATEGORY;
+  if (isValidClusterCategory(envValue)) return envValue;  // ← Env var wins
+
+  // 3. Return default
+  return ClusterCategory.prod;                     // ← Default fallback
+}
+```
+
+**Key Characteristics:**
+
+| Aspect | Behavior |
+|--------|----------|
+| **Dynamic resolution** | Override functions called on each access, not cached |
+| **Undefined vs false** | `undefined` falls through; explicit `false` is used |
+| **Validation** | Invalid env var values fall through to defaults |
+| **Thread safety** | Safe for concurrent access (no shared mutable state) |
+
+**Inheritance Hierarchy:**
+- `RuntimeConfiguration` → `ToolingConfiguration`, `ObservabilityConfiguration`
+- Each child package extends the base with additional settings
+
+### 6. Extension Methods Pattern
 
 The notifications package uses TypeScript declaration merging to extend `AgentApplication`:
 

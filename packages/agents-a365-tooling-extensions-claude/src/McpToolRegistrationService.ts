@@ -2,7 +2,8 @@
 // Licensed under the MIT License.
 
 import { McpToolServerConfigurationService, McpClientTool, Utility, MCPServerConfig, ToolOptions } from '@microsoft/agents-a365-tooling';
-import { AgenticAuthenticationService, Utility as RuntimeUtility } from '@microsoft/agents-a365-runtime';
+import { AgenticAuthenticationService, IConfigurationProvider } from '@microsoft/agents-a365-runtime';
+import { ClaudeToolingConfiguration, defaultClaudeToolingConfigurationProvider } from './configuration';
 
 // Agents SDK
 import { TurnContext, Authorization } from '@microsoft/agents-hosting';
@@ -15,8 +16,18 @@ import type { McpServerConfig, Options } from '@anthropic-ai/claude-agent-sdk';
  * Use getMcpServers to fetch server configs and getTools to enumerate tools.
  */
 export class McpToolRegistrationService {
-  private readonly configService: McpToolServerConfigurationService = new McpToolServerConfigurationService();
+  private readonly configService: McpToolServerConfigurationService;
+  private readonly configProvider: IConfigurationProvider<ClaudeToolingConfiguration>;
   private readonly orchestratorName: string = "Claude";
+
+  /**
+   * Construct a McpToolRegistrationService.
+   * @param configProvider Optional configuration provider. Defaults to defaultClaudeToolingConfigurationProvider if not specified.
+   */
+  constructor(configProvider?: IConfigurationProvider<ClaudeToolingConfiguration>) {
+    this.configProvider = configProvider ?? defaultClaudeToolingConfigurationProvider;
+    this.configService = new McpToolServerConfigurationService(this.configProvider);
+  }
 
   /**
    * Registers MCP tool servers and updates agent options with discovered tools and server configs.
@@ -40,15 +51,15 @@ export class McpToolRegistrationService {
     }
 
     if (!authToken) {
-      authToken = await AgenticAuthenticationService.GetAgenticUserToken(authorization, authHandlerName, turnContext);
+      const scope = this.configProvider.getConfiguration().mcpPlatformAuthenticationScope;
+      authToken = await AgenticAuthenticationService.GetAgenticUserToken(authorization, authHandlerName, turnContext, [scope]);
     }
 
     // Validate the authentication token
     Utility.ValidateAuthToken(authToken);
 
-    const agenticAppId = RuntimeUtility.ResolveAgentIdentity(turnContext, authToken);
     const options: ToolOptions = { orchestratorName: this.orchestratorName };
-    const servers = await this.configService.listToolServers(agenticAppId, authToken, options);
+    const servers = await this.configService.listToolServers(turnContext, authorization, authHandlerName, authToken, options);
     const mcpServers: Record<string, McpServerConfig> = {};
     const tools: McpClientTool[] = [];
 
