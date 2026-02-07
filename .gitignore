@@ -93,8 +93,6 @@ package-lock.json.bak
 out/
 coverage/
 
-# We should have at some point .vscode, but for not ignore since we don't have standard
-.vscode
 .claude/settings.local.json
 .idea/
 

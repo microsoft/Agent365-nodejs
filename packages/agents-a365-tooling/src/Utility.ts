@@ -3,12 +3,10 @@
 
 import { TurnContext } from '@microsoft/agents-hosting';
 import { ChannelAccount } from '@microsoft/agents-activity';
-import { Utility as RuntimeUtility } from '@microsoft/agents-a365-runtime';
+import { Utility as RuntimeUtility, IConfigurationProvider } from '@microsoft/agents-a365-runtime';
 
 import { ToolOptions } from './contracts';
-
-// Constant for MCP Platform base URL in production
-const MCP_PLATFORM_PROD_BASE_URL = 'https://agent365.svc.cloud.microsoft';
+import { ToolingConfiguration, defaultToolingConfigurationProvider } from './configuration';
 
 export class Utility {
   public static readonly HEADER_CHANNEL_ID = 'x-ms-channel-id';
@@ -158,20 +156,26 @@ export class Utility {
    *   // => "https://agent365.svc.cloud.microsoft/agents/{agenticAppId}/mcpServers"
    *
    * @param agenticAppId - The unique identifier for the agent identity.
+   * @param configProvider - Optional configuration provider. Defaults to defaultToolingConfigurationProvider.
    * @returns A fully-qualified URL pointing at the tooling gateway for the agent.
+   * @deprecated This method is for internal use only. Use McpToolServerConfigurationService.listToolServers() instead.
    */
-  public static GetToolingGatewayForDigitalWorker(agenticAppId: string): string {
-    // The endpoint needs to be updated based on the environment (prod, dev, etc.)
-    return `${this.getMcpPlatformBaseUrl()}/agents/${agenticAppId}/mcpServers`;
+  public static GetToolingGatewayForDigitalWorker(
+    agenticAppId: string,
+    configProvider?: IConfigurationProvider<ToolingConfiguration>
+  ): string {
+    return `${this.getMcpPlatformBaseUrl(configProvider)}/agents/${agenticAppId}/mcpServers`;
   }
 
   /**
    * Get the base URL used to query MCP environments.
    *
+   * @param configProvider - Optional configuration provider. Defaults to defaultToolingConfigurationProvider.
    * @returns The base MCP environments URL.
+   * @deprecated This method is for internal use only. Use McpToolServerConfigurationService instead.
    */
-  public static GetMcpBaseUrl(): string {
-    return `${this.getMcpPlatformBaseUrl()}/agents/servers`;
+  public static GetMcpBaseUrl(configProvider?: IConfigurationProvider<ToolingConfiguration>): string {
+    return `${this.getMcpPlatformBaseUrl(configProvider)}/agents/servers`;
   }
 
   /**
@@ -182,37 +186,43 @@ export class Utility {
    *   // => "https://agent365.svc.cloud.microsoft/agents/servers/MyServer/"
    *
    * @param serverName - The MCP server resource name.
+   * @param configProvider - Optional configuration provider. Defaults to defaultToolingConfigurationProvider.
    * @returns The fully-qualified MCP server URL including trailing slash.
+   * @deprecated This method is for internal use only. Use McpToolServerConfigurationService instead.
   */
-  public static BuildMcpServerUrl(serverName: string) : string {
-    const baseUrl = this.GetMcpBaseUrl();
-    return `${baseUrl}/${serverName}`;
+  public static BuildMcpServerUrl(
+    serverName: string,
+    configProvider?: IConfigurationProvider<ToolingConfiguration>
+  ): string {
+    const baseUrl = this.GetMcpBaseUrl(configProvider);
+    return `${baseUrl}/${serverName}/`;
   }
 
   /**
-   * Gets the base URL for MCP platform, defaults to production URL if not set.
+   * Gets the base URL for MCP platform from configuration.
    *
+   * @param configProvider - Optional configuration provider. Defaults to defaultToolingConfigurationProvider.
    * @returns The base URL for MCP platform.
+   * @deprecated This method is for internal use only. Use ToolingConfiguration.mcpPlatformEndpoint instead.
    */
-  private static getMcpPlatformBaseUrl(): string {
-    if (process.env.MCP_PLATFORM_ENDPOINT) {
-      return process.env.MCP_PLATFORM_ENDPOINT;
-    }
-
-    return MCP_PLATFORM_PROD_BASE_URL;
+  private static getMcpPlatformBaseUrl(configProvider?: IConfigurationProvider<ToolingConfiguration>): string {
+    const provider = configProvider ?? defaultToolingConfigurationProvider;
+    return provider.getConfiguration().mcpPlatformEndpoint;
   }
 
   /**
    * Constructs the endpoint URL for sending chat history to the MCP platform for real-time threat protection.
-   * 
+   *
+   * @param configProvider - Optional configuration provider. Defaults to defaultToolingConfigurationProvider.
    * @returns An absolute URL that tooling components can use to send or retrieve chat messages for
    * real-time threat protection scenarios.
    * @remarks
    * Call this method when constructing HTTP requests that need to access the chat-message history
    * for real-time threat protection. The returned URL already includes the MCP platform base address
    * and the fixed path segment `/agents/real-time-threat-protection/chat-message`.
+   * @deprecated This method is for internal use only. Use McpToolServerConfigurationService.sendChatHistory() instead.
    */
-  public static GetChatHistoryEndpoint(): string {
-    return `${this.getMcpPlatformBaseUrl()}/agents/real-time-threat-protection/chat-message`;
+  public static GetChatHistoryEndpoint(configProvider?: IConfigurationProvider<ToolingConfiguration>): string {
+    return `${this.getMcpPlatformBaseUrl(configProvider)}/agents/real-time-threat-protection/chat-message`;
   }
 }
