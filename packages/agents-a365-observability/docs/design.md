@@ -12,6 +12,7 @@ The observability package provides OpenTelemetry-based distributed tracing infra
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Public API                                │
 │  ObservabilityManager | Builder | Scopes | BaggageBuilder       │
+│  ObservabilityConfiguration | PerRequestSpanProcessorConfiguration│
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -415,8 +416,75 @@ src/
 - `@opentelemetry/semantic-conventions` - Semantic attribute keys
 - `@microsoft/agents-a365-runtime` - Cluster category type
 
+## Configuration
+
+The observability package provides configuration via `ObservabilityConfiguration`, which extends `RuntimeConfiguration`:
+
+```typescript
+import {
+  ObservabilityConfiguration,
+  defaultObservabilityConfigurationProvider
+} from '@microsoft/agents-a365-observability';
+
+// Using the default provider (reads from env vars)
+const config = defaultObservabilityConfigurationProvider.getConfiguration();
+console.log(config.isObservabilityExporterEnabled);  // Enable/disable exporter
+console.log(config.observabilityAuthenticationScopes);  // Auth scopes for token exchange
+// Custom configuration with overrides
+const customConfig = new ObservabilityConfiguration({
+  isObservabilityExporterEnabled: () => true,
+  observabilityAuthenticationScopes: () => ['custom-scope/.default'],
+  observabilityDomainOverride: () => 'https://custom.domain'
+});
+```
+
+**ObservabilityConfiguration Properties:**
+
+| Property | Env Variable | Default | Description |
+|----------|--------------|---------|-------------|
+| `observabilityAuthenticationScopes` | `A365_OBSERVABILITY_SCOPES_OVERRIDE` | `['https://api.powerplatform.com/.default']` | OAuth scopes for observability auth |
+| `isObservabilityExporterEnabled` | `ENABLE_A365_OBSERVABILITY_EXPORTER` | `false` | Enable Agent365 exporter |
+| `useCustomDomainForObservability` | `A365_OBSERVABILITY_USE_CUSTOM_DOMAIN` | `false` | Use custom domain for export |
+| `observabilityDomainOverride` | `A365_OBSERVABILITY_DOMAIN_OVERRIDE` | `null` | Custom domain URL override |
+| `observabilityLogLevel` | `A365_OBSERVABILITY_LOG_LEVEL` | `none` | Internal logging level |
+| `clusterCategory` | `CLUSTER_CATEGORY` | `prod` | (Inherited) Environment cluster |
+| `isDevelopmentEnvironment` | - | Derived | (Inherited) true if cluster is 'local' or 'dev' |
+| `isNodeEnvDevelopment` | `NODE_ENV` | `false` | (Inherited) true if NODE_ENV='development' |
+
+### PerRequestSpanProcessorConfiguration
+
+`PerRequestSpanProcessorConfiguration` extends `ObservabilityConfiguration` and adds guardrail settings specific to the `PerRequestSpanProcessor`. These settings are separated from the common `ObservabilityConfiguration` because the per-request span processor is only used in specific scenarios.
+
+```typescript
+import {
+  PerRequestSpanProcessorConfiguration,
+  defaultPerRequestSpanProcessorConfigurationProvider
+} from '@microsoft/agents-a365-observability';
+
+const config = defaultPerRequestSpanProcessorConfigurationProvider.getConfiguration();
+console.log(config.isPerRequestExportEnabled);  // Per-request export mode (default: false)
+console.log(config.perRequestMaxTraces);  // Max buffered traces (default: 1000)
+```
+
+**PerRequestSpanProcessorConfiguration Properties (in addition to all ObservabilityConfiguration properties):**
+
+| Property | Env Variable | Default | Description |
+|----------|--------------|---------|-------------|
+| `isPerRequestExportEnabled` | `ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT` | `false` | Enable per-request export mode |
+| `perRequestMaxTraces` | `A365_PER_REQUEST_MAX_TRACES` | `1000` | Max buffered traces per request |
+| `perRequestMaxSpansPerTrace` | `A365_PER_REQUEST_MAX_SPANS_PER_TRACE` | `5000` | Max spans per trace |
+| `perRequestMaxConcurrentExports` | `A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS` | `20` | Max concurrent export operations |
+
 ## Environment Variables
 
-| Variable | Purpose |
-|----------|---------|
-| `ENABLE_A365_OBSERVABILITY_EXPORTER` | Enable/disable Agent365 exporter |
+| Variable | Purpose | Default |
+|----------|---------|---------|
+| `ENABLE_A365_OBSERVABILITY_EXPORTER` | Enable/disable Agent365 exporter | `false` |
+| `A365_OBSERVABILITY_SCOPES_OVERRIDE` | Override auth scopes (space-separated) | Production scope |
+| `ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT` | Enable per-request export mode | `false` |
+| `A365_OBSERVABILITY_USE_CUSTOM_DOMAIN` | Use custom domain for export | `false` |
+| `A365_OBSERVABILITY_DOMAIN_OVERRIDE` | Custom domain URL | - |
+| `A365_OBSERVABILITY_LOG_LEVEL` | Internal log level | `none` |
+| `A365_PER_REQUEST_MAX_TRACES` | Max buffered traces (`PerRequestSpanProcessorConfiguration`) | `1000` |
+| `A365_PER_REQUEST_MAX_SPANS_PER_TRACE` | Max spans per trace (`PerRequestSpanProcessorConfiguration`) | `5000` |
+| `A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS` | Max concurrent exports (`PerRequestSpanProcessorConfiguration`) | `20` |

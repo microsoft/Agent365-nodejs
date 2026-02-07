@@ -19,6 +19,12 @@ module.exports = {
     '**/?(*.)+(spec|test).js'
   ],
   
+  // Exclude integration tests (they require Azure OpenAI credentials)
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/integration/'
+  ],
+  
   // Transform TypeScript files
   transform: {
     '^.+\\.ts$': ['ts-jest', {

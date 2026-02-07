@@ -4,10 +4,16 @@
 
 import { ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import { SpanKind, SpanStatusCode } from '@opentelemetry/api';
-import { ClusterCategory } from '@microsoft/agents-a365-runtime';
+import { ClusterCategory, IConfigurationProvider } from '@microsoft/agents-a365-runtime';
 import { OpenTelemetryConstants } from '../constants';
 import logger from '../../utils/logging';
 import { ExporterEventNames } from './ExporterEventNames';
+import {
+  ObservabilityConfiguration,
+  defaultObservabilityConfigurationProvider,
+  PerRequestSpanProcessorConfiguration,
+  defaultPerRequestSpanProcessorConfigurationProvider
+} from '../../configuration';
 
 /**
  * Convert trace ID to hex string format
@@ -115,11 +121,13 @@ export function partitionByIdentity(
 
 /**
  * Check if Agent 365 exporter is enabled via environment variable
+ * @param configProvider Optional configuration provider. Defaults to defaultObservabilityConfigurationProvider if not specified.
  */
-export function isAgent365ExporterEnabled(): boolean {
-  const a365Env = process.env[OpenTelemetryConstants.ENABLE_A365_OBSERVABILITY_EXPORTER]?.toLowerCase() || '';
-  const validValues = ['true', '1', 'yes', 'on'];
-  const enabled: boolean = validValues.includes(a365Env);
+export function isAgent365ExporterEnabled(
+  configProvider?: IConfigurationProvider<ObservabilityConfiguration>
+): boolean {
+  const provider = configProvider ?? defaultObservabilityConfigurationProvider;
+  const enabled = provider.getConfiguration().isObservabilityExporterEnabled;
   logger.info(`[Agent365Exporter] Agent 365 exporter enabled: ${enabled}`);
   return enabled;
 }
@@ -128,11 +136,13 @@ export function isAgent365ExporterEnabled(): boolean {
  * Check if per-request export is enabled via environment variable.
  * When enabled, the PerRequestSpanProcessor is used instead of BatchSpanProcessor.
  * The token is passed via OTel Context (async local storage) at export time.
+ * @param configProvider Optional configuration provider. Defaults to defaultPerRequestSpanProcessorConfigurationProvider if not specified.
  */
-export function isPerRequestExportEnabled(): boolean {
-  const value = process.env[OpenTelemetryConstants.ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT]?.toLowerCase() || '';
-  const validValues = ['true', '1', 'yes', 'on'];
-  const enabled: boolean = validValues.includes(value);
+export function isPerRequestExportEnabled(
+  configProvider?: IConfigurationProvider<PerRequestSpanProcessorConfiguration>
+): boolean {
+  const provider = configProvider ?? defaultPerRequestSpanProcessorConfigurationProvider;
+  const enabled = provider.getConfiguration().isPerRequestExportEnabled;
   logger.info(`[Agent365Exporter] Per-request export enabled: ${enabled}`);
   return enabled;
 }
@@ -141,11 +151,13 @@ export function isPerRequestExportEnabled(): boolean {
  * Single toggle to use custom domain for observability export.
  * When true exporter will send traces to custom Agent365 service endpoint
  * and include x-ms-tenant-id in headers.
+ * @param configProvider Optional configuration provider. Defaults to defaultObservabilityConfigurationProvider if not specified.
  */
-export function useCustomDomainForObservability(): boolean {
-  const value = process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN?.toLowerCase() || '';
-  const validValues = ['true', '1', 'yes', 'on'];
-  const enabled = validValues.includes(value);
+export function useCustomDomainForObservability(
+  configProvider?: IConfigurationProvider<ObservabilityConfiguration>
+): boolean {
+  const provider = configProvider ?? defaultObservabilityConfigurationProvider;
+  const enabled = provider.getConfiguration().useCustomDomainForObservability;
   logger.info(`[Agent365Exporter] Use custom domain for observability: ${enabled}`);
   return enabled;
 }
@@ -167,15 +179,13 @@ export function resolveAgent365Endpoint(clusterCategory: ClusterCategory): strin
  * Internal development and test clusters can override this by setting the
  * `A365_OBSERVABILITY_DOMAIN_OVERRIDE` environment variable. When set to a
  * non-empty value, that value is used as the base URI regardless of cluster category. Otherwise, null is returned.
+ * @param configProvider Optional configuration provider. Defaults to defaultObservabilityConfigurationProvider if not specified.
  */
-export function getAgent365ObservabilityDomainOverride(): string | null {
-  const override = process.env.A365_OBSERVABILITY_DOMAIN_OVERRIDE;
-
-  if (override && override.trim().length > 0) {
-    // Normalize to avoid double slashes when concatenating paths
-    return override.trim().replace(/\/+$/, '');
-  }
-  return null;
+export function getAgent365ObservabilityDomainOverride(
+  configProvider?: IConfigurationProvider<ObservabilityConfiguration>
+): string | null {
+  const provider = configProvider ?? defaultObservabilityConfigurationProvider;
+  return provider.getConfiguration().observabilityDomainOverride;
 }
 
 
