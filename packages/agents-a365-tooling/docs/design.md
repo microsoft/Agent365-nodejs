@@ -12,6 +12,7 @@ The tooling package provides MCP (Model Context Protocol) tool server configurat
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Public API                                │
 │  McpToolServerConfigurationService | Utility | Contracts        │
+│  ToolingConfiguration                                            │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -60,17 +61,18 @@ const tools = await service.getMcpClientTools(
 
 #### Environment Detection
 
-The service automatically selects the configuration source based on the `NODE_ENV` variable:
+The service automatically selects the configuration source based on the `ToolingConfiguration.useToolingManifest` setting:
 
-| Environment | Source | Description |
-|-------------|--------|-------------|
-| `Development` | `ToolingManifest.json` | Local file-based configuration |
-| Other (default) | Tooling Gateway | HTTP endpoint discovery |
+| Configuration | Source | Description |
+|---------------|--------|-------------|
+| `useToolingManifest: true` | `ToolingManifest.json` | Local file-based configuration |
+| `useToolingManifest: false` (default) | Tooling Gateway | HTTP endpoint discovery |
+
+The `useToolingManifest` property checks `NODE_ENV === 'development'` by default, but can be overridden via configuration:
 
 ```typescript
 private isDevScenario(): boolean {
-  const environment = process.env.NODE_ENV || '';
-  return environment.toLowerCase() === 'development';
+  return defaultToolingConfigurationProvider.getConfiguration().useToolingManifest;
 }
 ```
 
@@ -109,7 +111,7 @@ User-Agent: Agent365SDK/x.x.x (...)
 
 ### Utility Class ([Utility.ts](../src/Utility.ts))
 
-Helper functions for URL construction, token validation, and header composition:
+Helper functions for token validation and header composition:
 
 ```typescript
 import { Utility } from '@microsoft/agents-a365-tooling';
@@ -123,15 +125,18 @@ const headers = Utility.GetToolRequestHeaders(
 
 // Validate JWT token (throws if invalid or expired)
 Utility.ValidateAuthToken(authToken);
-
-// Build tooling gateway URL
-const gatewayUrl = Utility.GetToolingGatewayForDigitalWorker(agenticAppId);
-// => "https://agent365.svc.cloud.microsoft/agents/{agenticAppId}/mcpServers"
-
-// Build MCP server URL
-const serverUrl = Utility.BuildMcpServerUrl('MyServer');
-// => "https://agent365.svc.cloud.microsoft/agents/servers/MyServer"
 ```
+
+**Deprecated Methods:**
+
+The following URL construction methods are deprecated and for internal use only. Use `McpToolServerConfigurationService` instead:
+
+| Method | Replacement |
+|--------|-------------|
+| `GetToolingGatewayForDigitalWorker()` | `McpToolServerConfigurationService.listToolServers()` |
+| `GetMcpBaseUrl()` | Use `McpToolServerConfigurationService` |
+| `BuildMcpServerUrl()` | Use `McpToolServerConfigurationService` |
+| `GetChatHistoryEndpoint()` | `McpToolServerConfigurationService.sendChatHistory()` |
 
 **Header Constants:**
 
@@ -216,6 +221,41 @@ async getMcpClientTools(serverName: string, config: MCPServerConfig): Promise<Mc
 }
 ```
 
+## Configuration
+
+The tooling package provides configuration via `ToolingConfiguration`, which extends `RuntimeConfiguration`:
+
+```typescript
+import {
+  ToolingConfiguration,
+  defaultToolingConfigurationProvider
+} from '@microsoft/agents-a365-tooling';
+
+// Using the default provider (reads from env vars)
+const config = defaultToolingConfigurationProvider.getConfiguration();
+console.log(config.mcpPlatformEndpoint);  // MCP platform base URL
+console.log(config.useToolingManifest);     // true if NODE_ENV=development
+console.log(config.mcpPlatformAuthenticationScope);  // MCP auth scope
+
+// Custom configuration with overrides
+const customConfig = new ToolingConfiguration({
+  mcpPlatformEndpoint: () => 'https://custom.endpoint',
+  useToolingManifest: () => true,  // Force manifest mode
+  mcpPlatformAuthenticationScope: () => 'custom-scope/.default'
+});
+```
+
+**Configuration Properties:**
+
+| Property | Env Variable | Default | Description |
+|----------|--------------|---------|-------------|
+| `mcpPlatformEndpoint` | `MCP_PLATFORM_ENDPOINT` | `https://agent365.svc.cloud.microsoft` | Base URL for MCP platform |
+| `useToolingManifest` | `NODE_ENV` | `false` | Use local manifest (true if NODE_ENV='development') |
+| `mcpPlatformAuthenticationScope` | `MCP_PLATFORM_AUTHENTICATION_SCOPE` | Production scope | OAuth scope for MCP platform auth |
+| `clusterCategory` | `CLUSTER_CATEGORY` | `prod` | (Inherited) Environment cluster |
+| `isDevelopmentEnvironment` | - | Derived | (Inherited) true if cluster is 'local' or 'dev' |
+| `isNodeEnvDevelopment` | `NODE_ENV` | `false` | (Inherited) true if NODE_ENV='development' |
+
 ## File Structure
 
 ```
@@ -223,15 +263,21 @@ src/
 ├── index.ts                              # Public API exports
 ├── McpToolServerConfigurationService.ts  # Main service
 ├── Utility.ts                            # Helper utilities
-└── contracts.ts                          # Type definitions
+├── contracts.ts                          # Type definitions
+├── models.ts                             # Data models
+└── configuration/
+    ├── index.ts                          # Configuration exports
+    ├── ToolingConfigurationOptions.ts    # Options type
+    └── ToolingConfiguration.ts           # Configuration class
 ```
 
 ## Environment Variables
 
 | Variable | Purpose | Default |
 |----------|---------|---------|
-| `NODE_ENV` | Controls dev vs prod mode | Production |
+| `NODE_ENV` | Controls useToolingManifest (dev mode) | Production |
 | `MCP_PLATFORM_ENDPOINT` | Base URL for MCP platform | `https://agent365.svc.cloud.microsoft` |
+| `MCP_PLATFORM_AUTHENTICATION_SCOPE` | OAuth scope for MCP platform | Production scope |
 
 ## Error Handling
 

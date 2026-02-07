@@ -51,10 +51,12 @@ Notes:
 
 ## Guardrails (recommended)
 
-Per-request buffering can increase memory usage and cause export bursts during traffic spikes. `PerRequestSpanProcessor` includes guardrails that you can tune via env vars:
+Per-request buffering can increase memory usage and cause export bursts during traffic spikes. `PerRequestSpanProcessor` includes guardrails that you can tune via env vars or via `PerRequestSpanProcessorConfiguration` overrides:
 
 - `A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS` (default `20`): caps concurrent exports across requests/traces.
 - `A365_PER_REQUEST_MAX_TRACES` (default `1000`): caps concurrently buffered traces.
 - `A365_PER_REQUEST_MAX_SPANS_PER_TRACE` (default `5000`): caps buffered ended spans per trace.
 
 Set to `0` (or negative) to disable a specific guardrail.
+
+These settings live on `PerRequestSpanProcessorConfiguration` (which extends `ObservabilityConfiguration`) and are not exposed on the common `ObservabilityConfiguration` class. Use `defaultPerRequestSpanProcessorConfigurationProvider` to access these settings programmatically.

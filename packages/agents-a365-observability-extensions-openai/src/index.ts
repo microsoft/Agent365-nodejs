@@ -8,3 +8,8 @@
 
 export { OpenAIAgentsTraceInstrumentor, OpenAIAgentsInstrumentationConfig } from './OpenAIAgentsTraceInstrumentor';
 export { OpenAIAgentsTraceProcessor } from './OpenAIAgentsTraceProcessor';
+export {
+  OpenAIObservabilityConfiguration,
+  OpenAIObservabilityConfigurationOptions,
+  defaultOpenAIObservabilityConfigurationProvider
+} from './configuration';

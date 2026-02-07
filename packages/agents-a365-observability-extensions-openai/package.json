@@ -46,6 +46,7 @@
   },
   "dependencies": {
     "@microsoft/agents-a365-observability": "workspace:*",
+    "@microsoft/agents-a365-runtime": "workspace:*",
     "@openai/agents": "catalog:",
     "@opentelemetry/api": "catalog:",
     "@opentelemetry/instrumentation": "catalog:",

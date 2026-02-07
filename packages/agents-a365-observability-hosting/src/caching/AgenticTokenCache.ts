@@ -4,8 +4,8 @@
 // ------------------------------------------------------------------------------
 
 import { TurnContext, Authorization } from '@microsoft/agents-hosting';
-import { getObservabilityAuthenticationScope } from '@microsoft/agents-a365-runtime';
-import { logger, formatError } from '@microsoft/agents-a365-observability';
+import { logger, formatError, ObservabilityConfiguration, defaultObservabilityConfigurationProvider } from '@microsoft/agents-a365-observability';
+import { IConfigurationProvider } from '@microsoft/agents-a365-runtime';
 
 interface CacheEntry {
     scopes: string[];
@@ -14,11 +14,31 @@ interface CacheEntry {
     acquiredOn?: number;
 }
 
-class AgenticTokenCache {
+/**
+ * Cache for agentic authentication tokens used by observability services.
+ *
+ * For custom configuration, create a new instance with your own configuration provider:
+ * ```typescript
+ * const customCache = new AgenticTokenCache(myConfigProvider);
+ * ```
+ *
+ * For default configuration using environment variables, use the exported
+ * `AgenticTokenCacheInstance` singleton.
+ */
+export class AgenticTokenCache {
     private readonly _map = new Map<string, CacheEntry>();
     private readonly _defaultRefreshSkewMs = 60_000;
     private readonly _defaultMaxTokenAgeMs = 3_600_000;
     private readonly _keyLocks = new Map<string, Promise<unknown>>();
+    private readonly _configProvider: IConfigurationProvider<ObservabilityConfiguration>;
+
+    /**
+     * Construct an AgenticTokenCache.
+     * @param configProvider Optional configuration provider. Defaults to defaultObservabilityConfigurationProvider if not specified.
+     */
+    constructor(configProvider?: IConfigurationProvider<ObservabilityConfiguration>) {
+        this._configProvider = configProvider ?? defaultObservabilityConfigurationProvider;
+    }
 
     public static makeKey(agentId: string, tenantId: string): string {
         return `${agentId}:${tenantId}`;
@@ -59,7 +79,7 @@ class AgenticTokenCache {
         return this.withKeyLock<void>(key, async () => {
             let entry = this._map.get(key);
             if (!entry) {
-                const effectiveScopes = (scopes && scopes.length > 0) ? scopes : getObservabilityAuthenticationScope();
+                const effectiveScopes = (scopes && scopes.length > 0) ? scopes : [...this._configProvider.getConfiguration().observabilityAuthenticationScopes];
                 if (!Array.isArray(effectiveScopes) || effectiveScopes.length === 0) {
                     logger.error('[AgenticTokenCache] No valid scopes');
                     return;
@@ -197,5 +217,21 @@ class AgenticTokenCache {
     }
 }
 
+/**
+ * Default singleton instance of AgenticTokenCache using the default configuration provider.
+ *
+ * This instance uses `defaultObservabilityConfigurationProvider` which reads from
+ * environment variables. It is suitable for:
+ * - Single-tenant deployments
+ * - Multi-tenant deployments using dynamic override functions in the configuration
+ *
+ * **For custom configuration:** Create a new `AgenticTokenCache` instance with your
+ * own `IConfigurationProvider<ObservabilityConfiguration>`:
+ * ```typescript
+ * import { AgenticTokenCache } from '@microsoft/agents-a365-observability-hosting';
+ *
+ * const customCache = new AgenticTokenCache(myCustomConfigProvider);
+ * ```
+ */
 export const AgenticTokenCacheInstance = new AgenticTokenCache();
 export default AgenticTokenCacheInstance;
