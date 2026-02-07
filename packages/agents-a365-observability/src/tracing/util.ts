@@ -3,7 +3,8 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------------------------
 
-import { OpenTelemetryConstants } from './constants';
+import { IConfigurationProvider } from '@microsoft/agents-a365-runtime';
+import { ObservabilityConfiguration, defaultObservabilityConfigurationProvider } from '../configuration';
 
 /**
  * Check if exporter is enabled via environment variables.
@@ -11,14 +12,12 @@ import { OpenTelemetryConstants } from './constants';
  * NOTE: Exporter-specific helpers have been moved to
  * tracing/exporter/utils.ts. This file remains only for any
  * non-exporter tracing utilities that may be added in the future.
+ *
+ * @param configProvider Optional configuration provider. Defaults to defaultObservabilityConfigurationProvider if not specified.
  */
-export const isAgent365ExporterEnabled: () => boolean = (): boolean => {
-  const enableA365Exporter = process.env[OpenTelemetryConstants.ENABLE_A365_OBSERVABILITY_EXPORTER]?.toLowerCase();
-
-  return (
-    enableA365Exporter === 'true' ||
-    enableA365Exporter === '1' ||
-    enableA365Exporter === 'yes' ||
-    enableA365Exporter === 'on'
-  );
+export const isAgent365ExporterEnabled = (
+  configProvider?: IConfigurationProvider<ObservabilityConfiguration>
+): boolean => {
+  const provider = configProvider ?? defaultObservabilityConfigurationProvider;
+  return provider.getConfiguration().isObservabilityExporterEnabled;
 };

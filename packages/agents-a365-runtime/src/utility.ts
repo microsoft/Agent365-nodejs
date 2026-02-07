@@ -139,7 +139,9 @@ export class Utility {
    */
   public static getApplicationName(): string | undefined {
     // First try npm_package_name (set automatically by npm/pnpm when running scripts)
+    // eslint-disable-next-line no-restricted-properties -- npm_package_name is set by npm at runtime, not a configurable setting
     if (process.env.npm_package_name) {
+      // eslint-disable-next-line no-restricted-properties -- npm_package_name is set by npm at runtime, not a configurable setting
       return process.env.npm_package_name;
     }
 

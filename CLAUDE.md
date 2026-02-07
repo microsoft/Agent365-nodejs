@@ -128,18 +128,25 @@ packages/agents-a365-<name>/
 3. **Builder Pattern**: `ObservabilityBuilder` and `BaggageBuilder` provide fluent APIs
 4. **Strategy Pattern**: `McpToolServerConfigurationService` switches between manifest (dev) and gateway (prod) based on `NODE_ENV`
 5. **Extension Methods**: `notifications` package extends `AgentApplication` via TypeScript declaration merging
+6. **Configuration Provider Pattern**: Hierarchical configuration with function-based overrides for multi-tenant support. Each package has its own configuration class (`RuntimeConfiguration`, `ToolingConfiguration`, `ObservabilityConfiguration`) with default singleton providers (`defaultRuntimeConfigurationProvider`, etc.)
 
 ## Core Package Functionality
 
 ### Runtime (`@microsoft/agents-a365-runtime`)
 Foundation package with no SDK dependencies. Provides:
+- **`RuntimeConfiguration`**: Base configuration class with `clusterCategory`, `isDevelopmentEnvironment`, `isNodeEnvDevelopment`
+- **`defaultRuntimeConfigurationProvider`**: Singleton configuration provider for runtime settings
 - **`Utility`**: Token decoding (`GetAppIdFromToken`), agent identity resolution (`ResolveAgentIdentity`), User-Agent generation (`GetUserAgentHeader`)
 - **`AgenticAuthenticationService`**: Token exchange for MCP platform auth
 - **`PowerPlatformApiDiscovery`**: Endpoint discovery for different clouds (prod, gov, dod, mooncake, etc.)
-- **Environment utilities**: `getClusterCategory()`, `isDevelopmentEnvironment()`, `getObservabilityAuthenticationScope()`, `getMcpPlatformAuthenticationScope()`
+- **Environment utilities** _(deprecated)_: `getClusterCategory()`, `isDevelopmentEnvironment()`, etc. - use `RuntimeConfiguration` instead
 
 ### Observability (`@microsoft/agents-a365-observability`)
 OpenTelemetry-based distributed tracing:
+- **`ObservabilityConfiguration`**: Configuration with `observabilityAuthenticationScopes`, `isObservabilityExporterEnabled`, `observabilityLogLevel`, etc.
+- **`PerRequestSpanProcessorConfiguration`**: Extends `ObservabilityConfiguration` with per-request processor settings (`isPerRequestExportEnabled`, `perRequestMaxTraces`, `perRequestMaxSpansPerTrace`, `perRequestMaxConcurrentExports`). Separated from `ObservabilityConfiguration` because these settings are only relevant when using `PerRequestSpanProcessor`.
+- **`defaultObservabilityConfigurationProvider`**: Singleton configuration provider for observability settings
+- **`defaultPerRequestSpanProcessorConfigurationProvider`**: Singleton configuration provider for per-request span processor settings
 - **`ObservabilityManager`**: Main entry point (singleton)
 - **`ObservabilityBuilder`**: Fluent configuration API
 - **Scope classes**:
@@ -160,6 +167,8 @@ BaggageBuilder.build().run()
 
 ### Tooling (`@microsoft/agents-a365-tooling`)
 MCP tool server discovery and configuration:
+- **`ToolingConfiguration`**: Configuration with `mcpPlatformEndpoint`, `mcpPlatformAuthenticationScope`, `useToolingManifest`
+- **`defaultToolingConfigurationProvider`**: Singleton configuration provider for tooling settings
 - **`McpToolServerConfigurationService`**: Discover/configure MCP tool servers
   - Dev mode (`NODE_ENV=Development`): Loads from `ToolingManifest.json`
   - Prod mode (default): Discovers from Agent365 gateway endpoint
@@ -199,9 +208,17 @@ The keyword "Kairo" is legacy and should not appear in any code. Flag and remove
 |----------|---------|--------|
 | `NODE_ENV` | Dev vs prod mode | `Development`, `production` (default) |
 | `CLUSTER_CATEGORY` | Environment classification | `local`, `dev`, `test`, `preprod`, `prod`, `gov`, `high`, `dod`, `mooncake`, `ex`, `rx` |
-| `A365_OBSERVABILITY_SCOPES_OVERRIDE` | Override observability auth scopes | Space-separated scope strings |
-| `MCP_PLATFORM_AUTHENTICATION_SCOPE` | MCP platform auth scope | Scope string |
 | `MCP_PLATFORM_ENDPOINT` | MCP platform base URL | URL string |
+| `MCP_PLATFORM_AUTHENTICATION_SCOPE` | MCP platform auth scope | Scope string |
+| `A365_OBSERVABILITY_SCOPES_OVERRIDE` | Override observability auth scopes | Space-separated scope strings |
+| `ENABLE_A365_OBSERVABILITY_EXPORTER` | Enable Agent365 exporter | `true`, `false` (default) |
+| `ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT` | Enable per-request export mode | `true`, `false` (default) |
+| `A365_OBSERVABILITY_USE_CUSTOM_DOMAIN` | Use custom domain for export | `true`, `false` (default) |
+| `A365_OBSERVABILITY_DOMAIN_OVERRIDE` | Custom domain URL override | URL string |
+| `A365_OBSERVABILITY_LOG_LEVEL` | Internal logging level | `none` (default), `error`, `warn`, `info`, `debug` |
+| `A365_PER_REQUEST_MAX_TRACES` | Max buffered traces per request (`PerRequestSpanProcessorConfiguration`) | Number (default: 1000) |
+| `A365_PER_REQUEST_MAX_SPANS_PER_TRACE` | Max spans per trace (`PerRequestSpanProcessorConfiguration`) | Number (default: 5000) |
+| `A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS` | Max concurrent exports (`PerRequestSpanProcessorConfiguration`) | Number (default: 20) |
 
 ## Testing
 
