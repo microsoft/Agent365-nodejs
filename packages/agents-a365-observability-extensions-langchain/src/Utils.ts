@@ -51,10 +51,10 @@ export function setToolAttributes(run: Run, span: Span) {
   if (isString(run.name))  { 
     span.setAttribute(OpenTelemetryConstants.GEN_AI_TOOL_NAME_KEY, run.name);
   }
-  if (run.inputs) span.setAttribute(OpenTelemetryConstants.GEN_AI_TOOL_ARGS_KEY, JSON.stringify(run.inputs['input'] ?? run.inputs));
-  if (run.outputs?.output?.kwargs?.content) span.setAttribute(OpenTelemetryConstants.GEN_AI_TOOL_CALL_RESULT_KEY, JSON.stringify(run.outputs.output.kwargs.content));
+  if (run.inputs) span.setAttribute(OpenTelemetryConstants.GEN_AI_TOOL_ARGS_KEY, JSON.stringify(run.inputs?.input ?? run.inputs));
+  if (run.outputs?.output?.kwargs?.content) span.setAttribute(OpenTelemetryConstants.GEN_AI_TOOL_CALL_RESULT_KEY, JSON.stringify(run.outputs?.output?.kwargs?.content));
   span.setAttribute(OpenTelemetryConstants.GEN_AI_TOOL_TYPE_KEY, "extension");  
-  if (run.outputs?.output?.tool_call_id) span.setAttribute(OpenTelemetryConstants.GEN_AI_TOOL_CALL_ID_KEY, run.outputs.output.tool_call_id);
+  if (run.outputs?.output?.tool_call_id) span.setAttribute(OpenTelemetryConstants.GEN_AI_TOOL_CALL_ID_KEY, run.outputs?.output?.tool_call_id);
 }
 
 export function setInputMessagesAttribute(run: Run, span: Span) {
@@ -63,7 +63,7 @@ export function setInputMessagesAttribute(run: Run, span: Span) {
     return;
   }
 
-  const preprocess = getScopeType(run) === "inference" ? messages[0] : messages;
+  const preprocess = getScopeType(run) === "inference" && messages.length > 0 ? messages[0] : messages;
   const processed = preprocess?.map((msg: Record<string, unknown>) => {
       const content = extractMessageContent(msg);
       if (!content) return null;

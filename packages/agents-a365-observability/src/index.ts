@@ -8,6 +8,7 @@ export { ObservabilityBuilder as Builder, BuilderOptions } from './Observability
 export { Agent365ExporterOptions } from './tracing/exporter/Agent365ExporterOptions';
 // Tracing constants
 export { OpenTelemetryConstants } from './tracing/constants';
+export { ExporterEventNames } from './tracing/exporter/ExporterEventNames';
 
 // Baggage builder
 export { BaggageBuilder, BaggageScope } from './tracing/middleware/BaggageBuilder';

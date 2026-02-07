@@ -22,6 +22,7 @@ import {
 import { getExportToken } from '../context/token-context';
 import logger, { formatError } from '../../utils/logging';
 import { Agent365ExporterOptions } from './Agent365ExporterOptions';
+import { ExporterEventNames } from './ExporterEventNames';
 
 const DEFAULT_HTTP_TIMEOUT_SECONDS = 30000; // 30 seconds in ms
 const DEFAULT_MAX_RETRIES = 3;
@@ -112,6 +113,8 @@ export class Agent365Exporter implements SpanExporter {
       return;
     }
 
+    const startTime = Date.now();
+
     try {
       logger.info(`[Agent365Exporter] Exporting ${spans.length} spans`);
       const groups = partitionByIdentity(spans);
@@ -135,13 +138,18 @@ export class Agent365Exporter implements SpanExporter {
       }
 
       await Promise.all(promises);
-      logger.info(`[Agent365Exporter] Export completed. Success: ${!anyFailure}`);
+      const duration = Date.now() - startTime;
+      const success = !anyFailure;
+      const message = success ? 'All spans exported successfully' : 'Not all spans exported successfully';
+      logger.event(ExporterEventNames.EXPORT, success, duration, message);
       resultCallback({
-        code: anyFailure ? ExportResultCode.FAILED : ExportResultCode.SUCCESS
+        code: success ? ExportResultCode.SUCCESS : ExportResultCode.FAILED
       });
 
     } catch (_error) {
       // Exporters should not raise; signal failure
+      const duration = Date.now() - startTime;
+      logger.event(ExporterEventNames.EXPORT, false, duration, `Export failed with error: ${formatError(_error)}`);
       resultCallback({ code: ExportResultCode.FAILED });
     }
   }
@@ -152,6 +160,8 @@ export class Agent365Exporter implements SpanExporter {
   private async exportGroup(identityKey: string, spans: ReadableSpan[]): Promise<void> {
     const { tenantId, agentId } = parseIdentityKey(identityKey);
     logger.info(`[Agent365Exporter] Exporting ${spans.length} spans for tenantId: ${tenantId}, agentId: ${agentId}`);
+
+    const startTime = Date.now();
 
     const payload = this.buildExportRequest(spans);
     const body = JSON.stringify(payload);
@@ -183,30 +193,35 @@ export class Agent365Exporter implements SpanExporter {
     };
 
     let token: string | null = null;
-
+    let tokenNotResolvedReason: string | null = null;
     if (isPerRequestExportEnabled()) {
       // For per-request export, get token from OTel Context
       token = getExportToken() ?? null;
       if (!token) {
-        logger.error('[Agent365Exporter] No token available in OTel Context for per-request export');
+        tokenNotResolvedReason = 'No token available in OTel Context for per-request export';
       }
     } else {
       // For batch export, use tokenResolver
       if (!this.options.tokenResolver) {
-        logger.error('[Agent365Exporter] tokenResolver is undefined, skip exporting');
-        return;
-      }
-      const tokenResult = this.options.tokenResolver(agentId, tenantId);
-      token = tokenResult instanceof Promise ? await tokenResult : tokenResult;
-      if (token) {
-        logger.info('[Agent365Exporter] Token resolved successfully via tokenResolver');
+        tokenNotResolvedReason = 'tokenResolver is undefined';
       } else {
-        logger.error('[Agent365Exporter] No token resolved via tokenResolver');
+        const tokenResult = this.options.tokenResolver(agentId, tenantId);
+        token = tokenResult instanceof Promise ? await tokenResult : tokenResult;
+        if (token) {
+          logger.info('[Agent365Exporter] Token resolved successfully via tokenResolver');
+        } else {
+          tokenNotResolvedReason = 'No token resolved via tokenResolver';
+        }
       }
     }
 
     if (token) {
       headers['authorization'] = `Bearer ${token}`;
+    }
+    else {
+      const skipReason = tokenNotResolvedReason || 'Token not resolved for export request';
+      logger.event(`${ExporterEventNames.EXPORT_GROUP}-${tenantId}-${agentId}`, false, 0, `skip exporting: ${skipReason}`);
+      return;
     }
 
     // Add tenant id to headers when using custom domain
@@ -215,18 +230,20 @@ export class Agent365Exporter implements SpanExporter {
     }
 
     // Basic retry loop
-    const ok = await this.postWithRetries(url, body, headers);
+    const { ok, correlationId } = await this.postWithRetries(url, body, headers);
+    const duration = Date.now() - startTime;
     if (!ok) {
-      logger.error('[Agent365Exporter] Failed to export spans');
+      logger.event(`${ExporterEventNames.EXPORT_GROUP}-${tenantId}-${agentId}`, false, duration, undefined, correlationId);
       throw new Error('Failed to export spans');
     }
-    logger.info('[Agent365Exporter] Successfully exported spans');
+    logger.event(`${ExporterEventNames.EXPORT_GROUP}-${tenantId}-${agentId}`, true, duration, 'Spans exported successfully', correlationId);
   }
 
   /**
    * HTTP POST with retry logic
    */
-  private async postWithRetries(url: string, body: string, headers: Record<string, string>): Promise<boolean> {
+  private async postWithRetries(url: string, body: string, headers: Record<string, string>): Promise<{ ok: boolean; correlationId: string }> {
+    let lastCorrelationId = 'unknown';
     for (let attempt = 0; attempt <= DEFAULT_MAX_RETRIES; attempt++) {
       let correlationId: string;
       try {
@@ -239,10 +256,11 @@ export class Agent365Exporter implements SpanExporter {
         });
 
         correlationId = response?.headers?.get('x-ms-correlation-id') || response?.headers?.get('x-correlation-id') || 'unknown';
+        lastCorrelationId = correlationId;
+        
         // 2xx => success
         if (response.status >= 200 && response.status < 300) {
-          logger.info(`[Agent365Exporter] Success with status ${response.status}, correlation ID: ${correlationId}`);
-          return true;
+          return { ok: true, correlationId };
         }
 
         // Retry transient errors
@@ -255,7 +273,7 @@ export class Agent365Exporter implements SpanExporter {
           }
         }
         logger.error(`[Agent365Exporter] Failed with status ${response.status}, correlation ID: ${correlationId}`);
-        return false;
+        return { ok: false, correlationId };
       } catch (error) {
         logger.error('[Agent365Exporter] Request error:', formatError(error));
         if (attempt < DEFAULT_MAX_RETRIES) {
@@ -264,10 +282,10 @@ export class Agent365Exporter implements SpanExporter {
           await this.sleep(sleepMs);
           continue;
         }
-        return false;
+        return { ok: false, correlationId: lastCorrelationId };
       }
     }
-    return false;
+    return { ok: false, correlationId: lastCorrelationId };
   }
 
   /**

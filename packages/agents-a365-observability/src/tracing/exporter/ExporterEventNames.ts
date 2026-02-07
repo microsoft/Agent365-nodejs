@@ -1,0 +1,23 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
+/**
+ * Event names used by Agent365Exporter for logging and monitoring
+ */
+export const ExporterEventNames = {
+  /**
+   * Overall export operation event - logs the entire batch export success/failure and duration
+   */
+  EXPORT: 'agent365-export',
+
+  /**
+   * Group export operation event - logs individual tenant/agent group export success/failure and duration
+   * Use with template: `export-group-${tenantId}-${agentId}`
+   */
+  EXPORT_GROUP: 'export-group',
+
+  /**
+   * Tracked spans being skipped due to missing tenant or agent ID. Before export event, spans are partitioned by identity (tenant or agent ID) first. 
+   */
+  EXPORT_PARTITION_SPAN_MISSING_IDENTITY: 'export-partition-span-missing-identity'
+} as const;

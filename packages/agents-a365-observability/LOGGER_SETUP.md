@@ -31,6 +31,7 @@ Filtered messages are sent to the appropriate console method:
 - Info → `console.log('[INFO]', message)`
 - Warn → `console.warn('[WARN]', message)`
 - Error → `console.error('[ERROR]', message)`
+- Event → `console.log('[EVENT]: eventType status in durationMs ms [message] [correlationId]')`
 
 ### 4. Works Automatically
 ```typescript
@@ -40,6 +41,7 @@ import { logger } from '@microsoft/agents-a365-observability';
 logger.info('message');   // Logged if A365_OBSERVABILITY_LOG_LEVEL includes 'info'
 logger.warn('warning');   // Logged if A365_OBSERVABILITY_LOG_LEVEL includes 'warn'
 logger.error('error');    // Logged if A365_OBSERVABILITY_LOG_LEVEL includes 'error'
+logger.event('my-event', true, 150, 'Operation completed'); // Log event with type, success, duration, and optional message
 ```
 
 ## Default Logger Configuration
@@ -68,19 +70,33 @@ export A365_OBSERVABILITY_LOG_LEVEL=error
 
 ```typescript
 import { Builder } from '@microsoft/agents-a365-observability';
-import { ILogger } from '@microsoft/agents-a365-observability/src/utils/logging';
+import type { ILogger } from '@microsoft/agents-a365-observability';
 
 // Create your custom logger
 const myLogger: ILogger = {
   info: (msg, ...args) => console.log(`[INFO] ${msg}`, ...args),
   warn: (msg, ...args) => console.warn(`[WARN] ${msg}`, ...args),
-  error: (msg, ...args) => console.error(`[ERROR] ${msg}`, ...args)
+  error: (msg, ...args) => console.error(`[ERROR] ${msg}`, ...args),
+  event: (name, success, duration) => {
+    const status = success ? 'succeeded' : 'failed';
+    console.log(`[EVENT] ${name} ${status} in ${duration}ms`);
+  }
 };
 
 new Builder()
   .withService('my-agent', '1.0.0')
   .withCustomLogger(myLogger)
   .build();
+```
+
+### Event Logging
+
+The logger also supports event logging with success status and duration:
+
+```typescript
+// Log event with success and duration
+logger.event('export-operation', true, 1250);  // Outputs: "[Event]: export-operation succeeded in 1250ms"
+logger.event('export-operation', false, 1250); // Outputs: "[Event]: export-operation failed in 1250ms"
 ```
 
 ### Option 2: Your Existing Logger
@@ -94,36 +110,10 @@ new Builder()
   .withCustomLogger({
     info: (msg, ...args) => myExistingLogger.info(msg, ...args),
     warn: (msg, ...args) => myExistingLogger.warn(msg, ...args),
-    error: (msg, ...args) => myExistingLogger.error(msg, ...args)
+    error: (msg, ...args) => myExistingLogger.error(msg, ...args),
+    event: (name, success, duration) => myExistingLogger.event(name, success, duration)
   })
   .build();
-```
-
-## Selective Logging (Log Only Specific Levels)
-
-### Warn Only
-
-```typescript
-import { Builder, ConsoleLogger } from '@microsoft/agents-a365-observability';
-
-new Builder()
-  .withService('my-agent', '1.0.0')
-  .withCustomLogger(new ConsoleLogger('[A365]', false, true, false))
-  .build();
-
-// Constructor: ConsoleLogger(prefix, enableInfo, enableWarn, enableError)
-```
-
-### Error Only
-
-```typescript
-new ConsoleLogger('[A365]', false, false, true)
-```
-
-### Info Only
-
-```typescript
-new ConsoleLogger('[A365]', true, false, false)
 ```
 
 ### Custom Logic (Filter by Content)
@@ -139,7 +129,12 @@ new Builder()
         console.warn(msg, ...args);
       }
     },
-    error: (msg, ...args) => console.error(msg, ...args)
+    error: (msg, ...args) => console.error(msg, ...args),
+    event: (name, success, duration) => {
+      if (!success) {
+        console.error(`[Event] ${name} failed in ${duration}ms`);
+      }
+    }
   })
   .build();
 ```
@@ -157,7 +152,10 @@ new Builder()
   .withCustomLogger({
     info: (msg, ...args) => appInsights.trackTrace(msg, 1, { args }),
     warn: (msg, ...args) => appInsights.trackTrace(msg, 2, { args }),
-    error: (msg, ...args) => appInsights.trackTrace(msg, 3, { args })
+    error: (msg, ...args) => appInsights.trackTrace(msg, 3, { args }),
+    event: (name, success, duration) => {
+      appInsights.trackEvent('agent-event', { name, success: String(success), duration });
+    }
   })
   .build();
 ```
@@ -182,7 +180,11 @@ new Builder()
   .withCustomLogger({
     info: (msg, ...args) => logger.info(msg, ...args),
     warn: (msg, ...args) => logger.warn(msg, ...args),
-    error: (msg, ...args) => logger.error(msg, ...args)
+    error: (msg, ...args) => logger.error(msg, ...args),
+    event: (name, success, duration) => {
+      const status = success ? 'succeeded' : 'failed';
+      logger.info(`Event: ${name} ${status} in ${duration}ms`);
+    }
   })
   .build();
 ```
@@ -198,6 +200,9 @@ new Builder()
     error: (msg, ...args) => {
       myLoggingService.send('error', msg, args);
       alertingService.notify(msg);  // Alert on errors
+    },
+    event: (name, success, duration) => {
+      myLoggingService.send(success ? 'event-success' : 'event-failure', `${name} in ${duration}ms`, []);
     }
   })
   .build();
@@ -208,14 +213,18 @@ new Builder()
 Change logger at any point in your application:
 
 ```typescript
-import { setLogger } from '@microsoft/agents-a365-observability/src/utils/logging';
+import { setLogger } from '@microsoft/agents-a365-observability';
 
 // Production: verbose logging
 if (process.env.NODE_ENV === 'production') {
   setLogger({
     info: (msg, ...args) => console.log(`[Prod-INFO] ${msg}`, ...args),
     warn: (msg, ...args) => console.warn(`[Prod-WARN] ${msg}`, ...args),
-    error: (msg, ...args) => console.error(`[Prod-ERROR] ${msg}`, ...args)
+    error: (msg, ...args) => console.error(`[Prod-ERROR] ${msg}`, ...args),
+    event: (name, success, duration) => {
+      const status = success ? 'succeeded' : 'failed';
+      console.log(`[Prod-EVENT] ${name} ${status} in ${duration}ms`);
+    }
   });
 }
 
@@ -224,7 +233,12 @@ if (process.env.NODE_ENV === 'development') {
   setLogger({
     info: () => {},
     warn: (msg, ...args) => console.warn(`[Dev-WARN] ${msg}`, ...args),
-    error: (msg, ...args) => console.error(`[Dev-ERROR] ${msg}`, ...args)
+    error: (msg, ...args) => console.error(`[Dev-ERROR] ${msg}`, ...args),
+    event: (name, success, duration) => {
+      if (!success) {
+        console.warn(`[Dev-EVENT] ${name} failed in ${duration}ms`);
+      }
+    }
   });
 }
 ```
@@ -232,7 +246,7 @@ if (process.env.NODE_ENV === 'development') {
 You can also reset to the default logger:
 
 ```typescript
-import { resetLogger } from '@microsoft/agents-a365-observability/src/utils/logging';
+import { resetLogger } from '@microsoft/agents-a365-observability';
 
 // Reset to default logger (respects A365_OBSERVABILITY_LOG_LEVEL env var)
 resetLogger();
@@ -243,8 +257,11 @@ resetLogger();
 **Info:** Token resolution, export success, trace lifecycle  
 **Warn:** Dropped spans, max spans exceeded, buffer issues  
 **Error:** Export failures, auth failures, configuration errors
+**Event:** Export operations (with success/failure status and duration)
 
-### Monitor These Messages
+### Event Logging in Agent365Exporter
+
+The `Agent365Exporter` logs events at multiple levels using standardized event names from `ExporterEventNames`.
 
 ## API Reference
 
@@ -254,16 +271,13 @@ export interface ILogger {
   info(message: string, ...args: unknown[]): void;
   warn(message: string, ...args: unknown[]): void;
   error(message: string, ...args: unknown[]): void;
-}
-
-// Classes
-export class ConsoleLogger implements ILogger {
-  constructor(
-    prefix?: string,
-    useConsoleLog?: boolean,
-    useConsoleWarn?: boolean,
-    useConsoleError?: boolean
-  )
+  event(
+    eventType: string,
+    isSuccess: boolean,
+    durationMs: number,
+    message?: string,
+    correlationId?: string
+  ): void;
 }
 
 // Functions (internal use)

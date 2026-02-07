@@ -145,7 +145,7 @@ export class LangChainTraceInstrumentor {
   private static throwNotInitialized(): never {
     throw new Error(
       "LangChainTraceInstrumentor must be initialized first. "
-      + "Call LangChainTraceInstrumentor.Instrument() before using enable/disable."
+      + "Call LangChainTraceInstrumentor.instrument() before using enable/disable."
     );
   }
 
