@@ -198,8 +198,8 @@ export const logger: ILogger = {
   info: (message: string, ...args: unknown[]) => globalLogger.info(message, ...args),
   warn: (message: string, ...args: unknown[]) => globalLogger.warn(message, ...args),
   error: (message: string, ...args: unknown[]) => globalLogger.error(message, ...args),
-  event: (eventType: string, isSuccess: boolean, durationMs: number, correlationId?: string, message?: string) => 
-    globalLogger.event(eventType, isSuccess, durationMs, correlationId, message)
+  event: (eventType: string, isSuccess: boolean, durationMs: number, message?: string, correlationId?: string) => 
+    globalLogger.event(eventType, isSuccess, durationMs, message, correlationId)
 };
 
 export default logger;
