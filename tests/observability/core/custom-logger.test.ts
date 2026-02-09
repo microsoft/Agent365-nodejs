@@ -86,14 +86,14 @@ describe('Custom Logger Support', () => {
 
   describe('Global Logger Management', () => {
     it('should set and get custom logger', () => {
-      const custom: ILogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() };
+      const custom: ILogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), event: jest.fn() };
       
       setLogger(custom);
       expect(getLogger()).toBe(custom);
     });
 
     it('should reset to default logger', () => {
-      const custom: ILogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() };
+      const custom: ILogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), event: jest.fn() };
       setLogger(custom);
       
       resetLogger();
@@ -111,7 +111,8 @@ describe('Custom Logger Support', () => {
       const customLogger: ILogger = {
         info: jest.fn(),
         warn: jest.fn(),
-        error: jest.fn()
+        error: jest.fn(),
+        event: jest.fn()
       };
 
       setLogger(customLogger);
@@ -130,7 +131,8 @@ describe('Custom Logger Support', () => {
       const selectiveLogger: ILogger = {
         info: () => {},
         warn: jest.fn(),
-        error: () => {}
+        error: () => {},
+        event: () => {}
       };
 
       setLogger(selectiveLogger);
@@ -142,6 +144,91 @@ describe('Custom Logger Support', () => {
 
       expect(selectiveLogger.warn).toHaveBeenCalledWith('warn msg');
     });
+
+    it('should route event calls to custom logger', () => {
+      const customLogger: ILogger = {
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+        event: jest.fn()
+      };
+
+      setLogger(customLogger);
+      const logger = getLogger();
+
+      logger.event('test-event', true, 150);
+      logger.event('test-event-fail', false, 200);
+
+      expect(customLogger.event).toHaveBeenCalledWith('test-event', true, 150);
+      expect(customLogger.event).toHaveBeenCalledWith('test-event-fail', false, 200);
+      expect(customLogger.event).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('Event Logging', () => {
+    it('should respect log level settings for events (info succeeds, error fails)', () => {
+      process.env.A365_OBSERVABILITY_LOG_LEVEL = 'info|error';
+      resetLogger();
+      
+      const logSpy = jest.spyOn(console, 'log').mockImplementation();
+      const errorSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      const logger = getLogger();
+      logger.event('success-event', true, 100);
+      logger.event('failed-event', false, 200);
+
+      expect(logSpy).toHaveBeenCalledWith('[EVENT]: success-event succeeded in 100ms');
+      expect(errorSpy).toHaveBeenCalledWith('[EVENT]: failed-event failed in 200ms');
+
+      logSpy.mockRestore();
+      errorSpy.mockRestore();
+    });
+
+    it('should format event with optional message and correlationId correctly', () => {
+      process.env.A365_OBSERVABILITY_LOG_LEVEL = 'info|error';
+      resetLogger();
+      
+      const logSpy = jest.spyOn(console, 'log').mockImplementation();
+      const errorSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      const logger = getLogger();
+      logger.event('operation', true, 150, 'Task completed successfully', 'corr-123');
+      logger.event('task', false, 250, 'Connection timeout', 'corr-456');
+
+      expect(logSpy).toHaveBeenCalledWith('[EVENT]: operation succeeded in 150ms - Task completed successfully [corr-123]');
+      expect(errorSpy).toHaveBeenCalledWith('[EVENT]: task failed in 250ms - Connection timeout [corr-456]');
+
+      logSpy.mockRestore();
+      errorSpy.mockRestore();
+    });
+
+    it('should format event with only message (no correlationId)', () => {
+      process.env.A365_OBSERVABILITY_LOG_LEVEL = 'info';
+      resetLogger();
+      
+      const logSpy = jest.spyOn(console, 'log').mockImplementation();
+
+      const logger = getLogger();
+      logger.event('sync', true, 500, 'Data synced from 3 sources');
+
+      expect(logSpy).toHaveBeenCalledWith('[EVENT]: sync succeeded in 500ms - Data synced from 3 sources');
+
+      logSpy.mockRestore();
+    });
+
+    it('should format event with only correlationId (no message)', () => {
+      process.env.A365_OBSERVABILITY_LOG_LEVEL = 'error';
+      resetLogger();
+      
+      const errorSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      const logger = getLogger();
+      logger.event('cleanup', false, 100, undefined, 'corr-789');
+
+      expect(errorSpy).toHaveBeenCalledWith('[EVENT]: cleanup failed in 100ms [corr-789]');
+
+      errorSpy.mockRestore();
+    });
   });
 
   describe('ObservabilityBuilder Integration', () => {
@@ -149,7 +236,8 @@ describe('Custom Logger Support', () => {
       const customLogger: ILogger = {
         info: jest.fn(),
         warn: jest.fn(),
-        error: jest.fn()
+        error: jest.fn(),
+        event: jest.fn()
       };
 
       new ObservabilityBuilder()
@@ -159,8 +247,10 @@ describe('Custom Logger Support', () => {
 
       const currentLogger = getLogger();
       currentLogger.info('test message');
+      currentLogger.event('test-event', true, 100);
       
       expect(customLogger.info).toHaveBeenCalledWith('test message');
+      expect(customLogger.event).toHaveBeenCalledWith('test-event', true, 100);
     });
   });
 });
