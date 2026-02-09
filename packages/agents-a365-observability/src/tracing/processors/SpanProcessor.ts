@@ -74,7 +74,7 @@ export class SpanProcessor implements BaseSpanProcessor {
       const operationSource =
         baggageMap.get(OpenTelemetryConstants.OPERATION_SOURCE_KEY) ||
         OperationSource.SDK;
-        span.setAttribute(OpenTelemetryConstants.OPERATION_SOURCE_KEY, operationSource);
+      span.setAttribute(OpenTelemetryConstants.OPERATION_SOURCE_KEY, operationSource);
     }
 
     // Copy baggage to span attributes
