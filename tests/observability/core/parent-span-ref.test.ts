@@ -245,4 +245,91 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
       expect(childSpan!.parentSpanContext?.spanId).toBe(parentSpan!.spanContext().spanId);
     });
   });
+
+  describe('traceFlags propagation', () => {
+    it('should record child spans when parentRef.traceFlags is SAMPLED', async () => {
+      const parentRef: ParentSpanRef = {
+        traceId: '0123456789abcdef0123456789abcdef',
+        spanId: '0123456789abcdef',
+        traceFlags: 1, // TraceFlags.SAMPLED
+      };
+
+      runWithParentSpanRef(parentRef, () => {
+        const invokeAgentDetails: InvokeAgentDetails = {
+          agentId: 'sampled-agent',
+        };
+
+        const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
+        scope.dispose();
+      });
+
+      await flushProvider.forceFlush();
+
+      const spans = exporter.getFinishedSpans();
+      const childSpan = spans.find(s => s.name.toLowerCase().includes('invoke_agent'));
+      
+      expect(childSpan).toBeDefined();
+      expect(childSpan!.spanContext().traceId).toBe(parentRef.traceId);
+      expect(childSpan!.parentSpanContext?.spanId).toBe(parentRef.spanId);
+      expect(childSpan!.spanContext().traceFlags).toBe(1); // SAMPLED
+    });
+
+    it('should not record child spans when parentRef.traceFlags is NONE', async () => {
+      const parentRef: ParentSpanRef = {
+        traceId: 'abcdef0123456789abcdef0123456789',
+        spanId: 'abcdef0123456789',
+        traceFlags: 0, // TraceFlags.NONE
+      };
+
+      runWithParentSpanRef(parentRef, () => {
+        const invokeAgentDetails: InvokeAgentDetails = {
+          agentId: 'unsampled-agent',
+        };
+
+        const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
+        scope.dispose();
+      });
+
+      await flushProvider.forceFlush();
+
+      const spans = exporter.getFinishedSpans();
+      // When traceFlags is NONE (0), the span should still be created but not recorded/exported
+      const childSpan = spans.find(s => 
+        s.name.toLowerCase().includes('invoke_agent') && 
+        s.spanContext().traceId === parentRef.traceId
+      );
+      
+      // The span should not be exported when traceFlags is NONE
+      expect(childSpan).toBeUndefined();
+    });
+
+    it('should default to SAMPLED when parentRef.traceFlags is not provided', async () => {
+      const parentRef: ParentSpanRef = {
+        traceId: 'fedcba9876543210fedcba9876543210',
+        spanId: 'fedcba9876543210',
+        // traceFlags is not provided
+      };
+
+      runWithParentSpanRef(parentRef, () => {
+        const invokeAgentDetails: InvokeAgentDetails = {
+          agentId: 'default-sampled-agent',
+        };
+
+        const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
+        scope.dispose();
+      });
+
+      await flushProvider.forceFlush();
+
+      const spans = exporter.getFinishedSpans();
+      const childSpan = spans.find(s => 
+        s.name.toLowerCase().includes('invoke_agent') && 
+        s.spanContext().traceId === parentRef.traceId
+      );
+      
+      // Should be recorded with SAMPLED flag by default
+      expect(childSpan).toBeDefined();
+      expect(childSpan!.spanContext().traceFlags).toBe(1); // SAMPLED
+    });
+  });
 });
