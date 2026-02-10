@@ -258,3 +258,12 @@ export interface InferenceResponse {
   outputTokens?: number;
 
 }
+
+/**
+ * Represents a response containing output messages from an agent.
+ * Used with OutputScope for output message tracing.
+ */
+export interface Response {
+  /** The output messages from the agent */
+  messages: string[];
+}

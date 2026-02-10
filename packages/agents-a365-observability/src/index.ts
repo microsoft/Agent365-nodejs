@@ -34,14 +34,16 @@ export {
   ServiceEndpoint,
   InferenceDetails,
   InferenceOperationType,
-  InferenceResponse
+  InferenceResponse,
+  Response
 } from './tracing/contracts';
 
 // Scopes
 export { OpenTelemetryScope } from './tracing/scopes/OpenTelemetryScope';
 export { ExecuteToolScope } from './tracing/scopes/ExecuteToolScope';
 export { InvokeAgentScope } from './tracing/scopes/InvokeAgentScope';
-export { InferenceScope} from './tracing/scopes/InferenceScope';
+export { InferenceScope } from './tracing/scopes/InferenceScope';
+export { OutputScope } from './tracing/scopes/OutputScope';
 export { logger, setLogger, getLogger, resetLogger, formatError } from './utils/logging';
 export type { ILogger } from './utils/logging';
 
