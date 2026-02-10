@@ -50,11 +50,15 @@ export function createContextWithParentSpanRef(base: Context, parent: ParentSpan
     return base;
   }
 
-  // If the base context already has an active span for the same trace, reuse its traceFlags.
-  // Otherwise, default to NONE to avoid up-sampling.
-  const active = trace.getSpan(base)?.spanContext();
-  const derivedFlags = active?.traceId === parent.traceId ? active.traceFlags : undefined;
-  const traceFlags = derivedFlags ?? TraceFlags.NONE;
+  // Determine traceFlags:
+  // 1. Use parent.traceFlags if explicitly provided
+  // 2. Inherit from active span if its traceId matches
+  // 3. Default to SAMPLED — manually instrumented spans should always be captured
+  const activeCtx = trace.getSpan(base)?.spanContext();
+  const traceFlags =
+    parent.traceFlags
+    ?? (activeCtx?.traceId === parent.traceId ? activeCtx.traceFlags : undefined)
+    ?? TraceFlags.SAMPLED;
 
   // Create a SpanContext from the parent reference
   const parentSpanContext: SpanContext = {
