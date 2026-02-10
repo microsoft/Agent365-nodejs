@@ -3,7 +3,7 @@
 
 import { SpanKind } from '@opentelemetry/api';
 import { OpenTelemetryScope } from './OpenTelemetryScope';
-import { AgentDetails, TenantDetails, Response } from '../contracts';
+import { AgentDetails, TenantDetails, OutputResponse } from '../contracts';
 import { ParentSpanRef } from '../context/parent-span-context';
 import { OpenTelemetryConstants } from '../constants';
 
@@ -15,25 +15,25 @@ export class OutputScope extends OpenTelemetryScope {
 
   /**
    * Creates and starts a new scope for output message tracing.
+   * @param response The response containing initial output messages.
    * @param agentDetails The details of the agent producing the output.
    * @param tenantDetails The tenant details.
-   * @param response The response containing initial output messages.
    * @param parentSpanRef Optional explicit parent span reference for cross-async-boundary tracing.
    * @returns A new OutputScope instance.
    */
   public static start(
+    response: OutputResponse,
     agentDetails: AgentDetails,
     tenantDetails: TenantDetails,
-    response: Response,
     parentSpanRef?: ParentSpanRef
   ): OutputScope {
-    return new OutputScope(agentDetails, tenantDetails, response, parentSpanRef);
+    return new OutputScope(response, agentDetails, tenantDetails, parentSpanRef);
   }
 
   private constructor(
+    response: OutputResponse,
     agentDetails: AgentDetails,
     tenantDetails: TenantDetails,
-    response: Response,
     parentSpanRef?: ParentSpanRef
   ) {
     super(

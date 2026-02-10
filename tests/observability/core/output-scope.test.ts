@@ -10,7 +10,7 @@ import {
   OutputScope,
   AgentDetails,
   TenantDetails,
-  Response,
+  OutputResponse,
   OpenTelemetryConstants,
   ParentSpanRef,
 } from '@microsoft/agents-a365-observability';
@@ -73,9 +73,9 @@ describe('OutputScope', () => {
   }
 
   it('should create scope with output messages', async () => {
-    const response: Response = { messages: ['First message', 'Second message'] };
+    const response: OutputResponse = { messages: ['First message', 'Second message'] };
 
-    const scope = OutputScope.start(testAgentDetails, testTenantDetails, response);
+    const scope = OutputScope.start(response, testAgentDetails, testTenantDetails);
 
     expect(scope).toBeInstanceOf(OutputScope);
     scope.dispose();
@@ -87,17 +87,17 @@ describe('OutputScope', () => {
     expect(span.name).toContain('output_messages');
     expect(span.name).toContain(testAgentDetails.agentId);
 
-    // Verify output messages are set
+    // Verify output messages are set as JSON array
     const outputValue = attributes[OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY] as string;
     expect(outputValue).toBeDefined();
-    expect(outputValue).toContain('First message');
-    expect(outputValue).toContain('Second message');
+    const parsed = JSON.parse(outputValue);
+    expect(parsed).toEqual(['First message', 'Second message']);
   });
 
   it('should record output messages by appending to accumulated messages', async () => {
-    const response: Response = { messages: ['Initial'] };
+    const response: OutputResponse = { messages: ['Initial'] };
 
-    const scope = OutputScope.start(testAgentDetails, testTenantDetails, response);
+    const scope = OutputScope.start(response, testAgentDetails, testTenantDetails);
 
     scope.recordOutputMessages(['Appended 1']);
     scope.recordOutputMessages(['Appended 2', 'Appended 3']);
@@ -109,15 +109,13 @@ describe('OutputScope', () => {
 
     const outputValue = attributes[OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY] as string;
     expect(outputValue).toBeDefined();
-    // All messages should be present (initial + all appended)
-    expect(outputValue).toContain('Initial');
-    expect(outputValue).toContain('Appended 1');
-    expect(outputValue).toContain('Appended 2');
-    expect(outputValue).toContain('Appended 3');
+    // All messages should be present (initial + all appended) as JSON array
+    const parsed = JSON.parse(outputValue);
+    expect(parsed).toEqual(['Initial', 'Appended 1', 'Appended 2', 'Appended 3']);
   });
 
   it('should use parent span reference to link span to parent context', async () => {
-    const response: Response = { messages: ['Test'] };
+    const response: OutputResponse = { messages: ['Test'] };
     const parentTraceId = '1234567890abcdef1234567890abcdef';
     const parentSpanId = 'abcdefabcdef1234';
 
@@ -126,7 +124,7 @@ describe('OutputScope', () => {
       spanId: parentSpanId,
     };
 
-    const scope = OutputScope.start(testAgentDetails, testTenantDetails, response, parentSpanRef);
+    const scope = OutputScope.start(response, testAgentDetails, testTenantDetails, parentSpanRef);
     scope.dispose();
 
     await flushProvider.forceFlush();
@@ -140,9 +138,9 @@ describe('OutputScope', () => {
   });
 
   it('should end the span on dispose', async () => {
-    const response: Response = { messages: ['Test'] };
+    const response: OutputResponse = { messages: ['Test'] };
 
-    const scope = OutputScope.start(testAgentDetails, testTenantDetails, response);
+    const scope = OutputScope.start(response, testAgentDetails, testTenantDetails);
     scope.dispose();
 
     await flushProvider.forceFlush();
@@ -153,9 +151,9 @@ describe('OutputScope', () => {
   });
 
   it('should create scope with empty messages', async () => {
-    const response: Response = { messages: [] };
+    const response: OutputResponse = { messages: [] };
 
-    const scope = OutputScope.start(testAgentDetails, testTenantDetails, response);
+    const scope = OutputScope.start(response, testAgentDetails, testTenantDetails);
     scope.dispose();
 
     await flushProvider.forceFlush();
@@ -164,9 +162,9 @@ describe('OutputScope', () => {
   });
 
   it('should set gen_ai.operation.name to output_messages', async () => {
-    const response: Response = { messages: ['Test'] };
+    const response: OutputResponse = { messages: ['Test'] };
 
-    const scope = OutputScope.start(testAgentDetails, testTenantDetails, response);
+    const scope = OutputScope.start(response, testAgentDetails, testTenantDetails);
     scope.dispose();
 
     await flushProvider.forceFlush();
@@ -175,9 +173,9 @@ describe('OutputScope', () => {
   });
 
   it('should set agent details on the span', async () => {
-    const response: Response = { messages: ['Test'] };
+    const response: OutputResponse = { messages: ['Test'] };
 
-    const scope = OutputScope.start(testAgentDetails, testTenantDetails, response);
+    const scope = OutputScope.start(response, testAgentDetails, testTenantDetails);
     scope.dispose();
 
     await flushProvider.forceFlush();
@@ -187,9 +185,9 @@ describe('OutputScope', () => {
   });
 
   it('should not throw when recordOutputMessages is called multiple times', () => {
-    const response: Response = { messages: ['Initial'] };
+    const response: OutputResponse = { messages: ['Initial'] };
 
-    const scope = OutputScope.start(testAgentDetails, testTenantDetails, response);
+    const scope = OutputScope.start(response, testAgentDetails, testTenantDetails);
 
     expect(() => {
       scope.recordOutputMessages(['Message 1']);
