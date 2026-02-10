@@ -62,7 +62,6 @@ export class PerRequestSpanProcessor implements SpanProcessor {
     private readonly maxTraceAgeMs: number = DEFAULT_MAX_TRACE_AGE_MS,
     configProvider?: IConfigurationProvider<PerRequestSpanProcessorConfiguration>
   ) {
-    // Internal overrides take precedence, then config provider, then defaults.
     const override = getPerRequestProcessorInternalOverrides()?.perRequestProcessorSettings;
     const effectiveConfigProvider = configProvider ?? defaultPerRequestSpanProcessorConfigurationProvider;
     const config = effectiveConfigProvider.getConfiguration();

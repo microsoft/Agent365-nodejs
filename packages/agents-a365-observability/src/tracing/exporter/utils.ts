@@ -134,7 +134,8 @@ export function isAgent365ExporterEnabled(
 }
 
 /**
- * Check if per-request export is enabled via environment variable.
+ * Check if per-request export is enabled.
+ * Precedence: internal overrides > configuration provider > environment variable.
  * When enabled, the PerRequestSpanProcessor is used instead of BatchSpanProcessor.
  * The token is passed via OTel Context (async local storage) at export time.
  * @param configProvider Optional configuration provider. Defaults to defaultPerRequestSpanProcessorConfigurationProvider if not specified.

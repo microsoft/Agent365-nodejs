@@ -20,8 +20,18 @@ jest.mock('@microsoft/agents-a365-observability/src/tracing/exporter/Agent365Exp
   },
 }));
 
-// Suppress logger output
+const savedEnv: Record<string, string | undefined> = {};
+const envKeysUsed = [
+  'ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT',
+  'ENABLE_A365_OBSERVABILITY_EXPORTER',
+];
+
 beforeEach(() => {
+  // Save env vars that tests may mutate
+  for (const key of envKeysUsed) {
+    savedEnv[key] = process.env[key];
+  }
+  // Suppress logger output
   jest.spyOn(console, 'log').mockImplementation(() => {});
   jest.spyOn(console, 'warn').mockImplementation(() => {});
   jest.spyOn(console, 'error').mockImplementation(() => {});
@@ -29,6 +39,14 @@ beforeEach(() => {
 
 afterEach(() => {
   setPerRequestProcessorInternalOverrides(undefined);
+  // Restore env vars
+  for (const key of envKeysUsed) {
+    if (savedEnv[key] === undefined) {
+      delete process.env[key];
+    } else {
+      process.env[key] = savedEnv[key];
+    }
+  }
   jest.restoreAllMocks();
 });
 
@@ -68,6 +86,26 @@ describe('PerRequestProcessorOverrides', () => {
     expect(processor.maxConcurrentExports).toBe(3);
     // unset field falls back to config default
     expect(processor.maxSpansPerTrace).toBe(5000);
+  });
+
+  it('throws on negative override values', () => {
+    expect(() =>
+      setPerRequestProcessorInternalOverrides({
+        perRequestProcessorSettings: { maxBufferedTraces: -1 },
+      })
+    ).toThrow('maxBufferedTraces must be >= 0, got -1');
+
+    expect(() =>
+      setPerRequestProcessorInternalOverrides({
+        perRequestProcessorSettings: { maxSpansPerTrace: -5 },
+      })
+    ).toThrow('maxSpansPerTrace must be >= 0, got -5');
+
+    expect(() =>
+      setPerRequestProcessorInternalOverrides({
+        perRequestProcessorSettings: { maxConcurrentExports: -2 },
+      })
+    ).toThrow('maxConcurrentExports must be >= 0, got -2');
   });
 
   it('PerRequestSpanProcessor uses config defaults when no overrides set', () => {
