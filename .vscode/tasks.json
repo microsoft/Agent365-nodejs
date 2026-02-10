@@ -1,0 +1,68 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build langchain sample",
+      "type": "shell",
+      "command": "npm",
+      "args": [
+        "run",
+        "build"
+      ],
+      "cwd": "${workspaceFolder}/tests-agent/langchain-agent",
+      "problemMatcher": "$tsc",
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "build langchain extension",
+      "type": "shell",
+      "command": "npm",
+      "args": [
+        "run",
+        "build"
+      ],
+      "cwd": "${workspaceFolder}/packages/agents-a365-observability-extensions-langchain",
+      "problemMatcher": "$tsc",
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "build all packages",
+      "type": "shell",
+      "command": "pnpm",
+      "args": [
+        "build"
+      ],
+      "cwd": "${workspaceFolder}",
+      "problemMatcher": "$tsc",
+      "group": "build",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "watch packages",
+      "type": "shell",
+      "command": "pnpm",
+      "args": [
+        "build:watch"
+      ],
+      "cwd": "${workspaceFolder}",
+      "problemMatcher": "$tsc",
+      "group": "build",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    }
+  ]
+}

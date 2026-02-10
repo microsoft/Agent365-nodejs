@@ -4,15 +4,11 @@
 import { RuntimeConfigurationOptions } from '@microsoft/agents-a365-runtime';
 
 /**
- * Configuration options for PerRequestSpanProcessor - extends observability options.
+ * Configuration options for PerRequestSpanProcessor - extends runtime options.
  * All overrides are functions called on each property access.
  *
- * Inherited from ObservabilityConfigurationOptions:
- * - observabilityAuthenticationScopes, isObservabilityExporterEnabled,
- *   useCustomDomainForObservability, observabilityDomainOverride, observabilityLogLevel
- *
  * Inherited from RuntimeConfigurationOptions:
- * - clusterCategory, isDevelopmentEnvironment, isNodeEnvDevelopment
+ * - clusterCategory, isNodeEnvDevelopment
  */
 export type PerRequestSpanProcessorConfigurationOptions = RuntimeConfigurationOptions & {
   /**

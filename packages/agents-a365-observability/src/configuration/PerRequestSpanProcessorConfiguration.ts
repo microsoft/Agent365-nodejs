@@ -20,7 +20,12 @@ const DEFAULT_MAX_CONCURRENT_EXPORTS = 20;
  */
 export class PerRequestSpanProcessorConfiguration extends RuntimeConfiguration {
   protected get perRequestOverrides(): PerRequestSpanProcessorConfigurationOptions {
-    return getPerRequestProcessorInternalOverrides() ?? this.overrides as PerRequestSpanProcessorConfigurationOptions;
+    const internal = getPerRequestProcessorInternalOverrides();
+    const instanceOverrides = this.overrides as PerRequestSpanProcessorConfigurationOptions | undefined;
+    return {
+      ...(instanceOverrides ?? {}),
+      ...(internal ?? {}),
+    };
   }
 
   constructor(overrides?: PerRequestSpanProcessorConfigurationOptions) {

@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { PerRequestSpanProcessorConfigurationOptions } from "../configuration";
+import type { PerRequestSpanProcessorConfigurationOptions } from "../configuration/PerRequestSpanProcessorConfigurationOptions";
 
 let overrides: PerRequestSpanProcessorConfigurationOptions | undefined;
 
