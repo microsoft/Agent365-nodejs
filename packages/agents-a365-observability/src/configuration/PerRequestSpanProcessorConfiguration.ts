@@ -12,7 +12,8 @@ const DEFAULT_MAX_CONCURRENT_EXPORTS = 20;
 
 /**
  * Configuration for PerRequestSpanProcessor.
- * Inherits all observability and runtime settings, and adds per-request processor guardrails.
+ * Inherits runtime settings (clusterCategory, isNodeEnvDevelopment) and adds
+ * per-request processor guardrails.
  *
  * This is separated from ObservabilityConfiguration because PerRequestSpanProcessor
  * is used only in specific scenarios and these settings should not be exposed
@@ -24,7 +25,14 @@ export class PerRequestSpanProcessorConfiguration extends RuntimeConfiguration {
     const instanceOverrides = this.overrides as PerRequestSpanProcessorConfigurationOptions | undefined;
     return {
       ...(instanceOverrides ?? {}),
-      ...(internal ?? {}),
+      // Only pick per-request fields from internal overrides; runtime fields
+      // (clusterCategory, isNodeEnvDevelopment, etc.) are left to RuntimeConfiguration.
+      ...(internal && {
+        isPerRequestExportEnabled: internal.isPerRequestExportEnabled,
+        perRequestMaxTraces: internal.perRequestMaxTraces,
+        perRequestMaxSpansPerTrace: internal.perRequestMaxSpansPerTrace,
+        perRequestMaxConcurrentExports: internal.perRequestMaxConcurrentExports,
+      }),
     };
   }
 

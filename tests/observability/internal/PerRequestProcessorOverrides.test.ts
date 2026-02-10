@@ -14,7 +14,9 @@ import { ExportResultCode } from '@opentelemetry/core';
 // Mock Agent365Exporter to avoid network calls
 jest.mock('@microsoft/agents-a365-observability/src/tracing/exporter/Agent365Exporter', () => ({
   Agent365Exporter: class {
-    export() {/* no-op */}
+    export(_spans: unknown[], cb: (result: { code: number }) => void) {
+      cb({ code: 0 });
+    }
     shutdown() {/* no-op */}
     forceFlush() {/* no-op */}
   },
@@ -116,6 +118,6 @@ describe('PerRequestProcessorOverrides', () => {
     const builder = new ObservabilityBuilder().withService('test-agent');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const processor = (builder as any).createExportProcessor();
-    expect(processor.constructor.name).toBe('PerRequestSpanProcessor');
+    expect(processor).toBeInstanceOf(PerRequestSpanProcessor);
   });
 });
