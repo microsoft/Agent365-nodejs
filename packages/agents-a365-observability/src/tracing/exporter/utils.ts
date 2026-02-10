@@ -14,6 +14,7 @@ import {
   PerRequestSpanProcessorConfiguration,
   defaultPerRequestSpanProcessorConfigurationProvider
 } from '../../configuration';
+import { getPerRequestProcessorInternalOverrides } from '../../internal/PerRequestProcessorOverrides';
 
 /**
  * Convert trace ID to hex string format
@@ -141,6 +142,12 @@ export function isAgent365ExporterEnabled(
 export function isPerRequestExportEnabled(
   configProvider?: IConfigurationProvider<PerRequestSpanProcessorConfiguration>
 ): boolean {
+  const overrides = getPerRequestProcessorInternalOverrides();
+  if (typeof overrides?.perRequestExportEnabled === 'boolean') {
+    logger.info(`[Agent365Exporter] Per-request export enabled (internal override): ${overrides.perRequestExportEnabled}`);
+    return overrides.perRequestExportEnabled;
+  }
+
   const provider = configProvider ?? defaultPerRequestSpanProcessorConfigurationProvider;
   const enabled = provider.getConfiguration().isPerRequestExportEnabled;
   logger.info(`[Agent365Exporter] Per-request export enabled: ${enabled}`);

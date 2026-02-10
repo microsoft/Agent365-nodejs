@@ -8,6 +8,7 @@ import type { ReadableSpan, SpanProcessor, SpanExporter } from '@opentelemetry/s
 import { IConfigurationProvider } from '@microsoft/agents-a365-runtime';
 import logger from '../utils/logging';
 import { PerRequestSpanProcessorConfiguration, defaultPerRequestSpanProcessorConfigurationProvider } from '../configuration';
+import { getPerRequestProcessorInternalOverrides } from '../internal/PerRequestProcessorOverrides';
 
 /** Default grace period (ms) to wait for child spans after root span ends */
 const DEFAULT_FLUSH_GRACE_MS = 250;
@@ -61,13 +62,13 @@ export class PerRequestSpanProcessor implements SpanProcessor {
     private readonly maxTraceAgeMs: number = DEFAULT_MAX_TRACE_AGE_MS,
     configProvider?: IConfigurationProvider<PerRequestSpanProcessorConfiguration>
   ) {
-    // Defaults are intentionally high but bounded; override via configuration if needed.
-    // Set to 0 (or negative) to disable a guardrail.
+    // Internal overrides take precedence, then config provider, then defaults.
+    const override = getPerRequestProcessorInternalOverrides()?.perRequestProcessorSettings;
     const effectiveConfigProvider = configProvider ?? defaultPerRequestSpanProcessorConfigurationProvider;
     const config = effectiveConfigProvider.getConfiguration();
-    this.maxBufferedTraces = config.perRequestMaxTraces;
-    this.maxSpansPerTrace = config.perRequestMaxSpansPerTrace;
-    this.maxConcurrentExports = config.perRequestMaxConcurrentExports;
+    this.maxBufferedTraces = override?.maxBufferedTraces ?? config.perRequestMaxTraces;
+    this.maxSpansPerTrace = override?.maxSpansPerTrace ?? config.perRequestMaxSpansPerTrace;
+    this.maxConcurrentExports = override?.maxConcurrentExports ?? config.perRequestMaxConcurrentExports;
   }
 
   onStart(span: ReadableSpan, ctx: Context): void {
