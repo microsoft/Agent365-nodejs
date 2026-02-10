@@ -303,7 +303,7 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
       expect(childSpan).toBeUndefined();
     });
 
-    it('should default to SAMPLED when parentRef.traceFlags is not provided', async () => {
+    it('should default to NONE when parentRef.traceFlags is not provided and no active span matches', async () => {
       const parentRef: ParentSpanRef = {
         traceId: 'fedcba9876543210fedcba9876543210',
         spanId: 'fedcba9876543210',
@@ -312,7 +312,7 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
 
       runWithParentSpanRef(parentRef, () => {
         const invokeAgentDetails: InvokeAgentDetails = {
-          agentId: 'default-sampled-agent',
+          agentId: 'default-none-agent',
         };
 
         const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
@@ -327,9 +327,46 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
         s.spanContext().traceId === parentRef.traceId
       );
       
-      // Should be recorded with SAMPLED flag by default
+      // Should not be recorded when traceFlags defaults to NONE
+      expect(childSpan).toBeUndefined();
+    });
+
+    it('should inherit traceFlags from active span when parentRef.traceFlags is not provided but traceId matches', async () => {
+      const tracer = trace.getTracer('test');
+      const rootSpan = tracer.startSpan('active-root-span');
+      const parentSpanContext = rootSpan.spanContext();
+
+      const parentRef: ParentSpanRef = {
+        traceId: parentSpanContext.traceId,
+        spanId: parentSpanContext.spanId,
+        // traceFlags is not provided
+      };
+
+      const baseCtx = trace.setSpan(otelContext.active(), rootSpan);
+      await otelContext.with(baseCtx, async () => {
+        runWithParentSpanRef(parentRef, () => {
+          const invokeAgentDetails: InvokeAgentDetails = {
+            agentId: 'inherited-flags-agent',
+          };
+
+          const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
+          scope.dispose();
+        });
+      });
+
+      rootSpan.end();
+
+      await flushProvider.forceFlush();
+
+      const spans = exporter.getFinishedSpans();
+      const childSpan = spans.find(s => 
+        s.name.toLowerCase().includes('invoke_agent') && 
+        s.spanContext().traceId === parentRef.traceId
+      );
+      
+      // Should be recorded with traceFlags inherited from active span
       expect(childSpan).toBeDefined();
-      expect(childSpan!.spanContext().traceFlags).toBe(1); // SAMPLED
+      expect(childSpan!.spanContext().traceFlags).toBe(parentSpanContext.traceFlags);
     });
   });
 });
