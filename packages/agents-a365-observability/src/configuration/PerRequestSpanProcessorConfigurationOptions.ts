@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { ObservabilityConfigurationOptions } from './ObservabilityConfigurationOptions';
+import { RuntimeConfigurationOptions } from '@microsoft/agents-a365-runtime';
 
 /**
  * Configuration options for PerRequestSpanProcessor - extends observability options.
@@ -14,7 +14,7 @@ import { ObservabilityConfigurationOptions } from './ObservabilityConfigurationO
  * Inherited from RuntimeConfigurationOptions:
  * - clusterCategory, isDevelopmentEnvironment, isNodeEnvDevelopment
  */
-export type PerRequestSpanProcessorConfigurationOptions = ObservabilityConfigurationOptions & {
+export type PerRequestSpanProcessorConfigurationOptions = RuntimeConfigurationOptions & {
   /**
    * Override to enable/disable per-request export mode.
    * When enabled, spans are buffered per-request and exported when the request completes,

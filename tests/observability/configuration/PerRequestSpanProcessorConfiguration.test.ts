@@ -5,7 +5,6 @@ import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import {
   PerRequestSpanProcessorConfiguration,
   defaultPerRequestSpanProcessorConfigurationProvider,
-  ObservabilityConfiguration
 } from '../../../packages/agents-a365-observability/src';
 import { RuntimeConfiguration, DefaultConfigurationProvider, ClusterCategory } from '../../../packages/agents-a365-runtime/src';
 
@@ -21,11 +20,6 @@ describe('PerRequestSpanProcessorConfiguration', () => {
   });
 
   describe('inheritance', () => {
-    it('should be instanceof ObservabilityConfiguration', () => {
-      const config = new PerRequestSpanProcessorConfiguration();
-      expect(config).toBeInstanceOf(ObservabilityConfiguration);
-    });
-
     it('should be instanceof RuntimeConfiguration', () => {
       const config = new PerRequestSpanProcessorConfiguration();
       expect(config).toBeInstanceOf(RuntimeConfiguration);
@@ -35,15 +29,6 @@ describe('PerRequestSpanProcessorConfiguration', () => {
       const config = new PerRequestSpanProcessorConfiguration({ clusterCategory: () => ClusterCategory.gov });
       expect(config.clusterCategory).toBe(ClusterCategory.gov);
       expect(config.isDevelopmentEnvironment).toBe(false);
-    });
-
-    it('should inherit observability settings', () => {
-      const config = new PerRequestSpanProcessorConfiguration({
-        isObservabilityExporterEnabled: () => true,
-        observabilityLogLevel: () => 'debug'
-      });
-      expect(config.isObservabilityExporterEnabled).toBe(true);
-      expect(config.observabilityLogLevel).toBe('debug');
     });
   });
 

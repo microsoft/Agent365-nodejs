@@ -7,7 +7,7 @@ import { ObservabilityBuilder } from '@microsoft/agents-a365-observability/src/O
 import {
   setPerRequestProcessorInternalOverrides,
   getPerRequestProcessorInternalOverrides,
-} from '@microsoft/agents-a365-observability/src/internal/PerRequestProcessorOverrides';
+} from '@microsoft/agents-a365-observability/src/internal/PerRequestProcessorInternalOverrides';
 import type { SpanExporter, ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import { ExportResultCode } from '@opentelemetry/core';
 
@@ -60,8 +60,8 @@ describe('PerRequestProcessorOverrides', () => {
   it('get/set round-trips correctly', () => {
     expect(getPerRequestProcessorInternalOverrides()).toBeUndefined();
 
-    setPerRequestProcessorInternalOverrides({ perRequestExportEnabled: true });
-    expect(getPerRequestProcessorInternalOverrides()?.perRequestExportEnabled).toBe(true);
+    setPerRequestProcessorInternalOverrides({ isPerRequestExportEnabled: () => true });
+    expect(getPerRequestProcessorInternalOverrides()?.isPerRequestExportEnabled?.()).toBe(true);
 
     setPerRequestProcessorInternalOverrides(undefined);
     expect(getPerRequestProcessorInternalOverrides()).toBeUndefined();
@@ -69,16 +69,17 @@ describe('PerRequestProcessorOverrides', () => {
 
   it('isPerRequestExportEnabled returns override value, ignoring env var', () => {
     process.env.ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT = 'true';
-    setPerRequestProcessorInternalOverrides({ perRequestExportEnabled: false });
+    setPerRequestProcessorInternalOverrides({ isPerRequestExportEnabled: () => false });
     expect(isPerRequestExportEnabled()).toBe(false);
 
-    setPerRequestProcessorInternalOverrides({ perRequestExportEnabled: true });
+    setPerRequestProcessorInternalOverrides({ isPerRequestExportEnabled: () => true });
     expect(isPerRequestExportEnabled()).toBe(true);
   });
 
   it('PerRequestSpanProcessor uses overrides for guardrails', () => {
     setPerRequestProcessorInternalOverrides({
-      perRequestProcessorSettings: { maxBufferedTraces: 7, maxConcurrentExports: 3 },
+      perRequestMaxTraces: () => 7,
+      perRequestMaxConcurrentExports: () => 3,
     });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const processor = new PerRequestSpanProcessor(noopExporter) as any;
@@ -88,24 +89,17 @@ describe('PerRequestProcessorOverrides', () => {
     expect(processor.maxSpansPerTrace).toBe(5000);
   });
 
-  it('throws on negative override values', () => {
-    expect(() =>
-      setPerRequestProcessorInternalOverrides({
-        perRequestProcessorSettings: { maxBufferedTraces: -1 },
-      })
-    ).toThrow('maxBufferedTraces must be >= 0, got -1');
-
-    expect(() =>
-      setPerRequestProcessorInternalOverrides({
-        perRequestProcessorSettings: { maxSpansPerTrace: -5 },
-      })
-    ).toThrow('maxSpansPerTrace must be >= 0, got -5');
-
-    expect(() =>
-      setPerRequestProcessorInternalOverrides({
-        perRequestProcessorSettings: { maxConcurrentExports: -2 },
-      })
-    ).toThrow('maxConcurrentExports must be >= 0, got -2');
+  it('PerRequestSpanProcessor ignores non-positive override values', () => {
+    setPerRequestProcessorInternalOverrides({
+      perRequestMaxTraces: () => -1,
+      perRequestMaxSpansPerTrace: () => 0,
+      perRequestMaxConcurrentExports: () => 5,
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const processor = new PerRequestSpanProcessor(noopExporter) as any;
+    expect(processor.maxBufferedTraces).toBe(1000);  // -1 ignored, falls back
+    expect(processor.maxSpansPerTrace).toBe(5000);   // 0 ignored, falls back
+    expect(processor.maxConcurrentExports).toBe(5);   // positive, kept
   });
 
   it('PerRequestSpanProcessor uses config defaults when no overrides set', () => {
@@ -117,7 +111,7 @@ describe('PerRequestProcessorOverrides', () => {
   });
 
   it('ObservabilityBuilder uses PerRequestSpanProcessor when override enables it', () => {
-    setPerRequestProcessorInternalOverrides({ perRequestExportEnabled: true });
+    setPerRequestProcessorInternalOverrides({ isPerRequestExportEnabled: () => true });
 
     const builder = new ObservabilityBuilder().withService('test-agent');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

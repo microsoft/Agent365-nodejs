@@ -2,8 +2,8 @@
 // Licensed under the MIT License.
 
 import { RuntimeConfiguration } from '@microsoft/agents-a365-runtime';
-import { ObservabilityConfiguration } from './ObservabilityConfiguration';
 import { PerRequestSpanProcessorConfigurationOptions } from './PerRequestSpanProcessorConfigurationOptions';
+import { getPerRequestProcessorInternalOverrides } from '../internal/PerRequestProcessorInternalOverrides';
 
 /** Guardrails to prevent unbounded memory growth / export bursts. Used for PerRequestSpanProcessor only. */
 const DEFAULT_MAX_BUFFERED_TRACES = 1000;
@@ -18,9 +18,9 @@ const DEFAULT_MAX_CONCURRENT_EXPORTS = 20;
  * is used only in specific scenarios and these settings should not be exposed
  * in the common ObservabilityConfiguration.
  */
-export class PerRequestSpanProcessorConfiguration extends ObservabilityConfiguration {
+export class PerRequestSpanProcessorConfiguration extends RuntimeConfiguration {
   protected get perRequestOverrides(): PerRequestSpanProcessorConfigurationOptions {
-    return this.overrides as PerRequestSpanProcessorConfigurationOptions;
+    return getPerRequestProcessorInternalOverrides() ?? this.overrides as PerRequestSpanProcessorConfigurationOptions;
   }
 
   constructor(overrides?: PerRequestSpanProcessorConfigurationOptions) {
