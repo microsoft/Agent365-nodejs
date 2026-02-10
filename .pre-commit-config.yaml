@@ -25,13 +25,13 @@ repos:
 
   # Node.js/TypeScript specific
   - repo: https://github.com/pre-commit/mirrors-eslint
-    rev: v9.5.0
+    rev: v9.39.1
     hooks:
       - id: eslint
         files: \.[jt]sx?$
         types: [file]
         additional_dependencies:
-          - eslint@9.5.0
+          - eslint@9.39.1
           - typescript
           - "@typescript-eslint/parser"
           - "@typescript-eslint/eslint-plugin"
