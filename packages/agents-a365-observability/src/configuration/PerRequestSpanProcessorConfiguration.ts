@@ -9,6 +9,8 @@ import { getPerRequestProcessorInternalOverrides } from '../internal/PerRequestP
 const DEFAULT_MAX_BUFFERED_TRACES = 1000;
 const DEFAULT_MAX_SPANS_PER_TRACE = 5000;
 const DEFAULT_MAX_CONCURRENT_EXPORTS = 20;
+const DEFAULT_FLUSH_GRACE_MS = 250;
+const DEFAULT_MAX_TRACE_AGE_MS = 30 * 60 * 1000; // 30 minutes
 
 /**
  * Configuration for PerRequestSpanProcessor.
@@ -32,6 +34,8 @@ export class PerRequestSpanProcessorConfiguration extends RuntimeConfiguration {
         perRequestMaxTraces: internal.perRequestMaxTraces,
         perRequestMaxSpansPerTrace: internal.perRequestMaxSpansPerTrace,
         perRequestMaxConcurrentExports: internal.perRequestMaxConcurrentExports,
+        perRequestFlushGraceMs: internal.perRequestFlushGraceMs,
+        perRequestMaxTraceAgeMs: internal.perRequestMaxTraceAgeMs,
       }),
     };
   }
@@ -66,5 +70,17 @@ export class PerRequestSpanProcessorConfiguration extends RuntimeConfiguration {
     const value = this.perRequestOverrides.perRequestMaxConcurrentExports?.()
       ?? RuntimeConfiguration.parseEnvInt(process.env.A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS, DEFAULT_MAX_CONCURRENT_EXPORTS);
     return value > 0 ? value : DEFAULT_MAX_CONCURRENT_EXPORTS;
+  }
+
+  get perRequestFlushGraceMs(): number {
+    const value = this.perRequestOverrides.perRequestFlushGraceMs?.()
+      ?? RuntimeConfiguration.parseEnvInt(process.env.A365_PER_REQUEST_FLUSH_GRACE_MS, DEFAULT_FLUSH_GRACE_MS);
+    return value > 0 ? value : DEFAULT_FLUSH_GRACE_MS;
+  }
+
+  get perRequestMaxTraceAgeMs(): number {
+    const value = this.perRequestOverrides.perRequestMaxTraceAgeMs?.()
+      ?? RuntimeConfiguration.parseEnvInt(process.env.A365_PER_REQUEST_MAX_TRACE_AGE_MS, DEFAULT_MAX_TRACE_AGE_MS);
+    return value > 0 ? value : DEFAULT_MAX_TRACE_AGE_MS;
   }
 }

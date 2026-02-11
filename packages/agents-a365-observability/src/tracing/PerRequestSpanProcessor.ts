@@ -9,11 +9,7 @@ import { IConfigurationProvider } from '@microsoft/agents-a365-runtime';
 import logger from '../utils/logging';
 import { PerRequestSpanProcessorConfiguration, defaultPerRequestSpanProcessorConfigurationProvider } from '../configuration';
 
-/** Default grace period (ms) to wait for child spans after root span ends */
-const DEFAULT_FLUSH_GRACE_MS = 250;
 
-/** Default maximum age (ms) for a trace before forcing flush */
-const DEFAULT_MAX_TRACE_AGE_MS = 30 * 60 * 1000; // 30 minutes
 
 function isRootSpan(span: ReadableSpan): boolean {
   return !span.parentSpanContext;
@@ -44,6 +40,8 @@ export class PerRequestSpanProcessor implements SpanProcessor {
   private readonly maxBufferedTraces: number;
   private readonly maxSpansPerTrace: number;
   private readonly maxConcurrentExports: number;
+  private readonly flushGraceMs: number;
+  private readonly maxTraceAgeMs: number;
 
   private inFlightExports = 0;
   private exportWaiters: Array<() => void> = [];
@@ -51,14 +49,10 @@ export class PerRequestSpanProcessor implements SpanProcessor {
   /**
    * Construct a PerRequestSpanProcessor.
    * @param exporter The span exporter to use.
-   * @param flushGraceMs Grace period (ms) to wait for child spans after root span ends.
-   * @param maxTraceAgeMs Maximum age (ms) for a trace before forcing flush.
    * @param configProvider Optional configuration provider. Defaults to defaultPerRequestSpanProcessorConfigurationProvider if not specified.
    */
   constructor(
     private readonly exporter: SpanExporter,
-    private readonly flushGraceMs: number = DEFAULT_FLUSH_GRACE_MS,
-    private readonly maxTraceAgeMs: number = DEFAULT_MAX_TRACE_AGE_MS,
     configProvider?: IConfigurationProvider<PerRequestSpanProcessorConfiguration>
   ) {
     const effectiveConfigProvider = configProvider ?? defaultPerRequestSpanProcessorConfigurationProvider;
@@ -66,6 +60,8 @@ export class PerRequestSpanProcessor implements SpanProcessor {
     this.maxBufferedTraces = config.perRequestMaxTraces;
     this.maxSpansPerTrace = config.perRequestMaxSpansPerTrace;
     this.maxConcurrentExports = config.perRequestMaxConcurrentExports;
+    this.flushGraceMs = config.perRequestFlushGraceMs;
+    this.maxTraceAgeMs = config.perRequestMaxTraceAgeMs;
   }
 
   onStart(span: ReadableSpan, ctx: Context): void {

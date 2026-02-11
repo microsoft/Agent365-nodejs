@@ -54,4 +54,26 @@ export type PerRequestSpanProcessorConfigurationOptions = RuntimeConfigurationOp
    * @default 20
    */
   perRequestMaxConcurrentExports?: () => number;
+
+  /**
+   * Override for grace period (ms) to wait for child spans after root span ends.
+   * After the root span ends, the processor waits this long for remaining children
+   * before flushing the trace. Values <= 0 are ignored and the default is used.
+   *
+   * @returns Flush grace period in milliseconds.
+   * @envvar A365_PER_REQUEST_FLUSH_GRACE_MS
+   * @default 250
+   */
+  perRequestFlushGraceMs?: () => number;
+
+  /**
+   * Override for maximum age (ms) for a trace before forcing flush.
+   * Traces older than this are flushed regardless of whether all spans have ended.
+   * Values <= 0 are ignored and the default is used.
+   *
+   * @returns Maximum trace age in milliseconds.
+   * @envvar A365_PER_REQUEST_MAX_TRACE_AGE_MS
+   * @default 1800000 (30 minutes)
+   */
+  perRequestMaxTraceAgeMs?: () => number;
 };

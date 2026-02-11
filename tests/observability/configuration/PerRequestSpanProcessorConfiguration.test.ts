@@ -212,6 +212,98 @@ describe('PerRequestSpanProcessorConfiguration', () => {
     });
   });
 
+  describe('perRequestFlushGraceMs', () => {
+    it('should use override function when provided', () => {
+      const config = new PerRequestSpanProcessorConfiguration({
+        perRequestFlushGraceMs: () => 100
+      });
+      expect(config.perRequestFlushGraceMs).toBe(100);
+    });
+
+    it('should fall back to env var when override not provided', () => {
+      process.env.A365_PER_REQUEST_FLUSH_GRACE_MS = '500';
+      const config = new PerRequestSpanProcessorConfiguration({});
+      expect(config.perRequestFlushGraceMs).toBe(500);
+    });
+
+    it('should fall back to default 250 when neither override nor env var', () => {
+      delete process.env.A365_PER_REQUEST_FLUSH_GRACE_MS;
+      const config = new PerRequestSpanProcessorConfiguration({});
+      expect(config.perRequestFlushGraceMs).toBe(250);
+    });
+
+    it('should fall back to default for invalid env var', () => {
+      process.env.A365_PER_REQUEST_FLUSH_GRACE_MS = 'invalid';
+      const config = new PerRequestSpanProcessorConfiguration({});
+      expect(config.perRequestFlushGraceMs).toBe(250);
+    });
+
+    it('should fall back to default for negative values from env var', () => {
+      process.env.A365_PER_REQUEST_FLUSH_GRACE_MS = '-50';
+      const config = new PerRequestSpanProcessorConfiguration({});
+      expect(config.perRequestFlushGraceMs).toBe(250);
+    });
+
+    it('should fall back to default for zero from env var', () => {
+      process.env.A365_PER_REQUEST_FLUSH_GRACE_MS = '0';
+      const config = new PerRequestSpanProcessorConfiguration({});
+      expect(config.perRequestFlushGraceMs).toBe(250);
+    });
+
+    it('should fall back to default for negative override', () => {
+      const config = new PerRequestSpanProcessorConfiguration({
+        perRequestFlushGraceMs: () => -10
+      });
+      expect(config.perRequestFlushGraceMs).toBe(250);
+    });
+  });
+
+  describe('perRequestMaxTraceAgeMs', () => {
+    it('should use override function when provided', () => {
+      const config = new PerRequestSpanProcessorConfiguration({
+        perRequestMaxTraceAgeMs: () => 60000
+      });
+      expect(config.perRequestMaxTraceAgeMs).toBe(60000);
+    });
+
+    it('should fall back to env var when override not provided', () => {
+      process.env.A365_PER_REQUEST_MAX_TRACE_AGE_MS = '120000';
+      const config = new PerRequestSpanProcessorConfiguration({});
+      expect(config.perRequestMaxTraceAgeMs).toBe(120000);
+    });
+
+    it('should fall back to default 1800000 when neither override nor env var', () => {
+      delete process.env.A365_PER_REQUEST_MAX_TRACE_AGE_MS;
+      const config = new PerRequestSpanProcessorConfiguration({});
+      expect(config.perRequestMaxTraceAgeMs).toBe(1800000);
+    });
+
+    it('should fall back to default for invalid env var', () => {
+      process.env.A365_PER_REQUEST_MAX_TRACE_AGE_MS = 'not-a-number';
+      const config = new PerRequestSpanProcessorConfiguration({});
+      expect(config.perRequestMaxTraceAgeMs).toBe(1800000);
+    });
+
+    it('should fall back to default for negative values from env var', () => {
+      process.env.A365_PER_REQUEST_MAX_TRACE_AGE_MS = '-1000';
+      const config = new PerRequestSpanProcessorConfiguration({});
+      expect(config.perRequestMaxTraceAgeMs).toBe(1800000);
+    });
+
+    it('should fall back to default for zero from env var', () => {
+      process.env.A365_PER_REQUEST_MAX_TRACE_AGE_MS = '0';
+      const config = new PerRequestSpanProcessorConfiguration({});
+      expect(config.perRequestMaxTraceAgeMs).toBe(1800000);
+    });
+
+    it('should fall back to default for negative override', () => {
+      const config = new PerRequestSpanProcessorConfiguration({
+        perRequestMaxTraceAgeMs: () => -5000
+      });
+      expect(config.perRequestMaxTraceAgeMs).toBe(1800000);
+    });
+  });
+
   describe('constructor', () => {
     it('should accept no overrides', () => {
       const config = new PerRequestSpanProcessorConfiguration();
