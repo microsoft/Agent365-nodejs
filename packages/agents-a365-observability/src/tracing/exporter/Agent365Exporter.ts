@@ -165,7 +165,7 @@ export class Agent365Exporter implements SpanExporter {
 
     const payload = this.buildExportRequest(spans);
     const body = JSON.stringify(payload);
-    const usingCustomServiceEndpoint = useCustomDomainForObservability();
+    const usingCustomServiceEndpoint = useCustomDomainForObservability(this.options.configProvider);
     // Select endpoint path based on S2S flag
     const endpointRelativePath =
       this.options.useS2SEndpoint
@@ -173,7 +173,7 @@ export class Agent365Exporter implements SpanExporter {
         : `/maven/agent365/agents/${agentId}/traces`;
 
     let url: string;
-    const domainOverride = getAgent365ObservabilityDomainOverride();
+    const domainOverride = getAgent365ObservabilityDomainOverride(this.options.configProvider);
     if (domainOverride) {
       url = `${domainOverride}${endpointRelativePath}?api-version=1`;
     } else if (usingCustomServiceEndpoint) {
