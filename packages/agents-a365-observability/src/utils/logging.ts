@@ -6,6 +6,7 @@ import {
   defaultObservabilityConfigurationProvider,
   ObservabilityConfiguration
 } from '../configuration';
+import { ExporterEventNames } from '../tracing/exporter/ExporterEventNames';
 
 /**
  * Custom logger interface for Agent 365 observability
@@ -35,14 +36,13 @@ export interface ILogger {
 
   /**
    * Log an event with standardized parameters
-   * @param eventType Standardized event name/category (e.g., ExporterEventNames.EXPORT)
+   * @param eventType Standardized event name from ExporterEventNames enum (e.g., ExporterEventNames.EXPORT)
    * @param isSuccess Whether the operation/event succeeded
    * @param durationMs Duration of the operation/event in milliseconds
    * @param message Optional message or additional details about the event, especially useful for errors or failures
-   * @param correlationId Optional correlation identifier to connect events/logs across components
-
+   * @param details Optional key-value pairs with additional context (e.g., correlationId, tenantId, agentId, etc.)
    */
-  event(eventType: string, isSuccess: boolean, durationMs: number, message?: string, correlationId?: string): void;
+  event(eventType: ExporterEventNames, isSuccess: boolean, durationMs: number, message?: string, details?: Record<string, string>): void;
 }
 
 /**
@@ -131,14 +131,14 @@ export class DefaultLogger implements ILogger {
     }
   }
 
-  event(eventType: string, isSuccess: boolean, durationMs: number, message?: string, correlationId?: string): void {
+  event(eventType: ExporterEventNames, isSuccess: boolean, durationMs: number, message?: string, details?: Record<string, string>): void {
     const status = isSuccess ? 'succeeded' : 'failed';
     const logLevelNeeded = isSuccess ? 1 : 3;
     if (this.getEnabledLogLevels().has(logLevelNeeded)) {
       const logFn = isSuccess ? console.log : console.error;
       const messageInfo = message ? ` - ${message}` : '';
-      const correlationInfo = correlationId ? ` [${correlationId}]` : '';
-      logFn(`[EVENT]: ${eventType} ${status} in ${durationMs}ms${messageInfo}${correlationInfo}`);
+      const detailsInfo = details && Object.keys(details).length > 0 ? ` ${JSON.stringify(details)}` : '';
+      logFn(`[EVENT]: ${eventType} ${status} in ${durationMs}ms${messageInfo}${detailsInfo}`);
     }
   }
 }
@@ -169,8 +169,9 @@ let globalLogger: ILogger = new DefaultLogger();
  *   info: (msg, ...args) => winstonLogger.info(msg, ...args),
  *   warn: (msg, ...args) => winstonLogger.warn(msg, ...args),
  *   error: (msg, ...args) => winstonLogger.error(msg, ...args),
- *   event: (eventType, isSuccess, durationMs, message, correlationId) => {
- *     winstonLogger.log({ level: isSuccess ? 'info' : 'error', eventType, isSuccess, durationMs, message, correlationId });
+ *   event: (eventType, isSuccess, durationMs, message, details) => {
+ *     // eventType is ExporterEventNames enum value
+ *     winstonLogger.log({ level: isSuccess ? 'info' : 'error', eventType, isSuccess, durationMs, message, ...details });
  *   }
  * });
  * ```
@@ -212,8 +213,8 @@ export const logger: ILogger = {
   info: (message: string, ...args: unknown[]) => globalLogger.info(message, ...args),
   warn: (message: string, ...args: unknown[]) => globalLogger.warn(message, ...args),
   error: (message: string, ...args: unknown[]) => globalLogger.error(message, ...args),
-  event: (eventType: string, isSuccess: boolean, durationMs: number, message?: string, correlationId?: string) => 
-    globalLogger.event(eventType, isSuccess, durationMs, message, correlationId)
+  event: (eventType: ExporterEventNames, isSuccess: boolean, durationMs: number, message?: string, details?: Record<string, string>) =>
+    globalLogger.event(eventType, isSuccess, durationMs, message, details)
 };
 
 export default logger;

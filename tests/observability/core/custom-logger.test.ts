@@ -3,6 +3,7 @@
 
 import { setLogger, getLogger, resetLogger, ILogger } from '@microsoft/agents-a365-observability/src/utils/logging';
 import { ObservabilityBuilder } from '@microsoft/agents-a365-observability/src/ObservabilityBuilder';
+import { ExporterEventNames } from '@microsoft/agents-a365-observability';
 
 describe('Custom Logger Support', () => {
   beforeEach(() => {
@@ -156,11 +157,11 @@ describe('Custom Logger Support', () => {
       setLogger(customLogger);
       const logger = getLogger();
 
-      logger.event('test-event', true, 150);
-      logger.event('test-event-fail', false, 200);
+      logger.event(ExporterEventNames.EXPORT, true, 150);
+      logger.event(ExporterEventNames.EXPORT_GROUP, false, 200);
 
-      expect(customLogger.event).toHaveBeenCalledWith('test-event', true, 150);
-      expect(customLogger.event).toHaveBeenCalledWith('test-event-fail', false, 200);
+      expect(customLogger.event).toHaveBeenCalledWith(ExporterEventNames.EXPORT, true, 150);
+      expect(customLogger.event).toHaveBeenCalledWith(ExporterEventNames.EXPORT_GROUP, false, 200);
       expect(customLogger.event).toHaveBeenCalledTimes(2);
     });
   });
@@ -169,63 +170,63 @@ describe('Custom Logger Support', () => {
     it('should respect log level settings for events (info succeeds, error fails)', () => {
       process.env.A365_OBSERVABILITY_LOG_LEVEL = 'info|error';
       resetLogger();
-      
+
       const logSpy = jest.spyOn(console, 'log').mockImplementation();
       const errorSpy = jest.spyOn(console, 'error').mockImplementation();
 
       const logger = getLogger();
-      logger.event('success-event', true, 100);
-      logger.event('failed-event', false, 200);
+      logger.event(ExporterEventNames.EXPORT, true, 100);
+      logger.event(ExporterEventNames.EXPORT_GROUP, false, 200);
 
-      expect(logSpy).toHaveBeenCalledWith('[EVENT]: success-event succeeded in 100ms');
-      expect(errorSpy).toHaveBeenCalledWith('[EVENT]: failed-event failed in 200ms');
+      expect(logSpy).toHaveBeenCalledWith('[EVENT]: agent365-export succeeded in 100ms');
+      expect(errorSpy).toHaveBeenCalledWith('[EVENT]: export-group failed in 200ms');
 
       logSpy.mockRestore();
       errorSpy.mockRestore();
     });
 
-    it('should format event with optional message and correlationId correctly', () => {
+    it('should format event with optional message and details correctly', () => {
       process.env.A365_OBSERVABILITY_LOG_LEVEL = 'info|error';
       resetLogger();
-      
+
       const logSpy = jest.spyOn(console, 'log').mockImplementation();
       const errorSpy = jest.spyOn(console, 'error').mockImplementation();
 
       const logger = getLogger();
-      logger.event('operation', true, 150, 'Task completed successfully', 'corr-123');
-      logger.event('task', false, 250, 'Connection timeout', 'corr-456');
+      logger.event(ExporterEventNames.EXPORT, true, 150, 'Task completed successfully', { correlationId: 'corr-123' });
+      logger.event(ExporterEventNames.EXPORT_GROUP, false, 250, 'Connection timeout', { correlationId: 'corr-456', tenantId: 'tenant1' });
 
-      expect(logSpy).toHaveBeenCalledWith('[EVENT]: operation succeeded in 150ms - Task completed successfully [corr-123]');
-      expect(errorSpy).toHaveBeenCalledWith('[EVENT]: task failed in 250ms - Connection timeout [corr-456]');
+      expect(logSpy).toHaveBeenCalledWith('[EVENT]: agent365-export succeeded in 150ms - Task completed successfully {"correlationId":"corr-123"}');
+      expect(errorSpy).toHaveBeenCalledWith('[EVENT]: export-group failed in 250ms - Connection timeout {"correlationId":"corr-456","tenantId":"tenant1"}');
 
       logSpy.mockRestore();
       errorSpy.mockRestore();
     });
 
-    it('should format event with only message (no correlationId)', () => {
+    it('should format event with only message (no details)', () => {
       process.env.A365_OBSERVABILITY_LOG_LEVEL = 'info';
       resetLogger();
-      
+
       const logSpy = jest.spyOn(console, 'log').mockImplementation();
 
       const logger = getLogger();
-      logger.event('sync', true, 500, 'Data synced from 3 sources');
+      logger.event(ExporterEventNames.EXPORT_PARTITION_SPAN_MISSING_IDENTITY, true, 500, 'Data synced from 3 sources');
 
-      expect(logSpy).toHaveBeenCalledWith('[EVENT]: sync succeeded in 500ms - Data synced from 3 sources');
+      expect(logSpy).toHaveBeenCalledWith('[EVENT]: export-partition-span-missing-identity succeeded in 500ms - Data synced from 3 sources');
 
       logSpy.mockRestore();
     });
 
-    it('should format event with only correlationId (no message)', () => {
+    it('should format event with only details (no message)', () => {
       process.env.A365_OBSERVABILITY_LOG_LEVEL = 'error';
       resetLogger();
-      
+
       const errorSpy = jest.spyOn(console, 'error').mockImplementation();
 
       const logger = getLogger();
-      logger.event('cleanup', false, 100, undefined, 'corr-789');
+      logger.event(ExporterEventNames.EXPORT_GROUP, false, 100, undefined, { correlationId: 'corr-789' });
 
-      expect(errorSpy).toHaveBeenCalledWith('[EVENT]: cleanup failed in 100ms [corr-789]');
+      expect(errorSpy).toHaveBeenCalledWith('[EVENT]: export-group failed in 100ms {"correlationId":"corr-789"}');
 
       errorSpy.mockRestore();
     });
@@ -247,10 +248,10 @@ describe('Custom Logger Support', () => {
 
       const currentLogger = getLogger();
       currentLogger.info('test message');
-      currentLogger.event('test-event', true, 100);
-      
+      currentLogger.event(ExporterEventNames.EXPORT, true, 100);
+
       expect(customLogger.info).toHaveBeenCalledWith('test message');
-      expect(customLogger.event).toHaveBeenCalledWith('test-event', true, 100);
+      expect(customLogger.event).toHaveBeenCalledWith(ExporterEventNames.EXPORT, true, 100);
     });
   });
 });

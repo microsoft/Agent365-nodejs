@@ -220,7 +220,7 @@ export class Agent365Exporter implements SpanExporter {
     }
     else {
       const skipReason = tokenNotResolvedReason || 'Token not resolved for export request';
-      logger.event(`${ExporterEventNames.EXPORT_GROUP}-${tenantId}-${agentId}`, false, 0, `skip exporting: ${skipReason}`);
+      logger.event(ExporterEventNames.EXPORT_GROUP, false, 0, `skip exporting: ${skipReason}`, { tenantId, agentId });
       return;
     }
 
@@ -233,10 +233,10 @@ export class Agent365Exporter implements SpanExporter {
     const { ok, correlationId } = await this.postWithRetries(url, body, headers);
     const duration = Date.now() - startTime;
     if (!ok) {
-      logger.event(`${ExporterEventNames.EXPORT_GROUP}-${tenantId}-${agentId}`, false, duration, undefined, correlationId);
+      logger.event(ExporterEventNames.EXPORT_GROUP, false, duration, undefined, { tenantId, agentId, correlationId });
       throw new Error('Failed to export spans');
     }
-    logger.event(`${ExporterEventNames.EXPORT_GROUP}-${tenantId}-${agentId}`, true, duration, 'Spans exported successfully', correlationId);
+    logger.event(ExporterEventNames.EXPORT_GROUP, true, duration, 'Spans exported successfully', { tenantId, agentId, correlationId });
   }
 
   /**

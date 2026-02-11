@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
+import { ExporterEventNames } from '@microsoft/agents-a365-observability';
 
 describe('logging', () => {
   const originalEnv = process.env;
@@ -582,6 +583,111 @@ describe('logging', () => {
       expect(consoleLogSpy).not.toHaveBeenCalled();
       expect(consoleWarnSpy).toHaveBeenCalledWith('[WARN]', 'Warn message');
       expect(consoleErrorSpy).toHaveBeenCalledWith('[ERROR]', 'Error message');
+    });
+  });
+
+  describe('event method', () => {
+    it('should log successful events with info level when enabled', async () => {
+      process.env.A365_OBSERVABILITY_LOG_LEVEL = 'info';
+      const { logger } = await import('@microsoft/agents-a365-observability/src/utils/logging');
+
+      logger.event(ExporterEventNames.EXPORT, true, 100, 'Operation completed');
+
+      expect(consoleLogSpy).toHaveBeenCalledWith('[EVENT]: agent365-export succeeded in 100ms - Operation completed');
+    });
+
+    it('should log failed events with error level when enabled', async () => {
+      process.env.A365_OBSERVABILITY_LOG_LEVEL = 'error';
+      const { logger } = await import('@microsoft/agents-a365-observability/src/utils/logging');
+
+      logger.event(ExporterEventNames.EXPORT, false, 200, 'Operation failed');
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[EVENT]: agent365-export failed in 200ms - Operation failed');
+    });
+
+    it('should include details in event logs', async () => {
+      process.env.A365_OBSERVABILITY_LOG_LEVEL = 'info';
+      const { logger } = await import('@microsoft/agents-a365-observability/src/utils/logging');
+
+      logger.event(ExporterEventNames.EXPORT_GROUP, true, 150, 'Success', { correlationId: 'abc123', tenantId: 'tenant1' });
+
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        '[EVENT]: export-group succeeded in 150ms - Success {"correlationId":"abc123","tenantId":"tenant1"}'
+      );
+    });
+
+    it('should log event without message', async () => {
+      process.env.A365_OBSERVABILITY_LOG_LEVEL = 'info';
+      const { logger } = await import('@microsoft/agents-a365-observability/src/utils/logging');
+
+      logger.event(ExporterEventNames.EXPORT, true, 100);
+
+      expect(consoleLogSpy).toHaveBeenCalledWith('[EVENT]: agent365-export succeeded in 100ms');
+    });
+
+    it('should log event without details', async () => {
+      process.env.A365_OBSERVABILITY_LOG_LEVEL = 'info';
+      const { logger } = await import('@microsoft/agents-a365-observability/src/utils/logging');
+
+      logger.event(ExporterEventNames.EXPORT, true, 100, 'Completed');
+
+      expect(consoleLogSpy).toHaveBeenCalledWith('[EVENT]: agent365-export succeeded in 100ms - Completed');
+    });
+
+    it('should log event with empty details object', async () => {
+      process.env.A365_OBSERVABILITY_LOG_LEVEL = 'info';
+      const { logger } = await import('@microsoft/agents-a365-observability/src/utils/logging');
+
+      logger.event(ExporterEventNames.EXPORT, true, 100, 'Completed', {});
+
+      expect(consoleLogSpy).toHaveBeenCalledWith('[EVENT]: agent365-export succeeded in 100ms - Completed');
+    });
+
+    it('should not log successful events when log level is none', async () => {
+      process.env.A365_OBSERVABILITY_LOG_LEVEL = 'none';
+      const { logger } = await import('@microsoft/agents-a365-observability/src/utils/logging');
+
+      logger.event(ExporterEventNames.EXPORT, true, 100, 'Success');
+
+      expect(consoleLogSpy).not.toHaveBeenCalled();
+    });
+
+    it('should not log failed events when log level is none', async () => {
+      process.env.A365_OBSERVABILITY_LOG_LEVEL = 'none';
+      const { logger } = await import('@microsoft/agents-a365-observability/src/utils/logging');
+
+      logger.event(ExporterEventNames.EXPORT, false, 100, 'Failure');
+
+      expect(consoleErrorSpy).not.toHaveBeenCalled();
+    });
+
+    it('should log failed events with error level and details', async () => {
+      process.env.A365_OBSERVABILITY_LOG_LEVEL = 'error';
+      const { logger } = await import('@microsoft/agents-a365-observability/src/utils/logging');
+
+      logger.event(ExporterEventNames.EXPORT_GROUP, false, 250, 'Failed', {
+        correlationId: 'xyz789',
+        tenantId: 'tenant2',
+        agentId: 'agent1'
+      });
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        '[EVENT]: export-group failed in 250ms - Failed {"correlationId":"xyz789","tenantId":"tenant2","agentId":"agent1"}'
+      );
+    });
+
+    it('should use ExporterEventNames enum values', async () => {
+      process.env.A365_OBSERVABILITY_LOG_LEVEL = 'info';
+      const { logger } = await import('@microsoft/agents-a365-observability/src/utils/logging');
+
+      // Test all enum values
+      logger.event(ExporterEventNames.EXPORT, true, 100);
+      logger.event(ExporterEventNames.EXPORT_GROUP, true, 100);
+      logger.event(ExporterEventNames.EXPORT_PARTITION_SPAN_MISSING_IDENTITY, true, 100);
+
+      expect(consoleLogSpy).toHaveBeenCalledWith('[EVENT]: agent365-export succeeded in 100ms');
+      expect(consoleLogSpy).toHaveBeenCalledWith('[EVENT]: export-group succeeded in 100ms');
+      expect(consoleLogSpy).toHaveBeenCalledWith('[EVENT]: export-partition-span-missing-identity succeeded in 100ms');
     });
   });
 });
