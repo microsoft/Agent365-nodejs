@@ -13,8 +13,9 @@ import { PerRequestSpanProcessor } from './tracing/PerRequestSpanProcessor';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
 import { trace } from '@opentelemetry/api';
-import { ClusterCategory } from '@microsoft/agents-a365-runtime';
+import { ClusterCategory, IConfigurationProvider } from '@microsoft/agents-a365-runtime';
 import logger, { setLogger, type ILogger } from './utils/logging';
+import { ObservabilityConfiguration, PerRequestSpanProcessorConfiguration } from './configuration';
 /**
  * Configuration options for Agent 365 Observability Builder
  */
@@ -42,6 +43,10 @@ export interface BuilderOptions {
    * Implement ILogger to integrate with other logging services
    */
   customLogger?: ILogger;
+
+  observabilityConfigurationProvider?: IConfigurationProvider<ObservabilityConfiguration>;
+
+  perRequestSpanProcessorConfigurationProvider?: IConfigurationProvider<PerRequestSpanProcessorConfiguration>;
 }
 
 /**
@@ -118,8 +123,18 @@ export class ObservabilityBuilder {
     return this;
   }
 
+  public withObservabilityConfigurationProvider(configProvider: IConfigurationProvider<ObservabilityConfiguration>): ObservabilityBuilder {
+    this.options.observabilityConfigurationProvider = configProvider;
+    return this;
+  }
+
+  public withPerRequestSpanProcessorConfigurationProvider(configProvider: IConfigurationProvider<PerRequestSpanProcessorConfiguration>): ObservabilityBuilder {
+    this.options.perRequestSpanProcessorConfigurationProvider = configProvider;
+    return this;
+  }
+
   private createBatchProcessor(): BatchSpanProcessor {
-    if (!isAgent365ExporterEnabled()) {
+    if (!isAgent365ExporterEnabled(this.options.observabilityConfigurationProvider)) {
       logger.info('[ObservabilityBuilder] Agent 365 exporter not enabled. Using ConsoleSpanExporter for BatchSpanProcessor.');      
       return new BatchSpanProcessor(new ConsoleSpanExporter());
     }
@@ -132,7 +147,7 @@ export class ObservabilityBuilder {
     if (this.options.tokenResolver) {
       opts.tokenResolver = this.options.tokenResolver;
     }
-    return new BatchSpanProcessor(new Agent365Exporter(opts), {
+    return new BatchSpanProcessor(new Agent365Exporter(opts, this.options.perRequestSpanProcessorConfigurationProvider), {
       maxQueueSize: opts.maxQueueSize,
       scheduledDelayMillis: opts.scheduledDelayMilliseconds,
       exportTimeoutMillis: opts.exporterTimeoutMilliseconds,
@@ -141,9 +156,9 @@ export class ObservabilityBuilder {
   }
 
   private createPerRequestProcessor(): PerRequestSpanProcessor {
-    if (!isAgent365ExporterEnabled()) {
+    if (!isAgent365ExporterEnabled(this.options.observabilityConfigurationProvider)) {
       logger.info('[Agent365Exporter] Per-request export enabled but Agent 365 exporter is disabled. Using ConsoleSpanExporter.');
-      return new PerRequestSpanProcessor(new ConsoleSpanExporter());
+      return new PerRequestSpanProcessor(new ConsoleSpanExporter(), this.options.perRequestSpanProcessorConfigurationProvider);
     }
 
     const opts = new Agent365ExporterOptions();
@@ -154,11 +169,14 @@ export class ObservabilityBuilder {
     
     // For per-request export, token is retrieved from OTel Context by Agent365Exporter
     // using getExportToken(), so no tokenResolver is needed here
-    return new PerRequestSpanProcessor(new Agent365Exporter(opts));
+    return new PerRequestSpanProcessor(
+      new Agent365Exporter(opts, this.options.perRequestSpanProcessorConfigurationProvider),
+      this.options.perRequestSpanProcessorConfigurationProvider
+    );
   }
 
   private createExportProcessor(): BatchSpanProcessor | PerRequestSpanProcessor {
-    if (isPerRequestExportEnabled()) {
+    if (isPerRequestExportEnabled(this.options.perRequestSpanProcessorConfigurationProvider)) {
       return this.createPerRequestProcessor();
     }
 

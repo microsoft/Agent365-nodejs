@@ -8,6 +8,9 @@ import { runWithExportToken } from '@microsoft/agents-a365-observability/src/tra
 import type { SpanExporter, ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import { ExportResult, ExportResultCode } from '@opentelemetry/core';
 import { context, trace } from '@opentelemetry/api';
+import { PerRequestSpanProcessorConfiguration } from '@microsoft/agents-a365-observability/src/configuration';
+import { PerRequestSpanProcessorConfigurationOptions } from '@microsoft/agents-a365-observability';
+import { DefaultConfigurationProvider } from '@microsoft/agents-a365-runtime';
 
 describe('PerRequestSpanProcessor', () => {
   let provider: BasicTracerProvider;
@@ -344,8 +347,14 @@ describe('PerRequestSpanProcessor', () => {
 
     it('should respect custom grace flush timeout', async () => {
       exportedSpans = [];
+
       const customGrace = 30;
-      await recreateProvider(new PerRequestSpanProcessor(mockExporter, customGrace));
+      const perRequestSpanProcessorConfigOverrides: PerRequestSpanProcessorConfigurationOptions = {
+            flushGraceMs: () => customGrace,
+      };
+      const perRequestSpanProcessorConfigurationProvider = new DefaultConfigurationProvider(() => new PerRequestSpanProcessorConfiguration(perRequestSpanProcessorConfigOverrides));
+
+      await recreateProvider(new PerRequestSpanProcessor(mockExporter, perRequestSpanProcessorConfigurationProvider));
 
       const tracer = provider.getTracer('test');
 
@@ -407,7 +416,13 @@ describe('PerRequestSpanProcessor', () => {
       const customGrace = 10;
       const customMaxAge = 1000;
 
-      await recreateProvider(new PerRequestSpanProcessor(mockExporter, customGrace, customMaxAge));
+      const perRequestSpanProcessorConfigOverrides: PerRequestSpanProcessorConfigurationOptions = {
+            flushGraceMs: () => customGrace,
+            maxTraceAgeMs: () => customMaxAge,
+      };
+      const perRequestSpanProcessorConfigurationProvider = new DefaultConfigurationProvider(() => new PerRequestSpanProcessorConfiguration(perRequestSpanProcessorConfigOverrides));
+
+      await recreateProvider(new PerRequestSpanProcessor(mockExporter, perRequestSpanProcessorConfigurationProvider));
 
       const tracer = provider.getTracer('test');
 
@@ -463,7 +478,13 @@ describe('PerRequestSpanProcessor', () => {
       const customGrace = 250;
       const customMaxAge = 10;
 
-      await recreateProvider(new PerRequestSpanProcessor(mockExporter, customGrace, customMaxAge));
+      const perRequestSpanProcessorConfigOverrides: PerRequestSpanProcessorConfigurationOptions = {
+            flushGraceMs: () => customGrace,
+            maxTraceAgeMs: () => customMaxAge,
+      };
+      const perRequestSpanProcessorConfigurationProvider = new DefaultConfigurationProvider(() => new PerRequestSpanProcessorConfiguration(perRequestSpanProcessorConfigOverrides));
+
+      await recreateProvider(new PerRequestSpanProcessor(mockExporter, perRequestSpanProcessorConfigurationProvider));
 
       const tracer = provider.getTracer('test');
 
@@ -495,9 +516,9 @@ describe('PerRequestSpanProcessor', () => {
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const proc = processor as any;
-      expect(proc.maxBufferedTraces).toBe(1000);
-      expect(proc.maxSpansPerTrace).toBe(5000);
-      expect(proc.maxConcurrentExports).toBe(20);
+      expect(proc.configProvider.getConfiguration().perRequestMaxTraces).toBe(1000);
+      expect(proc.configProvider.getConfiguration().perRequestMaxSpansPerTrace).toBe(5000);
+      expect(proc.configProvider.getConfiguration().perRequestMaxConcurrentExports).toBe(20);
     });
 
     it('should fallback to defaults for invalid env var values', async () => {
@@ -509,9 +530,9 @@ describe('PerRequestSpanProcessor', () => {
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const proc = processor as any;
-      expect(proc.maxBufferedTraces).toBe(1000);
-      expect(proc.maxSpansPerTrace).toBe(5000);
-      expect(proc.maxConcurrentExports).toBe(20);
+      expect(proc.configProvider.getConfiguration().perRequestMaxTraces).toBe(1000);
+      expect(proc.configProvider.getConfiguration().perRequestMaxSpansPerTrace).toBe(5000);
+      expect(proc.configProvider.getConfiguration().perRequestMaxConcurrentExports).toBe(20);
     });
 
     it('should parse valid numeric string env vars correctly', async () => {
@@ -523,9 +544,9 @@ describe('PerRequestSpanProcessor', () => {
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const proc = processor as any;
-      expect(proc.maxBufferedTraces).toBe(50);
-      expect(proc.maxSpansPerTrace).toBe(100);
-      expect(proc.maxConcurrentExports).toBe(5);
+      expect(proc.configProvider.getConfiguration().perRequestMaxTraces).toBe(50);
+      expect(proc.configProvider.getConfiguration().perRequestMaxSpansPerTrace).toBe(100);
+      expect(proc.configProvider.getConfiguration().perRequestMaxConcurrentExports).toBe(5);
     });
 
     it('should handle shutdown gracefully', async () => {

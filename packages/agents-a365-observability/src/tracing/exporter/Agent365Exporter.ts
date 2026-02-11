@@ -6,7 +6,7 @@
 import { ExportResult, ExportResultCode } from '@opentelemetry/core';
 import { ReadableSpan, SpanExporter } from '@opentelemetry/sdk-trace-base';
 
-import { PowerPlatformApiDiscovery, ClusterCategory } from '@microsoft/agents-a365-runtime';
+import { PowerPlatformApiDiscovery, ClusterCategory, IConfigurationProvider } from '@microsoft/agents-a365-runtime';
 import {
   partitionByIdentity,
   parseIdentityKey,
@@ -23,6 +23,7 @@ import { getExportToken } from '../context/token-context';
 import logger, { formatError } from '../../utils/logging';
 import { Agent365ExporterOptions } from './Agent365ExporterOptions';
 import { ExporterEventNames } from './ExporterEventNames';
+import { defaultPerRequestSpanProcessorConfigurationProvider, PerRequestSpanProcessorConfiguration } from '../../configuration';
 
 const DEFAULT_HTTP_TIMEOUT_SECONDS = 30000; // 30 seconds in ms
 const DEFAULT_MAX_RETRIES = 3;
@@ -87,21 +88,22 @@ interface OTLPStatus {
  */
 export class Agent365Exporter implements SpanExporter {
   private closed = false;
-  private readonly options: Agent365ExporterOptions;
 
   /**
    * Initialize exporter with a fully constructed options instance.
    * If tokenResolver is missing, installs cache-backed resolver.
    */
-  constructor(options: Agent365ExporterOptions) {
+  constructor(
+    private readonly options: Agent365ExporterOptions,
+    private readonly configProvider: IConfigurationProvider<PerRequestSpanProcessorConfiguration> = defaultPerRequestSpanProcessorConfigurationProvider
+  ) {
     if (!options) {
       throw new Error('Agent365ExporterOptions must be provided (was null/undefined)');
     }
 
-    if (!isPerRequestExportEnabled() && !options.tokenResolver) {
+    if (!isPerRequestExportEnabled(this.configProvider) && !options.tokenResolver) {
       throw new Error('Agent365Exporter tokenResolver must be provided for batch export');
     }
-    this.options = options;
   }
 
   /**
@@ -165,7 +167,7 @@ export class Agent365Exporter implements SpanExporter {
 
     const payload = this.buildExportRequest(spans);
     const body = JSON.stringify(payload);
-    const usingCustomServiceEndpoint = useCustomDomainForObservability();
+    const usingCustomServiceEndpoint = useCustomDomainForObservability(this.configProvider);
     // Select endpoint path based on S2S flag
     const endpointRelativePath =
       this.options.useS2SEndpoint
@@ -173,7 +175,7 @@ export class Agent365Exporter implements SpanExporter {
         : `/maven/agent365/agents/${agentId}/traces`;
 
     let url: string;
-    const domainOverride = getAgent365ObservabilityDomainOverride();
+    const domainOverride = getAgent365ObservabilityDomainOverride(this.configProvider);
     if (domainOverride) {
       url = `${domainOverride}${endpointRelativePath}?api-version=1`;
     } else if (usingCustomServiceEndpoint) {
@@ -194,7 +196,7 @@ export class Agent365Exporter implements SpanExporter {
 
     let token: string | null = null;
     let tokenNotResolvedReason: string | null = null;
-    if (isPerRequestExportEnabled()) {
+    if (isPerRequestExportEnabled(this.configProvider)) {
       // For per-request export, get token from OTel Context
       token = getExportToken() ?? null;
       if (!token) {

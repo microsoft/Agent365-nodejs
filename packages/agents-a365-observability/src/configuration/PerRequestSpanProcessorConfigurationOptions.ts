@@ -58,4 +58,24 @@ export type PerRequestSpanProcessorConfigurationOptions = ObservabilityConfigura
    * @default 20
    */
   perRequestMaxConcurrentExports?: () => number;
+
+  /**
+   * Override for the grace period (ms) to wait for child spans after the root span ends.
+   * Values <= 0 are ignored and the default is used.
+   *
+   * @returns Grace period in milliseconds.
+   * @envvar A365_PER_REQUEST_FLUSH_GRACE_MS
+   * @default 250
+   */
+  flushGraceMs?: () => number;
+
+  /**
+   * Override for the maximum age (ms) for a trace before forcing flush.
+   * Values <= 0 are ignored and the default is used.
+   *
+   * @returns Maximum trace age in milliseconds.
+   * @envvar A365_PER_REQUEST_MAX_TRACE_AGE_MS
+   * @default 1800000 (30 minutes)
+   */
+  maxTraceAgeMs?: () => number;
 };

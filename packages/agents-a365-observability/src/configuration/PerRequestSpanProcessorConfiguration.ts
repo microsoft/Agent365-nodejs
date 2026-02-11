@@ -10,6 +10,12 @@ const DEFAULT_MAX_BUFFERED_TRACES = 1000;
 const DEFAULT_MAX_SPANS_PER_TRACE = 5000;
 const DEFAULT_MAX_CONCURRENT_EXPORTS = 20;
 
+/** Default grace period (ms) to wait for child spans after root span ends */
+const DEFAULT_FLUSH_GRACE_MS = 250;
+
+/** Default maximum age (ms) for a trace before forcing flush */
+const DEFAULT_MAX_TRACE_AGE_MS = 30 * 60 * 1000; // 30 minutes
+
 /**
  * Configuration for PerRequestSpanProcessor.
  * Inherits all observability and runtime settings, and adds per-request processor guardrails.
@@ -53,5 +59,17 @@ export class PerRequestSpanProcessorConfiguration extends ObservabilityConfigura
     const value = this.perRequestOverrides.perRequestMaxConcurrentExports?.()
       ?? RuntimeConfiguration.parseEnvInt(process.env.A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS, DEFAULT_MAX_CONCURRENT_EXPORTS);
     return value > 0 ? value : DEFAULT_MAX_CONCURRENT_EXPORTS;
+  }
+
+  get flushGraceMs(): number {
+    const value = this.perRequestOverrides.flushGraceMs?.()
+      ?? RuntimeConfiguration.parseEnvInt(process.env.A365_PER_REQUEST_FLUSH_GRACE_MS, DEFAULT_FLUSH_GRACE_MS);
+    return value > 0 ? value : DEFAULT_FLUSH_GRACE_MS;
+  }
+
+  get maxTraceAgeMs(): number {
+    const value = this.perRequestOverrides.maxTraceAgeMs?.()
+      ?? RuntimeConfiguration.parseEnvInt(process.env.A365_PER_REQUEST_MAX_TRACE_AGE_MS, DEFAULT_MAX_TRACE_AGE_MS);
+    return value > 0 ? value : DEFAULT_MAX_TRACE_AGE_MS;
   }
 }

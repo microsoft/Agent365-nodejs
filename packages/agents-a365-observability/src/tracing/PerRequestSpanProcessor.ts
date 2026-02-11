@@ -9,12 +9,6 @@ import { IConfigurationProvider } from '@microsoft/agents-a365-runtime';
 import logger from '../utils/logging';
 import { PerRequestSpanProcessorConfiguration, defaultPerRequestSpanProcessorConfigurationProvider } from '../configuration';
 
-/** Default grace period (ms) to wait for child spans after root span ends */
-const DEFAULT_FLUSH_GRACE_MS = 250;
-
-/** Default maximum age (ms) for a trace before forcing flush */
-const DEFAULT_MAX_TRACE_AGE_MS = 30 * 60 * 1000; // 30 minutes
-
 function isRootSpan(span: ReadableSpan): boolean {
   return !span.parentSpanContext;
 }
@@ -41,42 +35,27 @@ export class PerRequestSpanProcessor implements SpanProcessor {
   private sweepTimer?: NodeJS.Timeout;
   private isSweeping = false;
 
-  private readonly maxBufferedTraces: number;
-  private readonly maxSpansPerTrace: number;
-  private readonly maxConcurrentExports: number;
-
   private inFlightExports = 0;
   private exportWaiters: Array<() => void> = [];
 
   /**
    * Construct a PerRequestSpanProcessor.
    * @param exporter The span exporter to use.
-   * @param flushGraceMs Grace period (ms) to wait for child spans after root span ends.
-   * @param maxTraceAgeMs Maximum age (ms) for a trace before forcing flush.
    * @param configProvider Optional configuration provider. Defaults to defaultPerRequestSpanProcessorConfigurationProvider if not specified.
    */
   constructor(
     private readonly exporter: SpanExporter,
-    private readonly flushGraceMs: number = DEFAULT_FLUSH_GRACE_MS,
-    private readonly maxTraceAgeMs: number = DEFAULT_MAX_TRACE_AGE_MS,
-    configProvider?: IConfigurationProvider<PerRequestSpanProcessorConfiguration>
+    private readonly configProvider: IConfigurationProvider<PerRequestSpanProcessorConfiguration> = defaultPerRequestSpanProcessorConfigurationProvider
   ) {
-    // Defaults are intentionally high but bounded; override via configuration if needed.
-    // Set to 0 (or negative) to disable a guardrail.
-    const effectiveConfigProvider = configProvider ?? defaultPerRequestSpanProcessorConfigurationProvider;
-    const config = effectiveConfigProvider.getConfiguration();
-    this.maxBufferedTraces = config.perRequestMaxTraces;
-    this.maxSpansPerTrace = config.perRequestMaxSpansPerTrace;
-    this.maxConcurrentExports = config.perRequestMaxConcurrentExports;
   }
 
   onStart(span: ReadableSpan, ctx: Context): void {
     const traceId = span.spanContext().traceId;
     let buf = this.traces.get(traceId);
     if (!buf) {
-      if (this.traces.size >= this.maxBufferedTraces) {
+      if (this.traces.size >= this.configProvider.getConfiguration().perRequestMaxTraces) {
         logger.warn(
-          `[PerRequestSpanProcessor] Dropping new trace due to maxBufferedTraces=${this.maxBufferedTraces} traceId=${traceId}`
+          `[PerRequestSpanProcessor] Dropping new trace due to maxBufferedTraces=${this.configProvider.getConfiguration().perRequestMaxTraces} traceId=${traceId}`
         );
         return;
       }
@@ -94,7 +73,7 @@ export class PerRequestSpanProcessor implements SpanProcessor {
       this.ensureSweepTimer();
 
       logger.info(
-        `[PerRequestSpanProcessor] Trace started traceId=${traceId} maxTraceAgeMs=${this.maxTraceAgeMs}`
+        `[PerRequestSpanProcessor] Trace started traceId=${traceId} maxTraceAgeMs=${this.configProvider.getConfiguration().maxTraceAgeMs}`
       );
     }
     buf.openCount += 1;
@@ -120,11 +99,11 @@ export class PerRequestSpanProcessor implements SpanProcessor {
     const buf = this.traces.get(traceId);
     if (!buf) return;
 
-    if (buf.spans.length >= this.maxSpansPerTrace) {
+    if (buf.spans.length >= this.configProvider.getConfiguration().perRequestMaxSpansPerTrace) {
       buf.droppedSpans += 1;
       if (buf.droppedSpans === 1 || buf.droppedSpans % 100 === 0) {
         logger.warn(
-          `[PerRequestSpanProcessor] Dropping ended span due to maxSpansPerTrace=${this.maxSpansPerTrace} ` +
+          `[PerRequestSpanProcessor] Dropping ended span due to maxSpansPerTrace=${this.configProvider.getConfiguration().perRequestMaxSpansPerTrace} ` +
             `traceId=${traceId} droppedSpans=${buf.droppedSpans}`
         );
       }
@@ -173,7 +152,7 @@ export class PerRequestSpanProcessor implements SpanProcessor {
     if (this.sweepTimer) return;
 
     // Keep one lightweight sweeper. Interval is derived from grace/max-age to keep responsiveness reasonable.
-    const intervalMs = Math.max(10, Math.min(this.flushGraceMs, 250));
+    const intervalMs = Math.max(10, Math.min(this.configProvider.getConfiguration().flushGraceMs, 250));
     this.sweepTimer = setInterval(() => {
       void this.sweep();
     }, intervalMs);
@@ -202,14 +181,14 @@ export class PerRequestSpanProcessor implements SpanProcessor {
 
       for (const [traceId, trace] of this.traces.entries()) {
         // 1) Max age safety flush (clears buffers even if spans never end)
-        if (now - trace.startedAtMs >= this.maxTraceAgeMs) {
+        if (now - trace.startedAtMs >= this.configProvider.getConfiguration().maxTraceAgeMs) {
           toFlush.push({ traceId, reason: 'max_trace_age' });
           continue;
         }
 
         // 2) Root ended grace window flush (clears buffers if children never end)
         if (trace.rootEnded && trace.openCount > 0 && trace.rootEndedAtMs) {
-          if (now - trace.rootEndedAtMs >= this.flushGraceMs) {
+          if (now - trace.rootEndedAtMs >= this.configProvider.getConfiguration().flushGraceMs) {
             toFlush.push({ traceId, reason: 'root_ended_grace' });
           }
         }
@@ -284,8 +263,8 @@ export class PerRequestSpanProcessor implements SpanProcessor {
   }
 
   private async acquireExportSlot(): Promise<void> {
-    if (this.maxConcurrentExports <= 0) return;
-    if (this.inFlightExports < this.maxConcurrentExports) {
+    if (this.configProvider.getConfiguration().perRequestMaxConcurrentExports <= 0) return;
+    if (this.inFlightExports < this.configProvider.getConfiguration().perRequestMaxConcurrentExports) {
       this.inFlightExports += 1;
       return;
     }
@@ -299,7 +278,7 @@ export class PerRequestSpanProcessor implements SpanProcessor {
   }
 
   private releaseExportSlot(): void {
-    if (this.maxConcurrentExports <= 0) return;
+    if (this.configProvider.getConfiguration().perRequestMaxConcurrentExports <= 0) return;
     this.inFlightExports = Math.max(0, this.inFlightExports - 1);
     const next = this.exportWaiters.shift();
     if (next) next();

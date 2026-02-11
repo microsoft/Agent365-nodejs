@@ -144,17 +144,68 @@ Foundation package with no SDK dependencies. Provides:
 ### Observability (`@microsoft/agents-a365-observability`)
 OpenTelemetry-based distributed tracing:
 - **`ObservabilityConfiguration`**: Configuration with `observabilityAuthenticationScopes`, `isObservabilityExporterEnabled`, `observabilityLogLevel`, etc.
-- **`PerRequestSpanProcessorConfiguration`**: Extends `ObservabilityConfiguration` with per-request processor settings (`isPerRequestExportEnabled`, `perRequestMaxTraces`, `perRequestMaxSpansPerTrace`, `perRequestMaxConcurrentExports`). Separated from `ObservabilityConfiguration` because these settings are only relevant when using `PerRequestSpanProcessor`.
+- **`PerRequestSpanProcessorConfiguration`**: Extends `ObservabilityConfiguration` with per-request processor settings (`isPerRequestExportEnabled`, `perRequestMaxTraces`, `perRequestMaxSpansPerTrace`, `perRequestMaxConcurrentExports`, `flushGraceMs`, `maxTraceAgeMs`). Separated from `ObservabilityConfiguration` because these settings are only relevant when using `PerRequestSpanProcessor`.
 - **`defaultObservabilityConfigurationProvider`**: Singleton configuration provider for observability settings
 - **`defaultPerRequestSpanProcessorConfigurationProvider`**: Singleton configuration provider for per-request span processor settings
 - **`ObservabilityManager`**: Main entry point (singleton)
-- **`ObservabilityBuilder`**: Fluent configuration API
+- **`ObservabilityBuilder`**: Fluent configuration API with methods to configure custom configuration providers:
+  - `withObservabilityConfigurationProvider()`: Set custom observability configuration provider
+  - `withPerRequestSpanProcessorConfigurationProvider()`: Set custom per-request span processor configuration provider
 - **Scope classes**:
   - `InvokeAgentScope`: Trace agent invocations (root span)
   - `InferenceScope`: Trace LLM/AI inference calls
   - `ExecuteToolScope`: Trace tool execution
 - **`BaggageBuilder`**: Context propagation across async boundaries (tenant ID, agent ID, correlation ID)
 - **Data contracts**: `InvokeAgentDetails`, `AgentDetails`, `TenantDetails`, `InferenceDetails`, `ToolCallDetails`
+
+**Configuration Provider Example:**
+```typescript
+import {
+  ObservabilityManager,
+  ObservabilityConfiguration,
+  PerRequestSpanProcessorConfiguration,
+  ObservabilityConfigurationOptions,
+  PerRequestSpanProcessorConfigurationOptions
+} from '@microsoft/agents-a365-observability';
+import { DefaultConfigurationProvider, ClusterCategory } from '@microsoft/agents-a365-runtime';
+
+// Define observability configuration overrides
+const observabilityConfigOverrides: ObservabilityConfigurationOptions = {
+  observabilityLogLevel: () => 'info',
+  isObservabilityExporterEnabled: () => true,
+};
+
+// Create observability configuration provider
+const observabilityConfigurationProvider = new DefaultConfigurationProvider(
+  () => new ObservabilityConfiguration(observabilityConfigOverrides)
+);
+
+// Define per-request span processor configuration overrides
+const perRequestSpanProcessorConfigOverrides: PerRequestSpanProcessorConfigurationOptions = {
+  isPerRequestExportEnabled: () => true,
+  flushGraceMs: () => 250,
+  maxTraceAgeMs: () => 1800000, // 30 minutes
+  perRequestMaxTraces: () => 1000,
+  perRequestMaxConcurrentExports: () => 20,
+  perRequestMaxSpansPerTrace: () => 5000
+};
+
+// Create per-request span processor configuration provider
+const perRequestSpanProcessorConfigurationProvider = new DefaultConfigurationProvider(
+  () => new PerRequestSpanProcessorConfiguration(perRequestSpanProcessorConfigOverrides)
+);
+
+// Configure observability with custom providers
+ObservabilityManager.configure((builder) => {
+  builder
+    .withService('my-agent', '1.0.0')
+    .withClusterCategory(ClusterCategory.prod)
+    .withTokenResolver(async (agentId, tenantId) => getAuthToken(agentId, tenantId))
+    .withObservabilityConfigurationProvider(observabilityConfigurationProvider)
+    .withPerRequestSpanProcessorConfigurationProvider(perRequestSpanProcessorConfigurationProvider)
+    .start();
+});
+```
 
 **Tracing Flow:**
 ```
@@ -219,6 +270,8 @@ The keyword "Kairo" is legacy and should not appear in any code. Flag and remove
 | `A365_PER_REQUEST_MAX_TRACES` | Max buffered traces per request (`PerRequestSpanProcessorConfiguration`) | Number (default: 1000) |
 | `A365_PER_REQUEST_MAX_SPANS_PER_TRACE` | Max spans per trace (`PerRequestSpanProcessorConfiguration`) | Number (default: 5000) |
 | `A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS` | Max concurrent exports (`PerRequestSpanProcessorConfiguration`) | Number (default: 20) |
+| `A365_PER_REQUEST_FLUSH_GRACE_MS` | Grace period (ms) to wait for child spans after root span ends (`PerRequestSpanProcessorConfiguration`) | Number (default: 250) |
+| `A365_PER_REQUEST_MAX_TRACE_AGE_MS` | Maximum age (ms) for a trace before forcing flush (`PerRequestSpanProcessorConfiguration`) | Number (default: 1800000, i.e., 30 minutes) |
 
 ## Testing
 

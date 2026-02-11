@@ -94,9 +94,97 @@ builder.start();
 | `withTokenResolver(resolver)` | Set token resolver for exporter auth |
 | `withClusterCategory(category)` | Set environment cluster |
 | `withExporterOptions(options)` | Configure exporter options |
+| `withObservabilityConfigurationProvider(provider)` | Set custom observability configuration provider |
+| `withPerRequestSpanProcessorConfigurationProvider(provider)` | Set custom per-request span processor configuration provider |
 | `build()` | Initialize OpenTelemetry SDK |
 | `start()` | Start the SDK |
 | `shutdown()` | Graceful shutdown |
+
+**Using Custom Configuration Providers:**
+
+The builder allows you to pass custom configuration providers for both general observability settings and per-request span processor settings. This is useful for multi-tenant scenarios or when you need dynamic configuration:
+
+```typescript
+import {
+  ObservabilityManager,
+  ObservabilityConfiguration,
+  PerRequestSpanProcessorConfiguration,
+  ObservabilityConfigurationOptions,
+  PerRequestSpanProcessorConfigurationOptions
+} from '@microsoft/agents-a365-observability';
+import { DefaultConfigurationProvider } from '@microsoft/agents-a365-runtime';
+
+// Define observability configuration overrides
+const observabilityConfigOverrides: ObservabilityConfigurationOptions = {
+  observabilityLogLevel: () => 'info',
+  isObservabilityExporterEnabled: () => true,
+  useCustomDomainForObservability: () => false,
+  observabilityDomainOverride: () => null
+};
+
+// Create observability configuration provider
+const observabilityConfigurationProvider = new DefaultConfigurationProvider(
+  () => new ObservabilityConfiguration(observabilityConfigOverrides)
+);
+
+// Define per-request span processor configuration overrides
+const perRequestSpanProcessorConfigOverrides: PerRequestSpanProcessorConfigurationOptions = {
+  isPerRequestExportEnabled: () => true,
+  flushGraceMs: () => 250,
+  maxTraceAgeMs: () => 1800000, // 30 minutes
+  perRequestMaxTraces: () => 1000,
+  perRequestMaxConcurrentExports: () => 20,
+  perRequestMaxSpansPerTrace: () => 5000
+};
+
+// Create per-request span processor configuration provider
+const perRequestSpanProcessorConfigurationProvider = new DefaultConfigurationProvider(
+  () => new PerRequestSpanProcessorConfiguration(perRequestSpanProcessorConfigOverrides)
+);
+
+// Configure observability with custom providers
+ObservabilityManager.configure((builder) => {
+  builder
+    .withService('my-agent', '1.0.0')
+    .withClusterCategory('prod')
+    .withTokenResolver(async (agentId, tenantId) => getAuthToken(agentId, tenantId))
+    .withObservabilityConfigurationProvider(observabilityConfigurationProvider)
+    .withPerRequestSpanProcessorConfigurationProvider(perRequestSpanProcessorConfigurationProvider)
+    .start();
+});
+```
+
+**Multi-Tenant Dynamic Configuration Example:**
+
+For multi-tenant scenarios where configuration needs to change per request:
+
+```typescript
+import { DefaultConfigurationProvider } from '@microsoft/agents-a365-runtime';
+
+// Function-based overrides that are evaluated on each access
+const observabilityConfigOverrides: ObservabilityConfigurationOptions = {
+  isObservabilityExporterEnabled: () => {
+    // Dynamically determine based on current tenant context
+    const currentTenant = getCurrentTenantContext();
+    return currentTenant.enableObservability;
+  },
+  observabilityLogLevel: () => {
+    const currentTenant = getCurrentTenantContext();
+    return currentTenant.logLevel || 'error';
+  }
+};
+
+const observabilityConfigurationProvider = new DefaultConfigurationProvider(
+  () => new ObservabilityConfiguration(observabilityConfigOverrides)
+);
+
+ObservabilityManager.configure((builder) => {
+  builder
+    .withService('multi-tenant-agent', '1.0.0')
+    .withObservabilityConfigurationProvider(observabilityConfigurationProvider)
+    .start();
+});
+```
 
 ### Scope Classes
 
@@ -474,6 +562,8 @@ console.log(config.perRequestMaxTraces);  // Max buffered traces (default: 1000)
 | `perRequestMaxTraces` | `A365_PER_REQUEST_MAX_TRACES` | `1000` | Max buffered traces per request |
 | `perRequestMaxSpansPerTrace` | `A365_PER_REQUEST_MAX_SPANS_PER_TRACE` | `5000` | Max spans per trace |
 | `perRequestMaxConcurrentExports` | `A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS` | `20` | Max concurrent export operations |
+| `flushGraceMs` | `A365_PER_REQUEST_FLUSH_GRACE_MS` | `250` | Grace period (ms) to wait for child spans after root span ends |
+| `maxTraceAgeMs` | `A365_PER_REQUEST_MAX_TRACE_AGE_MS` | `1800000` | Maximum age (ms) for a trace before forcing flush (30 minutes) |
 
 ## Environment Variables
 
@@ -488,3 +578,5 @@ console.log(config.perRequestMaxTraces);  // Max buffered traces (default: 1000)
 | `A365_PER_REQUEST_MAX_TRACES` | Max buffered traces (`PerRequestSpanProcessorConfiguration`) | `1000` |
 | `A365_PER_REQUEST_MAX_SPANS_PER_TRACE` | Max spans per trace (`PerRequestSpanProcessorConfiguration`) | `5000` |
 | `A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS` | Max concurrent exports (`PerRequestSpanProcessorConfiguration`) | `20` |
+| `A365_PER_REQUEST_FLUSH_GRACE_MS` | Grace period to wait for child spans after root span ends (`PerRequestSpanProcessorConfiguration`) | `250` |
+| `A365_PER_REQUEST_MAX_TRACE_AGE_MS` | Maximum age for a trace before forcing flush (`PerRequestSpanProcessorConfiguration`) | `1800000` (30 minutes) |
