@@ -15,7 +15,7 @@ import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
 import { trace } from '@opentelemetry/api';
 import { ClusterCategory, IConfigurationProvider } from '@microsoft/agents-a365-runtime';
 import logger, { setLogger, DefaultLogger, type ILogger } from './utils/logging';
-import { ObservabilityConfiguration } from './configuration';
+import type { ObservabilityConfiguration } from './configuration';
 /**
  * Configuration options for Agent 365 Observability Builder
  */
