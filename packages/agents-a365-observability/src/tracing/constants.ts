@@ -9,6 +9,7 @@ export class OpenTelemetryConstants {
   // Span operation names
   public static readonly INVOKE_AGENT_OPERATION_NAME = 'invoke_agent';
   public static readonly EXECUTE_TOOL_OPERATION_NAME = 'execute_tool';
+  public static readonly OUTPUT_MESSAGES_OPERATION_NAME = 'output_messages';
   public static readonly CHAT_OPERATION_NAME = 'chat';
 
   // OpenTelemetry semantic conventions
