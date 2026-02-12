@@ -152,10 +152,7 @@ export class ObservabilityBuilder {
     if (this.options.tokenResolver) {
       opts.tokenResolver = this.options.tokenResolver;
     }
-    if (this.options.configProvider) {
-      opts.configProvider = this.options.configProvider;
-    }
-    return new BatchSpanProcessor(new Agent365Exporter(opts), {
+    return new BatchSpanProcessor(new Agent365Exporter(opts, this.options.configProvider), {
       maxQueueSize: opts.maxQueueSize,
       scheduledDelayMillis: opts.scheduledDelayMilliseconds,
       exportTimeoutMillis: opts.exporterTimeoutMilliseconds,
@@ -174,13 +171,10 @@ export class ObservabilityBuilder {
       Object.assign(opts, this.options.exporterOptions);
     }
     opts.clusterCategory = this.options.clusterCategory || opts.clusterCategory || ClusterCategory.prod;
-    if (this.options.configProvider) {
-      opts.configProvider = this.options.configProvider;
-    }
     
     // For per-request export, token is retrieved from OTel Context by Agent365Exporter
     // using getExportToken(), so no tokenResolver is needed here
-    return new PerRequestSpanProcessor(new Agent365Exporter(opts));
+    return new PerRequestSpanProcessor(new Agent365Exporter(opts, this.options.configProvider));
   }
 
   private createExportProcessor(): BatchSpanProcessor | PerRequestSpanProcessor {

@@ -3,8 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------------------------
 
-import { ClusterCategory, IConfigurationProvider } from '@microsoft/agents-a365-runtime';
-import type { ObservabilityConfiguration } from '../../configuration';
+import { ClusterCategory } from '@microsoft/agents-a365-runtime';
 
 /**
  * A function that resolves and returns an authentication token for the given agent and tenant.
@@ -49,11 +48,4 @@ export class Agent365ExporterOptions {
 
   /** Maximum number of spans per export batch. */
   public maxExportBatchSize: number = 512;
-
-  /**
-   * Optional configuration provider for ObservabilityConfiguration.
-   * When provided, this is used by the exporter for configuration lookups
-   * instead of the default provider that reads from environment variables.
-   */
-  public configProvider?: IConfigurationProvider<ObservabilityConfiguration>;
 }

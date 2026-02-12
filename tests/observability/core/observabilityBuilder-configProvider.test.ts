@@ -6,10 +6,13 @@ import { ObservabilityManager } from '@microsoft/agents-a365-observability/src/O
 import { ObservabilityConfiguration } from '@microsoft/agents-a365-observability/src/configuration/ObservabilityConfiguration';
 import { DefaultConfigurationProvider } from '@microsoft/agents-a365-runtime';
 
-// Capture Agent365Exporter constructor options without performing network calls.
+// Capture Agent365Exporter constructor args without performing network calls.
 jest.mock('@microsoft/agents-a365-observability/src/tracing/exporter/Agent365Exporter', () => ({
   Agent365Exporter: class {
-    constructor(opts: any) { (global as any).__capturedOpts = opts; }
+    constructor(opts: any, configProvider?: any) {
+      (global as any).__capturedOpts = opts;
+      (global as any).__capturedConfigProvider = configProvider;
+    }
     export() {/* no-op */}
     shutdown() {/* no-op */}
     forceFlush() {/* no-op */}
@@ -30,11 +33,13 @@ const makeProvider = (exporterEnabled?: boolean) =>
   }));
 
 const capturedOpts = () => (global as any).__capturedOpts as any | undefined;
+const capturedConfigProvider = () => (global as any).__capturedConfigProvider as any | undefined;
 
 describe('ObservabilityBuilder configProvider', () => {
   beforeEach(() => {
     delete process.env.ENABLE_A365_OBSERVABILITY_EXPORTER;
     delete (global as any).__capturedOpts;
+    delete (global as any).__capturedConfigProvider;
     capturedLogger = null;
     jest.spyOn(console, 'log').mockImplementation(() => {});
     jest.spyOn(console, 'warn').mockImplementation(() => {});
@@ -44,6 +49,10 @@ describe('ObservabilityBuilder configProvider', () => {
   afterEach(async () => {
     delete process.env.ENABLE_A365_OBSERVABILITY_EXPORTER;
     await ObservabilityManager.shutdown();
+    const actualLogging = jest.requireActual('@microsoft/agents-a365-observability/src/utils/logging') as any;
+    if (typeof actualLogging.resetLogger === 'function') {
+      actualLogging.resetLogger();
+    }
     jest.restoreAllMocks();
   });
 
@@ -61,7 +70,8 @@ describe('ObservabilityBuilder configProvider', () => {
       .build();
 
     expect(capturedOpts()).toBeDefined();
-    expect(capturedOpts().configProvider).toBe(provider);
+    expect(capturedConfigProvider()).toBe(provider);
+    expect(capturedOpts().configProvider).toBeUndefined();
     expect(capturedOpts().maxQueueSize).toBe(42);
     expect(capturedOpts().tokenResolver('a', 'b')).toBe('tok');
   });
@@ -90,12 +100,12 @@ describe('ObservabilityBuilder configProvider', () => {
     process.env.ENABLE_A365_OBSERVABILITY_EXPORTER = 'true';
     new ObservabilityBuilder().withTokenResolver(() => 't').build();
     expect(capturedOpts()).toBeDefined();
-    expect(capturedOpts().configProvider).toBeUndefined();
+    expect(capturedConfigProvider()).toBeUndefined();
   });
 
   it('ObservabilityManager.start() passes configProvider through to exporter', () => {
     const provider = makeProvider(true);
     ObservabilityManager.start({ serviceName: 'svc', tokenResolver: () => 't', configProvider: provider });
-    expect(capturedOpts()?.configProvider).toBe(provider);
+    expect(capturedConfigProvider()).toBe(provider);
   });
 });
