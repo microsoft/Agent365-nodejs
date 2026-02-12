@@ -249,17 +249,18 @@ describe('PerRequestSpanProcessor', () => {
     });
 
     it('should export with refreshed token when updateExportToken is called before root span ends', async () => {
-      // Enable ALS context manager so runWithExportToken context propagates to onStart/flushTrace
       const contextManager = new AsyncLocalStorageContextManager();
       contextManager.enable();
       context.setGlobalContextManager(contextManager);
 
       try {
-        // Track the token that was active during export
-        let tokenAtExportTime: string | undefined;
+        let authorizationHeader: string | undefined;
         const tokenCapturingExporter: SpanExporter = {
           export: (spans: ReadableSpan[], resultCallback: (result: ExportResult) => void) => {
-            tokenAtExportTime = getExportToken();
+            const token = getExportToken() ?? null;
+            if (token) {
+              authorizationHeader = `Bearer ${token}`;
+            }
             exportedSpans.push([...spans]);
             resultCallback({ code: ExportResultCode.SUCCESS });
           },
@@ -272,22 +273,20 @@ describe('PerRequestSpanProcessor', () => {
           runWithExportToken('initial-token', () => {
             const rootSpan = tracer.startSpan('long-running-root');
             const child = tracer.startSpan('child-work');
-
-            // Child ends first (no flush yet — root still open)
             child.end();
-
-            // Refresh token before ending root (simulates re-acquiring token after long work)
             updateExportToken('refreshed-token');
 
-            // Root ends → trace_completed → single flush with refreshed token
+            // Root ends → triggers flushTrace which restores rootCtx and calls exporter
             rootSpan.end();
 
             setTimeout(() => resolve(), 100);
           });
         });
 
+        // Verify the exporter built the auth header with the refreshed token,
+        // proving the mutable TokenHolder was visible through the restored rootCtx
         expect(exportedSpans.length).toBeGreaterThanOrEqual(1);
-        expect(tokenAtExportTime).toBe('refreshed-token');
+        expect(authorizationHeader).toBe('Bearer refreshed-token');
       } finally {
         contextManager.disable();
         context.disable();
