@@ -4,10 +4,11 @@
 
 import { BasicTracerProvider } from '@opentelemetry/sdk-trace-base';
 import { PerRequestSpanProcessor } from '@microsoft/agents-a365-observability/src/tracing/PerRequestSpanProcessor';
-import { runWithExportToken } from '@microsoft/agents-a365-observability/src/tracing/context/token-context';
+import { runWithExportToken, updateExportToken, getExportToken } from '@microsoft/agents-a365-observability/src/tracing/context/token-context';
 import type { SpanExporter, ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import { ExportResult, ExportResultCode } from '@opentelemetry/core';
 import { context, trace } from '@opentelemetry/api';
+import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
 
 describe('PerRequestSpanProcessor', () => {
   let provider: BasicTracerProvider;
@@ -245,6 +246,52 @@ describe('PerRequestSpanProcessor', () => {
 
       expect(exportedSpans.length).toBeGreaterThan(0);
       expect(exportedSpans[0][0].name).toBe('root-span');
+    });
+
+    it('should export with refreshed token when updateExportToken is called before root span ends', async () => {
+      // Enable ALS context manager so runWithExportToken context propagates to onStart/flushTrace
+      const contextManager = new AsyncLocalStorageContextManager();
+      contextManager.enable();
+      context.setGlobalContextManager(contextManager);
+
+      try {
+        // Track the token that was active during export
+        let tokenAtExportTime: string | undefined;
+        const tokenCapturingExporter: SpanExporter = {
+          export: (spans: ReadableSpan[], resultCallback: (result: ExportResult) => void) => {
+            tokenAtExportTime = getExportToken();
+            exportedSpans.push([...spans]);
+            resultCallback({ code: ExportResultCode.SUCCESS });
+          },
+          shutdown: async () => {}
+        };
+        await recreateProvider(new PerRequestSpanProcessor(tokenCapturingExporter));
+        const tracer = provider.getTracer('test');
+
+        await new Promise<void>((resolve) => {
+          runWithExportToken('initial-token', () => {
+            const rootSpan = tracer.startSpan('long-running-root');
+            const child = tracer.startSpan('child-work');
+
+            // Child ends first (no flush yet — root still open)
+            child.end();
+
+            // Refresh token before ending root (simulates re-acquiring token after long work)
+            updateExportToken('refreshed-token');
+
+            // Root ends → trace_completed → single flush with refreshed token
+            rootSpan.end();
+
+            setTimeout(() => resolve(), 100);
+          });
+        });
+
+        expect(exportedSpans.length).toBeGreaterThanOrEqual(1);
+        expect(tokenAtExportTime).toBe('refreshed-token');
+      } finally {
+        contextManager.disable();
+        context.disable();
+      }
     });
 
     it('should collect multiple spans from a single trace', async () => {
