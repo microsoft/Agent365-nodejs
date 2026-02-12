@@ -14,7 +14,7 @@ export { ExporterEventNames } from './tracing/exporter/ExporterEventNames';
 export { BaggageBuilder, BaggageScope } from './tracing/middleware/BaggageBuilder';
 
 // Per-request export utilities
-export { runWithExportToken, getExportToken } from './tracing/context/token-context';
+export { runWithExportToken, updateExportToken, getExportToken } from './tracing/context/token-context';
 
 // Parent span context utilities
 export { ParentSpanRef, runWithParentSpanRef, createContextWithParentSpanRef } from './tracing/context/parent-span-context';
