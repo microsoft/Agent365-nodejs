@@ -4,7 +4,8 @@
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { SpanKind, SpanStatusCode } from '@opentelemetry/api';
 import { ReadableSpan } from '@opentelemetry/sdk-trace-base';
-import { ClusterCategory } from '@microsoft/agents-a365-runtime';
+import { ClusterCategory, DefaultConfigurationProvider } from '@microsoft/agents-a365-runtime';
+import { ObservabilityConfiguration } from '@microsoft/agents-a365-observability/src/configuration/ObservabilityConfiguration';
 
 describe('exporter/utils', () => {
   const originalEnv = process.env;
@@ -209,6 +210,31 @@ describe('exporter/utils', () => {
       const { isAgent365ExporterEnabled } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
       expect(isAgent365ExporterEnabled()).toBe(false);
     });
+
+    it('should use configProvider override when provided (enabled)', async () => {
+      delete process.env.ENABLE_A365_OBSERVABILITY_EXPORTER;
+      const provider = new DefaultConfigurationProvider(() => new ObservabilityConfiguration({
+        isObservabilityExporterEnabled: () => true,
+      }));
+      const { isAgent365ExporterEnabled } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
+      expect(isAgent365ExporterEnabled(provider)).toBe(true);
+    });
+
+    it('should use configProvider override when provided (disabled)', async () => {
+      process.env.ENABLE_A365_OBSERVABILITY_EXPORTER = 'true';
+      const provider = new DefaultConfigurationProvider(() => new ObservabilityConfiguration({
+        isObservabilityExporterEnabled: () => false,
+      }));
+      const { isAgent365ExporterEnabled } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
+      expect(isAgent365ExporterEnabled(provider)).toBe(false);
+    });
+
+    it('should return false when no env var is set and configProvider has no override', async () => {
+      delete process.env.ENABLE_A365_OBSERVABILITY_EXPORTER;
+      const provider = new DefaultConfigurationProvider(() => new ObservabilityConfiguration());
+      const { isAgent365ExporterEnabled } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
+      expect(isAgent365ExporterEnabled(provider)).toBe(false);
+    });
   });
 
   describe('isPerRequestExportEnabled', () => {
@@ -268,6 +294,31 @@ describe('exporter/utils', () => {
       delete process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN;
       const { useCustomDomainForObservability } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
       expect(useCustomDomainForObservability()).toBe(false);
+    });
+
+    it('should use configProvider override when provided (enabled)', async () => {
+      delete process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN;
+      const provider = new DefaultConfigurationProvider(() => new ObservabilityConfiguration({
+        useCustomDomainForObservability: () => true,
+      }));
+      const { useCustomDomainForObservability } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
+      expect(useCustomDomainForObservability(provider)).toBe(true);
+    });
+
+    it('should use configProvider override when provided (disabled)', async () => {
+      process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN = 'true';
+      const provider = new DefaultConfigurationProvider(() => new ObservabilityConfiguration({
+        useCustomDomainForObservability: () => false,
+      }));
+      const { useCustomDomainForObservability } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
+      expect(useCustomDomainForObservability(provider)).toBe(false);
+    });
+
+    it('should return false when no env var is set and configProvider has no override', async () => {
+      delete process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN;
+      const provider = new DefaultConfigurationProvider(() => new ObservabilityConfiguration());
+      const { useCustomDomainForObservability } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
+      expect(useCustomDomainForObservability(provider)).toBe(false);
     });
   });
 
@@ -338,6 +389,31 @@ describe('exporter/utils', () => {
       process.env.A365_OBSERVABILITY_DOMAIN_OVERRIDE = '   ';
       const { getAgent365ObservabilityDomainOverride } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
       expect(getAgent365ObservabilityDomainOverride()).toBeNull();
+    });
+
+    it('should use configProvider override when provided', async () => {
+      delete process.env.A365_OBSERVABILITY_DOMAIN_OVERRIDE;
+      const provider = new DefaultConfigurationProvider(() => new ObservabilityConfiguration({
+        observabilityDomainOverride: () => 'https://override.example.com',
+      }));
+      const { getAgent365ObservabilityDomainOverride } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
+      expect(getAgent365ObservabilityDomainOverride(provider)).toBe('https://override.example.com');
+    });
+
+    it('should use configProvider override even when env var is set', async () => {
+      process.env.A365_OBSERVABILITY_DOMAIN_OVERRIDE = 'https://env.example.com';
+      const provider = new DefaultConfigurationProvider(() => new ObservabilityConfiguration({
+        observabilityDomainOverride: () => 'https://provider-wins.example.com',
+      }));
+      const { getAgent365ObservabilityDomainOverride } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
+      expect(getAgent365ObservabilityDomainOverride(provider)).toBe('https://provider-wins.example.com');
+    });
+
+    it('should return null when no env var is set and configProvider has no override', async () => {
+      delete process.env.A365_OBSERVABILITY_DOMAIN_OVERRIDE;
+      const provider = new DefaultConfigurationProvider(() => new ObservabilityConfiguration());
+      const { getAgent365ObservabilityDomainOverride } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
+      expect(getAgent365ObservabilityDomainOverride(provider)).toBeNull();
     });
   });
 
