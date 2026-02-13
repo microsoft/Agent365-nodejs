@@ -6,7 +6,8 @@
 import { ExportResult, ExportResultCode } from '@opentelemetry/core';
 import { ReadableSpan, SpanExporter } from '@opentelemetry/sdk-trace-base';
 
-import { PowerPlatformApiDiscovery, ClusterCategory } from '@microsoft/agents-a365-runtime';
+import { PowerPlatformApiDiscovery, ClusterCategory, IConfigurationProvider } from '@microsoft/agents-a365-runtime';
+import type { ObservabilityConfiguration } from '../../configuration';
 import {
   partitionByIdentity,
   parseIdentityKey,
@@ -88,12 +89,15 @@ interface OTLPStatus {
 export class Agent365Exporter implements SpanExporter {
   private closed = false;
   private readonly options: Agent365ExporterOptions;
+  private readonly configProvider?: IConfigurationProvider<ObservabilityConfiguration>;
 
   /**
    * Initialize exporter with a fully constructed options instance.
-   * If tokenResolver is missing, installs cache-backed resolver.
+   * @param options Exporter options controlling batching, timeouts, token acquisition and endpoint shape.
+   * @param configProvider Optional configuration provider. When supplied, the exporter uses it for
+   *        configuration lookups (custom domain, domain override) instead of the default env-based provider.
    */
-  constructor(options: Agent365ExporterOptions) {
+  constructor(options: Agent365ExporterOptions, configProvider?: IConfigurationProvider<ObservabilityConfiguration>) {
     if (!options) {
       throw new Error('Agent365ExporterOptions must be provided (was null/undefined)');
     }
@@ -102,6 +106,7 @@ export class Agent365Exporter implements SpanExporter {
       throw new Error('Agent365Exporter tokenResolver must be provided for batch export');
     }
     this.options = options;
+    this.configProvider = configProvider;
   }
 
   /**
@@ -165,7 +170,7 @@ export class Agent365Exporter implements SpanExporter {
 
     const payload = this.buildExportRequest(spans);
     const body = JSON.stringify(payload);
-    const usingCustomServiceEndpoint = useCustomDomainForObservability();
+    const usingCustomServiceEndpoint = useCustomDomainForObservability(this.configProvider);
     // Select endpoint path based on S2S flag
     const endpointRelativePath =
       this.options.useS2SEndpoint
@@ -173,7 +178,7 @@ export class Agent365Exporter implements SpanExporter {
         : `/maven/agent365/agents/${agentId}/traces`;
 
     let url: string;
-    const domainOverride = getAgent365ObservabilityDomainOverride();
+    const domainOverride = getAgent365ObservabilityDomainOverride(this.configProvider);
     if (domainOverride) {
       url = `${domainOverride}${endpointRelativePath}?api-version=1`;
     } else if (usingCustomServiceEndpoint) {
@@ -220,7 +225,7 @@ export class Agent365Exporter implements SpanExporter {
     }
     else {
       const skipReason = tokenNotResolvedReason || 'Token not resolved for export request';
-      logger.event(`${ExporterEventNames.EXPORT_GROUP}-${tenantId}-${agentId}`, false, 0, `skip exporting: ${skipReason}`);
+      logger.event(ExporterEventNames.EXPORT_GROUP, false, 0, `skip exporting: ${skipReason}`, { tenantId, agentId });
       return;
     }
 
@@ -233,10 +238,10 @@ export class Agent365Exporter implements SpanExporter {
     const { ok, correlationId } = await this.postWithRetries(url, body, headers);
     const duration = Date.now() - startTime;
     if (!ok) {
-      logger.event(`${ExporterEventNames.EXPORT_GROUP}-${tenantId}-${agentId}`, false, duration, undefined, correlationId);
+      logger.event(ExporterEventNames.EXPORT_GROUP, false, duration, undefined, { tenantId, agentId, correlationId });
       throw new Error('Failed to export spans');
     }
-    logger.event(`${ExporterEventNames.EXPORT_GROUP}-${tenantId}-${agentId}`, true, duration, 'Spans exported successfully', correlationId);
+    logger.event(ExporterEventNames.EXPORT_GROUP, true, duration, 'Spans exported successfully', { tenantId, agentId, correlationId });
   }
 
   /**

@@ -4,12 +4,13 @@
 
 import { BasicTracerProvider } from '@opentelemetry/sdk-trace-base';
 import { PerRequestSpanProcessor } from '@microsoft/agents-a365-observability/src/tracing/PerRequestSpanProcessor';
-import { runWithExportToken } from '@microsoft/agents-a365-observability/src/tracing/context/token-context';
+import { runWithExportToken, updateExportToken, getExportToken } from '@microsoft/agents-a365-observability/src/tracing/context/token-context';
 import type { SpanExporter, ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import { ExportResult, ExportResultCode } from '@opentelemetry/core';
 import { context, trace } from '@opentelemetry/api';
 import { DefaultConfigurationProvider } from '@microsoft/agents-a365-runtime';
 import { PerRequestSpanProcessorConfiguration } from '@microsoft/agents-a365-observability/src/configuration/PerRequestSpanProcessorConfiguration';
+import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
 
 describe('PerRequestSpanProcessor', () => {
   let provider: BasicTracerProvider;
@@ -247,6 +248,51 @@ describe('PerRequestSpanProcessor', () => {
 
       expect(exportedSpans.length).toBeGreaterThan(0);
       expect(exportedSpans[0][0].name).toBe('root-span');
+    });
+
+    it('should export with refreshed token when updateExportToken is called before root span ends', async () => {
+      const contextManager = new AsyncLocalStorageContextManager();
+      contextManager.enable();
+      context.setGlobalContextManager(contextManager);
+
+      try {
+        let authorizationHeader: string | undefined;
+        const tokenCapturingExporter: SpanExporter = {
+          export: (spans: ReadableSpan[], resultCallback: (result: ExportResult) => void) => {
+            const token = getExportToken() ?? null;
+            if (token) {
+              authorizationHeader = `Bearer ${token}`;
+            }
+            exportedSpans.push([...spans]);
+            resultCallback({ code: ExportResultCode.SUCCESS });
+          },
+          shutdown: async () => {}
+        };
+        await recreateProvider(new PerRequestSpanProcessor(tokenCapturingExporter));
+        const tracer = provider.getTracer('test');
+
+        await new Promise<void>((resolve) => {
+          runWithExportToken('initial-token', () => {
+            const rootSpan = tracer.startSpan('long-running-root');
+            const child = tracer.startSpan('child-work');
+            child.end();
+            updateExportToken('refreshed-token');
+
+            // Root ends → triggers flushTrace which restores rootCtx and calls exporter
+            rootSpan.end();
+
+            setTimeout(() => resolve(), 100);
+          });
+        });
+
+        // Verify the exporter built the auth header with the refreshed token,
+        // proving the mutable TokenHolder was visible through the restored rootCtx
+        expect(exportedSpans.length).toBeGreaterThanOrEqual(1);
+        expect(authorizationHeader).toBe('Bearer refreshed-token');
+      } finally {
+        contextManager.disable();
+        context.disable();
+      }
     });
 
     it('should collect multiple spans from a single trace', async () => {
