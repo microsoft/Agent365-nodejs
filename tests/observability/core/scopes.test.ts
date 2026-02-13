@@ -387,14 +387,24 @@ describe('Scopes', () => {
 
   describe('Custom start and end time', () => {
     let exporter: InMemorySpanExporter;
-    let provider: BasicTracerProvider;
+    let provider: BasicTracerProvider | undefined;
 
     beforeAll(() => {
       exporter = new InMemorySpanExporter();
-      provider = new BasicTracerProvider({
-        spanProcessors: [new SimpleSpanProcessor(exporter)],
-      });
-      trace.setGlobalTracerProvider(provider);
+      const processor = new SimpleSpanProcessor(exporter);
+
+      // OTel API only allows setting the global tracer provider once per process.
+      // Reuse the existing provider when possible so other test files are not affected.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const globalProvider: any = trace.getTracerProvider();
+      if (globalProvider && typeof globalProvider.addSpanProcessor === 'function') {
+        globalProvider.addSpanProcessor(processor);
+      } else {
+        provider = new BasicTracerProvider({
+          spanProcessors: [processor],
+        });
+        trace.setGlobalTracerProvider(provider);
+      }
     });
 
     afterEach(() => {
@@ -402,8 +412,8 @@ describe('Scopes', () => {
     });
 
     afterAll(async () => {
-      await provider.shutdown();
-      trace.disable();
+      exporter.reset();
+      await provider?.shutdown?.();
     });
 
     /** Extract the last finished span from the in-memory exporter. */

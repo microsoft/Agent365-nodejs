@@ -1,6 +1,5 @@
-// ------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// ------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 
 import { trace, SpanKind, Span, SpanStatusCode, Attributes, context, AttributeValue, SpanContext, TimeInput } from '@opentelemetry/api';
 import { OpenTelemetryConstants } from '../constants';
@@ -237,7 +236,8 @@ export abstract class OpenTelemetryScope implements Disposable {
     const endMs = this.customEndTime !== undefined
       ? OpenTelemetryScope.timeInputToMs(this.customEndTime)
       : Date.now();
-    const duration = (endMs - startMs) / 1000;
+    const durationMs = Math.max(0, endMs - startMs);
+    const duration = durationMs / 1000;
 
     const finalTags:Attributes = {};
     if (this.errorType) {
