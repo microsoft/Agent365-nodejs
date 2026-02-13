@@ -14,6 +14,7 @@ import {
   PerRequestSpanProcessorConfiguration,
   defaultPerRequestSpanProcessorConfigurationProvider
 } from '../../configuration';
+import { getPerRequestProcessorInternalOverrides } from '../../internal/PerRequestProcessorInternalOverrides';
 
 /**
  * Convert trace ID to hex string format
@@ -133,7 +134,8 @@ export function isAgent365ExporterEnabled(
 }
 
 /**
- * Check if per-request export is enabled via environment variable.
+ * Check if per-request export is enabled.
+ * Precedence: internal overrides > configuration provider > environment variable.
  * When enabled, the PerRequestSpanProcessor is used instead of BatchSpanProcessor.
  * The token is passed via OTel Context (async local storage) at export time.
  * @param configProvider Optional configuration provider. Defaults to defaultPerRequestSpanProcessorConfigurationProvider if not specified.
@@ -141,6 +143,13 @@ export function isAgent365ExporterEnabled(
 export function isPerRequestExportEnabled(
   configProvider?: IConfigurationProvider<PerRequestSpanProcessorConfiguration>
 ): boolean {
+  const overrides = getPerRequestProcessorInternalOverrides();
+  const overrideValue = overrides?.isPerRequestExportEnabled?.();
+  if (typeof overrideValue === 'boolean') {
+    logger.info(`[Agent365Exporter] Per-request export enabled (internal override): ${overrideValue}`);
+    return overrideValue;
+  }
+
   const provider = configProvider ?? defaultPerRequestSpanProcessorConfigurationProvider;
   const enabled = provider.getConfiguration().isPerRequestExportEnabled;
   logger.info(`[Agent365Exporter] Per-request export enabled: ${enabled}`);
