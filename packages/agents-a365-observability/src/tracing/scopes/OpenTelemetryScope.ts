@@ -196,21 +196,6 @@ export abstract class OpenTelemetryScope implements Disposable {
   }
 
   /**
-   * Sets a custom start time for the scope.
-   * This allows for manual control of the scope start time and is used for duration calculation.
-   * Can be used in addition to or instead of setting start time via the constructor.
-   *
-   * **Note:** In OpenTelemetry JS the span start time is immutable after creation.
-   * For accurate span start timestamps, pass `startTime` via the constructor / factory method.
-   * This method only affects the duration metric calculation.
-   *
-   * @param startTime The start time as milliseconds since epoch, a Date, or an HrTime tuple.
-   */
-  public setStartTime(startTime: TimeInput): void {
-    this.customStartTime = startTime;
-  }
-
-  /**
    * Sets a custom end time for the scope.
    * When set, {@link dispose} will pass this value to `span.end()` instead of using the current wall-clock time.
    * This is useful when the actual end time of the operation is known before the scope is disposed.

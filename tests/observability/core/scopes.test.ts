@@ -461,18 +461,6 @@ describe('Scopes', () => {
       expect(span.attributes['operation.duration']).toBeCloseTo(8.0, 1);
     });
 
-    it('setStartTime should affect duration calculation (matching .NET SetStartTime pattern)', () => {
-      const customStart = Date.now() - 5000; // 5 seconds ago
-
-      const scope = ExecuteToolScope.start({ toolName: 'my-tool' }, testAgentDetails, testTenantDetails);
-      scope.setStartTime(customStart);
-      scope.dispose();
-
-      const durationAttr = getFinishedSpan().attributes['operation.duration'] as number;
-      expect(durationAttr).toBeGreaterThanOrEqual(4.9);
-      expect(durationAttr).toBeLessThanOrEqual(6);
-    });
-
     it('should use wall-clock time when no custom times are provided', () => {
       const before = Date.now();
       const scope = ExecuteToolScope.start({ toolName: 'my-tool' }, testAgentDetails, testTenantDetails);
