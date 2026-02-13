@@ -40,10 +40,6 @@ export class PerRequestSpanProcessorConfiguration extends RuntimeConfiguration {
     super(overrides);
   }
 
-  // Inherited: clusterCategory, isDevelopmentEnvironment, isNodeEnvDevelopment,
-  // observabilityAuthenticationScopes, isObservabilityExporterEnabled,
-  // useCustomDomainForObservability, observabilityDomainOverride, observabilityLogLevel
-
   get isPerRequestExportEnabled(): boolean {
     const result = this.perRequestOverrides.isPerRequestExportEnabled?.();
     if (result !== undefined) return result;
