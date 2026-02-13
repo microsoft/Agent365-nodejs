@@ -27,16 +27,12 @@ export class PerRequestSpanProcessorConfiguration extends RuntimeConfiguration {
     const instanceOverrides = this.overrides as PerRequestSpanProcessorConfigurationOptions | undefined;
     return {
       ...(instanceOverrides ?? {}),
-      // Only pick per-request fields from internal overrides; runtime fields
-      // (clusterCategory, isNodeEnvDevelopment, etc.) are left to RuntimeConfiguration.
-      ...(internal && {
-        isPerRequestExportEnabled: internal.isPerRequestExportEnabled,
-        perRequestMaxTraces: internal.perRequestMaxTraces,
-        perRequestMaxSpansPerTrace: internal.perRequestMaxSpansPerTrace,
-        perRequestMaxConcurrentExports: internal.perRequestMaxConcurrentExports,
-        perRequestFlushGraceMs: internal.perRequestFlushGraceMs,
-        perRequestMaxTraceAgeMs: internal.perRequestMaxTraceAgeMs,
-      }),
+      ...(internal?.isPerRequestExportEnabled !== undefined && { isPerRequestExportEnabled: internal.isPerRequestExportEnabled }),
+      ...(internal?.perRequestMaxTraces !== undefined && { perRequestMaxTraces: internal.perRequestMaxTraces }),
+      ...(internal?.perRequestMaxSpansPerTrace !== undefined && { perRequestMaxSpansPerTrace: internal.perRequestMaxSpansPerTrace }),
+      ...(internal?.perRequestMaxConcurrentExports !== undefined && { perRequestMaxConcurrentExports: internal.perRequestMaxConcurrentExports }),
+      ...(internal?.perRequestFlushGraceMs !== undefined && { perRequestFlushGraceMs: internal.perRequestFlushGraceMs }),
+      ...(internal?.perRequestMaxTraceAgeMs !== undefined && { perRequestMaxTraceAgeMs: internal.perRequestMaxTraceAgeMs }),
     };
   }
 
