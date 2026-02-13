@@ -37,6 +37,8 @@ function makeTurnContext(
     agenticAppId: 'agent-1',
     name: 'Agent One',
     aadObjectId: 'agent-oid',
+    agenticAppBlueprintId: 'agent-blueprint-1',
+    agenticUserId: 'agent-upn@contoso.com',
     role: 'assistant',
     tenantId: 'tenant-123'
   };
@@ -67,6 +69,8 @@ describe('ScopeUtils.populateFromTurnContext', () => {
         [OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY, 'Agent One'],
         [OpenTelemetryConstants.GEN_AI_AGENT_AUID_KEY, 'agent-oid'],
         [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY, 'agent-1'],
+        [OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY, 'agent-blueprint-1'],
+        [OpenTelemetryConstants.GEN_AI_AGENT_UPN_KEY, 'agent-upn@contoso.com'],
         [OpenTelemetryConstants.GEN_AI_AGENT_DESCRIPTION_KEY, 'assistant'],
         [OpenTelemetryConstants.TENANT_ID_KEY, 'tenant-123'],
         [OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, 'input text']
@@ -182,11 +186,13 @@ test('deriveTenantDetails returns undefined when only from.tenantId is present',
 });
 
 test('deriveAgentDetails maps recipient fields to AgentDetails', () => {
-  const ctx = makeCtx({ activity: { recipient: { agenticAppId: 'aid', name: 'A', aadObjectId: 'auid', role: 'bot', tenantId: 't1' } } as any });
+  const ctx = makeCtx({ activity: { recipient: { agenticAppId: 'aid', name: 'A', aadObjectId: 'auid', agenticAppBlueprintId: 'bp1', agenticUserId: 'upn1', role: 'bot', tenantId: 't1' } } as any });
   expect(ScopeUtils.deriveAgentDetails(ctx)).toEqual({
     agentId: 'aid',
     agentName: 'A',
     agentAUID: 'auid',
+    agentBlueprintId: 'bp1',
+    agentUPN: 'upn1',
     agentDescription: 'bot',
     tenantId: 't1',
   });
@@ -198,11 +204,12 @@ test('deriveAgentDetails returns undefined without recipient', () => {
 });
 
 test('deriveCallerAgent maps from fields to caller AgentDetails', () => {
-  const ctx = makeCtx({ activity: { from: { agenticAppBlueprintId: 'bp', name: 'Caller', aadObjectId: 'uid', role: 'agent', tenantId: 't2', agenticAppId: 'agent-caller' } } as any });
+  const ctx = makeCtx({ activity: { from: { agenticAppBlueprintId: 'bp', name: 'Caller', aadObjectId: 'uid', agenticUserId: 'caller-upn', role: 'agent', tenantId: 't2', agenticAppId: 'agent-caller' } } as any });
   expect(ScopeUtils.deriveCallerAgent(ctx)).toEqual({
     agentBlueprintId: 'bp',
     agentName: 'Caller',
     agentAUID: 'uid',
+    agentUPN: 'caller-upn',
     agentDescription: 'agent',
     tenantId: 't2',
     agentId: 'agent-caller',
