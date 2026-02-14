@@ -191,7 +191,7 @@ export abstract class OpenTelemetryScope implements Disposable {
   private static timeInputToMs(t: TimeInput): number {
     if (typeof t === 'number') return t;
     if (t instanceof Date) return t.getTime();
-    if (Array.isArray(t)) return t[0] * 1000 + t[1] / 1_000_000;
+    if (Array.isArray(t) && t.length === 2) return t[0] * 1000 + t[1] / 1_000_000;
     return Date.now();
   }
 

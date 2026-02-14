@@ -461,6 +461,41 @@ describe('Scopes', () => {
       expect(span.attributes['operation.duration']).toBeCloseTo(8.0, 1);
     });
 
+    it('should support Date objects as start and end times', () => {
+      const customStart = new Date('2023-11-14T22:13:20.000Z');
+      const customEnd   = new Date('2023-11-14T22:13:25.000Z'); // 5 seconds later
+
+      const scope = ExecuteToolScope.start(
+        { toolName: 'my-tool' }, testAgentDetails, testTenantDetails,
+        undefined, undefined, undefined,
+        customStart, customEnd
+      );
+      scope.dispose();
+
+      const span = getFinishedSpan();
+      expect(hrtimeToMs(span.startTime as [number, number])).toBeCloseTo(customStart.getTime(), -1);
+      expect(hrtimeToMs(span.endTime as [number, number])).toBeCloseTo(customEnd.getTime(), -1);
+      expect(span.attributes['operation.duration']).toBeCloseTo(5.0, 1);
+    });
+
+    it('should support HrTime tuples as start and end times', () => {
+      // HrTime: [seconds, nanoseconds]
+      const customStart: [number, number] = [1700000000, 0];           // 2023-11-14T22:13:20Z
+      const customEnd: [number, number]   = [1700000005, 500000000];   // 5.5 seconds later
+
+      const scope = ExecuteToolScope.start(
+        { toolName: 'my-tool' }, testAgentDetails, testTenantDetails,
+        undefined, undefined, undefined,
+        customStart, customEnd
+      );
+      scope.dispose();
+
+      const span = getFinishedSpan();
+      expect(hrtimeToMs(span.startTime as [number, number])).toBeCloseTo(1700000000000, -1);
+      expect(hrtimeToMs(span.endTime as [number, number])).toBeCloseTo(1700000005500, -1);
+      expect(span.attributes['operation.duration']).toBeCloseTo(5.5, 1);
+    });
+
     it('should use wall-clock time when no custom times are provided', () => {
       const before = Date.now();
       const scope = ExecuteToolScope.start({ toolName: 'my-tool' }, testAgentDetails, testTenantDetails);
