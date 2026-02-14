@@ -192,6 +192,7 @@ export abstract class OpenTelemetryScope implements Disposable {
     if (typeof t === 'number') return t;
     if (t instanceof Date) return t.getTime();
     if (Array.isArray(t) && t.length === 2) return t[0] * 1000 + t[1] / 1_000_000;
+    logger.warn(`[A365Observability] timeInputToMs received unexpected TimeInput (type=${typeof t}, isArray=${Array.isArray(t)}); falling back to Date.now()`);
     return Date.now();
   }
 
