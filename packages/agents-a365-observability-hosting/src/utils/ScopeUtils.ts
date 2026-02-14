@@ -4,6 +4,7 @@
 // ------------------------------------------------------------------------------
 
 import { TurnContext } from '@microsoft/agents-hosting';
+import { TimeInput } from '@opentelemetry/api';
 import {
   InvokeAgentScope,
   InferenceScope,
@@ -130,11 +131,15 @@ export class ScopeUtils {
    * Also records input messages from the context if present.
    * @param details The inference call details (model, provider, tokens, etc.).
    * @param turnContext The current activity context to derive scope parameters from.
+   * @param startTime Optional explicit start time (ms epoch, Date, or HrTime).
+   * @param endTime Optional explicit end time (ms epoch, Date, or HrTime).
    * @returns A started `InferenceScope` enriched with context-derived parameters.
    */
   static populateInferenceScopeFromTurnContext(
     details: InferenceDetails,
-    turnContext: TurnContext
+    turnContext: TurnContext,
+    startTime?: TimeInput,
+    endTime?: TimeInput
   ): InferenceScope {
     const agent = ScopeUtils.deriveAgentDetails(turnContext);
     const tenant = ScopeUtils.deriveTenantDetails(turnContext);
@@ -148,7 +153,7 @@ export class ScopeUtils {
       throw new Error('populateInferenceScopeFromTurnContext: Missing tenant details on TurnContext (recipient)');
     }
 
-    const scope = InferenceScope.start(details, agent, tenant, conversationId, sourceMetadata);
+    const scope = InferenceScope.start(details, agent, tenant, conversationId, sourceMetadata, undefined, startTime, endTime);
     this.setInputMessageTags(scope, turnContext);
     return scope;
   }
@@ -160,11 +165,15 @@ export class ScopeUtils {
    * Also sets execution type and input messages from the context if present.
    * @param details The invoke-agent call details to be augmented and used for the scope.
    * @param turnContext The current activity context to derive scope parameters from.
+   * @param startTime Optional explicit start time (ms epoch, Date, or HrTime).
+   * @param endTime Optional explicit end time (ms epoch, Date, or HrTime).
    * @returns A started `InvokeAgentScope` enriched with context-derived parameters.
    */
   static populateInvokeAgentScopeFromTurnContext(
     details: InvokeAgentDetails,
-    turnContext: TurnContext
+    turnContext: TurnContext,
+    startTime?: TimeInput,
+    endTime?: TimeInput
   ): InvokeAgentScope {
     const tenant = ScopeUtils.deriveTenantDetails(turnContext);
     const callerAgent = ScopeUtils.deriveCallerAgent(turnContext);
@@ -175,7 +184,7 @@ export class ScopeUtils {
       throw new Error('populateInvokeAgentScopeFromTurnContext: Missing tenant details on TurnContext (recipient)');
     }
 
-    const scope = InvokeAgentScope.start(invokeAgentDetails, tenant, callerAgent, caller);
+    const scope = InvokeAgentScope.start(invokeAgentDetails, tenant, callerAgent, caller, undefined, startTime, endTime);
     this.setInputMessageTags(scope, turnContext);
     return scope;
   }
@@ -214,11 +223,16 @@ export class ScopeUtils {
    * Derives `agentDetails`, `tenantDetails`, `conversationId`, and `sourceMetadata` (channel name/link) from context.
    * @param details The tool call details (name, type, args, call id, etc.).
    * @param turnContext The current activity context to derive scope parameters from.
+   * @param startTime Optional explicit start time (ms epoch, Date, or HrTime). Useful when recording a
+   *        tool call after execution has already completed.
+   * @param endTime Optional explicit end time (ms epoch, Date, or HrTime).
    * @returns A started `ExecuteToolScope` enriched with context-derived parameters.
    */
   static populateExecuteToolScopeFromTurnContext(
     details: ToolCallDetails,
-    turnContext: TurnContext
+    turnContext: TurnContext,
+    startTime?: TimeInput,
+    endTime?: TimeInput
   ): ExecuteToolScope {
     const agent = ScopeUtils.deriveAgentDetails(turnContext);
     const tenant = ScopeUtils.deriveTenantDetails(turnContext);
@@ -230,7 +244,7 @@ export class ScopeUtils {
     if (!tenant) {
       throw new Error('populateExecuteToolScopeFromTurnContext: Missing tenant details on TurnContext (recipient)');
     }
-    const scope = ExecuteToolScope.start(details, agent, tenant, conversationId, sourceMetadata);
+    const scope = ExecuteToolScope.start(details, agent, tenant, conversationId, sourceMetadata, undefined, startTime, endTime);
     return scope;
   }
 }

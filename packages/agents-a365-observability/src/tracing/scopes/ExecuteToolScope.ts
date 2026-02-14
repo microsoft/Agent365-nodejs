@@ -1,8 +1,7 @@
-// ------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// ------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 
-import { SpanKind } from '@opentelemetry/api';
+import { SpanKind, TimeInput } from '@opentelemetry/api';
 import { OpenTelemetryScope } from './OpenTelemetryScope';
 import { ToolCallDetails, AgentDetails, TenantDetails, SourceMetadata } from '../contracts';
 import { ParentSpanRef } from '../context/parent-span-context';
@@ -20,6 +19,10 @@ export class ExecuteToolScope extends OpenTelemetryScope {
    * @param conversationId Optional conversation id to tag on the span (`gen_ai.conversation.id`).
    * @param sourceMetadata Optional source metadata; only `name` (channel name) and `description` (channel link/URL) are used for tagging.
    * @param parentSpanRef Optional explicit parent span reference for cross-async-boundary tracing.
+   * @param startTime Optional explicit start time (ms epoch, Date, or HrTime). Useful when recording a
+   *        tool call after execution has already completed.
+   * @param endTime Optional explicit end time (ms epoch, Date, or HrTime). When provided, the span will
+   *        use this timestamp when disposed instead of the current wall-clock time.
    * @returns A new ExecuteToolScope instance.
    */
   public static start(
@@ -28,9 +31,11 @@ export class ExecuteToolScope extends OpenTelemetryScope {
     tenantDetails: TenantDetails,
     conversationId?: string,
     sourceMetadata?: Pick<SourceMetadata, "name" | "description">,
-    parentSpanRef?: ParentSpanRef
+    parentSpanRef?: ParentSpanRef,
+    startTime?: TimeInput,
+    endTime?: TimeInput
   ): ExecuteToolScope {
-    return new ExecuteToolScope(details, agentDetails, tenantDetails, conversationId, sourceMetadata, parentSpanRef);
+    return new ExecuteToolScope(details, agentDetails, tenantDetails, conversationId, sourceMetadata, parentSpanRef, startTime, endTime);
   }
 
   private constructor(
@@ -39,7 +44,9 @@ export class ExecuteToolScope extends OpenTelemetryScope {
     tenantDetails: TenantDetails,
     conversationId?: string,
     sourceMetadata?: Pick<SourceMetadata, "name" | "description">,
-    parentSpanRef?: ParentSpanRef
+    parentSpanRef?: ParentSpanRef,
+    startTime?: TimeInput,
+    endTime?: TimeInput
   ) {
     super(
       SpanKind.INTERNAL,
@@ -47,7 +54,9 @@ export class ExecuteToolScope extends OpenTelemetryScope {
       `${OpenTelemetryConstants.EXECUTE_TOOL_OPERATION_NAME} ${details.toolName}`,
       agentDetails,
       tenantDetails,
-      parentSpanRef
+      parentSpanRef,
+      startTime,
+      endTime
     );
 
     // Destructure the details object to match C# pattern

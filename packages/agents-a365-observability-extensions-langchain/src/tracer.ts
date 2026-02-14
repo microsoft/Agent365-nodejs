@@ -59,9 +59,10 @@ export class LangChainTracer extends BaseTracer {
       spanName = `${operation} ${Utils.getModel(run) || run.name}`.trim();
     }
 
-    const startTime = Date.now();
+    const startTime = run.start_time ?? Date.now();
     const span = this.tracer.startSpan(spanName, {
       kind: SpanKind.INTERNAL,
+      startTime,
       attributes: { [OpenTelemetryConstants.GEN_AI_SYSTEM_KEY]: "langchain" },
     }, activeContext);
 
@@ -84,8 +85,8 @@ export class LangChainTracer extends BaseTracer {
       return;
     }
 
+    const { span } = entry;
     try {
-      const { span } = entry;
       entry.lastAccessTime = Date.now();
 
       if (run.error) {
@@ -108,8 +109,11 @@ export class LangChainTracer extends BaseTracer {
       Utils.setSessionIdAttribute(run, span);
       Utils.setTokenAttributes(run, span);
 
-      span.end();
+    } catch (error) {
+      logger.error(`[LangChainTracer] Error setting span attributes for run ${run.name}: ${error instanceof Error ? error.message : String(error)}`);
+      span.setStatus({ code: SpanStatusCode.ERROR });
     } finally {
+      span.end(run.end_time ?? undefined);
       delete this.runs[run.id];
       delete this.parentByRunId[run.id];
       await super._endTrace(run);
