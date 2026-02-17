@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeAll, afterAll, jest } from '@jest/globals';
+import { describe, it, expect, beforeAll, afterAll, afterEach, jest } from '@jest/globals';
+import { trace } from '@opentelemetry/api';
 
 import {
   ExecuteToolScope,
@@ -14,6 +15,7 @@ import {
   OpenTelemetryConstants,
   OpenTelemetryScope,
 } from '@microsoft/agents-a365-observability';
+import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor, ReadableSpan } from '@opentelemetry/sdk-trace-base';
 
 // Mock console to avoid cluttering test output
 const originalConsoleWarn = console.warn;
@@ -380,6 +382,132 @@ describe('Scopes', () => {
           scope?.dispose();
         }
       }).not.toThrow();
+    });
+  });
+
+  describe('Custom start and end time', () => {
+    let exporter: InMemorySpanExporter;
+    let provider: BasicTracerProvider | undefined;
+
+    beforeAll(() => {
+      exporter = new InMemorySpanExporter();
+      const processor = new SimpleSpanProcessor(exporter);
+
+      // OTel API only allows setting the global tracer provider once per process.
+      // Reuse the existing provider when possible so other test files are not affected.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const globalProvider: any = trace.getTracerProvider();
+      if (globalProvider && typeof globalProvider.addSpanProcessor === 'function') {
+        globalProvider.addSpanProcessor(processor);
+      } else {
+        provider = new BasicTracerProvider({
+          spanProcessors: [processor],
+        });
+        trace.setGlobalTracerProvider(provider);
+      }
+    });
+
+    afterEach(() => {
+      exporter.reset();
+    });
+
+    afterAll(async () => {
+      exporter.reset();
+      await provider?.shutdown?.();
+    });
+
+    /** Extract the last finished span from the in-memory exporter. */
+    const getFinishedSpan = (): ReadableSpan => {
+      const spans = exporter.getFinishedSpans();
+      expect(spans.length).toBeGreaterThanOrEqual(1);
+      return spans[spans.length - 1];
+    };
+
+    /** Convert an hrtime tuple to milliseconds. */
+    const hrtimeToMs = (hr: [number, number]): number => hr[0] * 1000 + hr[1] / 1_000_000;
+
+    it('should record constructor-provided start and end times on the span', () => {
+      const customStart = 1700000000000; // 2023-11-14T22:13:20Z
+      const customEnd   = 1700000005000; // 5 seconds later
+
+      const scope = ExecuteToolScope.start(
+        { toolName: 'my-tool' }, testAgentDetails, testTenantDetails,
+        undefined, undefined, undefined,
+        customStart, customEnd
+      );
+      scope.dispose();
+
+      const span = getFinishedSpan();
+      expect(hrtimeToMs(span.startTime as [number, number])).toBeCloseTo(customStart, -1);
+      expect(hrtimeToMs(span.endTime as [number, number])).toBeCloseTo(customEnd, -1);
+      expect(span.attributes['operation.duration']).toBeCloseTo(5.0, 1);
+    });
+
+    it('setEndTime should override end time when called before dispose', () => {
+      const customStart = 1700000040000;
+      const laterEnd    = 1700000048000; // 8 seconds later
+
+      const scope = ExecuteToolScope.start(
+        { toolName: 'my-tool' }, testAgentDetails, testTenantDetails,
+        undefined, undefined, undefined,
+        customStart
+      );
+      scope.setEndTime(laterEnd);
+      scope.dispose();
+
+      const span = getFinishedSpan();
+      expect(hrtimeToMs(span.startTime as [number, number])).toBeCloseTo(customStart, -1);
+      expect(hrtimeToMs(span.endTime as [number, number])).toBeCloseTo(laterEnd, -1);
+      expect(span.attributes['operation.duration']).toBeCloseTo(8.0, 1);
+    });
+
+    it('should support Date objects as start and end times', () => {
+      const customStart = new Date('2023-11-14T22:13:20.000Z');
+      const customEnd   = new Date('2023-11-14T22:13:25.000Z'); // 5 seconds later
+
+      const scope = ExecuteToolScope.start(
+        { toolName: 'my-tool' }, testAgentDetails, testTenantDetails,
+        undefined, undefined, undefined,
+        customStart, customEnd
+      );
+      scope.dispose();
+
+      const span = getFinishedSpan();
+      expect(hrtimeToMs(span.startTime as [number, number])).toBeCloseTo(customStart.getTime(), -1);
+      expect(hrtimeToMs(span.endTime as [number, number])).toBeCloseTo(customEnd.getTime(), -1);
+      expect(span.attributes['operation.duration']).toBeCloseTo(5.0, 1);
+    });
+
+    it('should support HrTime tuples as start and end times', () => {
+      // HrTime: [seconds, nanoseconds]
+      const customStart: [number, number] = [1700000000, 0];           // 2023-11-14T22:13:20Z
+      const customEnd: [number, number]   = [1700000005, 500000000];   // 5.5 seconds later
+
+      const scope = ExecuteToolScope.start(
+        { toolName: 'my-tool' }, testAgentDetails, testTenantDetails,
+        undefined, undefined, undefined,
+        customStart, customEnd
+      );
+      scope.dispose();
+
+      const span = getFinishedSpan();
+      expect(hrtimeToMs(span.startTime as [number, number])).toBeCloseTo(1700000000000, -1);
+      expect(hrtimeToMs(span.endTime as [number, number])).toBeCloseTo(1700000005500, -1);
+      expect(span.attributes['operation.duration']).toBeCloseTo(5.5, 1);
+    });
+
+    it('should use wall-clock time when no custom times are provided', () => {
+      const before = Date.now();
+      const scope = ExecuteToolScope.start({ toolName: 'my-tool' }, testAgentDetails, testTenantDetails);
+      scope.dispose();
+      const after = Date.now();
+
+      const span = getFinishedSpan();
+      const spanStartMs = hrtimeToMs(span.startTime as [number, number]);
+      const spanEndMs = hrtimeToMs(span.endTime as [number, number]);
+
+      expect(spanStartMs).toBeGreaterThanOrEqual(before - 1);
+      expect(spanEndMs).toBeLessThanOrEqual(after + 1);
     });
   });
 });

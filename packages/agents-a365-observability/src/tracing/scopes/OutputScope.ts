@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { SpanKind } from '@opentelemetry/api';
+import { SpanKind, TimeInput } from '@opentelemetry/api';
 import { OpenTelemetryScope } from './OpenTelemetryScope';
 import { AgentDetails, TenantDetails, OutputResponse } from '../contracts';
 import { ParentSpanRef } from '../context/parent-span-context';
@@ -19,22 +19,28 @@ export class OutputScope extends OpenTelemetryScope {
    * @param agentDetails The details of the agent producing the output.
    * @param tenantDetails The tenant details.
    * @param parentSpanRef Optional explicit parent span reference for cross-async-boundary tracing.
+   * @param startTime Optional explicit start time (ms epoch, Date, or HrTime).
+   * @param endTime Optional explicit end time (ms epoch, Date, or HrTime).
    * @returns A new OutputScope instance.
    */
   public static start(
     response: OutputResponse,
     agentDetails: AgentDetails,
     tenantDetails: TenantDetails,
-    parentSpanRef?: ParentSpanRef
+    parentSpanRef?: ParentSpanRef,
+    startTime?: TimeInput,
+    endTime?: TimeInput
   ): OutputScope {
-    return new OutputScope(response, agentDetails, tenantDetails, parentSpanRef);
+    return new OutputScope(response, agentDetails, tenantDetails, parentSpanRef, startTime, endTime);
   }
 
   private constructor(
     response: OutputResponse,
     agentDetails: AgentDetails,
     tenantDetails: TenantDetails,
-    parentSpanRef?: ParentSpanRef
+    parentSpanRef?: ParentSpanRef,
+    startTime?: TimeInput,
+    endTime?: TimeInput
   ) {
     super(
       SpanKind.CLIENT,
@@ -42,7 +48,9 @@ export class OutputScope extends OpenTelemetryScope {
       `${OpenTelemetryConstants.OUTPUT_MESSAGES_OPERATION_NAME} ${agentDetails.agentId}`,
       agentDetails,
       tenantDetails,
-      parentSpanRef
+      parentSpanRef,
+      startTime,
+      endTime
     );
 
     // Initialize accumulated messages list from the response

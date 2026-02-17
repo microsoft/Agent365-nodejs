@@ -1,8 +1,7 @@
-// ------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// ------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 
-import { trace, SpanKind, Span, SpanStatusCode, Attributes, context, AttributeValue, SpanContext } from '@opentelemetry/api';
+import { trace, SpanKind, Span, SpanStatusCode, Attributes, context, AttributeValue, SpanContext, TimeInput } from '@opentelemetry/api';
 import { OpenTelemetryConstants } from '../constants';
 import { AgentDetails, TenantDetails } from '../contracts';
 import { ParentSpanRef, createContextWithParentSpanRef } from '../context/parent-span-context';
@@ -15,7 +14,9 @@ export abstract class OpenTelemetryScope implements Disposable {
   private static readonly tracer = trace.getTracer(OpenTelemetryConstants.SOURCE_NAME);
 
   protected readonly span: Span;
-  private readonly startTime: number;
+  private readonly wallClockStartMs: number;
+  private customStartTime?: TimeInput;
+  private customEndTime?: TimeInput;
   private errorType?: string;
   private exception?: Error;
   private hasEnded = false;
@@ -28,6 +29,11 @@ export abstract class OpenTelemetryScope implements Disposable {
    * @param agentDetails Optional agent details
    * @param tenantDetails Optional tenant details
    * @param parentSpanRef Optional explicit parent span reference for cross-async-boundary tracing
+   * @param startTime Optional explicit start time (ms epoch, Date, or HrTime). When provided the span
+   *        records this timestamp instead of "now", which is useful when recording an operation after it
+   *        has already completed (e.g. a tool call whose start time was captured earlier).
+   * @param endTime Optional explicit end time (ms epoch, Date, or HrTime). When provided the span will
+   *        use this timestamp when {@link dispose} is called instead of the current wall-clock time.
    */
   protected constructor(
     kind: SpanKind,
@@ -35,7 +41,9 @@ export abstract class OpenTelemetryScope implements Disposable {
     spanName: string,
     agentDetails?: AgentDetails,
     tenantDetails?: TenantDetails,
-    parentSpanRef?: ParentSpanRef
+    parentSpanRef?: ParentSpanRef,
+    startTime?: TimeInput,
+    endTime?: TimeInput
   ) {
     // Determine the context to use for span creation
     let currentContext = context.active();
@@ -49,6 +57,7 @@ export abstract class OpenTelemetryScope implements Disposable {
     // Start span with current context to establish parent-child relationship
     this.span = OpenTelemetryScope.tracer.startSpan(spanName, {
       kind,
+      startTime,
       attributes: {
         [OpenTelemetryConstants.GEN_AI_SYSTEM_KEY]: OpenTelemetryConstants.GEN_AI_SYSTEM_VALUE,
         [OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY]: operationName,
@@ -57,7 +66,11 @@ export abstract class OpenTelemetryScope implements Disposable {
 
     logger.info(`[A365Observability] Span[${this.span.spanContext().spanId}] ${spanName}, operation: ${operationName} started successfully`);
 
-    this.startTime = Date.now();
+    this.wallClockStartMs = Date.now();
+    if (startTime !== undefined) {
+      this.customStartTime = startTime;
+    }
+    this.customEndTime = endTime;
 
     // Set agent details if provided
     if (agentDetails) {
@@ -172,6 +185,28 @@ export abstract class OpenTelemetryScope implements Disposable {
   }
 
   /**
+   * Converts a `TimeInput` value to milliseconds since epoch.
+   * OTel's `TimeInput` can be a `number` (ms epoch), a `Date`, or an `HrTime` tuple `[seconds, nanoseconds]`.
+   */
+  private static timeInputToMs(t: TimeInput): number {
+    if (typeof t === 'number') return t;
+    if (t instanceof Date) return t.getTime();
+    if (Array.isArray(t) && t.length === 2) return t[0] * 1000 + t[1] / 1_000_000;
+    logger.warn(`[A365Observability] timeInputToMs received unexpected TimeInput (type=${typeof t}, isArray=${Array.isArray(t)}); falling back to Date.now()`);
+    return Date.now();
+  }
+
+  /**
+   * Sets a custom end time for the scope.
+   * When set, {@link dispose} will pass this value to `span.end()` instead of using the current wall-clock time.
+   * This is useful when the actual end time of the operation is known before the scope is disposed.
+   * @param endTime The end time as milliseconds since epoch, a Date, or an HrTime tuple.
+   */
+  public setEndTime(endTime: TimeInput): void {
+    this.customEndTime = endTime;
+  }
+
+  /**
    * Finalizes the scope and records metrics
    */
   private end(): void {
@@ -180,7 +215,15 @@ export abstract class OpenTelemetryScope implements Disposable {
       return;
     }
 
-    const duration = (Date.now() - this.startTime) / 1000; // Convert to seconds
+    // Calculate duration: use custom start/end when provided, otherwise fall back to wall-clock.
+    const startMs = this.customStartTime !== undefined
+      ? OpenTelemetryScope.timeInputToMs(this.customStartTime)
+      : this.wallClockStartMs;
+    const endMs = this.customEndTime !== undefined
+      ? OpenTelemetryScope.timeInputToMs(this.customEndTime)
+      : Date.now();
+    const durationMs = Math.max(0, endMs - startMs);
+    const duration = durationMs / 1000;
 
     const finalTags:Attributes = {};
     if (this.errorType) {
@@ -202,7 +245,11 @@ export abstract class OpenTelemetryScope implements Disposable {
   public [Symbol.dispose](): void {
     if (!this.hasEnded) {
       this.end();
-      this.span.end();
+      if (this.customEndTime !== undefined) {
+        this.span.end(this.customEndTime);
+      } else {
+        this.span.end();
+      }
     }
   }
 
