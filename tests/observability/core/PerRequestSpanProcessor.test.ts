@@ -8,6 +8,8 @@ import { runWithExportToken, updateExportToken, getExportToken } from '@microsof
 import type { SpanExporter, ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import { ExportResult, ExportResultCode } from '@opentelemetry/core';
 import { context, trace } from '@opentelemetry/api';
+import { DefaultConfigurationProvider } from '@microsoft/agents-a365-runtime';
+import { PerRequestSpanProcessorConfiguration } from '@microsoft/agents-a365-observability/src/configuration/PerRequestSpanProcessorConfiguration';
 import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
 
 describe('PerRequestSpanProcessor', () => {
@@ -391,7 +393,10 @@ describe('PerRequestSpanProcessor', () => {
     it('should respect custom grace flush timeout', async () => {
       exportedSpans = [];
       const customGrace = 30;
-      await recreateProvider(new PerRequestSpanProcessor(mockExporter, customGrace));
+      const configProvider = new DefaultConfigurationProvider(() => new PerRequestSpanProcessorConfiguration({
+        perRequestFlushGraceMs: () => customGrace,
+      }));
+      await recreateProvider(new PerRequestSpanProcessor(mockExporter, configProvider));
 
       const tracer = provider.getTracer('test');
 
@@ -453,7 +458,11 @@ describe('PerRequestSpanProcessor', () => {
       const customGrace = 10;
       const customMaxAge = 1000;
 
-      await recreateProvider(new PerRequestSpanProcessor(mockExporter, customGrace, customMaxAge));
+      const configProvider = new DefaultConfigurationProvider(() => new PerRequestSpanProcessorConfiguration({
+        perRequestFlushGraceMs: () => customGrace,
+        perRequestMaxTraceAgeMs: () => customMaxAge,
+      }));
+      await recreateProvider(new PerRequestSpanProcessor(mockExporter, configProvider));
 
       const tracer = provider.getTracer('test');
 
@@ -509,7 +518,11 @@ describe('PerRequestSpanProcessor', () => {
       const customGrace = 250;
       const customMaxAge = 10;
 
-      await recreateProvider(new PerRequestSpanProcessor(mockExporter, customGrace, customMaxAge));
+      const configProvider = new DefaultConfigurationProvider(() => new PerRequestSpanProcessorConfiguration({
+        perRequestFlushGraceMs: () => customGrace,
+        perRequestMaxTraceAgeMs: () => customMaxAge,
+      }));
+      await recreateProvider(new PerRequestSpanProcessor(mockExporter, configProvider));
 
       const tracer = provider.getTracer('test');
 
@@ -536,6 +549,8 @@ describe('PerRequestSpanProcessor', () => {
       delete process.env.A365_PER_REQUEST_MAX_TRACES;
       delete process.env.A365_PER_REQUEST_MAX_SPANS_PER_TRACE;
       delete process.env.A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS;
+      delete process.env.A365_PER_REQUEST_FLUSH_GRACE_MS;
+      delete process.env.A365_PER_REQUEST_MAX_TRACE_AGE_MS;
 
       await recreateProvider(new PerRequestSpanProcessor(mockExporter));
 
@@ -544,12 +559,16 @@ describe('PerRequestSpanProcessor', () => {
       expect(proc.maxBufferedTraces).toBe(1000);
       expect(proc.maxSpansPerTrace).toBe(5000);
       expect(proc.maxConcurrentExports).toBe(20);
+      expect(proc.flushGraceMs).toBe(250);
+      expect(proc.maxTraceAgeMs).toBe(1800000);
     });
 
     it('should fallback to defaults for invalid env var values', async () => {
       process.env.A365_PER_REQUEST_MAX_TRACES = 'not-a-number';
       process.env.A365_PER_REQUEST_MAX_SPANS_PER_TRACE = '';
       process.env.A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS = 'NaN';
+      process.env.A365_PER_REQUEST_FLUSH_GRACE_MS = 'abc';
+      process.env.A365_PER_REQUEST_MAX_TRACE_AGE_MS = '';
 
       await recreateProvider(new PerRequestSpanProcessor(mockExporter));
 
@@ -558,12 +577,16 @@ describe('PerRequestSpanProcessor', () => {
       expect(proc.maxBufferedTraces).toBe(1000);
       expect(proc.maxSpansPerTrace).toBe(5000);
       expect(proc.maxConcurrentExports).toBe(20);
+      expect(proc.flushGraceMs).toBe(250);
+      expect(proc.maxTraceAgeMs).toBe(1800000);
     });
 
     it('should parse valid numeric string env vars correctly', async () => {
       process.env.A365_PER_REQUEST_MAX_TRACES = '50';
       process.env.A365_PER_REQUEST_MAX_SPANS_PER_TRACE = '100';
       process.env.A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS = '5';
+      process.env.A365_PER_REQUEST_FLUSH_GRACE_MS = '500';
+      process.env.A365_PER_REQUEST_MAX_TRACE_AGE_MS = '60000';
 
       await recreateProvider(new PerRequestSpanProcessor(mockExporter));
 
@@ -572,6 +595,8 @@ describe('PerRequestSpanProcessor', () => {
       expect(proc.maxBufferedTraces).toBe(50);
       expect(proc.maxSpansPerTrace).toBe(100);
       expect(proc.maxConcurrentExports).toBe(5);
+      expect(proc.flushGraceMs).toBe(500);
+      expect(proc.maxTraceAgeMs).toBe(60000);
     });
 
     it('should handle shutdown gracefully', async () => {
