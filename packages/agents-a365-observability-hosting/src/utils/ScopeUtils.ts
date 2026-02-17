@@ -60,6 +60,8 @@ export class ScopeUtils {
       agentId: recipient.agenticAppId,
       agentName: recipient.name,
       agentAUID: recipient.aadObjectId,
+      agentBlueprintId: recipient.agenticAppBlueprintId,
+      agentUPN: recipient.agenticUserId,
       agentDescription: recipient.role,
       tenantId: recipient.tenantId
     } as AgentDetails;
@@ -80,7 +82,8 @@ export class ScopeUtils {
       agentAUID: from.aadObjectId,
       agentDescription: from.role,
       tenantId: from.tenantId,
-      agentId: from.agenticAppId
+      agentId: from.agenticAppId,
+      agentUPN: from.agenticUserId
     } as AgentDetails;
   }
 
