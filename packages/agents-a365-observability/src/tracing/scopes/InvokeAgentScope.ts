@@ -1,8 +1,7 @@
-// ------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// ------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 
-import { SpanKind } from '@opentelemetry/api';
+import { SpanKind, TimeInput } from '@opentelemetry/api';
 import { OpenTelemetryScope } from './OpenTelemetryScope';
 import {
   InvokeAgentDetails,
@@ -24,6 +23,8 @@ export class InvokeAgentScope extends OpenTelemetryScope {
    * @param callerAgentDetails The details of the caller agent.
    * @param callerDetails The details of the non-agentic caller.
    * @param parentSpanRef Optional explicit parent span reference for cross-async-boundary tracing.
+   * @param startTime Optional explicit start time (ms epoch, Date, or HrTime).
+   * @param endTime Optional explicit end time (ms epoch, Date, or HrTime).
    * @returns A new InvokeAgentScope instance.
    */
   public static start(
@@ -31,9 +32,11 @@ export class InvokeAgentScope extends OpenTelemetryScope {
     tenantDetails: TenantDetails,
     callerAgentDetails?: AgentDetails,
     callerDetails?: CallerDetails,
-    parentSpanRef?: ParentSpanRef
+    parentSpanRef?: ParentSpanRef,
+    startTime?: TimeInput,
+    endTime?: TimeInput
   ): InvokeAgentScope {
-    return new InvokeAgentScope(invokeAgentDetails, tenantDetails, callerAgentDetails, callerDetails, parentSpanRef);
+    return new InvokeAgentScope(invokeAgentDetails, tenantDetails, callerAgentDetails, callerDetails, parentSpanRef, startTime, endTime);
   }
 
   private constructor(
@@ -41,7 +44,9 @@ export class InvokeAgentScope extends OpenTelemetryScope {
     tenantDetails: TenantDetails,
     callerAgentDetails?: AgentDetails,
     callerDetails?: CallerDetails,
-    parentSpanRef?: ParentSpanRef
+    parentSpanRef?: ParentSpanRef,
+    startTime?: TimeInput,
+    endTime?: TimeInput
   ) {
     super(
       SpanKind.CLIENT,
@@ -51,7 +56,9 @@ export class InvokeAgentScope extends OpenTelemetryScope {
         : OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME,
       invokeAgentDetails,
       tenantDetails,
-      parentSpanRef
+      parentSpanRef,
+      startTime,
+      endTime
     );
 
     // Set session ID and endpoint information
