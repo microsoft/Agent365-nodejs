@@ -5,7 +5,8 @@
 import { trace, SpanKind, Span, SpanStatusCode, Attributes, context, AttributeValue, SpanContext } from '@opentelemetry/api';
 import { OpenTelemetryConstants } from '../constants';
 import { AgentDetails, TenantDetails } from '../contracts';
-import { ParentSpanRef, createContextWithParentSpanRef } from '../context/parent-span-context';
+import { createContextWithParentSpanRef } from '../context/parent-span-context';
+import { ParentContext, isParentSpanRef } from '../context/trace-context-propagation';
 import logger from '../../utils/logging';
 
 /**
@@ -27,7 +28,9 @@ export abstract class OpenTelemetryScope implements Disposable {
    * @param spanName The name of the span for display purposes
    * @param agentDetails Optional agent details
    * @param tenantDetails Optional tenant details
-   * @param parentSpanRef Optional explicit parent span reference for cross-async-boundary tracing
+   * @param parentContext Optional parent context for cross-async-boundary tracing.
+   *   Accepts a {@link ParentSpanRef} (manual traceId/spanId) or an OTel {@link Context}
+   *   (e.g. from {@link extractTraceContext} for W3C header propagation).
    */
   protected constructor(
     kind: SpanKind,
@@ -35,13 +38,26 @@ export abstract class OpenTelemetryScope implements Disposable {
     spanName: string,
     agentDetails?: AgentDetails,
     tenantDetails?: TenantDetails,
-    parentSpanRef?: ParentSpanRef
+    parentContext?: ParentContext
   ) {
     // Determine the context to use for span creation
     let currentContext = context.active();
-    if (parentSpanRef) {
-      currentContext = createContextWithParentSpanRef(currentContext, parentSpanRef);
-      logger.info(`[A365Observability] Using explicit parent span: traceId=${parentSpanRef.traceId}, spanId=${parentSpanRef.spanId}`);
+    if (parentContext) {
+      if (isParentSpanRef(parentContext)) {
+        // Existing ParentSpanRef path (backward compatible)
+        currentContext = createContextWithParentSpanRef(currentContext, parentContext);
+        logger.info(`[A365Observability] Using explicit parent span: traceId=${parentContext.traceId}, spanId=${parentContext.spanId}`);
+      } else {
+        // OTel Context path (from extractTraceContext or propagation.extract)
+        currentContext = parentContext;
+        const span = trace.getSpan(parentContext);
+        if (span) {
+          const sc = span.spanContext();
+          logger.info(`[A365Observability] Using extracted trace context: traceId=${sc.traceId}, spanId=${sc.spanId}`);
+        } else {
+          logger.info('[A365Observability] Using provided OTel Context (no span found in context).');
+        }
+      }
     }
 
     logger.info(`[A365Observability] Starting span: ${spanName}, operation: ${operationName} for tenantId: ${tenantDetails?.tenantId || 'unknown'}, agentId: ${agentDetails?.agentId || 'unknown'}`);

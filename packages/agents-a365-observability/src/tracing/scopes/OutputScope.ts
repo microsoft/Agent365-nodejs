@@ -4,7 +4,7 @@
 import { SpanKind } from '@opentelemetry/api';
 import { OpenTelemetryScope } from './OpenTelemetryScope';
 import { AgentDetails, TenantDetails, OutputResponse } from '../contracts';
-import { ParentSpanRef } from '../context/parent-span-context';
+import { ParentContext } from '../context/trace-context-propagation';
 import { OpenTelemetryConstants } from '../constants';
 
 /**
@@ -18,23 +18,24 @@ export class OutputScope extends OpenTelemetryScope {
    * @param response The response containing initial output messages.
    * @param agentDetails The details of the agent producing the output.
    * @param tenantDetails The tenant details.
-   * @param parentSpanRef Optional explicit parent span reference for cross-async-boundary tracing.
+   * @param parentContext Optional parent context for cross-async-boundary tracing.
+   *   Accepts a ParentSpanRef (manual traceId/spanId) or an OTel Context (e.g. from extractTraceContext).
    * @returns A new OutputScope instance.
    */
   public static start(
     response: OutputResponse,
     agentDetails: AgentDetails,
     tenantDetails: TenantDetails,
-    parentSpanRef?: ParentSpanRef
+    parentContext?: ParentContext
   ): OutputScope {
-    return new OutputScope(response, agentDetails, tenantDetails, parentSpanRef);
+    return new OutputScope(response, agentDetails, tenantDetails, parentContext);
   }
 
   private constructor(
     response: OutputResponse,
     agentDetails: AgentDetails,
     tenantDetails: TenantDetails,
-    parentSpanRef?: ParentSpanRef
+    parentContext?: ParentContext
   ) {
     super(
       SpanKind.CLIENT,
@@ -42,7 +43,7 @@ export class OutputScope extends OpenTelemetryScope {
       `${OpenTelemetryConstants.OUTPUT_MESSAGES_OPERATION_NAME} ${agentDetails.agentId}`,
       agentDetails,
       tenantDetails,
-      parentSpanRef
+      parentContext
     );
 
     // Initialize accumulated messages list from the response

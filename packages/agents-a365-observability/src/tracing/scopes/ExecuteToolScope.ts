@@ -5,7 +5,7 @@
 import { SpanKind } from '@opentelemetry/api';
 import { OpenTelemetryScope } from './OpenTelemetryScope';
 import { ToolCallDetails, AgentDetails, TenantDetails, SourceMetadata } from '../contracts';
-import { ParentSpanRef } from '../context/parent-span-context';
+import { ParentContext } from '../context/trace-context-propagation';
 import { OpenTelemetryConstants } from '../constants';
 
 /**
@@ -19,7 +19,8 @@ export class ExecuteToolScope extends OpenTelemetryScope {
    * @param tenantDetails The tenant details
    * @param conversationId Optional conversation id to tag on the span (`gen_ai.conversation.id`).
    * @param sourceMetadata Optional source metadata; only `name` (channel name) and `description` (channel link/URL) are used for tagging.
-   * @param parentSpanRef Optional explicit parent span reference for cross-async-boundary tracing.
+   * @param parentContext Optional parent context for cross-async-boundary tracing.
+   *   Accepts a ParentSpanRef (manual traceId/spanId) or an OTel Context (e.g. from extractTraceContext).
    * @returns A new ExecuteToolScope instance.
    */
   public static start(
@@ -28,9 +29,9 @@ export class ExecuteToolScope extends OpenTelemetryScope {
     tenantDetails: TenantDetails,
     conversationId?: string,
     sourceMetadata?: Pick<SourceMetadata, "name" | "description">,
-    parentSpanRef?: ParentSpanRef
+    parentContext?: ParentContext
   ): ExecuteToolScope {
-    return new ExecuteToolScope(details, agentDetails, tenantDetails, conversationId, sourceMetadata, parentSpanRef);
+    return new ExecuteToolScope(details, agentDetails, tenantDetails, conversationId, sourceMetadata, parentContext);
   }
 
   private constructor(
@@ -39,7 +40,7 @@ export class ExecuteToolScope extends OpenTelemetryScope {
     tenantDetails: TenantDetails,
     conversationId?: string,
     sourceMetadata?: Pick<SourceMetadata, "name" | "description">,
-    parentSpanRef?: ParentSpanRef
+    parentContext?: ParentContext
   ) {
     super(
       SpanKind.INTERNAL,
@@ -47,7 +48,7 @@ export class ExecuteToolScope extends OpenTelemetryScope {
       `${OpenTelemetryConstants.EXECUTE_TOOL_OPERATION_NAME} ${details.toolName}`,
       agentDetails,
       tenantDetails,
-      parentSpanRef
+      parentContext
     );
 
     // Destructure the details object to match C# pattern

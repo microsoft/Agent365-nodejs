@@ -10,7 +10,7 @@ import {
   CallerDetails,
   AgentDetails
 } from '../contracts';
-import { ParentSpanRef } from '../context/parent-span-context';
+import { ParentContext } from '../context/trace-context-propagation';
 import { OpenTelemetryConstants } from '../constants';
 
 /**
@@ -23,7 +23,8 @@ export class InvokeAgentScope extends OpenTelemetryScope {
    * @param tenantDetails The tenant details.
    * @param callerAgentDetails The details of the caller agent.
    * @param callerDetails The details of the non-agentic caller.
-   * @param parentSpanRef Optional explicit parent span reference for cross-async-boundary tracing.
+   * @param parentContext Optional parent context for cross-async-boundary tracing.
+   *   Accepts a ParentSpanRef (manual traceId/spanId) or an OTel Context (e.g. from extractTraceContext).
    * @returns A new InvokeAgentScope instance.
    */
   public static start(
@@ -31,9 +32,9 @@ export class InvokeAgentScope extends OpenTelemetryScope {
     tenantDetails: TenantDetails,
     callerAgentDetails?: AgentDetails,
     callerDetails?: CallerDetails,
-    parentSpanRef?: ParentSpanRef
+    parentContext?: ParentContext
   ): InvokeAgentScope {
-    return new InvokeAgentScope(invokeAgentDetails, tenantDetails, callerAgentDetails, callerDetails, parentSpanRef);
+    return new InvokeAgentScope(invokeAgentDetails, tenantDetails, callerAgentDetails, callerDetails, parentContext);
   }
 
   private constructor(
@@ -41,7 +42,7 @@ export class InvokeAgentScope extends OpenTelemetryScope {
     tenantDetails: TenantDetails,
     callerAgentDetails?: AgentDetails,
     callerDetails?: CallerDetails,
-    parentSpanRef?: ParentSpanRef
+    parentContext?: ParentContext
   ) {
     super(
       SpanKind.CLIENT,
@@ -51,7 +52,7 @@ export class InvokeAgentScope extends OpenTelemetryScope {
         : OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME,
       invokeAgentDetails,
       tenantDetails,
-      parentSpanRef
+      parentContext
     );
 
     // Set session ID and endpoint information
