@@ -9,7 +9,7 @@ import {
   CallerDetails,
   AgentDetails
 } from '../contracts';
-import { ParentSpanRef } from '../context/parent-span-context';
+import { ParentContext } from '../context/trace-context-propagation';
 import { OpenTelemetryConstants } from '../constants';
 
 /**
@@ -22,7 +22,8 @@ export class InvokeAgentScope extends OpenTelemetryScope {
    * @param tenantDetails The tenant details.
    * @param callerAgentDetails The details of the caller agent.
    * @param callerDetails The details of the non-agentic caller.
-   * @param parentSpanRef Optional explicit parent span reference for cross-async-boundary tracing.
+   * @param parentContext Optional parent context for cross-async-boundary tracing.
+   *   Accepts a ParentSpanRef (manual traceId/spanId) or an OTel Context (e.g. from extractTraceContext).
    * @param startTime Optional explicit start time (ms epoch, Date, or HrTime).
    * @param endTime Optional explicit end time (ms epoch, Date, or HrTime).
    * @returns A new InvokeAgentScope instance.
@@ -32,11 +33,11 @@ export class InvokeAgentScope extends OpenTelemetryScope {
     tenantDetails: TenantDetails,
     callerAgentDetails?: AgentDetails,
     callerDetails?: CallerDetails,
-    parentSpanRef?: ParentSpanRef,
+    parentContext?: ParentContext,
     startTime?: TimeInput,
     endTime?: TimeInput
   ): InvokeAgentScope {
-    return new InvokeAgentScope(invokeAgentDetails, tenantDetails, callerAgentDetails, callerDetails, parentSpanRef, startTime, endTime);
+    return new InvokeAgentScope(invokeAgentDetails, tenantDetails, callerAgentDetails, callerDetails, parentContext, startTime, endTime);
   }
 
   private constructor(
@@ -44,7 +45,7 @@ export class InvokeAgentScope extends OpenTelemetryScope {
     tenantDetails: TenantDetails,
     callerAgentDetails?: AgentDetails,
     callerDetails?: CallerDetails,
-    parentSpanRef?: ParentSpanRef,
+    parentContext?: ParentContext,
     startTime?: TimeInput,
     endTime?: TimeInput
   ) {
@@ -56,7 +57,7 @@ export class InvokeAgentScope extends OpenTelemetryScope {
         : OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME,
       invokeAgentDetails,
       tenantDetails,
-      parentSpanRef,
+      parentContext,
       startTime,
       endTime
     );

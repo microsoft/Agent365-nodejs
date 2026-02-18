@@ -19,6 +19,15 @@ export { runWithExportToken, updateExportToken, getExportToken } from './tracing
 // Parent span context utilities
 export { ParentSpanRef, runWithParentSpanRef, createContextWithParentSpanRef } from './tracing/context/parent-span-context';
 
+// Trace context propagation utilities (W3C traceparent/tracestate)
+export {
+  HeadersCarrier,
+  ParentContext,
+  injectTraceContext,
+  extractTraceContext,
+  runWithExtractedTraceContext
+} from './tracing/context/trace-context-propagation';
+
 // Contracts and interfaces
 export {
   ExecutionType,

@@ -36,6 +36,7 @@
     "@openai/agents": "catalog:",
     "@openai/agents-openai": "catalog:",
     "@opentelemetry/api": "catalog:",
+    "@opentelemetry/core": "catalog:",
     "@opentelemetry/exporter-trace-otlp-http": "catalog:",
     "@opentelemetry/resources": "catalog:",
     "@opentelemetry/sdk-node": "catalog:",
