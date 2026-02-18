@@ -10,7 +10,7 @@ import {
   TenantDetails,
   SourceMetadata
 } from '../contracts';
-import { ParentSpanRef } from '../context/parent-span-context';
+import { ParentContext } from '../context/trace-context-propagation';
 
 /**
  * Provides OpenTelemetry tracing scope for generative AI inference operations.
@@ -23,7 +23,8 @@ export class InferenceScope extends OpenTelemetryScope {
    * @param tenantDetails The tenant details
    * @param conversationId Optional conversation id to tag on the span (`gen_ai.conversation.id`).
    * @param sourceMetadata Optional source metadata; only `name` (channel name) and `description` (channel link/URL) are used for tagging.
-   * @param parentSpanRef Optional explicit parent span reference for cross-async-boundary tracing.
+   * @param parentContext Optional parent context for cross-async-boundary tracing.
+   *   Accepts a ParentSpanRef (manual traceId/spanId) or an OTel Context (e.g. from extractTraceContext).
    * @param startTime Optional explicit start time (ms epoch, Date, or HrTime).
    * @param endTime Optional explicit end time (ms epoch, Date, or HrTime).
    * @returns A new InferenceScope instance
@@ -34,11 +35,11 @@ export class InferenceScope extends OpenTelemetryScope {
     tenantDetails: TenantDetails,
     conversationId?: string,
     sourceMetadata?: Pick<SourceMetadata, "name" | "description">,
-    parentSpanRef?: ParentSpanRef,
+    parentContext?: ParentContext,
     startTime?: TimeInput,
     endTime?: TimeInput
   ): InferenceScope {
-    return new InferenceScope(details, agentDetails, tenantDetails, conversationId, sourceMetadata, parentSpanRef, startTime, endTime);
+    return new InferenceScope(details, agentDetails, tenantDetails, conversationId, sourceMetadata, parentContext, startTime, endTime);
   }
 
   private constructor(
@@ -47,7 +48,7 @@ export class InferenceScope extends OpenTelemetryScope {
     tenantDetails: TenantDetails,
     conversationId?: string,
     sourceMetadata?: Pick<SourceMetadata, "name" | "description">,
-    parentSpanRef?: ParentSpanRef,
+    parentContext?: ParentContext,
     startTime?: TimeInput,
     endTime?: TimeInput
   ) {
@@ -57,7 +58,7 @@ export class InferenceScope extends OpenTelemetryScope {
       `${details.operationName} ${details.model}`,
       agentDetails,
       tenantDetails,
-      parentSpanRef,
+      parentContext,
       startTime,
       endTime
     );

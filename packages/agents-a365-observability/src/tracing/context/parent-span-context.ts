@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { context, trace, Context, SpanContext, TraceFlags } from '@opentelemetry/api';
+import { context, trace, Context, SpanContext, TraceFlags, TraceState } from '@opentelemetry/api';
 import logger from '../../utils/logging';
 
 /**
@@ -19,9 +19,20 @@ export interface ParentSpanRef {
    */
   spanId: string;
 
-  /**  * Optional trace flags
+  /**
+   * Optional trace flags
    */
-  traceFlags?: TraceFlags;  
+  traceFlags?: TraceFlags;
+
+  /**
+   * Optional W3C trace state for vendor-specific trace context data
+   */
+  traceState?: TraceState;
+
+  /**
+   * Whether the span originated from a remote service (default: true)
+   */
+  isRemote?: boolean;
 }
 
 function isValidTraceId(traceId: string): boolean {
@@ -65,6 +76,8 @@ export function createContextWithParentSpanRef(base: Context, parent: ParentSpan
     traceId: parent.traceId,
     spanId: parent.spanId,
     traceFlags,
+    traceState: parent.traceState,
+    isRemote: parent.isRemote ?? true,
   };
 
   // Create a non-recording span with the parent context

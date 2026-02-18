@@ -4,7 +4,7 @@
 import { SpanKind, TimeInput } from '@opentelemetry/api';
 import { OpenTelemetryScope } from './OpenTelemetryScope';
 import { AgentDetails, TenantDetails, OutputResponse } from '../contracts';
-import { ParentSpanRef } from '../context/parent-span-context';
+import { ParentContext } from '../context/trace-context-propagation';
 import { OpenTelemetryConstants } from '../constants';
 
 /**
@@ -18,7 +18,8 @@ export class OutputScope extends OpenTelemetryScope {
    * @param response The response containing initial output messages.
    * @param agentDetails The details of the agent producing the output.
    * @param tenantDetails The tenant details.
-   * @param parentSpanRef Optional explicit parent span reference for cross-async-boundary tracing.
+   * @param parentContext Optional parent context for cross-async-boundary tracing.
+   *   Accepts a ParentSpanRef (manual traceId/spanId) or an OTel Context (e.g. from extractTraceContext).
    * @param startTime Optional explicit start time (ms epoch, Date, or HrTime).
    * @param endTime Optional explicit end time (ms epoch, Date, or HrTime).
    * @returns A new OutputScope instance.
@@ -27,18 +28,18 @@ export class OutputScope extends OpenTelemetryScope {
     response: OutputResponse,
     agentDetails: AgentDetails,
     tenantDetails: TenantDetails,
-    parentSpanRef?: ParentSpanRef,
+    parentContext?: ParentContext,
     startTime?: TimeInput,
     endTime?: TimeInput
   ): OutputScope {
-    return new OutputScope(response, agentDetails, tenantDetails, parentSpanRef, startTime, endTime);
+    return new OutputScope(response, agentDetails, tenantDetails, parentContext, startTime, endTime);
   }
 
   private constructor(
     response: OutputResponse,
     agentDetails: AgentDetails,
     tenantDetails: TenantDetails,
-    parentSpanRef?: ParentSpanRef,
+    parentContext?: ParentContext,
     startTime?: TimeInput,
     endTime?: TimeInput
   ) {
@@ -48,7 +49,7 @@ export class OutputScope extends OpenTelemetryScope {
       `${OpenTelemetryConstants.OUTPUT_MESSAGES_OPERATION_NAME} ${agentDetails.agentId}`,
       agentDetails,
       tenantDetails,
-      parentSpanRef,
+      parentContext,
       startTime,
       endTime
     );
