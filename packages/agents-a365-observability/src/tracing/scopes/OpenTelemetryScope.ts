@@ -58,13 +58,6 @@ export abstract class OpenTelemetryScope implements Disposable {
       } else {
         // OTel Context path (from extractTraceContext or propagation.extract)
         currentContext = parentContext;
-        const span = trace.getSpan(parentContext);
-        if (span) {
-          const sc = span.spanContext();
-          logger.info(`[A365Observability] Using extracted trace context: traceId=${sc.traceId}, spanId=${sc.spanId}`);
-        } else {
-          logger.info('[A365Observability] Using provided OTel Context (no span found in context).');
-        }
       }
     }
 

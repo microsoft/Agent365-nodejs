@@ -11,7 +11,6 @@ import {
   injectTraceContext,
   extractTraceContext,
   runWithExtractedTraceContext,
-  isParentSpanRef,
   InvokeAgentScope,
   TenantDetails,
 } from '@microsoft/agents-a365-observability';
@@ -53,16 +52,6 @@ describe('Trace Context Propagation', () => {
     await provider?.shutdown?.();
     contextManager.disable();
     otelContext.disable();
-  });
-
-  describe('isParentSpanRef', () => {
-    it('should return true for ParentSpanRef', () => {
-      expect(isParentSpanRef({ traceId: '0123456789abcdef0123456789abcdef', spanId: '0123456789abcdef' })).toBe(true);
-    });
-
-    it('should return false for OTel Context', () => {
-      expect(isParentSpanRef(otelContext.active())).toBe(false);
-    });
   });
 
   describe('injectTraceContext', () => {

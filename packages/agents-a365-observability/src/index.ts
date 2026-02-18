@@ -23,7 +23,6 @@ export { ParentSpanRef, runWithParentSpanRef, createContextWithParentSpanRef } f
 export {
   HeadersCarrier,
   ParentContext,
-  isParentSpanRef,
   injectTraceContext,
   extractTraceContext,
   runWithExtractedTraceContext
