@@ -224,16 +224,42 @@ describe('Scopes', () => {
 
   describe('ExecuteToolScope', () => {
     it('should create scope with tool details', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const callerDetails: CallerDetails = {
+        callerId: 'caller-tool-1',
+        callerUpn: 'tool.user@contoso.com',
+        callerName: 'Tool User',
+        tenantId: 'tool-tenant',
+        callerClientIp: '10.0.0.10'
+      };
       const scope = ExecuteToolScope.start({
         toolName: 'test-tool',
         arguments: '{"param": "value"}',
         toolCallId: 'call-123',
         description: 'A test tool',
         toolType: 'test'
-      }, testAgentDetails, testTenantDetails);
+      }, testAgentDetails, testTenantDetails, undefined, undefined, undefined, undefined, undefined, callerDetails);
 
       expect(scope).toBeInstanceOf(ExecuteToolScope);
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY, val: 'caller-tool-1' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY, val: 'Tool User' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY, val: '10.0.0.10' })
+      ]));
+      // Validate raw attribute key strings for schema correctness
+      const keySet = new Set(calls.map(c => c.key));
+      if (OpenTelemetryConstants.isNewTelemetrySchemaEnabled) {
+        expect(keySet).toContain('microsoft.caller.id');
+        expect(keySet).toContain('microsoft.caller.name');
+        expect(keySet).toContain('client.address');
+      } else {
+        expect(keySet).toContain('gen_ai.caller.id');
+        expect(keySet).toContain('gen_ai.caller.name');
+        expect(keySet).toContain('gen_ai.caller.client.ip');
+      }
       scope?.dispose();
+      spy.mockRestore();
     });
 
     it('should record response', () => {
@@ -277,6 +303,14 @@ describe('Scopes', () => {
 
   describe('InferenceScope', () => {
     it('should create scope with inference details', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const callerDetails: CallerDetails = {
+        callerId: 'caller-inf-1',
+        callerUpn: 'inf.user@contoso.com',
+        callerName: 'Inf User',
+        tenantId: 'inf-tenant',
+        callerClientIp: '10.0.0.20'
+      };
       const inferenceDetails: InferenceDetails = {
         operationName: InferenceOperationType.CHAT,
         model: 'gpt-4',
@@ -286,11 +320,29 @@ describe('Scopes', () => {
         responseId: 'resp-123',
         finishReasons: ['stop']
       };
-      
-      const scope = InferenceScope.start(inferenceDetails, testAgentDetails, testTenantDetails);
+
+      const scope = InferenceScope.start(inferenceDetails, testAgentDetails, testTenantDetails, undefined, undefined, undefined, undefined, undefined, callerDetails);
 
       expect(scope).toBeInstanceOf(InferenceScope);
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY, val: 'caller-inf-1' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY, val: 'Inf User' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY, val: '10.0.0.20' })
+      ]));
+      // Validate raw attribute key strings for schema correctness
+      const keySet = new Set(calls.map(c => c.key));
+      if (OpenTelemetryConstants.isNewTelemetrySchemaEnabled) {
+        expect(keySet).toContain('microsoft.caller.id');
+        expect(keySet).toContain('microsoft.caller.name');
+        expect(keySet).toContain('client.address');
+      } else {
+        expect(keySet).toContain('gen_ai.caller.id');
+        expect(keySet).toContain('gen_ai.caller.name');
+        expect(keySet).toContain('gen_ai.caller.client.ip');
+      }
       scope?.dispose();
+      spy.mockRestore();
     });
 
     it('should create scope with minimal details', () => {

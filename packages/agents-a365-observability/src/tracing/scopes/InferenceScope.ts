@@ -8,7 +8,8 @@ import {
   InferenceDetails,
   AgentDetails,
   TenantDetails,
-  SourceMetadata
+  SourceMetadata,
+  CallerDetails
 } from '../contracts';
 import { ParentContext } from '../context/trace-context-propagation';
 
@@ -27,6 +28,7 @@ export class InferenceScope extends OpenTelemetryScope {
    *   Accepts a ParentSpanRef (manual traceId/spanId) or an OTel Context (e.g. from extractTraceContext).
    * @param startTime Optional explicit start time (ms epoch, Date, or HrTime).
    * @param endTime Optional explicit end time (ms epoch, Date, or HrTime).
+   * @param callerDetails Optional caller details.
    * @returns A new InferenceScope instance
    */
   public static start(
@@ -37,9 +39,10 @@ export class InferenceScope extends OpenTelemetryScope {
     sourceMetadata?: Pick<SourceMetadata, "name" | "description">,
     parentContext?: ParentContext,
     startTime?: TimeInput,
-    endTime?: TimeInput
+    endTime?: TimeInput,
+    callerDetails?: CallerDetails
   ): InferenceScope {
-    return new InferenceScope(details, agentDetails, tenantDetails, conversationId, sourceMetadata, parentContext, startTime, endTime);
+    return new InferenceScope(details, agentDetails, tenantDetails, conversationId, sourceMetadata, parentContext, startTime, endTime, callerDetails);
   }
 
   private constructor(
@@ -50,7 +53,8 @@ export class InferenceScope extends OpenTelemetryScope {
     sourceMetadata?: Pick<SourceMetadata, "name" | "description">,
     parentContext?: ParentContext,
     startTime?: TimeInput,
-    endTime?: TimeInput
+    endTime?: TimeInput,
+    callerDetails?: CallerDetails
   ) {
     super(
       SpanKind.CLIENT,
@@ -60,7 +64,8 @@ export class InferenceScope extends OpenTelemetryScope {
       tenantDetails,
       parentContext,
       startTime,
-      endTime
+      endTime,
+      callerDetails
     );
 
     // Set core inference information matching C# implementation
@@ -71,9 +76,10 @@ export class InferenceScope extends OpenTelemetryScope {
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY, details.outputTokens?.toString());
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_RESPONSE_FINISH_REASONS_KEY, details.finishReasons?.join(','));
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_RESPONSE_ID_KEY, details.responseId);
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_THOUGHT_PROCESS_KEY, details.thoughtProcess);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, conversationId);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY, sourceMetadata?.name);
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY, sourceMetadata?.description);    
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY, sourceMetadata?.description);
   }
 
   /**

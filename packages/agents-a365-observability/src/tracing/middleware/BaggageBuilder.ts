@@ -95,7 +95,9 @@ export class BaggageBuilder {
    * @returns Self for method chaining
    */
   correlationId(value: string | null | undefined): BaggageBuilder {
-    this.set(OpenTelemetryConstants.CORRELATION_ID_KEY, value);
+    if (!OpenTelemetryConstants.isNewTelemetrySchemaEnabled) {
+      this.set(OpenTelemetryConstants.CORRELATION_ID_KEY, value);
+    }
     return this;
   }
 
@@ -125,7 +127,9 @@ export class BaggageBuilder {
    * @returns Self for method chaining
    */
   hiringManagerId(value: string | null | undefined): BaggageBuilder {
-    this.set(OpenTelemetryConstants.HIRING_MANAGER_ID_KEY, value);
+    if (!OpenTelemetryConstants.isNewTelemetrySchemaEnabled) {
+      this.set(OpenTelemetryConstants.HIRING_MANAGER_ID_KEY, value);
+    }
     return this;
   }
 

@@ -59,11 +59,18 @@ export class InvokeAgentScope extends OpenTelemetryScope {
       tenantDetails,
       parentContext,
       startTime,
-      endTime
+      endTime,
+      callerDetails
     );
 
     // Set session ID and endpoint information
     this.setTagMaybe(OpenTelemetryConstants.SESSION_ID_KEY, invokeAgentDetails.sessionId);
+
+    // New schema: agent type and blueprint ID are InvokeAgent-only (base class skips them)
+    if (OpenTelemetryConstants.isNewTelemetrySchemaEnabled) {
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_TYPE_KEY, invokeAgentDetails.agentType);
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY, invokeAgentDetails.agentBlueprintId);
+    }
 
     if (invokeAgentDetails.endpoint) {
       this.setTagMaybe(OpenTelemetryConstants.SERVER_ADDRESS_KEY, invokeAgentDetails.endpoint.host);
@@ -77,7 +84,8 @@ export class InvokeAgentScope extends OpenTelemetryScope {
     // Set request-related tags
     const requestToUse = invokeAgentDetails.request;
     if (requestToUse) {
-      if (requestToUse.executionType) {
+      // gen_ai.execution.type is removed in new schema
+      if (!OpenTelemetryConstants.isNewTelemetrySchemaEnabled && requestToUse.executionType) {
         this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY, requestToUse.executionType.toString());
       }
       if (requestToUse.sourceMetadata) {
@@ -88,15 +96,6 @@ export class InvokeAgentScope extends OpenTelemetryScope {
     }
 
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, invokeAgentDetails.conversationId);
-
-    // Set caller details tags
-    if (callerDetails) {
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY, callerDetails.callerId);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_UPN_KEY, callerDetails.callerUpn);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY, callerDetails.callerName);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_TENANT_ID_KEY, callerDetails.tenantId);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY, callerDetails.callerClientIp);
-    }
 
     // Set caller agent details tags
     if (callerAgentDetails) {

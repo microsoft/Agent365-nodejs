@@ -6,6 +6,11 @@
  * OpenTelemetry constants for Agent 365
  */
 export class OpenTelemetryConstants {
+  // New telemetry schema feature flag
+  public static readonly USE_NEW_TELEMETRY_SCHEMA_ENV = 'A365_USE_NEW_TELEMETRY_SCHEMA';
+  // eslint-disable-next-line no-restricted-properties
+  public static readonly isNewTelemetrySchemaEnabled = process.env['A365_USE_NEW_TELEMETRY_SCHEMA'] === 'true';
+
   // Span operation names
   public static readonly INVOKE_AGENT_OPERATION_NAME = 'invoke_agent';
   public static readonly EXECUTE_TOOL_OPERATION_NAME = 'execute_tool';
@@ -46,9 +51,10 @@ export class OpenTelemetryConstants {
   public static readonly GEN_AI_AGENT_NAME_KEY = 'gen_ai.agent.name';
   public static readonly GEN_AI_AGENT_TYPE_KEY = 'gen_ai.agent.type';
   public static readonly GEN_AI_AGENT_DESCRIPTION_KEY = 'gen_ai.agent.description';
-  public static readonly GEN_AI_AGENT_PLATFORM_ID_KEY = 'gen_ai.agent.platformid';
+  public static readonly GEN_AI_AGENT_PLATFORM_ID_KEY = OpenTelemetryConstants.isNewTelemetrySchemaEnabled ? 'microsoft.a365.agent.platform.id' : 'gen_ai.agent.platformid';
+  public static readonly GEN_AI_AGENT_THOUGHT_PROCESS_KEY = OpenTelemetryConstants.isNewTelemetrySchemaEnabled ? 'microsoft.a365.agent.thought.process' : 'gen_ai.agent.thought.process';
   public static readonly GEN_AI_CONVERSATION_ID_KEY = 'gen_ai.conversation.id';
-  public static readonly GEN_AI_CONVERSATION_ITEM_LINK_KEY = 'gen_ai.conversation.item.link';
+  public static readonly GEN_AI_CONVERSATION_ITEM_LINK_KEY = OpenTelemetryConstants.isNewTelemetrySchemaEnabled ? 'microsoft.conversation.item.link' : 'gen_ai.conversation.item.link';
   public static readonly GEN_AI_TOKEN_TYPE_KEY = 'gen_ai.token.type';
   public static readonly GEN_AI_USAGE_INPUT_TOKENS_KEY = 'gen_ai.usage.input_tokens';
   public static readonly GEN_AI_USAGE_OUTPUT_TOKENS_KEY = 'gen_ai.usage.output_tokens';
@@ -69,36 +75,35 @@ export class OpenTelemetryConstants {
   public static readonly GEN_AI_TOOL_TYPE_KEY = 'gen_ai.tool.type';
 
   // Agent user (user tied to agent instance during creation) or caller dimensions
-  public static readonly GEN_AI_AGENT_USER_ID_KEY = 'gen_ai.agent.userid';
-  public static readonly GEN_AI_CALLER_TENANT_ID_KEY = 'gen_ai.caller.tenantid';
-  public static readonly GEN_AI_CALLER_ID_KEY = 'gen_ai.caller.id';
-  public static readonly GEN_AI_CALLER_NAME_KEY = 'gen_ai.caller.name';
-  public static readonly GEN_AI_CALLER_UPN_KEY = 'gen_ai.caller.upn';
-  public static readonly GEN_AI_CALLER_CLIENT_IP_KEY = 'gen_ai.caller.client.ip';
+  public static readonly GEN_AI_AGENT_USER_ID_KEY = OpenTelemetryConstants.isNewTelemetrySchemaEnabled ? 'microsoft.a365.agent.user.id' : 'gen_ai.agent.userid';
+  public static readonly GEN_AI_CALLER_ID_KEY = OpenTelemetryConstants.isNewTelemetrySchemaEnabled ? 'microsoft.caller.id' : 'gen_ai.caller.id';
+  public static readonly GEN_AI_CALLER_NAME_KEY = OpenTelemetryConstants.isNewTelemetrySchemaEnabled ? 'microsoft.caller.name' : 'gen_ai.caller.name';
+  public static readonly GEN_AI_CALLER_UPN_KEY = OpenTelemetryConstants.isNewTelemetrySchemaEnabled ? 'microsoft.caller.upn' : 'gen_ai.caller.upn';
+  public static readonly GEN_AI_CALLER_CLIENT_IP_KEY = OpenTelemetryConstants.isNewTelemetrySchemaEnabled ? 'client.address' : 'gen_ai.caller.client.ip';
 
   // Agent to Agent caller agent dimensions
-  public static readonly GEN_AI_CALLER_AGENT_USER_ID_KEY = 'gen_ai.caller.agent.userid';
+  public static readonly GEN_AI_CALLER_AGENT_USER_ID_KEY = OpenTelemetryConstants.isNewTelemetrySchemaEnabled ? 'microsoft.a365.caller.agent.user.id' : 'gen_ai.caller.agent.userid';
   public static readonly GEN_AI_CALLER_AGENT_UPN_KEY = 'gen_ai.caller.agent.upn';
   public static readonly GEN_AI_CALLER_AGENT_TENANT_ID_KEY = 'gen_ai.caller.agent.tenantid';
-  public static readonly GEN_AI_CALLER_AGENT_NAME_KEY = 'gen_ai.caller.agent.name';
-  public static readonly GEN_AI_CALLER_AGENT_ID_KEY = 'gen_ai.caller.agent.id';
-  public static readonly GEN_AI_CALLER_AGENT_TYPE_KEY = 'gen_ai.caller.agent.type';
-  public static readonly GEN_AI_CALLER_AGENT_APPLICATION_ID_KEY = 'gen_ai.caller.agent.applicationid';
+  public static readonly GEN_AI_CALLER_AGENT_NAME_KEY = OpenTelemetryConstants.isNewTelemetrySchemaEnabled ? 'microsoft.a365.caller.agent.name' : 'gen_ai.caller.agent.name';
+  public static readonly GEN_AI_CALLER_AGENT_ID_KEY = OpenTelemetryConstants.isNewTelemetrySchemaEnabled ? 'microsoft.a365.caller.agent.id' : 'gen_ai.caller.agent.id';
+  public static readonly GEN_AI_CALLER_AGENT_TYPE_KEY = OpenTelemetryConstants.isNewTelemetrySchemaEnabled ? 'microsoft.a365.caller.agent.type' : 'gen_ai.caller.agent.type';
+  public static readonly GEN_AI_CALLER_AGENT_APPLICATION_ID_KEY = OpenTelemetryConstants.isNewTelemetrySchemaEnabled ? 'microsoft.a365.caller.agent.blueprint.id' : 'gen_ai.caller.agent.applicationid';
   public static readonly GEN_AI_CALLER_AGENT_CLIENT_IP_KEY = 'gen_ai.caller.agent.user.client.ip';
-  public static readonly GEN_AI_CALLER_AGENT_PLATFORM_ID_KEY = 'gen_ai.caller.agent.platformid';
+  public static readonly GEN_AI_CALLER_AGENT_PLATFORM_ID_KEY = OpenTelemetryConstants.isNewTelemetrySchemaEnabled ? 'microsoft.a365.caller.agent.platform.id' : 'gen_ai.caller.agent.platformid';
   // Agent-specific dimensions
   public static readonly AGENT_ID_KEY = 'gen_ai.agent.id';
   public static readonly GEN_AI_TASK_ID_KEY = 'gen_ai.task.id';
-  public static readonly SESSION_ID_KEY = 'session.id';
-  public static readonly SESSION_DESCRIPTION_KEY = 'session.description';
+  public static readonly SESSION_ID_KEY = OpenTelemetryConstants.isNewTelemetrySchemaEnabled ? 'microsoft.session.id' : 'session.id';
+  public static readonly SESSION_DESCRIPTION_KEY = OpenTelemetryConstants.isNewTelemetrySchemaEnabled ? 'microsoft.session.description' : 'session.description';
   public static readonly GEN_AI_ICON_URI_KEY = 'gen_ai.agent365.icon_uri';
-  public static readonly TENANT_ID_KEY = 'tenant.id';
+  public static readonly TENANT_ID_KEY = OpenTelemetryConstants.isNewTelemetrySchemaEnabled ? 'microsoft.tenant.id' : 'tenant.id';
 
   // Baggage keys
   public static readonly OPERATION_SOURCE_KEY = 'operation.source';
-  public static readonly GEN_AI_AGENT_AUID_KEY = 'gen_ai.agent.user.id';
-  public static readonly GEN_AI_AGENT_UPN_KEY = 'gen_ai.agent.upn';
-  public static readonly GEN_AI_AGENT_BLUEPRINT_ID_KEY = 'gen_ai.agent.applicationid';
+  public static readonly GEN_AI_AGENT_AUID_KEY = OpenTelemetryConstants.isNewTelemetrySchemaEnabled ? 'microsoft.a365.agent.user.id' : 'gen_ai.agent.user.id';
+  public static readonly GEN_AI_AGENT_UPN_KEY = OpenTelemetryConstants.isNewTelemetrySchemaEnabled ? 'microsoft.agent.user.upn' : 'gen_ai.agent.upn';
+  public static readonly GEN_AI_AGENT_BLUEPRINT_ID_KEY = OpenTelemetryConstants.isNewTelemetrySchemaEnabled ? 'microsoft.agent.blueprint.id' : 'gen_ai.agent.applicationid';
   public static readonly CORRELATION_ID_KEY = 'correlation.id';
   public static readonly HIRING_MANAGER_ID_KEY = 'hiring.manager.id';
 
@@ -108,12 +113,20 @@ export class OpenTelemetryConstants {
 
   // Source metadata dimensions
   public static readonly GEN_AI_EXECUTION_SOURCE_ID_KEY = 'gen_ai.execution.sourceMetadata.id';
-  public static readonly GEN_AI_EXECUTION_SOURCE_NAME_KEY = 'gen_ai.channel.name';
-  public static readonly GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY = 'gen_ai.channel.link';
+  public static readonly GEN_AI_EXECUTION_SOURCE_NAME_KEY = OpenTelemetryConstants.isNewTelemetrySchemaEnabled ? 'microsoft.channel.name' : 'gen_ai.channel.name';
+  public static readonly GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY = OpenTelemetryConstants.isNewTelemetrySchemaEnabled ? 'microsoft.channel.link' : 'gen_ai.channel.link';
 
   // Custom parent id and parent name key
   public static readonly CUSTOM_PARENT_SPAN_ID_KEY = 'custom.parent.span.id';
   public static readonly CUSTOM_SPAN_NAME_KEY = 'custom.span.name';
+
+  // Telemetry SDK attributes (replace operation.source when isNewTelemetrySchemaEnabled)
+  public static readonly TELEMETRY_SDK_NAME_KEY = 'telemetry.sdk.name';
+  public static readonly TELEMETRY_SDK_LANGUAGE_KEY = 'telemetry.sdk.language';
+  public static readonly TELEMETRY_SDK_VERSION_KEY = 'telemetry.sdk.version';
+  public static readonly TELEMETRY_SDK_NAME_VALUE = 'Agent365Sdk';
+  public static readonly TELEMETRY_SDK_LANGUAGE_VALUE = 'nodejs';
+  public static readonly TELEMETRY_SDK_VERSION_VALUE = '0.0.0-placeholder';
 }
 
 /**

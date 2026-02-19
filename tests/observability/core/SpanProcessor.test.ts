@@ -162,14 +162,18 @@ describe('SpanProcessor', () => {
   describe('attribute registry application', () => {
     it('should apply all generic attributes', () => {
       expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.TENANT_ID_KEY);
-      expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.CORRELATION_ID_KEY);
+      if (!OpenTelemetryConstants.isNewTelemetrySchemaEnabled) {
+        expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.CORRELATION_ID_KEY);
+      }
       expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY);
       expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.SESSION_ID_KEY);
     });
 
     it('should apply invoke agent specific attributes', () => {
       expect(INVOKE_AGENT_ATTRIBUTES).toContain(OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY);
-      expect(INVOKE_AGENT_ATTRIBUTES).toContain(OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY);
+      if (!OpenTelemetryConstants.isNewTelemetrySchemaEnabled) {
+        expect(INVOKE_AGENT_ATTRIBUTES).toContain(OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY);
+      }
     });
   });
 

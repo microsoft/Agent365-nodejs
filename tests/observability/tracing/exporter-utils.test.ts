@@ -6,6 +6,7 @@ import { SpanKind, SpanStatusCode } from '@opentelemetry/api';
 import { ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import { ClusterCategory, DefaultConfigurationProvider } from '@microsoft/agents-a365-runtime';
 import { ObservabilityConfiguration } from '@microsoft/agents-a365-observability/src/configuration/ObservabilityConfiguration';
+import { OpenTelemetryConstants } from '@microsoft/agents-a365-observability/src/tracing/constants';
 
 describe('exporter/utils', () => {
   const originalEnv = process.env;
@@ -454,8 +455,8 @@ describe('exporter/utils', () => {
       ended: true,
       status: { code: SpanStatusCode.OK },
       attributes: {
-        ...(tenantId !== undefined && { 'tenant.id': tenantId }),
-        ...(agentId !== undefined && { 'gen_ai.agent.id': agentId }),
+        ...(tenantId !== undefined && { [OpenTelemetryConstants.TENANT_ID_KEY]: tenantId }),
+        ...(agentId !== undefined && { [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]: agentId }),
       },
       links: [],
       events: [],

@@ -69,8 +69,18 @@ export class SpanProcessor implements BaseSpanProcessor {
       INVOKE_AGENT_ATTRIBUTES.forEach(key => targetKeys.add(key));
     }
 
-    // Set operation source - coalesce baggage value with SDK default
-    if (!existingAttrs.has(OpenTelemetryConstants.OPERATION_SOURCE_KEY)) {
+    // Set operation source or telemetry SDK attributes
+    if (OpenTelemetryConstants.isNewTelemetrySchemaEnabled) {
+      if (!existingAttrs.has(OpenTelemetryConstants.TELEMETRY_SDK_NAME_KEY)) {
+        span.setAttribute(OpenTelemetryConstants.TELEMETRY_SDK_NAME_KEY, OpenTelemetryConstants.TELEMETRY_SDK_NAME_VALUE);
+      }
+      if (!existingAttrs.has(OpenTelemetryConstants.TELEMETRY_SDK_LANGUAGE_KEY)) {
+        span.setAttribute(OpenTelemetryConstants.TELEMETRY_SDK_LANGUAGE_KEY, OpenTelemetryConstants.TELEMETRY_SDK_LANGUAGE_VALUE);
+      }
+      if (!existingAttrs.has(OpenTelemetryConstants.TELEMETRY_SDK_VERSION_KEY)) {
+        span.setAttribute(OpenTelemetryConstants.TELEMETRY_SDK_VERSION_KEY, OpenTelemetryConstants.TELEMETRY_SDK_VERSION_VALUE);
+      }
+    } else if (!existingAttrs.has(OpenTelemetryConstants.OPERATION_SOURCE_KEY)) {
       const operationSource =
         baggageMap.get(OpenTelemetryConstants.OPERATION_SOURCE_KEY) ||
         OperationSource.SDK;

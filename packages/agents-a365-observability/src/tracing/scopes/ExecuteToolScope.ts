@@ -3,7 +3,7 @@
 
 import { SpanKind, TimeInput } from '@opentelemetry/api';
 import { OpenTelemetryScope } from './OpenTelemetryScope';
-import { ToolCallDetails, AgentDetails, TenantDetails, SourceMetadata } from '../contracts';
+import { ToolCallDetails, AgentDetails, TenantDetails, SourceMetadata, CallerDetails } from '../contracts';
 import { ParentContext } from '../context/trace-context-propagation';
 import { OpenTelemetryConstants } from '../constants';
 
@@ -24,6 +24,7 @@ export class ExecuteToolScope extends OpenTelemetryScope {
    *        tool call after execution has already completed.
    * @param endTime Optional explicit end time (ms epoch, Date, or HrTime). When provided, the span will
    *        use this timestamp when disposed instead of the current wall-clock time.
+   * @param callerDetails Optional caller details.
    * @returns A new ExecuteToolScope instance.
    */
   public static start(
@@ -34,9 +35,10 @@ export class ExecuteToolScope extends OpenTelemetryScope {
     sourceMetadata?: Pick<SourceMetadata, "name" | "description">,
     parentContext?: ParentContext,
     startTime?: TimeInput,
-    endTime?: TimeInput
+    endTime?: TimeInput,
+    callerDetails?: CallerDetails
   ): ExecuteToolScope {
-    return new ExecuteToolScope(details, agentDetails, tenantDetails, conversationId, sourceMetadata, parentContext, startTime, endTime);
+    return new ExecuteToolScope(details, agentDetails, tenantDetails, conversationId, sourceMetadata, parentContext, startTime, endTime, callerDetails);
   }
 
   private constructor(
@@ -47,7 +49,8 @@ export class ExecuteToolScope extends OpenTelemetryScope {
     sourceMetadata?: Pick<SourceMetadata, "name" | "description">,
     parentContext?: ParentContext,
     startTime?: TimeInput,
-    endTime?: TimeInput
+    endTime?: TimeInput,
+    callerDetails?: CallerDetails
   ) {
     super(
       SpanKind.INTERNAL,
@@ -57,7 +60,8 @@ export class ExecuteToolScope extends OpenTelemetryScope {
       tenantDetails,
       parentContext,
       startTime,
-      endTime
+      endTime,
+      callerDetails
     );
 
     // Destructure the details object to match C# pattern

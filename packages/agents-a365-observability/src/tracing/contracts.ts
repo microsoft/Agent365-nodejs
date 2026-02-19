@@ -236,6 +236,9 @@ export interface InferenceDetails {
 
   /** Response ID from the model provider */
   responseId?: string;
+
+  /** The thought process used by the agent */
+  thoughtProcess?: string;
 }
 
 /**

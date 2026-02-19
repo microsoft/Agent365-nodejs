@@ -3,7 +3,7 @@
 
 import { trace, SpanKind, Span, SpanStatusCode, Attributes, context, AttributeValue, SpanContext, TimeInput } from '@opentelemetry/api';
 import { OpenTelemetryConstants } from '../constants';
-import { AgentDetails, TenantDetails } from '../contracts';
+import { AgentDetails, TenantDetails, CallerDetails } from '../contracts';
 import { createContextWithParentSpanRef } from '../context/parent-span-context';
 import { ParentContext, isParentSpanRef } from '../context/trace-context-propagation';
 import logger from '../../utils/logging';
@@ -46,7 +46,8 @@ export abstract class OpenTelemetryScope implements Disposable {
     tenantDetails?: TenantDetails,
     parentContext?: ParentContext,
     startTime?: TimeInput,
-    endTime?: TimeInput
+    endTime?: TimeInput,
+    callerDetails?: CallerDetails
   ) {
     // Determine the context to use for span creation
     let currentContext = context.active();
@@ -85,19 +86,30 @@ export abstract class OpenTelemetryScope implements Disposable {
     if (agentDetails) {
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY, agentDetails.agentId);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY, agentDetails.agentName);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_TYPE_KEY, agentDetails.agentType);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_DESCRIPTION_KEY, agentDetails.agentDescription);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_PLATFORM_ID_KEY, agentDetails.platformId);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, agentDetails.conversationId);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_ICON_URI_KEY, agentDetails.iconUri);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_AUID_KEY, agentDetails.agentAUID);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_UPN_KEY, agentDetails.agentUPN);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY, agentDetails.agentBlueprintId);
+
+      if (!OpenTelemetryConstants.isNewTelemetrySchemaEnabled) {
+        this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_TYPE_KEY, agentDetails.agentType);
+        this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY, agentDetails.agentBlueprintId);
+      }
     }
 
     // Set tenant details if provided
     if (tenantDetails) {
       this.setTagMaybe(OpenTelemetryConstants.TENANT_ID_KEY, tenantDetails.tenantId);
+    }
+
+    // Set caller details if provided
+    if (callerDetails) {
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY, callerDetails.callerId);
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_UPN_KEY, callerDetails.callerUpn);
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY, callerDetails.callerName);
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY, callerDetails.callerClientIp);
     }
   }
 
