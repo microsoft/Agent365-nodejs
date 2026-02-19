@@ -2,6 +2,8 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // ------------------------------------------------------------------------------
 
+import { LIB_VERSION } from '../version';
+
 /**
  * OpenTelemetry constants for Agent 365
  */
@@ -126,7 +128,7 @@ export class OpenTelemetryConstants {
   public static readonly TELEMETRY_SDK_VERSION_KEY = 'telemetry.sdk.version';
   public static readonly TELEMETRY_SDK_NAME_VALUE = 'Agent365Sdk';
   public static readonly TELEMETRY_SDK_LANGUAGE_VALUE = 'nodejs';
-  public static readonly TELEMETRY_SDK_VERSION_VALUE = '0.0.0-placeholder';
+  public static readonly TELEMETRY_SDK_VERSION_VALUE = LIB_VERSION;
 }
 
 /**
