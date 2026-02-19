@@ -21,9 +21,6 @@ export const GENERIC_ATTRIBUTES: readonly string[] = [
   ...(consts.isNewTelemetrySchemaEnabled ? [] : [consts.GEN_AI_AGENT_TYPE_KEY]),
   consts.GEN_AI_AGENT_DESCRIPTION_KEY,
   consts.SESSION_DESCRIPTION_KEY,
-  // In new schema, GEN_AI_AGENT_USER_ID_KEY and GEN_AI_AGENT_AUID_KEY both resolve to
-  // 'microsoft.a365.agent.user.id', so skip USER_ID_KEY to avoid duplicate propagation.
-  ...(consts.isNewTelemetrySchemaEnabled ? [] : [consts.GEN_AI_AGENT_USER_ID_KEY]),
   consts.GEN_AI_AGENT_UPN_KEY,
   ...(consts.isNewTelemetrySchemaEnabled ? [] : [consts.GEN_AI_AGENT_BLUEPRINT_ID_KEY]),
   consts.GEN_AI_AGENT_AUID_KEY,

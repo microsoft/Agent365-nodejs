@@ -77,7 +77,6 @@ export class OpenTelemetryConstants {
   public static readonly GEN_AI_TOOL_TYPE_KEY = 'gen_ai.tool.type';
 
   // Agent user (user tied to agent instance during creation) or caller dimensions
-  public static readonly GEN_AI_AGENT_USER_ID_KEY = OpenTelemetryConstants.isNewTelemetrySchemaEnabled ? 'microsoft.a365.agent.user.id' : 'gen_ai.agent.userid';
   public static readonly GEN_AI_CALLER_ID_KEY = OpenTelemetryConstants.isNewTelemetrySchemaEnabled ? 'microsoft.caller.id' : 'gen_ai.caller.id';
   public static readonly GEN_AI_CALLER_NAME_KEY = OpenTelemetryConstants.isNewTelemetrySchemaEnabled ? 'microsoft.caller.name' : 'gen_ai.caller.name';
   public static readonly GEN_AI_CALLER_UPN_KEY = OpenTelemetryConstants.isNewTelemetrySchemaEnabled ? 'microsoft.caller.upn' : 'gen_ai.caller.upn';
