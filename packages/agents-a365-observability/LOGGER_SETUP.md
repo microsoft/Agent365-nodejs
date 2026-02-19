@@ -1,4 +1,4 @@
-# Logger Configuration Guide
+de# Logger Configuration Guide
 
 Complete guide for understanding and configuring logging in Agent 365 Observability SDK, including the default logger and custom logger options.
 
