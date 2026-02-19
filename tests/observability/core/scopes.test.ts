@@ -563,3 +563,38 @@ describe('Scopes', () => {
     });
   });
 });
+
+// Validate raw caller attribute key strings for both old and new schemas
+// using jest.isolateModules to re-evaluate constants with different env var values.
+describe('Caller attribute key schema mappings', () => {
+  const loadConstants = (useNewSchema: boolean) => {
+    let consts: typeof OpenTelemetryConstants;
+    const original = process.env['A365_USE_NEW_TELEMETRY_SCHEMA'];
+    process.env['A365_USE_NEW_TELEMETRY_SCHEMA'] = useNewSchema ? 'true' : '';
+    jest.isolateModules(() => {
+      consts = require('@microsoft/agents-a365-observability').OpenTelemetryConstants;
+    });
+    if (original === undefined) {
+      delete process.env['A365_USE_NEW_TELEMETRY_SCHEMA'];
+    } else {
+      process.env['A365_USE_NEW_TELEMETRY_SCHEMA'] = original;
+    }
+    return consts!;
+  };
+
+  it('old schema uses gen_ai.* caller key names', () => {
+    const consts = loadConstants(false);
+    expect(consts.GEN_AI_CALLER_ID_KEY).toBe('gen_ai.caller.id');
+    expect(consts.GEN_AI_CALLER_NAME_KEY).toBe('gen_ai.caller.name');
+    expect(consts.GEN_AI_CALLER_UPN_KEY).toBe('gen_ai.caller.upn');
+    expect(consts.GEN_AI_CALLER_CLIENT_IP_KEY).toBe('gen_ai.caller.client.ip');
+  });
+
+  it('new schema uses microsoft.* / client.* caller key names', () => {
+    const consts = loadConstants(true);
+    expect(consts.GEN_AI_CALLER_ID_KEY).toBe('microsoft.caller.id');
+    expect(consts.GEN_AI_CALLER_NAME_KEY).toBe('microsoft.caller.name');
+    expect(consts.GEN_AI_CALLER_UPN_KEY).toBe('microsoft.caller.upn');
+    expect(consts.GEN_AI_CALLER_CLIENT_IP_KEY).toBe('client.address');
+  });
+});
