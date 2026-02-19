@@ -82,6 +82,7 @@ export class OpenTelemetryConstants {
   public static readonly GEN_AI_CALLER_NAME_KEY = OpenTelemetryConstants.isNewTelemetrySchemaEnabled ? 'microsoft.caller.name' : 'gen_ai.caller.name';
   public static readonly GEN_AI_CALLER_UPN_KEY = OpenTelemetryConstants.isNewTelemetrySchemaEnabled ? 'microsoft.caller.upn' : 'gen_ai.caller.upn';
   public static readonly GEN_AI_CALLER_CLIENT_IP_KEY = OpenTelemetryConstants.isNewTelemetrySchemaEnabled ? 'client.address' : 'gen_ai.caller.client.ip';
+  public static readonly GEN_AI_CALLER_TENANT_ID_KEY = 'gen_ai.caller.tenantid';
 
   // Agent to Agent caller agent dimensions
   public static readonly GEN_AI_CALLER_AGENT_USER_ID_KEY = OpenTelemetryConstants.isNewTelemetrySchemaEnabled ? 'microsoft.a365.caller.agent.user.id' : 'gen_ai.caller.agent.userid';

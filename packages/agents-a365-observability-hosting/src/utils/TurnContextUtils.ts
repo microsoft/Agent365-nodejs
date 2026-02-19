@@ -33,6 +33,7 @@ export function getCallerBaggagePairs(turnContext: TurnContext): Array<[string, 
     [OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY, from.aadObjectId],
     [OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY, from.name],
     [OpenTelemetryConstants.GEN_AI_CALLER_UPN_KEY, upn],
+    [OpenTelemetryConstants.GEN_AI_CALLER_TENANT_ID_KEY, from.tenantId],
     [OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY, from.agenticAppBlueprintId]
   ];
   return normalizePairs(pairs);

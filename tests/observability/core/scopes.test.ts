@@ -597,4 +597,18 @@ describe('Caller attribute key schema mappings', () => {
     expect(consts.GEN_AI_CALLER_UPN_KEY).toBe('microsoft.caller.upn');
     expect(consts.GEN_AI_CALLER_CLIENT_IP_KEY).toBe('client.address');
   });
+
+  it('old schema uses gen_ai.* caller agent key names', () => {
+    const consts = loadConstants(false);
+    expect(consts.GEN_AI_CALLER_AGENT_ID_KEY).toBe('gen_ai.caller.agent.id');
+    expect(consts.GEN_AI_CALLER_AGENT_NAME_KEY).toBe('gen_ai.caller.agent.name');
+    expect(consts.GEN_AI_CALLER_AGENT_APPLICATION_ID_KEY).toBe('gen_ai.caller.agent.applicationid');
+  });
+
+  it('new schema uses microsoft.a365.* caller agent key names', () => {
+    const consts = loadConstants(true);
+    expect(consts.GEN_AI_CALLER_AGENT_ID_KEY).toBe('microsoft.a365.caller.agent.id');
+    expect(consts.GEN_AI_CALLER_AGENT_NAME_KEY).toBe('microsoft.a365.caller.agent.name');
+    expect(consts.GEN_AI_CALLER_AGENT_APPLICATION_ID_KEY).toBe('microsoft.a365.caller.agent.blueprint.id');
+  });
 });
