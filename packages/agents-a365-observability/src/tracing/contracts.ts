@@ -19,6 +19,19 @@ export enum ExecutionType {
   Unknown = 'Unknown'
 }
 
+const _executionTypeValues = new Set<string>(Object.values(ExecutionType));
+
+/**
+ * Safely parse a string into an ExecutionType enum value.
+ * Returns the ExecutionType if the value is a valid member, otherwise undefined.
+ */
+export function parseExecutionType(value: string | undefined): ExecutionType | undefined {
+  if (value !== undefined && _executionTypeValues.has(value)) {
+    return value as ExecutionType;
+  }
+  return undefined;
+}
+
 /**
  * Represents different roles that can invoke an agent
  */

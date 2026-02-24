@@ -15,7 +15,7 @@ import {
   InferenceDetails,
   InvokeAgentDetails,
   ToolCallDetails,
-  ExecutionType
+  parseExecutionType,
 } from '@microsoft/agents-a365-observability';
 import {
   getExecutionTypePair,
@@ -212,7 +212,7 @@ export class ScopeUtils {
       conversationId: ScopeUtils.deriveConversationId(turnContext),
       request: {
         ...baseRequest,
-        executionType: executionTypePair.length > 0 ? (executionTypePair[0][1] as ExecutionType) : baseRequest.executionType,
+        executionType: executionTypePair.length > 0 ? parseExecutionType(executionTypePair[0][1]) ?? baseRequest.executionType : baseRequest.executionType,
         sourceMetadata: mergedSourceMetadata
       }
     };
@@ -247,4 +247,5 @@ export class ScopeUtils {
     const scope = ExecuteToolScope.start(details, agent, tenant, conversationId, sourceMetadata, undefined, startTime, endTime);
     return scope;
   }
+
 }
