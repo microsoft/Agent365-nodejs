@@ -103,9 +103,9 @@ export class OpenTelemetryConstants {
 
   // Baggage keys
   public static readonly OPERATION_SOURCE_KEY = 'operation.source';
-  public static readonly GEN_AI_AGENT_AUID_KEY = OpenTelemetryConstants.isNewTelemetrySchemaEnabled ? 'microsoft.a365.agent.user.id' : 'gen_ai.agent.user.id';
+  public static readonly GEN_AI_AGENT_AUID_KEY = OpenTelemetryConstants.isNewTelemetrySchemaEnabled ? 'microsoft.agent.user.id' : 'gen_ai.agent.user.id';
   public static readonly GEN_AI_AGENT_UPN_KEY = OpenTelemetryConstants.isNewTelemetrySchemaEnabled ? 'microsoft.agent.user.upn' : 'gen_ai.agent.upn';
-  public static readonly GEN_AI_AGENT_BLUEPRINT_ID_KEY = OpenTelemetryConstants.isNewTelemetrySchemaEnabled ? 'microsoft.agent.blueprint.id' : 'gen_ai.agent.applicationid';
+  public static readonly GEN_AI_AGENT_BLUEPRINT_ID_KEY = OpenTelemetryConstants.isNewTelemetrySchemaEnabled ? 'microsoft.a365.agent.blueprint.id' : 'gen_ai.agent.applicationid';
   public static readonly CORRELATION_ID_KEY = 'correlation.id';
   public static readonly HIRING_MANAGER_ID_KEY = 'hiring.manager.id';
 
@@ -126,7 +126,7 @@ export class OpenTelemetryConstants {
   public static readonly TELEMETRY_SDK_NAME_KEY = 'telemetry.sdk.name';
   public static readonly TELEMETRY_SDK_LANGUAGE_KEY = 'telemetry.sdk.language';
   public static readonly TELEMETRY_SDK_VERSION_KEY = 'telemetry.sdk.version';
-  public static readonly TELEMETRY_SDK_NAME_VALUE = 'Agent365Sdk';
+  public static readonly TELEMETRY_SDK_NAME_VALUE = 'A365ObservabilitySDK';
   public static readonly TELEMETRY_SDK_LANGUAGE_VALUE = 'nodejs';
   public static readonly TELEMETRY_SDK_VERSION_VALUE = LIB_VERSION;
 }
