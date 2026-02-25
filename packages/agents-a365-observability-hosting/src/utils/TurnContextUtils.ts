@@ -88,7 +88,7 @@ export function getTargetAgentBaggagePairs(turnContext: TurnContext): Array<[str
 }
 
 /**
- * Extracts the tenant ID baggage key-value pair, attempting to retrieve from ChannelData if necessary.
+ * Extracts the tenant ID baggage key-value pair using the Activity's getAgenticTenantId() helper.
  * @param turnContext The current TurnContext (activity context)
  * @returns Array of [key, value] for tenant ID
  */

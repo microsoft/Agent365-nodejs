@@ -60,7 +60,11 @@ export class ScopeUtils {
   public static deriveAgentDetails(turnContext: TurnContext, authToken: string): AgentDetails | undefined;
   /** @deprecated Provide `authToken` for proper blueprint ID resolution via ResolveAgentIdentity. */
   public static deriveAgentDetails(turnContext: TurnContext): AgentDetails | undefined;
-  public static deriveAgentDetails(turnContext: TurnContext, authToken?: string): AgentDetails | undefined {
+  static deriveAgentDetails(turnContext: TurnContext, authToken?: string): AgentDetails | undefined {
+    return ScopeUtils.deriveAgentDetailsCore(turnContext, authToken);
+  }
+
+  private static deriveAgentDetailsCore(turnContext: TurnContext, authToken?: string): AgentDetails | undefined {
     const recipient = turnContext?.activity?.recipient;
     if (!recipient) return undefined;
     const agentBlueprintId = authToken
@@ -165,9 +169,7 @@ export class ScopeUtils {
     startTime?: TimeInput,
     endTime?: TimeInput
   ): InferenceScope {
-    const agent = authToken
-      ? ScopeUtils.deriveAgentDetails(turnContext, authToken)
-      : ScopeUtils.deriveAgentDetails(turnContext);
+    const agent = ScopeUtils.deriveAgentDetailsCore(turnContext, authToken);
     const tenant = ScopeUtils.deriveTenantDetails(turnContext);
     const conversationId = ScopeUtils.deriveConversationId(turnContext);
     const sourceMetadata = ScopeUtils.deriveSourceMetadataObject(turnContext);
@@ -218,9 +220,7 @@ export class ScopeUtils {
     const tenant = ScopeUtils.deriveTenantDetails(turnContext);
     const callerAgent = ScopeUtils.deriveCallerAgent(turnContext);
     const caller = ScopeUtils.deriveCallerDetails(turnContext);
-    const invokeAgentDetails = authToken
-      ? ScopeUtils.buildInvokeAgentDetails(details, turnContext, authToken)
-      : ScopeUtils.buildInvokeAgentDetails(details, turnContext);
+    const invokeAgentDetails = ScopeUtils.buildInvokeAgentDetailsCore(details, turnContext, authToken);
 
     if (!tenant) {
       throw new Error('populateInvokeAgentScopeFromTurnContext: Missing tenant details on TurnContext (recipient)');
@@ -241,10 +241,12 @@ export class ScopeUtils {
   public static buildInvokeAgentDetails(details: InvokeAgentDetails, turnContext: TurnContext, authToken: string): InvokeAgentDetails;
   /** @deprecated Provide `authToken` for proper agent identity resolution. */
   public static buildInvokeAgentDetails(details: InvokeAgentDetails, turnContext: TurnContext): InvokeAgentDetails;
-  public static buildInvokeAgentDetails(details: InvokeAgentDetails, turnContext: TurnContext, authToken?: string): InvokeAgentDetails {
-    const agent = authToken
-      ? ScopeUtils.deriveAgentDetails(turnContext, authToken)
-      : ScopeUtils.deriveAgentDetails(turnContext);
+  static buildInvokeAgentDetails(details: InvokeAgentDetails, turnContext: TurnContext, authToken?: string): InvokeAgentDetails {
+    return ScopeUtils.buildInvokeAgentDetailsCore(details, turnContext, authToken);
+  }
+
+  private static buildInvokeAgentDetailsCore(details: InvokeAgentDetails, turnContext: TurnContext, authToken?: string): InvokeAgentDetails {
+    const agent = ScopeUtils.deriveAgentDetailsCore(turnContext, authToken);
     const srcMetaFromContext = ScopeUtils.deriveSourceMetadataObject(turnContext);
     const executionTypePair = getExecutionTypePair(turnContext);
     const baseRequest = details.request ?? {};
@@ -296,9 +298,7 @@ export class ScopeUtils {
     startTime?: TimeInput,
     endTime?: TimeInput
   ): ExecuteToolScope {
-    const agent = authToken
-      ? ScopeUtils.deriveAgentDetails(turnContext, authToken)
-      : ScopeUtils.deriveAgentDetails(turnContext);
+    const agent = ScopeUtils.deriveAgentDetailsCore(turnContext, authToken);
     const tenant = ScopeUtils.deriveTenantDetails(turnContext);
     const conversationId = ScopeUtils.deriveConversationId(turnContext);
     const sourceMetadata = ScopeUtils.deriveSourceMetadataObject(turnContext);
