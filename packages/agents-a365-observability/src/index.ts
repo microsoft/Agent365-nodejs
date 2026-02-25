@@ -54,7 +54,6 @@ export { ExecuteToolScope } from './tracing/scopes/ExecuteToolScope';
 export { InvokeAgentScope } from './tracing/scopes/InvokeAgentScope';
 export { InferenceScope } from './tracing/scopes/InferenceScope';
 export { OutputScope } from './tracing/scopes/OutputScope';
-export { InputScope } from './tracing/scopes/InputScope';
 export { logger, setLogger, getLogger, resetLogger, formatError } from './utils/logging';
 export type { ILogger } from './utils/logging';
 
