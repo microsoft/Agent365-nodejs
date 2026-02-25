@@ -20,7 +20,10 @@ function makeTurnContext(
       text: text ?? 'hello world',
       channelId: channelName ?? 'web',
       channelIdSubChannel: channelLink ?? 'https://example/channel',
-      conversation: { id: conversationId ?? 'conv-001' }
+      conversation: { id: conversationId ?? 'conv-001', tenantId: 'tenant-123' },
+      getAgenticInstanceId: () => 'agent-1',
+      getAgenticUser: () => 'agent-upn@contoso.com',
+      getAgenticTenantId: () => 'tenant-123',
     }
   };
 
@@ -35,9 +38,9 @@ function makeTurnContext(
   };
   base.activity.recipient = {
     agenticAppId: 'agent-1',
+    agenticAppBlueprintId: 'agent-blueprint-1',
     name: 'Agent One',
     aadObjectId: 'agent-oid',
-    agenticAppBlueprintId: 'agent-blueprint-1',
     agenticUserId: 'agent-upn@contoso.com',
     role: 'assistant',
     tenantId: 'tenant-123'
@@ -83,35 +86,35 @@ describe('ScopeUtils.populateFromTurnContext', () => {
     describe('error conditions', () => {
       test('populateInferenceScopeFromTurnContext throws when agent details are missing', () => {
         const details: any = { operationName: 'inference', model: 'm', providerName: 'prov' };
-        const ctx = makeCtx({ activity: { /* no recipient */ } as any });
+        const ctx = makeCtx({ activity: { /* no recipient */ getAgenticTenantId: () => 't1' } as any });
         expect(() => ScopeUtils.populateInferenceScopeFromTurnContext(details, ctx))
           .toThrow('populateInferenceScopeFromTurnContext: Missing agent details on TurnContext (recipient)');
       });
 
       test('populateInferenceScopeFromTurnContext throws when tenant details are missing', () => {
         const details: any = { operationName: 'inference', model: 'm', providerName: 'prov' };
-        const ctx = makeCtx({ activity: { recipient: { agenticAppId: 'aid' } } as any }); // agent ok, no tenantId
+        const ctx = makeCtx({ activity: { recipient: { agenticAppId: 'aid' }, getAgenticInstanceId: () => 'aid', getAgenticUser: () => undefined, getAgenticTenantId: () => undefined } as any }); // agent ok, no tenantId
         expect(() => ScopeUtils.populateInferenceScopeFromTurnContext(details, ctx))
           .toThrow('populateInferenceScopeFromTurnContext: Missing tenant details on TurnContext (recipient)');
       });
 
       test('populateExecuteToolScopeFromTurnContext throws when agent details are missing', () => {
         const details: any = { toolName: 'tool' };
-        const ctx = makeCtx({ activity: { /* no recipient */ } as any });
+        const ctx = makeCtx({ activity: { /* no recipient */ getAgenticTenantId: () => 't1' } as any });
         expect(() => ScopeUtils.populateExecuteToolScopeFromTurnContext(details, ctx))
           .toThrow('populateExecuteToolScopeFromTurnContext: Missing agent details on TurnContext (recipient)');
       });
 
       test('populateExecuteToolScopeFromTurnContext throws when tenant details are missing', () => {
         const details: any = { toolName: 'tool' };
-        const ctx = makeCtx({ activity: { recipient: { agenticAppId: 'aid' } } as any }); // agent ok, no tenantId
+        const ctx = makeCtx({ activity: { recipient: { agenticAppId: 'aid' }, getAgenticInstanceId: () => 'aid', getAgenticUser: () => undefined, getAgenticTenantId: () => undefined } as any }); // agent ok, no tenantId
         expect(() => ScopeUtils.populateExecuteToolScopeFromTurnContext(details, ctx))
           .toThrow('populateExecuteToolScopeFromTurnContext: Missing tenant details on TurnContext (recipient)');
       });
 
       test('populateInvokeAgentScopeFromTurnContext throws when tenant details are missing', () => {
         const details: InvokeAgentDetails = { agentId: 'aid' } as any;
-        const ctx = makeCtx({ activity: { recipient: { agenticAppId: 'aid' } } as any }); // no tenantId
+        const ctx = makeCtx({ activity: { recipient: { agenticAppId: 'aid' }, getAgenticInstanceId: () => 'aid', getAgenticUser: () => undefined, getAgenticTenantId: () => undefined } as any }); // no tenantId
         expect(() => ScopeUtils.populateInvokeAgentScopeFromTurnContext(details, ctx))
           .toThrow('populateInvokeAgentScopeFromTurnContext: Missing tenant details on TurnContext (recipient)');
       });
@@ -175,23 +178,23 @@ function makeCtx(partial: Partial<TurnContext>): TurnContext {
   return partial as unknown as TurnContext;
 }
 
-test('deriveTenantDetails prefers recipient.tenantId', () => {
-  const ctx = makeCtx({ activity: { recipient: { tenantId: 't-rec' }, from: { tenantId: 't-from' } } as any });
+test('deriveTenantDetails returns tenantId from getAgenticTenantId()', () => {
+  const ctx = makeCtx({ activity: { getAgenticTenantId: () => 't-rec' } as any });
   expect(ScopeUtils.deriveTenantDetails(ctx)).toEqual({ tenantId: 't-rec' });
 });
 
-test('deriveTenantDetails returns undefined when only from.tenantId is present', () => {
-  const ctx = makeCtx({ activity: { from: { tenantId: 't-from' } } as any });
+test('deriveTenantDetails returns undefined when getAgenticTenantId() returns undefined', () => {
+  const ctx = makeCtx({ activity: { getAgenticTenantId: () => undefined } as any });
   expect(ScopeUtils.deriveTenantDetails(ctx)).toBeUndefined();
 });
 
 test('deriveAgentDetails maps recipient fields to AgentDetails', () => {
-  const ctx = makeCtx({ activity: { recipient: { agenticAppId: 'aid', name: 'A', aadObjectId: 'auid', agenticAppBlueprintId: 'bp1', agenticUserId: 'upn1', role: 'bot', tenantId: 't1' } } as any });
+  const ctx = makeCtx({ activity: { recipient: { name: 'A', aadObjectId: 'auid', role: 'bot' }, getAgenticInstanceId: () => 'aid', getAgenticUser: () => 'upn1', getAgenticTenantId: () => 't1' } as any });
   expect(ScopeUtils.deriveAgentDetails(ctx)).toEqual({
     agentId: 'aid',
     agentName: 'A',
     agentAUID: 'auid',
-    agentBlueprintId: 'bp1',
+    agentBlueprintId: undefined,
     agentUPN: 'upn1',
     agentDescription: 'bot',
     tenantId: 't1',
@@ -263,10 +266,13 @@ test('buildInvokeAgentDetails merges agent (recipient), conversationId, sourceMe
   };
   const ctx = makeCtx({
     activity: {
-      recipient: { agenticAppId: 'rec-agent', name: 'Rec', aadObjectId: 'auid', role: 'bot', tenantId: 'tX' },
+      recipient: { name: 'Rec', role: 'bot' },
       conversation: { id: 'c-2' },
       channelId: 'web',
       channelIdSubChannel: 'inbox',
+      getAgenticInstanceId: () => 'rec-agent',
+      getAgenticUser: () => undefined,
+      getAgenticTenantId: () => 'tX',
     } as any
   });
 

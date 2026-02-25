@@ -16,10 +16,13 @@ import { OpenTelemetryConstants, ExecutionType } from '@microsoft/agents-a365-ob
 describe('TurnContextUtils', () => {
   const mockTurnContext = {
     activity: {
-      from: { id: 'user1', name: 'User One', agenticUserId: 'agentic-user-1', tenantId: 'tenant1', role: 'agenticUser', agenticAppBlueprintId: 'blueprint-123' },
-      recipient: { id: 'agent1', name: 'Agent One', agenticAppId: 'agent-app-1', agenticUserId: 'agentic-agent-1', tenantId: 'tenant1', role: 'agenticUser', aadObjectId: 'aad-object-1' },
-      channelData: {},
+      from: { id: 'user1', name: 'User One', agenticUserId: 'agentic-user-1', tenantId: 'tenant1', role: 'agenticUser' },
+      recipient: { id: 'agent1', name: 'Agent One', agenticAppId: 'agent-app-1', agenticUserId: 'agentic-agent-1', tenantId: 'tenant1', role: 'agenticUser' },
+      conversation: { id: 'conv-1', tenantId: 'tenant1' },
       text: 'Hello world',
+      getAgenticInstanceId: () => 'agent-app-1',
+      getAgenticUser: () => 'agentic-agent-1',
+      getAgenticTenantId: () => 'tenant1',
     },
   } as any;
 
@@ -45,8 +48,8 @@ describe('TurnContextUtils', () => {
     const obj = Object.fromEntries(pairs);
     expect(obj[OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]).toBe('agent-app-1');
     expect(obj[OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY]).toBe('Agent One');
-    expect(obj[OpenTelemetryConstants.GEN_AI_AGENT_AUID_KEY]).toBe('aad-object-1');
-    expect(obj[OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY]).toBe(undefined);
+    expect(obj[OpenTelemetryConstants.GEN_AI_AGENT_AUID_KEY]).toBeUndefined();
+    expect(obj[OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY]).toBeUndefined();
   });
 
   it('should get tenant id pair', () => {

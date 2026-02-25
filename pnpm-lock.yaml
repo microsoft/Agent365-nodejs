@@ -31,11 +31,11 @@ catalogs:
       specifier: ^1.1.1
       version: 1.1.1
     '@microsoft/agents-activity':
-      specifier: ^1.1.0-alpha.85
-      version: 1.1.0-alpha.85
+      specifier: ^1.3.1
+      version: 1.3.1
     '@microsoft/agents-hosting':
-      specifier: ^1.1.0-alpha.85
-      version: 1.1.0-alpha.85
+      specifier: ^1.3.1
+      version: 1.3.1
     '@modelcontextprotocol/sdk':
       specifier: ^1.25.2
       version: 1.25.2
@@ -69,6 +69,9 @@ catalogs:
     '@opentelemetry/semantic-conventions':
       specifier: ^1.37.0
       version: 1.38.0
+    '@types/express':
+      specifier: ^5.0.0
+      version: 5.0.6
     '@types/jest':
       specifier: ^30.0.0
       version: 30.0.0
@@ -173,10 +176,10 @@ importers:
         version: link:../agents-a365-runtime
       '@microsoft/agents-activity':
         specifier: 'catalog:'
-        version: 1.1.0-alpha.85
+        version: 1.3.1
       '@microsoft/agents-hosting':
         specifier: 'catalog:'
-        version: 1.1.0-alpha.85
+        version: 1.3.1
     devDependencies:
       '@eslint/js':
         specifier: 'catalog:'
@@ -393,7 +396,7 @@ importers:
         version: link:../agents-a365-runtime
       '@microsoft/agents-hosting':
         specifier: 'catalog:'
-        version: 1.1.0-alpha.85
+        version: 1.3.1
       '@opentelemetry/api':
         specifier: 'catalog:'
         version: 1.9.0
@@ -439,7 +442,7 @@ importers:
         version: 4.13.0
       '@microsoft/agents-hosting':
         specifier: 'catalog:'
-        version: 1.1.0-alpha.85
+        version: 1.3.1
       jsonwebtoken:
         specifier: 'catalog:'
         version: 9.0.3
@@ -488,7 +491,7 @@ importers:
         version: link:../agents-a365-runtime
       '@microsoft/agents-hosting':
         specifier: 'catalog:'
-        version: 1.1.0-alpha.85
+        version: 1.3.1
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
         version: 1.25.2(@cfworker/json-schema@4.1.1)(hono@4.11.7)(zod@4.1.13)
@@ -546,7 +549,7 @@ importers:
         version: link:../agents-a365-tooling
       '@microsoft/agents-hosting':
         specifier: 'catalog:'
-        version: 1.1.0-alpha.85
+        version: 1.3.1
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
         version: 1.25.2(@cfworker/json-schema@4.1.1)(hono@4.11.7)(zod@4.1.13)
@@ -604,7 +607,7 @@ importers:
         version: link:../agents-a365-tooling
       '@microsoft/agents-hosting':
         specifier: 'catalog:'
-        version: 1.1.0-alpha.85
+        version: 1.3.1
       hono:
         specifier: ^4.11.7
         version: 4.11.7
@@ -662,7 +665,7 @@ importers:
         version: link:../agents-a365-tooling
       '@microsoft/agents-hosting':
         specifier: 'catalog:'
-        version: 1.1.0-alpha.85
+        version: 1.3.1
       '@openai/agents':
         specifier: 'catalog:'
         version: 0.4.2(@cfworker/json-schema@4.1.1)(hono@4.11.7)(ws@8.18.3)(zod@4.1.13)
@@ -732,7 +735,7 @@ importers:
         version: link:../packages/agents-a365-runtime
       '@microsoft/agents-hosting':
         specifier: 'catalog:'
-        version: 1.1.0-alpha.85
+        version: 1.3.1
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
         version: 1.25.2(@cfworker/json-schema@4.1.1)(hono@4.11.7)(zod@4.1.13)
@@ -852,11 +855,11 @@ importers:
         specifier: workspace:*
         version: link:../../packages/agents-a365-tooling-extensions-langchain
       '@microsoft/agents-activity':
-        specifier: ^1.1.0-alpha.85
-        version: 1.1.0-alpha.85
+        specifier: ^1.3.1
+        version: 1.3.1
       '@microsoft/agents-hosting':
-        specifier: ^1.1.0-alpha.85
-        version: 1.1.0-alpha.85
+        specifier: ^1.3.1
+        version: 1.3.1
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
@@ -889,8 +892,8 @@ importers:
         specifier: ^0.2.18
         version: 0.2.23
       '@types/express':
-        specifier: ^4.17.21
-        version: 4.17.25
+        specifier: 'catalog:'
+        version: 5.0.6
       '@types/node':
         specifier: ^20.14.9
         version: 20.19.25
@@ -953,9 +956,17 @@ packages:
     resolution: {integrity: sha512-cNwUoCk3FF8VQ7Ln/MdcJVIv3sF73/OT86cRH81ECsydh7F4CNfIo2OAx6Cegtg8Yv75x4506wN4q+Emo6erOA==}
     engines: {node: '>=0.8.0'}
 
+  '@azure/msal-common@16.0.4':
+    resolution: {integrity: sha512-0KZ9/wbUyZN65JLAx5bGNfWjkD0kRMUgM99oSpZFg7wEOb3XcKIiHrFnIpgyc8zZ70fHodyh8JKEOel1oN24Gw==}
+    engines: {node: '>=0.8.0'}
+
   '@azure/msal-node@3.8.3':
     resolution: {integrity: sha512-Ul7A4gwmaHzYWj2Z5xBDly/W8JSC1vnKgJ898zPMZr0oSf1ah0tiL15sytjycU/PMhDZAlkWtEL1+MzNMU6uww==}
     engines: {node: '>=16'}
+
+  '@azure/msal-node@5.0.4':
+    resolution: {integrity: sha512-WbA77m68noCw4qV+1tMm5nodll34JCDF0KmrSrp9LskS0bGbgHt98ZRxq69BQK5mjMqDD5ThHJOrrGSfzPybxw==}
+    engines: {node: '>=20'}
 
   '@babel/cli@7.28.6':
     resolution: {integrity: sha512-6EUNcuBbNkj08Oj4gAZ+BUU8yLCgKzgVX4gaTh09Ya2C8ICM4P+G30g4m3akRxSYAp3A/gnWchrNst7px4/nUQ==}
@@ -1944,12 +1955,12 @@ packages:
     peerDependencies:
       '@langchain/core': ^1.0.0
 
-  '@microsoft/agents-activity@1.1.0-alpha.85':
-    resolution: {integrity: sha512-iMzeYFJZPSrXkhHpHesKQ1gjvCm6uyPlH0ojsNf8Z3EODCeiFsxHOahoLyzCuqzcWBYhNCcQ45aarNbeJ84HgA==}
+  '@microsoft/agents-activity@1.3.1':
+    resolution: {integrity: sha512-4k44NrfEqXiSg49ofj8geV8ylPocqDLtZKKt0PFL9BvFV0n57X3y1s/fEbsf7Fkl3+P/R2XLyMB5atEGf/eRGg==}
     engines: {node: '>=20.0.0'}
 
-  '@microsoft/agents-hosting@1.1.0-alpha.85':
-    resolution: {integrity: sha512-1Ii92EJSaQTuqjOBWUqoioClum+6Dh82uBmzoExMi3ZDJ9UTV6Kqg4W1h4PYhUZPmqIP3HLSVNvty84Gx/mqYg==}
+  '@microsoft/agents-hosting@1.3.1':
+    resolution: {integrity: sha512-570oJr93l1RcCNNaMVpOm+PgQkRgno/F65nH1aCWLIKLnw0o7iPoj+8Z5b7mnLMidg9lldVSCcf0dBxqTGE1/w==}
     engines: {node: '>=20.0.0'}
 
   '@microsoft/m365agentsplayground@0.2.23':
@@ -2329,11 +2340,11 @@ packages:
   '@types/estree@1.0.8':
     resolution: {integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==}
 
-  '@types/express-serve-static-core@4.19.7':
-    resolution: {integrity: sha512-FvPtiIf1LfhzsaIXhv/PHan/2FeQBbtBDtfX2QfvPxdUelMDEckK08SM6nqo1MIZY3RUlfA+HV8+hFUSio78qg==}
+  '@types/express-serve-static-core@5.1.1':
+    resolution: {integrity: sha512-v4zIMr/cX7/d2BpAEX3KNKL/JrT1s43s96lLvvdTmza1oEvDudCqK9aF/djc/SWgy8Yh0h30TZx5VpzqFCxk5A==}
 
-  '@types/express@4.17.25':
-    resolution: {integrity: sha512-dVd04UKsfpINUnK0yBoYHDF3xu7xVH4BuDotC/xGuycx4CgbP48X/KF/586bcObxT0HENHXEU8Nqtu6NR+eKhw==}
+  '@types/express@5.0.6':
+    resolution: {integrity: sha512-sKYVuV7Sv9fbPIt/442koC7+IIwK5olP1KWeD88e/idgoJqDm3JV/YUiPwkoKK92ylff2MGxSz1CSjsXelx0YA==}
 
   '@types/http-errors@2.0.5':
     resolution: {integrity: sha512-r8Tayk8HJnX0FztbZN7oVqGccWgw98T/0neJphO91KkmOzug1KkofZURD4UaD5uH8AqcFLfdPErnBod0u71/qg==}
@@ -2356,9 +2367,6 @@ packages:
   '@types/jsonwebtoken@9.0.10':
     resolution: {integrity: sha512-asx5hIG9Qmf/1oStypjanR7iKTv0gXQ1Ov/jfrX6kS/EO0OFni8orbmGCn0672NHR3kXHwpAwR+B368ZGN/2rA==}
 
-  '@types/mime@1.3.5':
-    resolution: {integrity: sha512-/pyBZWSLD2n0dcHE3hq8s8ZvcETHtEuF+3E7XVt0Ig2nvsVQXdghHVcEkIWjy9A0wKfTn97a/PSDYohKIlnP/w==}
-
   '@types/ms@2.1.0':
     resolution: {integrity: sha512-GsCCIZDE/p3i96vtEqx+7dBUGXrc7zeSK3wwPHIaRThS+9OhWIXRqzs4d6k1SVU8g91DrNRWxWUGhp5KXQb2VA==}
 
@@ -2377,14 +2385,11 @@ packages:
   '@types/range-parser@1.2.7':
     resolution: {integrity: sha512-hKormJbkJqzQGhziax5PItDUTMAM9uE2XXQmM37dyd4hVM+5aVl7oVxMVUiVQn2oCQFN/LKCZdvSM0pFRqbSmQ==}
 
-  '@types/send@0.17.6':
-    resolution: {integrity: sha512-Uqt8rPBE8SY0RK8JB1EzVOIZ32uqy8HwdxCnoCOsYrvnswqmFZ/k+9Ikidlk/ImhsdvBsloHbAlewb2IEBV/Og==}
-
   '@types/send@1.2.1':
     resolution: {integrity: sha512-arsCikDvlU99zl1g69TcAB3mzZPpxgw0UQnaHeC1Nwb015xp8bknZv5rIfri9xTOcMuaVgvabfIRA7PSZVuZIQ==}
 
-  '@types/serve-static@1.15.10':
-    resolution: {integrity: sha512-tRs1dB+g8Itk72rlSI2ZrW6vZg0YrLI81iQSTkMmOqnqCaNr/8Ek4VwWcN5vZgCYWbg/JJSGBlUaYGAOP73qBw==}
+  '@types/serve-static@2.2.0':
+    resolution: {integrity: sha512-8mam4H1NHLtu7nmtalF7eyBH14QyOASmcxHhSfEoRyr0nP/YdoesEtU+uSRvMe96TW/HPTtkoKqQLl53N7UXMQ==}
 
   '@types/stack-utils@2.0.3':
     resolution: {integrity: sha512-9aEbYZ3TbYMznPdcdr3SmIrLXwC/AKZXQeCf9Pgao5CKb8CyHuEX5jzWPTkvregvhRJHcpRO6BFoGW9ycaOkYw==}
@@ -2651,8 +2656,8 @@ packages:
   asynckit@0.4.0:
     resolution: {integrity: sha512-Oei9OH4tRh0YqU3GxhX79dM/mwVgvbZJaSNaRk+bshkj0S5cfHcgYakreBjrHwatXKbz+IoIdYLxrKim2MjW0Q==}
 
-  axios@1.13.2:
-    resolution: {integrity: sha512-VPk9ebNqPcy5lRGuSlKx752IlDatOjT9paPlm8A7yOuW2Fbvp4X3JznJtT4f0GzGLLiWE9W8onz51SqLYwzGaA==}
+  axios@1.13.5:
+    resolution: {integrity: sha512-cz4ur7Vb0xS4/KUN0tPWe44eqxrIu31me+fbang3ijiNscE129POzipJJA6zniq2C/Z6sJCjMimjS8Lc/GAs8Q==}
 
   babel-jest@30.2.0:
     resolution: {integrity: sha512-0YiBEOxWqKkSQWL9nNGGEgndoeL0ZpWrbLMNL5u/Kaxrli3Eaxlt3ZtIDktEvXt4L/R9r3ODr2zKwGM/2BjxVw==}
@@ -3628,8 +3633,8 @@ packages:
   jwa@2.0.1:
     resolution: {integrity: sha512-hRF04fqJIP8Abbkq5NKGN0Bbr3JxlQ+qhZufXVr0DvujKy93ZCbXZMHDL4EOtodSbCWxOqR8MS1tXA5hwqCXDg==}
 
-  jwks-rsa@3.2.0:
-    resolution: {integrity: sha512-PwchfHcQK/5PSydeKCs1ylNym0w/SSv8a62DgHJ//7x2ZclCoinlsjAfDxAAbpoTPybOum/Jgy+vkvMmKz89Ww==}
+  jwks-rsa@3.2.2:
+    resolution: {integrity: sha512-BqTyEDV+lS8F2trk3A+qJnxV5Q9EqKCBJOPti3W97r7qTympCZjb7h2X6f2kc+0K3rsSTY1/6YG2eaXKoj497w==}
     engines: {node: '>=14'}
 
   jws@4.0.1:
@@ -4718,9 +4723,17 @@ snapshots:
 
   '@azure/msal-common@15.13.2': {}
 
+  '@azure/msal-common@16.0.4': {}
+
   '@azure/msal-node@3.8.3':
     dependencies:
       '@azure/msal-common': 15.13.2
+      jsonwebtoken: 9.0.3
+      uuid: 10.0.0
+
+  '@azure/msal-node@5.0.4':
+    dependencies:
+      '@azure/msal-common': 16.0.4
       jsonwebtoken: 9.0.3
       uuid: 10.0.0
 
@@ -6034,7 +6047,7 @@ snapshots:
     transitivePeerDependencies:
       - ws
 
-  '@microsoft/agents-activity@1.1.0-alpha.85':
+  '@microsoft/agents-activity@1.3.1':
     dependencies:
       debug: 4.4.3(supports-color@5.5.0)
       uuid: 10.0.0
@@ -6042,15 +6055,16 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@microsoft/agents-hosting@1.1.0-alpha.85':
+  '@microsoft/agents-hosting@1.3.1':
     dependencies:
       '@azure/core-auth': 1.10.1
-      '@azure/msal-node': 3.8.3
-      '@microsoft/agents-activity': 1.1.0-alpha.85
-      axios: 1.13.2
+      '@azure/msal-node': 5.0.4
+      '@microsoft/agents-activity': 1.3.1
+      axios: 1.13.5
       jsonwebtoken: 9.0.3
-      jwks-rsa: 3.2.0
+      jwks-rsa: 3.2.2
       object-path: 0.11.8
+      zod: 4.1.13
     transitivePeerDependencies:
       - debug
       - supports-color
@@ -6553,19 +6567,18 @@ snapshots:
 
   '@types/estree@1.0.8': {}
 
-  '@types/express-serve-static-core@4.19.7':
+  '@types/express-serve-static-core@5.1.1':
     dependencies:
       '@types/node': 20.19.25
       '@types/qs': 6.14.0
       '@types/range-parser': 1.2.7
       '@types/send': 1.2.1
 
-  '@types/express@4.17.25':
+  '@types/express@5.0.6':
     dependencies:
       '@types/body-parser': 1.19.6
-      '@types/express-serve-static-core': 4.19.7
-      '@types/qs': 6.14.0
-      '@types/serve-static': 1.15.10
+      '@types/express-serve-static-core': 5.1.1
+      '@types/serve-static': 2.2.0
 
   '@types/http-errors@2.0.5': {}
 
@@ -6591,8 +6604,6 @@ snapshots:
       '@types/ms': 2.1.0
       '@types/node': 20.19.25
 
-  '@types/mime@1.3.5': {}
-
   '@types/ms@2.1.0': {}
 
   '@types/node-fetch@2.6.13':
@@ -6612,20 +6623,14 @@ snapshots:
 
   '@types/range-parser@1.2.7': {}
 
-  '@types/send@0.17.6':
-    dependencies:
-      '@types/mime': 1.3.5
-      '@types/node': 20.19.25
-
   '@types/send@1.2.1':
     dependencies:
       '@types/node': 20.19.25
 
-  '@types/serve-static@1.15.10':
+  '@types/serve-static@2.2.0':
     dependencies:
       '@types/http-errors': 2.0.5
       '@types/node': 20.19.25
-      '@types/send': 0.17.6
 
   '@types/stack-utils@2.0.3': {}
 
@@ -6881,7 +6886,7 @@ snapshots:
 
   asynckit@0.4.0: {}
 
-  axios@1.13.2:
+  axios@1.13.5:
     dependencies:
       follow-redirects: 1.15.11
       form-data: 4.0.5
@@ -8085,9 +8090,8 @@ snapshots:
       ecdsa-sig-formatter: 1.0.11
       safe-buffer: 5.2.1
 
-  jwks-rsa@3.2.0:
+  jwks-rsa@3.2.2:
     dependencies:
-      '@types/express': 4.17.25
       '@types/jsonwebtoken': 9.0.10
       debug: 4.4.3(supports-color@5.5.0)
       jose: 4.15.9

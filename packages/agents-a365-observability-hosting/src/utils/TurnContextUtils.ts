@@ -70,11 +70,11 @@ export function getExecutionTypePair(turnContext: TurnContext): Array<[string, s
  * @returns Array of [key, value] pairs for agent identity and description
  */
 export function getTargetAgentBaggagePairs(turnContext: TurnContext): Array<[string, string]> {
-  if (!turnContext || !turnContext.activity?.recipient) { 
+  if (!turnContext || !turnContext.activity?.recipient) {
     return [];
   }
-  const recipient = turnContext.activity.recipient; 
-  const agentId = recipient.agenticAppId;
+  const recipient = turnContext.activity.recipient;
+  const agentId = turnContext.activity?.getAgenticInstanceId();
   const agentName = recipient.name;
   const aadObjectId = recipient.aadObjectId;
   const agentDescription  = recipient.role;
@@ -93,24 +93,7 @@ export function getTargetAgentBaggagePairs(turnContext: TurnContext): Array<[str
  * @returns Array of [key, value] for tenant ID
  */
 export function getTenantIdPair(turnContext: TurnContext): Array<[string, string]> {
-   let tenantId = turnContext.activity?.recipient?.tenantId;
-
-
-  // If not found, try to extract from channelData. Accepts both object and JSON string.
-  if (!tenantId && turnContext.activity?.channelData) {
-    try {
-      let channelData: unknown = turnContext.activity.channelData;
-      if (typeof channelData === 'string') {
-        channelData = JSON.parse(channelData);
-      }
-      if (
-        typeof channelData === 'object' && channelData !== null) {
-        tenantId = (channelData as { tenant: { id?: string } })?.tenant?.id;
-      }
-    } catch (_err) {
-      // ignore JSON parse errors
-    }
-  }
+  const tenantId = turnContext.activity?.getAgenticTenantId();
   return tenantId ? [[OpenTelemetryConstants.TENANT_ID_KEY, tenantId]] : [];
 }
 
