@@ -72,9 +72,9 @@ export class InferenceScope extends OpenTelemetryScope {
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY, details.operationName.toString());
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_REQUEST_MODEL_KEY, details.model);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY, details.providerName);
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_INPUT_TOKENS_KEY, details.inputTokens?.toString());
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY, details.outputTokens?.toString());
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_RESPONSE_FINISH_REASONS_KEY, details.finishReasons?.join(','));
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_INPUT_TOKENS_KEY, details.inputTokens);
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY, details.outputTokens);
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_RESPONSE_FINISH_REASONS_KEY, details.finishReasons);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_THOUGHT_PROCESS_KEY, details.thoughtProcess);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, conversationId);
     this.setTagMaybe(OpenTelemetryConstants.CHANNEL_NAME_KEY, sourceMetadata?.name);
@@ -86,7 +86,7 @@ export class InferenceScope extends OpenTelemetryScope {
 
       // Only record port if it is different from 443 (default HTTPS port)
       if (details.endpoint.port && details.endpoint.port !== 443) {
-        this.setTagMaybe(OpenTelemetryConstants.SERVER_PORT_KEY, details.endpoint.port);
+        this.setTagMaybe(OpenTelemetryConstants.SERVER_PORT_KEY, details.endpoint.port.toString());
       }
     }
   }
@@ -112,7 +112,7 @@ export class InferenceScope extends OpenTelemetryScope {
    * @param inputTokens Number of input tokens
    */
   public recordInputTokens(inputTokens: number): void {
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_INPUT_TOKENS_KEY, inputTokens.toString());
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_INPUT_TOKENS_KEY, inputTokens);
   }
 
   /**
@@ -120,7 +120,7 @@ export class InferenceScope extends OpenTelemetryScope {
    * @param outputTokens Number of output tokens
    */
   public recordOutputTokens(outputTokens: number): void {
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY, outputTokens.toString());
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY, outputTokens);
   }
 
   /**
@@ -129,7 +129,7 @@ export class InferenceScope extends OpenTelemetryScope {
    */
   public recordFinishReasons(finishReasons: string[]): void {
     if (finishReasons && finishReasons.length > 0) {
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_RESPONSE_FINISH_REASONS_KEY, finishReasons.join(','));
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_RESPONSE_FINISH_REASONS_KEY, finishReasons);
     }
   }
 

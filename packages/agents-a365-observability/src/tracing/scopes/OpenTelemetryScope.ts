@@ -184,9 +184,9 @@ export abstract class OpenTelemetryScope implements Disposable {
    * @param name The tag name
    * @param value The tag value
    */
-  protected setTagMaybe<T extends string | number | boolean>(name: string, value: T | null | undefined): void {
+  protected setTagMaybe<T extends string | number | boolean | string[] | number[]>(name: string, value: T | null | undefined): void {
     if (value != null) {
-      this.span.setAttributes({ [name]: value as string | number | boolean });
+      this.span.setAttributes({ [name]: value as string | number | boolean | string[] | number[] });
     }
   }
 

@@ -74,7 +74,7 @@ export class InvokeAgentScope extends OpenTelemetryScope {
 
       // Only record port if it is different from 443 (default HTTPS port)
       if (invokeAgentDetails.endpoint.port && invokeAgentDetails.endpoint.port !== 443) {
-        this.setTagMaybe(OpenTelemetryConstants.SERVER_PORT_KEY, invokeAgentDetails.endpoint.port);
+        this.setTagMaybe(OpenTelemetryConstants.SERVER_PORT_KEY, invokeAgentDetails.endpoint.port.toString());
       }
     }
 

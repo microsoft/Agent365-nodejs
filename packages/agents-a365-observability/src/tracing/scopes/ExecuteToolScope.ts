@@ -83,7 +83,7 @@ export class ExecuteToolScope extends OpenTelemetryScope {
 
       // Only record port if it is different from 443 (default HTTPS port)
       if (endpoint.port && endpoint.port !== 443) {
-        this.setTagMaybe(OpenTelemetryConstants.SERVER_PORT_KEY, endpoint.port);
+        this.setTagMaybe(OpenTelemetryConstants.SERVER_PORT_KEY, endpoint.port.toString());
       }
     }
   }
