@@ -37,18 +37,13 @@ export const GENERIC_ATTRIBUTES: readonly string[] = [
  * Invoke Agent-specific attributes
  */
 export const INVOKE_AGENT_ATTRIBUTES: readonly string[] = [
-  consts.GEN_AI_CALLER_TENANT_ID_KEY,
   // Caller Agent (A2A) attributes
   consts.GEN_AI_CALLER_AGENT_ID_KEY,
   consts.GEN_AI_CALLER_AGENT_NAME_KEY,
-  consts.GEN_AI_CALLER_AGENT_TYPE_KEY,
   consts.GEN_AI_CALLER_AGENT_USER_ID_KEY,
   consts.GEN_AI_CALLER_AGENT_UPN_KEY,
-  consts.GEN_AI_CALLER_AGENT_TENANT_ID_KEY,
   consts.GEN_AI_CALLER_AGENT_APPLICATION_ID_KEY,
-  consts.GEN_AI_CALLER_AGENT_CLIENT_IP_KEY,
   consts.GEN_AI_CALLER_AGENT_PLATFORM_ID_KEY,
-  // Agent type and blueprint ID are InvokeAgent-only
-  consts.GEN_AI_AGENT_TYPE_KEY,
+  // Blueprint ID is InvokeAgent-only
   consts.GEN_AI_AGENT_BLUEPRINT_ID_KEY,
 ];

@@ -173,7 +173,6 @@ describe('SpanProcessor', () => {
     });
 
     it('should apply invoke agent specific attributes', () => {
-      expect(INVOKE_AGENT_ATTRIBUTES).toContain(OpenTelemetryConstants.GEN_AI_AGENT_TYPE_KEY);
       expect(INVOKE_AGENT_ATTRIBUTES).toContain(OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY);
     });
   });

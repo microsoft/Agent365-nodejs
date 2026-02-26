@@ -117,7 +117,7 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
         startTime,
         attributes: {
           [OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY]: Utils.getSpanKind(spanData),
-          [OpenTelemetryConstants.GEN_AI_SYSTEM_KEY]: 'openai',
+          [OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY]: 'openai',
         },
       },
       parentContext

@@ -30,7 +30,6 @@ describe('BaggageBuilder', () => {
         .tenantId('tenant-123')
         .agentId('agent-456')
         .agentName('TestAgent')
-        .agentType('assistant')
         .agentPlatformId('platform-xyz-123')
         .conversationId('conv-001');
 
@@ -47,17 +46,6 @@ describe('BaggageBuilder', () => {
 
       const bag = propagation.getBaggage((scope as any).contextWithBaggage);
       expect(bag?.getEntry(OpenTelemetryConstants.GEN_AI_AGENT_PLATFORM_ID_KEY)?.value).toBe('platform-abc-456');
-    });
-
-    it('should set agent type', () => {
-      const builder = new BaggageBuilder();
-      builder.agentType('assistant');
-
-      const scope = builder.build();
-      expect(scope).toBeInstanceOf(BaggageScope);
-
-      const bag = propagation.getBaggage((scope as any).contextWithBaggage);
-      expect(bag?.getEntry(OpenTelemetryConstants.GEN_AI_AGENT_TYPE_KEY)?.value).toBe('assistant');
     });
 
     it('should set caller agent platform ID via fluent API', () => {

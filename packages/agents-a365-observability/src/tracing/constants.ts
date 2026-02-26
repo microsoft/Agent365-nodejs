@@ -40,12 +40,8 @@ export class OpenTelemetryConstants {
   public static readonly GEN_AI_REQUEST_TOP_P_KEY = 'gen_ai.request.top_p';
   public static readonly GEN_AI_RESPONSE_FINISH_REASONS_KEY = 'gen_ai.response.finish_reasons';
   public static readonly GEN_AI_RESPONSE_MODEL_KEY = 'gen_ai.response.model';
-  public static readonly GEN_AI_SYSTEM_KEY = 'gen_ai.system';
-  public static readonly GEN_AI_SYSTEM_VALUE = 'az.ai.agent365';
-
   public static readonly GEN_AI_AGENT_ID_KEY = 'gen_ai.agent.id';
   public static readonly GEN_AI_AGENT_NAME_KEY = 'gen_ai.agent.name';
-  public static readonly GEN_AI_AGENT_TYPE_KEY = 'gen_ai.agent.type';
   public static readonly GEN_AI_AGENT_DESCRIPTION_KEY = 'gen_ai.agent.description';
   public static readonly GEN_AI_AGENT_PLATFORM_ID_KEY = 'microsoft.a365.agent.platform.id';
   public static readonly GEN_AI_AGENT_THOUGHT_PROCESS_KEY = 'microsoft.a365.agent.thought.process';
@@ -73,17 +69,13 @@ export class OpenTelemetryConstants {
   public static readonly GEN_AI_CALLER_NAME_KEY = 'microsoft.caller.name';
   public static readonly GEN_AI_CALLER_UPN_KEY = 'microsoft.caller.upn';
   public static readonly GEN_AI_CALLER_CLIENT_IP_KEY = 'client.address';
-  public static readonly GEN_AI_CALLER_TENANT_ID_KEY = 'gen_ai.caller.tenantid';
 
   // Agent to Agent caller agent dimensions
   public static readonly GEN_AI_CALLER_AGENT_USER_ID_KEY = 'microsoft.a365.caller.agent.user.id';
-  public static readonly GEN_AI_CALLER_AGENT_UPN_KEY = 'gen_ai.caller.agent.upn';
-  public static readonly GEN_AI_CALLER_AGENT_TENANT_ID_KEY = 'gen_ai.caller.agent.tenantid';
+  public static readonly GEN_AI_CALLER_AGENT_UPN_KEY = 'microsoft.a365.caller.agent.user.upn';
   public static readonly GEN_AI_CALLER_AGENT_NAME_KEY = 'microsoft.a365.caller.agent.name';
   public static readonly GEN_AI_CALLER_AGENT_ID_KEY = 'microsoft.a365.caller.agent.id';
-  public static readonly GEN_AI_CALLER_AGENT_TYPE_KEY = 'microsoft.a365.caller.agent.type';
   public static readonly GEN_AI_CALLER_AGENT_APPLICATION_ID_KEY = 'microsoft.a365.caller.agent.blueprint.id';
-  public static readonly GEN_AI_CALLER_AGENT_CLIENT_IP_KEY = 'gen_ai.caller.agent.user.client.ip';
   public static readonly GEN_AI_CALLER_AGENT_PLATFORM_ID_KEY = 'microsoft.a365.caller.agent.platform.id';
   // Agent-specific dimensions
   public static readonly AGENT_ID_KEY = 'gen_ai.agent.id';
@@ -94,9 +86,9 @@ export class OpenTelemetryConstants {
   public static readonly TENANT_ID_KEY = 'microsoft.tenant.id';
 
   // Baggage keys
-  public static readonly GEN_AI_AGENT_AUID_KEY = 'microsoft.a365.agent.user.id';
+  public static readonly GEN_AI_AGENT_AUID_KEY = 'microsoft.agent.user.id';
   public static readonly GEN_AI_AGENT_UPN_KEY = 'microsoft.agent.user.upn';
-  public static readonly GEN_AI_AGENT_BLUEPRINT_ID_KEY = 'microsoft.agent.blueprint.id';
+  public static readonly GEN_AI_AGENT_BLUEPRINT_ID_KEY = 'microsoft.a365.agent.blueprint.id';
 
   // Execution context dimensions
   public static readonly GEN_AI_EXECUTION_TYPE_KEY = 'gen_ai.execution.type';

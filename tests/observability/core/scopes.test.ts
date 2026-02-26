@@ -213,7 +213,6 @@ describe('Scopes', () => {
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
       expect(calls).toEqual(expect.arrayContaining([
         expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY, val: '10.0.0.5' }),
-        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CALLER_AGENT_CLIENT_IP_KEY, val: '192.168.1.100' })
       ]));
 
       scope1?.dispose();
@@ -478,7 +477,6 @@ describe('Scopes', () => {
       const span = getFinishedSpan();
       expect(hrtimeToMs(span.startTime as [number, number])).toBeCloseTo(customStart, -1);
       expect(hrtimeToMs(span.endTime as [number, number])).toBeCloseTo(customEnd, -1);
-      expect(span.attributes['operation.duration']).toBeCloseTo(5.0, 1);
     });
 
     it('setEndTime should override end time when called before dispose', () => {
@@ -496,7 +494,6 @@ describe('Scopes', () => {
       const span = getFinishedSpan();
       expect(hrtimeToMs(span.startTime as [number, number])).toBeCloseTo(customStart, -1);
       expect(hrtimeToMs(span.endTime as [number, number])).toBeCloseTo(laterEnd, -1);
-      expect(span.attributes['operation.duration']).toBeCloseTo(8.0, 1);
     });
 
     it('should support Date objects as start and end times', () => {
@@ -513,7 +510,6 @@ describe('Scopes', () => {
       const span = getFinishedSpan();
       expect(hrtimeToMs(span.startTime as [number, number])).toBeCloseTo(customStart.getTime(), -1);
       expect(hrtimeToMs(span.endTime as [number, number])).toBeCloseTo(customEnd.getTime(), -1);
-      expect(span.attributes['operation.duration']).toBeCloseTo(5.0, 1);
     });
 
     it('should support HrTime tuples as start and end times', () => {
@@ -531,7 +527,6 @@ describe('Scopes', () => {
       const span = getFinishedSpan();
       expect(hrtimeToMs(span.startTime as [number, number])).toBeCloseTo(1700000000000, -1);
       expect(hrtimeToMs(span.endTime as [number, number])).toBeCloseTo(1700000005500, -1);
-      expect(span.attributes['operation.duration']).toBeCloseTo(5.5, 1);
     });
 
     it('should use wall-clock time when no custom times are provided', () => {

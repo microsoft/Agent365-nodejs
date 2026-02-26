@@ -141,7 +141,7 @@ describe("OpenAI Trace Processor Integration Tests", () => {
           ],
         ).toBe("chat");
         expect(
-          generationSpan.attributes[OpenTelemetryConstants.GEN_AI_SYSTEM_KEY],
+          generationSpan.attributes[OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY],
         ).toBe("openai");
         expect(
           generationSpan.attributes[
@@ -199,7 +199,7 @@ describe("OpenAI Trace Processor Integration Tests", () => {
           ],
         ).toBe("invoke_agent");
         expect(
-          agentSpan.attributes[OpenTelemetryConstants.GEN_AI_SYSTEM_KEY],
+          agentSpan.attributes[OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY],
         ).toBe("openai");
         expect(
           agentSpan?.attributes[
@@ -310,7 +310,7 @@ describe("OpenAI Trace Processor Integration Tests", () => {
           ],
         ).toBe("invoke_agent");
         expect(
-          agentSpan.attributes[OpenTelemetryConstants.GEN_AI_SYSTEM_KEY],
+          agentSpan.attributes[OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY],
         ).toBe("openai");
         console.log("✅ Agent span validated");
       }
@@ -335,7 +335,7 @@ describe("OpenAI Trace Processor Integration Tests", () => {
           toolSpan.attributes[OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY],
         ).toBe("execute_tool");
         expect(
-          toolSpan.attributes[OpenTelemetryConstants.GEN_AI_SYSTEM_KEY],
+          toolSpan.attributes[OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY],
         ).toBe("openai");
         expect(
           toolSpan.attributes[OpenTelemetryConstants.GEN_AI_TOOL_NAME_KEY],

@@ -69,7 +69,7 @@ export abstract class OpenTelemetryScope implements Disposable {
       kind,
       startTime,
       attributes: {
-        [OpenTelemetryConstants.GEN_AI_SYSTEM_KEY]: OpenTelemetryConstants.GEN_AI_SYSTEM_VALUE,
+        [OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY]: 'az.ai.agent365',
         [OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY]: operationName,
       },
     }, currentContext);
@@ -105,7 +105,6 @@ export abstract class OpenTelemetryScope implements Disposable {
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_UPN_KEY, callerDetails.callerUpn);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY, callerDetails.callerName);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY, callerDetails.callerClientIp);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_TENANT_ID_KEY, callerDetails.tenantId);
     }
   }
 
@@ -247,10 +246,6 @@ export abstract class OpenTelemetryScope implements Disposable {
       finalTags[OpenTelemetryConstants.ERROR_TYPE_KEY] = this.errorType;
       this.span.setAttributes({ [OpenTelemetryConstants.ERROR_TYPE_KEY]: this.errorType });
     }
-
-    // Record duration metric (would typically use a meter here)
-    // For now, we'll add it as a span attribute
-    this.span.setAttributes({ 'operation.duration': duration });
 
     this.hasEnded = true;
     logger.info(`[A365Observability] Ending span[${this.span.spanContext().spanId}], duration: ${duration}s`);
