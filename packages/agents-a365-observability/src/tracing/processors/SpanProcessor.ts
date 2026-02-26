@@ -5,7 +5,7 @@
 import { Context, propagation, Span } from '@opentelemetry/api';
 import { SpanProcessor as BaseSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import { ReadableSpan } from '@opentelemetry/sdk-trace-base';
-import { OpenTelemetryConstants, OperationSource } from '../constants';
+import { OpenTelemetryConstants } from '../constants';
 import { GENERIC_ATTRIBUTES, INVOKE_AGENT_ATTRIBUTES } from './util';
 
 /**
@@ -69,22 +69,15 @@ export class SpanProcessor implements BaseSpanProcessor {
       INVOKE_AGENT_ATTRIBUTES.forEach(key => targetKeys.add(key));
     }
 
-    // Set operation source or telemetry SDK attributes
-    if (OpenTelemetryConstants.isNewTelemetrySchemaEnabled) {
-      if (!existingAttrs.has(OpenTelemetryConstants.TELEMETRY_SDK_NAME_KEY)) {
-        span.setAttribute(OpenTelemetryConstants.TELEMETRY_SDK_NAME_KEY, OpenTelemetryConstants.TELEMETRY_SDK_NAME_VALUE);
-      }
-      if (!existingAttrs.has(OpenTelemetryConstants.TELEMETRY_SDK_LANGUAGE_KEY)) {
-        span.setAttribute(OpenTelemetryConstants.TELEMETRY_SDK_LANGUAGE_KEY, OpenTelemetryConstants.TELEMETRY_SDK_LANGUAGE_VALUE);
-      }
-      if (!existingAttrs.has(OpenTelemetryConstants.TELEMETRY_SDK_VERSION_KEY)) {
-        span.setAttribute(OpenTelemetryConstants.TELEMETRY_SDK_VERSION_KEY, OpenTelemetryConstants.TELEMETRY_SDK_VERSION_VALUE);
-      }
-    } else if (!existingAttrs.has(OpenTelemetryConstants.OPERATION_SOURCE_KEY)) {
-      const operationSource =
-        baggageMap.get(OpenTelemetryConstants.OPERATION_SOURCE_KEY) ||
-        OperationSource.SDK;
-      span.setAttribute(OpenTelemetryConstants.OPERATION_SOURCE_KEY, operationSource);
+    // Set telemetry SDK attributes
+    if (!existingAttrs.has(OpenTelemetryConstants.TELEMETRY_SDK_NAME_KEY)) {
+      span.setAttribute(OpenTelemetryConstants.TELEMETRY_SDK_NAME_KEY, OpenTelemetryConstants.TELEMETRY_SDK_NAME_VALUE);
+    }
+    if (!existingAttrs.has(OpenTelemetryConstants.TELEMETRY_SDK_LANGUAGE_KEY)) {
+      span.setAttribute(OpenTelemetryConstants.TELEMETRY_SDK_LANGUAGE_KEY, OpenTelemetryConstants.TELEMETRY_SDK_LANGUAGE_VALUE);
+    }
+    if (!existingAttrs.has(OpenTelemetryConstants.TELEMETRY_SDK_VERSION_KEY)) {
+      span.setAttribute(OpenTelemetryConstants.TELEMETRY_SDK_VERSION_KEY, OpenTelemetryConstants.TELEMETRY_SDK_VERSION_VALUE);
     }
 
     // Copy baggage to span attributes

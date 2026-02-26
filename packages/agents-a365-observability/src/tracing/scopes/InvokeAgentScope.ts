@@ -66,11 +66,9 @@ export class InvokeAgentScope extends OpenTelemetryScope {
     // Set session ID and endpoint information
     this.setTagMaybe(OpenTelemetryConstants.SESSION_ID_KEY, invokeAgentDetails.sessionId);
 
-    // New schema: agent type and blueprint ID are InvokeAgent-only (base class skips them)
-    if (OpenTelemetryConstants.isNewTelemetrySchemaEnabled) {
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_TYPE_KEY, invokeAgentDetails.agentType);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY, invokeAgentDetails.agentBlueprintId);
-    }
+    // Agent type and blueprint ID are InvokeAgent-only
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_TYPE_KEY, invokeAgentDetails.agentType);
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY, invokeAgentDetails.agentBlueprintId);
 
     if (invokeAgentDetails.endpoint) {
       this.setTagMaybe(OpenTelemetryConstants.SERVER_ADDRESS_KEY, invokeAgentDetails.endpoint.host);
@@ -84,14 +82,9 @@ export class InvokeAgentScope extends OpenTelemetryScope {
     // Set request-related tags
     const requestToUse = invokeAgentDetails.request;
     if (requestToUse) {
-      // gen_ai.execution.type is removed in new schema
-      if (!OpenTelemetryConstants.isNewTelemetrySchemaEnabled && requestToUse.executionType) {
-        this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY, requestToUse.executionType.toString());
-      }
       if (requestToUse.sourceMetadata) {
-        this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_ID_KEY, requestToUse.sourceMetadata.id);
-        this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY, requestToUse.sourceMetadata.name);
-        this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY, requestToUse.sourceMetadata.description);
+        this.setTagMaybe(OpenTelemetryConstants.CHANNEL_NAME_KEY, requestToUse.sourceMetadata.name);
+        this.setTagMaybe(OpenTelemetryConstants.CHANNEL_LINK_KEY, requestToUse.sourceMetadata.description);
       }
     }
 

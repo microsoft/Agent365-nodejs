@@ -92,11 +92,6 @@ export abstract class OpenTelemetryScope implements Disposable {
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_ICON_URI_KEY, agentDetails.iconUri);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_AUID_KEY, agentDetails.agentAUID);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_UPN_KEY, agentDetails.agentUPN);
-
-      if (!OpenTelemetryConstants.isNewTelemetrySchemaEnabled) {
-        this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_TYPE_KEY, agentDetails.agentType);
-        this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY, agentDetails.agentBlueprintId);
-      }
     }
 
     // Set tenant details if provided

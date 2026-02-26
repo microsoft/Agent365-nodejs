@@ -234,11 +234,11 @@ export interface InferenceDetails {
   /** Array of finish reasons */
   finishReasons?: string[];
 
-  /** Response ID from the model provider */
-  responseId?: string;
-
   /** The thought process used by the agent */
   thoughtProcess?: string;
+
+  /** The endpoint for the inference call */
+  endpoint?: ServiceEndpoint;
 }
 
 /**

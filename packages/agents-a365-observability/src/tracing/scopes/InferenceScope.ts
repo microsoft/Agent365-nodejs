@@ -9,7 +9,8 @@ import {
   AgentDetails,
   TenantDetails,
   SourceMetadata,
-  CallerDetails
+  CallerDetails,
+  ServiceEndpoint
 } from '../contracts';
 import { ParentContext } from '../context/trace-context-propagation';
 
@@ -75,11 +76,20 @@ export class InferenceScope extends OpenTelemetryScope {
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_INPUT_TOKENS_KEY, details.inputTokens?.toString());
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY, details.outputTokens?.toString());
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_RESPONSE_FINISH_REASONS_KEY, details.finishReasons?.join(','));
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_RESPONSE_ID_KEY, details.responseId);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_THOUGHT_PROCESS_KEY, details.thoughtProcess);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, conversationId);
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY, sourceMetadata?.name);
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY, sourceMetadata?.description);
+    this.setTagMaybe(OpenTelemetryConstants.CHANNEL_NAME_KEY, sourceMetadata?.name);
+    this.setTagMaybe(OpenTelemetryConstants.CHANNEL_LINK_KEY, sourceMetadata?.description);
+
+    // Set endpoint information if provided
+    if (details.endpoint) {
+      this.setTagMaybe(OpenTelemetryConstants.SERVER_ADDRESS_KEY, details.endpoint.host);
+
+      // Only record port if it is different from 443 (default HTTPS port)
+      if (details.endpoint.port && details.endpoint.port !== 443) {
+        this.setTagMaybe(OpenTelemetryConstants.SERVER_PORT_KEY, details.endpoint.port);
+      }
+    }
   }
 
   /**
@@ -112,16 +122,6 @@ export class InferenceScope extends OpenTelemetryScope {
    */
   public recordOutputTokens(outputTokens: number): void {
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY, outputTokens.toString());
-  }
-
-  /**
-   * Records the response id for telemetry tracking.
-   * @param responseId The response ID
-   */
-  public recordResponseId(responseId: string): void {
-    if (responseId && responseId.trim()) {
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_RESPONSE_ID_KEY, responseId);
-    }
   }
 
   /**

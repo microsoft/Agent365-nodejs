@@ -124,8 +124,8 @@ export function getSourceMetadataBaggagePairs(turnContext: TurnContext): Array<[
     return [];
   }  
   const pairs: Array<[string, string | undefined]> = [
-    [OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY, turnContext.activity?.channelId],
-    [OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY, turnContext.activity?.channelIdSubChannel as string | undefined]
+    [OpenTelemetryConstants.CHANNEL_NAME_KEY, turnContext.activity?.channelId],
+    [OpenTelemetryConstants.CHANNEL_LINK_KEY, turnContext.activity?.channelIdSubChannel as string | undefined]
   ];
   return normalizePairs(pairs);
 }

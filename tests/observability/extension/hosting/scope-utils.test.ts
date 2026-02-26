@@ -63,8 +63,8 @@ describe('ScopeUtils.populateFromTurnContext', () => {
     const calls = spy.mock.calls.map(args => [args[0], args[1]]);
     const expected = [
       [OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, 'conv-A'],
-      [OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY, 'web'],
-      [OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY, 'https://web'],
+      [OpenTelemetryConstants.CHANNEL_NAME_KEY, 'web'],
+      [OpenTelemetryConstants.CHANNEL_LINK_KEY, 'https://web'],
       [OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY, 'Agent One'],
       [OpenTelemetryConstants.GEN_AI_AGENT_AUID_KEY, 'agent-oid'],
       [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY, 'agent-1'],
@@ -73,9 +73,6 @@ describe('ScopeUtils.populateFromTurnContext', () => {
       [OpenTelemetryConstants.TENANT_ID_KEY, 'tenant-123'],
       [OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, 'input text']
     ];
-    if (!OpenTelemetryConstants.isNewTelemetrySchemaEnabled) {
-      expected.push([OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY, 'agent-blueprint-1']);
-    }
     expect(calls).toEqual(expect.arrayContaining(expected));
     scope?.dispose();
   });
@@ -127,8 +124,8 @@ describe('ScopeUtils.populateFromTurnContext', () => {
     const calls = spy.mock.calls.map(args => [args[0], args[1]]);
     const expected = [
       [OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, 'conv-B'],
-      [OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY, 'teams'],
-      [OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY, 'https://teams'],
+      [OpenTelemetryConstants.CHANNEL_NAME_KEY, 'teams'],
+      [OpenTelemetryConstants.CHANNEL_LINK_KEY, 'https://teams'],
       [OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY, 'user-oid'],
       [OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY, 'Test User'],
       [OpenTelemetryConstants.GEN_AI_CALLER_UPN_KEY, 'user@contoso.com'],
@@ -142,9 +139,6 @@ describe('ScopeUtils.populateFromTurnContext', () => {
       [OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY, 'Agent One'],
       [OpenTelemetryConstants.GEN_AI_AGENT_DESCRIPTION_KEY, 'assistant']
     ];
-    if (!OpenTelemetryConstants.isNewTelemetrySchemaEnabled) {
-      expected.push([OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY, ExecutionType.Agent2Agent.toString()]);
-    }
     expect(calls).toEqual(expect.arrayContaining(expected));
     scope?.dispose();
   });
@@ -158,8 +152,8 @@ describe('ScopeUtils.populateFromTurnContext', () => {
     expect(calls).toEqual(
       expect.arrayContaining([
         [OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, 'conv-C'],
-        [OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY, 'cli'],
-        [OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY, 'https://cli'],
+        [OpenTelemetryConstants.CHANNEL_NAME_KEY, 'cli'],
+        [OpenTelemetryConstants.CHANNEL_LINK_KEY, 'https://cli'],
         [OpenTelemetryConstants.GEN_AI_AGENT_AUID_KEY, 'agent-oid'],
         [OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY, 'Agent One'],
         [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY, 'agent-1'],

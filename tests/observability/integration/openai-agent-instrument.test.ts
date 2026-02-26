@@ -347,7 +347,7 @@ describe("OpenAI Trace Processor Integration Tests", () => {
           toolSpan.attributes[OpenTelemetryConstants.GEN_AI_TOOL_ARGS_KEY],
         ).toBe('{"a":15,"b":27}');
         expect(
-          toolSpan.attributes[OpenTelemetryConstants.GEN_AI_EVENT_CONTENT],
+          toolSpan.attributes[OpenTelemetryConstants.GEN_AI_TOOL_CALL_RESULT_KEY],
         ).toBe("The sum of 15 and 27 is 42");
 
         validateParentChildRelationship(toolSpan, agentSpan!);

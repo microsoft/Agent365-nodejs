@@ -249,15 +249,9 @@ describe('Scopes', () => {
       ]));
       // Validate raw attribute key strings for schema correctness
       const keySet = new Set(calls.map(c => c.key));
-      if (OpenTelemetryConstants.isNewTelemetrySchemaEnabled) {
-        expect(keySet).toContain('microsoft.caller.id');
-        expect(keySet).toContain('microsoft.caller.name');
-        expect(keySet).toContain('client.address');
-      } else {
-        expect(keySet).toContain('gen_ai.caller.id');
-        expect(keySet).toContain('gen_ai.caller.name');
-        expect(keySet).toContain('gen_ai.caller.client.ip');
-      }
+      expect(keySet).toContain('microsoft.caller.id');
+      expect(keySet).toContain('microsoft.caller.name');
+      expect(keySet).toContain('client.address');
       scope?.dispose();
       spy.mockRestore();
     });
@@ -290,8 +284,8 @@ describe('Scopes', () => {
 
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
       expect(calls).toEqual(expect.arrayContaining([
-        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY, val: 'ChannelTool' }),
-        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY, val: 'https://channel/tool' })
+        expect.objectContaining({ key: OpenTelemetryConstants.CHANNEL_NAME_KEY, val: 'ChannelTool' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.CHANNEL_LINK_KEY, val: 'https://channel/tool' })
       ]));
 
       scope?.dispose();
@@ -317,7 +311,6 @@ describe('Scopes', () => {
         providerName: 'openai',
         inputTokens: 100,
         outputTokens: 150,
-        responseId: 'resp-123',
         finishReasons: ['stop']
       };
 
@@ -332,15 +325,9 @@ describe('Scopes', () => {
       ]));
       // Validate raw attribute key strings for schema correctness
       const keySet = new Set(calls.map(c => c.key));
-      if (OpenTelemetryConstants.isNewTelemetrySchemaEnabled) {
-        expect(keySet).toContain('microsoft.caller.id');
-        expect(keySet).toContain('microsoft.caller.name');
-        expect(keySet).toContain('client.address');
-      } else {
-        expect(keySet).toContain('gen_ai.caller.id');
-        expect(keySet).toContain('gen_ai.caller.name');
-        expect(keySet).toContain('gen_ai.caller.client.ip');
-      }
+      expect(keySet).toContain('microsoft.caller.id');
+      expect(keySet).toContain('microsoft.caller.name');
+      expect(keySet).toContain('client.address');
       scope?.dispose();
       spy.mockRestore();
     });
@@ -369,7 +356,6 @@ describe('Scopes', () => {
       expect(() => scope?.recordOutputMessages(['Generated response'])).not.toThrow();
       expect(() => scope?.recordInputTokens(50)).not.toThrow();
       expect(() => scope?.recordOutputTokens(100)).not.toThrow();
-      expect(() => scope?.recordResponseId('resp-456')).not.toThrow();
       expect(() => scope?.recordFinishReasons(['stop', 'length'])).not.toThrow();
       scope?.dispose();
     });
@@ -405,8 +391,8 @@ describe('Scopes', () => {
 
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
       expect(calls).toEqual(expect.arrayContaining([
-        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY, val: 'ChannelInf' }),
-        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY, val: 'https://channel/inf' })
+        expect.objectContaining({ key: OpenTelemetryConstants.CHANNEL_NAME_KEY, val: 'ChannelInf' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.CHANNEL_LINK_KEY, val: 'https://channel/inf' })
       ]));
 
       scope?.dispose();
@@ -564,51 +550,29 @@ describe('Scopes', () => {
   });
 });
 
-// Validate raw caller attribute key strings for both old and new schemas
-// using jest.isolateModules to re-evaluate constants with different env var values.
-describe('Caller attribute key schema mappings', () => {
-  const loadConstants = (useNewSchema: boolean) => {
-    let consts: typeof OpenTelemetryConstants;
-    const original = process.env['A365_USE_NEW_TELEMETRY_SCHEMA'];
-    process.env['A365_USE_NEW_TELEMETRY_SCHEMA'] = useNewSchema ? 'true' : '';
-    jest.isolateModules(() => {
-      consts = require('@microsoft/agents-a365-observability').OpenTelemetryConstants;
-    });
-    if (original === undefined) {
-      delete process.env['A365_USE_NEW_TELEMETRY_SCHEMA'];
-    } else {
-      process.env['A365_USE_NEW_TELEMETRY_SCHEMA'] = original;
-    }
-    return consts!;
-  };
-
-  it('old schema uses gen_ai.* caller key names', () => {
-    const consts = loadConstants(false);
-    expect(consts.GEN_AI_CALLER_ID_KEY).toBe('gen_ai.caller.id');
-    expect(consts.GEN_AI_CALLER_NAME_KEY).toBe('gen_ai.caller.name');
-    expect(consts.GEN_AI_CALLER_UPN_KEY).toBe('gen_ai.caller.upn');
-    expect(consts.GEN_AI_CALLER_CLIENT_IP_KEY).toBe('gen_ai.caller.client.ip');
+// Validate attribute key constant values use the new schema namespace.
+describe('Attribute key schema values', () => {
+  it('caller keys use microsoft.* / client.* namespace', () => {
+    expect(OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY).toBe('microsoft.caller.id');
+    expect(OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY).toBe('microsoft.caller.name');
+    expect(OpenTelemetryConstants.GEN_AI_CALLER_UPN_KEY).toBe('microsoft.caller.upn');
+    expect(OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY).toBe('client.address');
   });
 
-  it('new schema uses microsoft.* / client.* caller key names', () => {
-    const consts = loadConstants(true);
-    expect(consts.GEN_AI_CALLER_ID_KEY).toBe('microsoft.caller.id');
-    expect(consts.GEN_AI_CALLER_NAME_KEY).toBe('microsoft.caller.name');
-    expect(consts.GEN_AI_CALLER_UPN_KEY).toBe('microsoft.caller.upn');
-    expect(consts.GEN_AI_CALLER_CLIENT_IP_KEY).toBe('client.address');
+  it('caller agent keys use microsoft.a365.* namespace', () => {
+    expect(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_ID_KEY).toBe('microsoft.a365.caller.agent.id');
+    expect(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_NAME_KEY).toBe('microsoft.a365.caller.agent.name');
+    expect(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_APPLICATION_ID_KEY).toBe('microsoft.a365.caller.agent.blueprint.id');
   });
 
-  it('old schema uses gen_ai.* caller agent key names', () => {
-    const consts = loadConstants(false);
-    expect(consts.GEN_AI_CALLER_AGENT_ID_KEY).toBe('gen_ai.caller.agent.id');
-    expect(consts.GEN_AI_CALLER_AGENT_NAME_KEY).toBe('gen_ai.caller.agent.name');
-    expect(consts.GEN_AI_CALLER_AGENT_APPLICATION_ID_KEY).toBe('gen_ai.caller.agent.applicationid');
+  it('channel keys use microsoft.channel.* namespace', () => {
+    expect(OpenTelemetryConstants.CHANNEL_NAME_KEY).toBe('microsoft.channel.name');
+    expect(OpenTelemetryConstants.CHANNEL_LINK_KEY).toBe('microsoft.channel.link');
   });
 
-  it('new schema uses microsoft.a365.* caller agent key names', () => {
-    const consts = loadConstants(true);
-    expect(consts.GEN_AI_CALLER_AGENT_ID_KEY).toBe('microsoft.a365.caller.agent.id');
-    expect(consts.GEN_AI_CALLER_AGENT_NAME_KEY).toBe('microsoft.a365.caller.agent.name');
-    expect(consts.GEN_AI_CALLER_AGENT_APPLICATION_ID_KEY).toBe('microsoft.a365.caller.agent.blueprint.id');
+  it('session and tenant keys use microsoft.* namespace', () => {
+    expect(OpenTelemetryConstants.SESSION_ID_KEY).toBe('microsoft.session.id');
+    expect(OpenTelemetryConstants.SESSION_DESCRIPTION_KEY).toBe('microsoft.session.description');
+    expect(OpenTelemetryConstants.TENANT_ID_KEY).toBe('microsoft.tenant.id');
   });
 });
