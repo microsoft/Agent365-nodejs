@@ -9,8 +9,7 @@ import {
   AgentDetails,
   TenantDetails,
   SourceMetadata,
-  CallerDetails,
-  ServiceEndpoint
+  CallerDetails
 } from '../contracts';
 import { ParentContext } from '../context/trace-context-propagation';
 
