@@ -138,7 +138,6 @@ describe('ScopeUtils.populateFromTurnContext', () => {
         [OpenTelemetryConstants.GEN_AI_CALLER_AGENT_ID_KEY, 'callerAgent-1'],
         [OpenTelemetryConstants.GEN_AI_CALLER_AGENT_APPLICATION_ID_KEY, 'caller-agentBlueprintId'],
         [OpenTelemetryConstants.TENANT_ID_KEY, 'tenant-123'],
-        [OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY, ExecutionType.Agent2Agent.toString()],
         [OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, JSON.stringify(['invoke message'])],
         [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY, 'agent-1'],
         [OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY, 'Agent One'],

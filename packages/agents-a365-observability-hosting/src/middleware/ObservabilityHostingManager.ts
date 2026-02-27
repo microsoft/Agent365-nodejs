@@ -18,60 +18,43 @@ export interface ObservabilityHostingOptions {
 }
 
 /**
- * Singleton manager for configuring hosting-layer observability middleware.
+ * Manager for configuring hosting-layer observability middleware.
  *
  * @example
  * ```typescript
- * ObservabilityHostingManager.configure(adapter, {
- *   enableOutputLogging: true,
- * });
+ * const manager = new ObservabilityHostingManager();
+ * manager.configure(adapter, { enableOutputLogging: true });
  * ```
  */
 export class ObservabilityHostingManager {
-  private static _instance?: ObservabilityHostingManager;
-
-  private constructor() {}
+  private _configured = false;
 
   /**
-   * Configures the singleton instance and registers middleware on the adapter.
+   * Registers observability middleware on the adapter.
+   * Subsequent calls are ignored.
    */
-  static configure(
-    adapter?: { use(...middlewares: Array<Middleware>): void },
-    options?: ObservabilityHostingOptions
-  ): ObservabilityHostingManager {
-    if (ObservabilityHostingManager._instance) {
+  configure(
+    adapter: { use(...middlewares: Array<Middleware>): void },
+    options: ObservabilityHostingOptions
+  ): void {
+    if (this._configured) {
       logger.warn('[ObservabilityHostingManager] Already configured. Subsequent configure() calls are ignored.');
-      return ObservabilityHostingManager._instance;
+      return;
     }
 
-    const instance = new ObservabilityHostingManager();
+    const enableBaggage = options.enableBaggage !== false;
+    const enableOutputLogging = options.enableOutputLogging === true;
 
-    if (adapter) {
-      const enableBaggage = options?.enableBaggage !== false;
-      const enableOutputLogging = options?.enableOutputLogging === true;
-
-      if (enableBaggage) {
-        adapter.use(new BaggageMiddleware());
-        logger.info('[ObservabilityHostingManager] BaggageMiddleware registered.');
-      }
-      if (enableOutputLogging) {
-        adapter.use(new OutputLoggingMiddleware());
-        logger.info('[ObservabilityHostingManager] OutputLoggingMiddleware registered.');
-      }
-
-      logger.info(`[ObservabilityHostingManager] Configured. Baggage: ${enableBaggage}, OutputLogging: ${enableOutputLogging}.`);
-    } else {
-      logger.warn('[ObservabilityHostingManager] No adapter provided. No middleware registered.');
+    if (enableBaggage) {
+      adapter.use(new BaggageMiddleware());
+      logger.info('[ObservabilityHostingManager] BaggageMiddleware registered.');
+    }
+    if (enableOutputLogging) {
+      adapter.use(new OutputLoggingMiddleware());
+      logger.info('[ObservabilityHostingManager] OutputLoggingMiddleware registered.');
     }
 
-    ObservabilityHostingManager._instance = instance;
-    return instance;
-  }
-
-  /**
-   * Returns the current singleton instance, or null if not configured.
-   */
-  static getInstance(): ObservabilityHostingManager | null {
-    return ObservabilityHostingManager._instance ?? null;
+    logger.info(`[ObservabilityHostingManager] Configured. Baggage: ${enableBaggage}, OutputLogging: ${enableOutputLogging}.`);
+    this._configured = true;
   }
 }

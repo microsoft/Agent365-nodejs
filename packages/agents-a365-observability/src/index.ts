@@ -45,7 +45,6 @@ export {
   InferenceOperationType,
   InferenceResponse,
   OutputResponse,
-  parseExecutionType
 } from './tracing/contracts';
 
 // Scopes

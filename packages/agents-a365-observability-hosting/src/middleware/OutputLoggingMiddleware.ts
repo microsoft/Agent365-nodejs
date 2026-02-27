@@ -7,13 +7,10 @@ import {
   AgentDetails,
   TenantDetails,
   CallerDetails,
-  ExecutionType,
-  parseExecutionType,
   ParentSpanRef,
   logger,
 } from '@microsoft/agents-a365-observability';
 import { ScopeUtils } from '../utils/ScopeUtils';
-import { getExecutionTypePair } from '../utils/TurnContextUtils';
 
 /**
  * TurnState key for the parent span reference.
@@ -42,13 +39,9 @@ export class OutputLoggingMiddleware implements Middleware {
     const callerDetails = ScopeUtils.deriveCallerDetails(context);
     const conversationId = ScopeUtils.deriveConversationId(context);
     const sourceMetadata = ScopeUtils.deriveSourceMetadataObject(context);
-    const executionTypePair = getExecutionTypePair(context);
-    const executionType = executionTypePair.length > 0
-      ? parseExecutionType(executionTypePair[0][1])
-      : undefined;
 
     context.onSendActivities(
-      this._createSendHandler(context, agentDetails, tenantDetails, callerDetails, conversationId, sourceMetadata, executionType)
+      this._createSendHandler(context, agentDetails, tenantDetails, callerDetails, conversationId, sourceMetadata)
     );
 
     await next();
@@ -65,7 +58,6 @@ export class OutputLoggingMiddleware implements Middleware {
     callerDetails?: CallerDetails,
     conversationId?: string,
     sourceMetadata?: { name?: string; description?: string },
-    executionType?: ExecutionType,
   ): SendActivitiesHandler {
     return async (_ctx, activities, sendNext) => {
       const messages = activities
@@ -90,7 +82,7 @@ export class OutputLoggingMiddleware implements Middleware {
         callerDetails,
         conversationId,
         sourceMetadata,
-        executionType,
+        undefined,
         parentSpanRef,
       );
       try {

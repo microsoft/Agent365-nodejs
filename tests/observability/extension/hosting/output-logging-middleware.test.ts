@@ -175,7 +175,6 @@ describe('OutputLoggingMiddleware', () => {
 
     expect(outputSpan!.attributes[OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY]).toBe('user-oid');
     expect(outputSpan!.attributes[OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY]).toBe('Test User');
-    expect(outputSpan!.attributes[OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY]).toBe('HumanToAgent');
     expect(outputSpan!.attributes[OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY]).toBe('teams');
   });
 

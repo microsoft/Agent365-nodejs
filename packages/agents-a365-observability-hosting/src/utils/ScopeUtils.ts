@@ -15,11 +15,7 @@ import {
   InferenceDetails,
   InvokeAgentDetails,
   ToolCallDetails,
-  parseExecutionType,
 } from '@microsoft/agents-a365-observability';
-import {
-  getExecutionTypePair,
-} from './TurnContextUtils';
 
 /**
  * Unified utilities to populate scope tags from a TurnContext.
@@ -198,7 +194,6 @@ export class ScopeUtils {
   public static buildInvokeAgentDetails(details: InvokeAgentDetails, turnContext: TurnContext): InvokeAgentDetails {
     const agent = ScopeUtils.deriveAgentDetails(turnContext);
     const srcMetaFromContext = ScopeUtils.deriveSourceMetadataObject(turnContext);
-    const executionTypePair = getExecutionTypePair(turnContext);
     const baseRequest = details.request ?? {};
     const baseSource = baseRequest.sourceMetadata ?? {};
     const mergedSourceMetadata = {
@@ -212,7 +207,6 @@ export class ScopeUtils {
       conversationId: ScopeUtils.deriveConversationId(turnContext),
       request: {
         ...baseRequest,
-        executionType: executionTypePair.length > 0 ? parseExecutionType(executionTypePair[0][1]) ?? baseRequest.executionType : baseRequest.executionType,
         sourceMetadata: mergedSourceMetadata
       }
     };
