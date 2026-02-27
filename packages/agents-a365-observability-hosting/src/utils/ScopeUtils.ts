@@ -59,10 +59,6 @@ export class ScopeUtils {
    * @returns Agent details built from recipient properties; otherwise undefined.
    */
   public static deriveAgentDetails(turnContext: TurnContext, authToken: string): AgentDetails | undefined {
-    return ScopeUtils.deriveAgentDetailsCore(turnContext, authToken);
-  }
-
-  private static deriveAgentDetailsCore(turnContext: TurnContext, authToken: string): AgentDetails | undefined {
     const recipient = turnContext?.activity?.recipient;
     if (!recipient) return undefined;
     const agentId = RuntimeUtility.ResolveAgentIdentity(turnContext, authToken);
@@ -156,7 +152,7 @@ export class ScopeUtils {
     startTime?: TimeInput,
     endTime?: TimeInput
   ): InferenceScope {
-    const agent = ScopeUtils.deriveAgentDetailsCore(turnContext, authToken);
+    const agent = ScopeUtils.deriveAgentDetails(turnContext, authToken);
     const tenant = ScopeUtils.deriveTenantDetails(turnContext);
     const conversationId = ScopeUtils.deriveConversationId(turnContext);
     const sourceMetadata = ScopeUtils.deriveSourceMetadataObject(turnContext);
@@ -218,7 +214,7 @@ export class ScopeUtils {
   }
 
   private static buildInvokeAgentDetailsCore(details: InvokeAgentDetails, turnContext: TurnContext, authToken: string): InvokeAgentDetails {
-    const agent = ScopeUtils.deriveAgentDetailsCore(turnContext, authToken);
+    const agent = ScopeUtils.deriveAgentDetails(turnContext, authToken);
     const srcMetaFromContext = ScopeUtils.deriveSourceMetadataObject(turnContext);
     const executionTypePair = getExecutionTypePair(turnContext);
     const baseRequest = details.request ?? {};
@@ -258,7 +254,7 @@ export class ScopeUtils {
     startTime?: TimeInput,
     endTime?: TimeInput
   ): ExecuteToolScope {
-    const agent = ScopeUtils.deriveAgentDetailsCore(turnContext, authToken);
+    const agent = ScopeUtils.deriveAgentDetails(turnContext, authToken);
     const tenant = ScopeUtils.deriveTenantDetails(turnContext);
     const conversationId = ScopeUtils.deriveConversationId(turnContext);
     const sourceMetadata = ScopeUtils.deriveSourceMetadataObject(turnContext);
