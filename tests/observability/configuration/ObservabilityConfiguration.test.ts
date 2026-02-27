@@ -131,48 +131,6 @@ describe('ObservabilityConfiguration', () => {
     });
   });
 
-  describe('useCustomDomainForObservability', () => {
-    it('should use override function when provided', () => {
-      const config = new ObservabilityConfiguration({
-        useCustomDomainForObservability: () => true
-      });
-      expect(config.useCustomDomainForObservability).toBe(true);
-    });
-
-    it.each([
-      ['true', true],
-      ['1', true],
-      ['yes', true],
-      ['on', true],
-      ['false', false],
-      ['0', false],
-      ['', false]
-    ])('should return %s when env var is "%s"', (envValue, expected) => {
-      process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN = envValue;
-      const config = new ObservabilityConfiguration({});
-      expect(config.useCustomDomainForObservability).toBe(expected);
-    });
-
-    it('should return false when env var is not set', () => {
-      delete process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN;
-      const config = new ObservabilityConfiguration({});
-      expect(config.useCustomDomainForObservability).toBe(false);
-    });
-
-    it('should call override function on each access (dynamic resolution)', () => {
-      let callCount = 0;
-      const config = new ObservabilityConfiguration({
-        useCustomDomainForObservability: () => {
-          callCount++;
-          return true;
-        }
-      });
-      void config.useCustomDomainForObservability;
-      void config.useCustomDomainForObservability;
-      expect(callCount).toBe(2);
-    });
-  });
-
   describe('observabilityDomainOverride', () => {
     it('should use override function when provided', () => {
       const config = new ObservabilityConfiguration({

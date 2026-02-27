@@ -64,7 +64,6 @@ describe('Agent365Exporter', () => {
     jest.clearAllTimers();
     jest.useRealTimers();
     global.fetch = originalFetch;
-    delete process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN;
     delete process.env.A365_OBSERVABILITY_DOMAIN_OVERRIDE;
     delete process.env.ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT;
   });
@@ -199,7 +198,6 @@ describe('Agent365Exporter', () => {
 
   it('exports to default custom domain endpoint when no env vars set', async () => {
     mockFetchSequence([200]);
-    delete process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN;
     const token = 'tok-prod-default';
     const opts = new Agent365ExporterOptions();
     opts.clusterCategory = 'prod';
