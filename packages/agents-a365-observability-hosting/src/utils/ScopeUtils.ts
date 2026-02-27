@@ -51,27 +51,26 @@ export class ScopeUtils {
 
   /**
    * Derive target agent details from the activity recipient.
-   * Uses {@link RuntimeUtility.ResolveAgentIdentity} to resolve the agent identity (Blueprint vs App)
-   * when an auth token is provided; otherwise falls back to recipient.agenticAppBlueprintId.
+   * Uses {@link RuntimeUtility.ResolveAgentIdentity} to resolve the agent ID (instance ID for blueprint agents,
+   * appid/azp from token for app-based agents). For blueprint agents, the blueprint ID is resolved
+   * from the token's xms_par_app_azp claim via {@link RuntimeUtility.getAgentIdFromToken}.
    * @param turnContext Activity context
    * @param authToken Auth token for resolving agent identity from token claims.
    * @returns Agent details built from recipient properties; otherwise undefined.
    */
-  public static deriveAgentDetails(turnContext: TurnContext, authToken: string): AgentDetails | undefined;
-  /** @deprecated Provide `authToken` for proper blueprint ID resolution via ResolveAgentIdentity. */
-  public static deriveAgentDetails(turnContext: TurnContext): AgentDetails | undefined;
-  static deriveAgentDetails(turnContext: TurnContext, authToken?: string): AgentDetails | undefined {
+  public static deriveAgentDetails(turnContext: TurnContext, authToken: string): AgentDetails | undefined {
     return ScopeUtils.deriveAgentDetailsCore(turnContext, authToken);
   }
 
-  private static deriveAgentDetailsCore(turnContext: TurnContext, authToken?: string): AgentDetails | undefined {
+  private static deriveAgentDetailsCore(turnContext: TurnContext, authToken: string): AgentDetails | undefined {
     const recipient = turnContext?.activity?.recipient;
     if (!recipient) return undefined;
-    const agentBlueprintId = authToken
-      ? RuntimeUtility.ResolveAgentIdentity(turnContext, authToken)
-      : recipient.agenticAppBlueprintId;
+    const agentId = RuntimeUtility.ResolveAgentIdentity(turnContext, authToken);
+    const agentBlueprintId = turnContext?.activity?.isAgenticRequest()
+      ? RuntimeUtility.getAgentIdFromToken(authToken)
+      : undefined;
     return {
-      agentId: turnContext?.activity?.getAgenticInstanceId(),
+      agentId,
       agentName: recipient.name,
       agentAUID: recipient.aadObjectId,
       agentBlueprintId,
@@ -156,18 +155,6 @@ export class ScopeUtils {
     authToken: string,
     startTime?: TimeInput,
     endTime?: TimeInput
-  ): InferenceScope;
-  /** @deprecated Provide `authToken` for proper agent identity resolution. */
-  static populateInferenceScopeFromTurnContext(
-    details: InferenceDetails,
-    turnContext: TurnContext,
-  ): InferenceScope;
-  static populateInferenceScopeFromTurnContext(
-    details: InferenceDetails,
-    turnContext: TurnContext,
-    authToken?: string,
-    startTime?: TimeInput,
-    endTime?: TimeInput
   ): InferenceScope {
     const agent = ScopeUtils.deriveAgentDetailsCore(turnContext, authToken);
     const tenant = ScopeUtils.deriveTenantDetails(turnContext);
@@ -204,18 +191,6 @@ export class ScopeUtils {
     authToken: string,
     startTime?: TimeInput,
     endTime?: TimeInput
-  ): InvokeAgentScope;
-  /** @deprecated Provide `authToken` for proper agent identity resolution. */
-  static populateInvokeAgentScopeFromTurnContext(
-    details: InvokeAgentDetails,
-    turnContext: TurnContext,
-  ): InvokeAgentScope;
-  static populateInvokeAgentScopeFromTurnContext(
-    details: InvokeAgentDetails,
-    turnContext: TurnContext,
-    authToken?: string,
-    startTime?: TimeInput,
-    endTime?: TimeInput
   ): InvokeAgentScope {
     const tenant = ScopeUtils.deriveTenantDetails(turnContext);
     const callerAgent = ScopeUtils.deriveCallerAgent(turnContext);
@@ -238,14 +213,11 @@ export class ScopeUtils {
    * @param authToken Auth token for resolving agent identity from token claims.
    * @returns New InvokeAgentDetails suitable for starting an InvokeAgentScope.
    */
-  public static buildInvokeAgentDetails(details: InvokeAgentDetails, turnContext: TurnContext, authToken: string): InvokeAgentDetails;
-  /** @deprecated Provide `authToken` for proper agent identity resolution. */
-  public static buildInvokeAgentDetails(details: InvokeAgentDetails, turnContext: TurnContext): InvokeAgentDetails;
-  static buildInvokeAgentDetails(details: InvokeAgentDetails, turnContext: TurnContext, authToken?: string): InvokeAgentDetails {
+  public static buildInvokeAgentDetails(details: InvokeAgentDetails, turnContext: TurnContext, authToken: string): InvokeAgentDetails {
     return ScopeUtils.buildInvokeAgentDetailsCore(details, turnContext, authToken);
   }
 
-  private static buildInvokeAgentDetailsCore(details: InvokeAgentDetails, turnContext: TurnContext, authToken?: string): InvokeAgentDetails {
+  private static buildInvokeAgentDetailsCore(details: InvokeAgentDetails, turnContext: TurnContext, authToken: string): InvokeAgentDetails {
     const agent = ScopeUtils.deriveAgentDetailsCore(turnContext, authToken);
     const srcMetaFromContext = ScopeUtils.deriveSourceMetadataObject(turnContext);
     const executionTypePair = getExecutionTypePair(turnContext);
@@ -283,18 +255,6 @@ export class ScopeUtils {
     details: ToolCallDetails,
     turnContext: TurnContext,
     authToken: string,
-    startTime?: TimeInput,
-    endTime?: TimeInput
-  ): ExecuteToolScope;
-  /** @deprecated Provide `authToken` for proper agent identity resolution. */
-  static populateExecuteToolScopeFromTurnContext(
-    details: ToolCallDetails,
-    turnContext: TurnContext,
-  ): ExecuteToolScope;
-  static populateExecuteToolScopeFromTurnContext(
-    details: ToolCallDetails,
-    turnContext: TurnContext,
-    authToken?: string,
     startTime?: TimeInput,
     endTime?: TimeInput
   ): ExecuteToolScope {
