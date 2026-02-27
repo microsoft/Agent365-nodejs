@@ -36,18 +36,7 @@ export type ObservabilityConfigurationOptions = RuntimeConfigurationOptions & {
   isObservabilityExporterEnabled?: () => boolean;
 
   /**
-   * Override to enable/disable custom domain for observability endpoints.
-   * When enabled, uses `observabilityDomainOverride` instead of the default endpoint.
-   *
-   * @returns `true` to use custom domain, `false` to use default.
-   * @envvar A365_OBSERVABILITY_USE_CUSTOM_DOMAIN - 'true', '1', 'yes', 'on' to enable.
-   * @default false
-   */
-  useCustomDomainForObservability?: () => boolean;
-
-  /**
    * Override for the custom observability domain/endpoint.
-   * Only used when `useCustomDomainForObservability` is true.
    * Trailing slashes are automatically removed.
    *
    * @returns Custom domain URL string, or `null` for no override.

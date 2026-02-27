@@ -157,21 +157,6 @@ export function isPerRequestExportEnabled(
 }
 
 /**
- * Single toggle to use custom domain for observability export.
- * When true exporter will send traces to custom Agent365 service endpoint
- * and include x-ms-tenant-id in headers.
- * @param configProvider Optional configuration provider. Defaults to defaultObservabilityConfigurationProvider if not specified.
- */
-export function useCustomDomainForObservability(
-  configProvider?: IConfigurationProvider<ObservabilityConfiguration>
-): boolean {
-  const provider = configProvider ?? defaultObservabilityConfigurationProvider;
-  const enabled = provider.getConfiguration().useCustomDomainForObservability;
-  logger.info(`[Agent365Exporter] Use custom domain for observability: ${enabled}`);
-  return enabled;
-}
-
-/**
  * Resolve the Agent365 service endpoint base URI for a given cluster category.
  * When an explicit override is not configured, this determines the default base URI.
  */
