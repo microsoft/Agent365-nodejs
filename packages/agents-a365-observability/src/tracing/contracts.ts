@@ -124,6 +124,9 @@ export interface AgentDetails {
 
   /** The tenant ID for the agent */
   tenantId?: string;
+
+  /** The provider name (e.g., az.ai.agent365, openai, anthropic) */
+  providerName?: string;
 }
 
 /**

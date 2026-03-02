@@ -69,7 +69,6 @@ export abstract class OpenTelemetryScope implements Disposable {
       kind,
       startTime,
       attributes: {
-        [OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY]: 'az.ai.agent365',
         [OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY]: operationName,
       },
     }, currentContext);

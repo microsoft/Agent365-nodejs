@@ -63,6 +63,9 @@ export class InvokeAgentScope extends OpenTelemetryScope {
       callerDetails
     );
 
+    // Set provider name for agent invocation
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY, invokeAgentDetails.providerName);
+
     // Set session ID and endpoint information
     this.setTagMaybe(OpenTelemetryConstants.SESSION_ID_KEY, invokeAgentDetails.sessionId);
 
