@@ -105,9 +105,6 @@ export interface AgentDetails {
   /** The human-readable name of the AI agent */
   agentName?: string;
 
-  /** Optional type of the AI agent */
-  agentType?: string;
-
   /** A description of the AI agent's purpose or capabilities */
   agentDescription?: string;
 
@@ -129,8 +126,8 @@ export interface AgentDetails {
   /** The tenant ID for the agent */
   tenantId?: string;
 
-  /** The client IP address for the agent user */
-  agentClientIP?: string;
+  /** The provider name (e.g., az.ai.agent365, openai, anthropic) */
+  providerName?: string;
 }
 
 /**
@@ -235,8 +232,11 @@ export interface InferenceDetails {
   /** Array of finish reasons */
   finishReasons?: string[];
 
-  /** Response ID from the model provider */
-  responseId?: string;
+  /** The thought process used by the agent */
+  thoughtProcess?: string;
+
+  /** The endpoint for the inference call */
+  endpoint?: ServiceEndpoint;
 }
 
 /**

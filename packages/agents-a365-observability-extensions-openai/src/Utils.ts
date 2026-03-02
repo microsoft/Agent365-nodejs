@@ -94,10 +94,6 @@ export function getAttributesFromGenerationSpanData(data: SpanData): Record<stri
 
   if (genData.output) {
     attributes[Constants.GEN_AI_RESPONSE_CONTENT_KEY] = safeJsonDumps(genData.output);
-    const output = genData.output as Record<string, unknown>;
-    if (output.id) {
-      attributes[OpenTelemetryConstants.GEN_AI_RESPONSE_ID_KEY] = output.id;
-    }
   }
 
   if (genData.usage) {

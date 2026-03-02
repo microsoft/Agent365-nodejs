@@ -63,7 +63,7 @@ export class LangChainTracer extends BaseTracer {
     const span = this.tracer.startSpan(spanName, {
       kind: SpanKind.INTERNAL,
       startTime,
-      attributes: { [OpenTelemetryConstants.GEN_AI_SYSTEM_KEY]: "langchain" },
+      attributes: { [OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY]: "langchain" },
     }, activeContext);
 
     this.runs[run.id] = { run, span, startTime, lastAccessTime: startTime };

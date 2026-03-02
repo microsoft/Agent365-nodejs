@@ -141,7 +141,7 @@ describe("OpenAI Trace Processor Integration Tests", () => {
           ],
         ).toBe("chat");
         expect(
-          generationSpan.attributes[OpenTelemetryConstants.GEN_AI_SYSTEM_KEY],
+          generationSpan.attributes[OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY],
         ).toBe("openai");
         expect(
           generationSpan.attributes[
@@ -199,7 +199,7 @@ describe("OpenAI Trace Processor Integration Tests", () => {
           ],
         ).toBe("invoke_agent");
         expect(
-          agentSpan.attributes[OpenTelemetryConstants.GEN_AI_SYSTEM_KEY],
+          agentSpan.attributes[OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY],
         ).toBe("openai");
         expect(
           agentSpan?.attributes[
@@ -310,7 +310,7 @@ describe("OpenAI Trace Processor Integration Tests", () => {
           ],
         ).toBe("invoke_agent");
         expect(
-          agentSpan.attributes[OpenTelemetryConstants.GEN_AI_SYSTEM_KEY],
+          agentSpan.attributes[OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY],
         ).toBe("openai");
         console.log("✅ Agent span validated");
       }
@@ -335,7 +335,7 @@ describe("OpenAI Trace Processor Integration Tests", () => {
           toolSpan.attributes[OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY],
         ).toBe("execute_tool");
         expect(
-          toolSpan.attributes[OpenTelemetryConstants.GEN_AI_SYSTEM_KEY],
+          toolSpan.attributes[OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY],
         ).toBe("openai");
         expect(
           toolSpan.attributes[OpenTelemetryConstants.GEN_AI_TOOL_NAME_KEY],
@@ -347,7 +347,7 @@ describe("OpenAI Trace Processor Integration Tests", () => {
           toolSpan.attributes[OpenTelemetryConstants.GEN_AI_TOOL_ARGS_KEY],
         ).toBe('{"a":15,"b":27}');
         expect(
-          toolSpan.attributes[OpenTelemetryConstants.GEN_AI_EVENT_CONTENT],
+          toolSpan.attributes[OpenTelemetryConstants.GEN_AI_TOOL_CALL_RESULT_KEY],
         ).toBe("The sum of 15 and 27 is 42");
 
         validateParentChildRelationship(toolSpan, agentSpan!);
