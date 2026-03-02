@@ -101,7 +101,7 @@ export class OpenTelemetryConstants {
   public static readonly CUSTOM_PARENT_SPAN_ID_KEY = 'custom.parent.span.id';
   public static readonly CUSTOM_SPAN_NAME_KEY = 'custom.span.name';
 
-  // Service attributes (server spans only)
+  // Service attributes
   public static readonly SERVICE_NAME_KEY = 'service.name';
 
   // Telemetry SDK attributes

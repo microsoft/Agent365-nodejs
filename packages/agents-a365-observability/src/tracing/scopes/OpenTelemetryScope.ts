@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { trace, SpanKind, Span, SpanStatusCode, Attributes, context, AttributeValue, SpanContext, TimeInput } from '@opentelemetry/api';
+import { trace, SpanKind, Span, SpanStatusCode, context, AttributeValue, SpanContext, TimeInput } from '@opentelemetry/api';
 import { OpenTelemetryConstants } from '../constants';
 import { AgentDetails, TenantDetails, CallerDetails } from '../contracts';
 import { createContextWithParentSpanRef } from '../context/parent-span-context';
@@ -19,7 +19,6 @@ export abstract class OpenTelemetryScope implements Disposable {
   private customStartTime?: TimeInput;
   private customEndTime?: TimeInput;
   private errorType?: string;
-  private exception?: Error;
   private hasEnded = false;
 
   /**
@@ -139,7 +138,6 @@ export abstract class OpenTelemetryScope implements Disposable {
       this.errorType = error.constructor.name;
     }
 
-    this.exception = error;
     this.span.setStatus({
       code: SpanStatusCode.ERROR,
       message: error.message
@@ -242,9 +240,7 @@ export abstract class OpenTelemetryScope implements Disposable {
     const durationMs = Math.max(0, endMs - startMs);
     const duration = durationMs / 1000;
 
-    const finalTags:Attributes = {};
     if (this.errorType) {
-      finalTags[OpenTelemetryConstants.ERROR_TYPE_KEY] = this.errorType;
       this.span.setAttributes({ [OpenTelemetryConstants.ERROR_TYPE_KEY]: this.errorType });
     }
 

@@ -1,6 +1,5 @@
-// ------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// ------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 
 import { propagation, context as otelContext, Context } from '@opentelemetry/api';
 import { OpenTelemetryConstants } from '../constants';

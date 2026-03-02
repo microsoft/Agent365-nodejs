@@ -1,6 +1,5 @@
-// ------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// ------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 
 import { SpanStatusCode } from '@opentelemetry/api';
 import { OpenTelemetryConstants } from '@microsoft/agents-a365-observability';

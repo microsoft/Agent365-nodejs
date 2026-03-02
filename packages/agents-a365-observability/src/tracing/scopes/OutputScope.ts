@@ -19,7 +19,7 @@ export class OutputScope extends OpenTelemetryScope {
    * @param response The response containing initial output messages.
    * @param agentDetails The details of the agent producing the output.
    * @param tenantDetails The tenant details.
-   * @param callerDetails Optional caller identity details (id, upn, name, tenant, client ip).
+   * @param callerDetails Optional caller identity details (id, upn, name, client ip).
    * @param conversationId Optional conversation identifier.
    * @param sourceMetadata Optional source metadata; only `name` and `description` are used for tagging.
    * @param parentContext Optional parent context for cross-async-boundary tracing.
@@ -63,7 +63,8 @@ export class OutputScope extends OpenTelemetryScope {
       tenantDetails,
       parentContext,
       startTime,
-      endTime
+      endTime,
+      callerDetails
     );
 
     // Initialize accumulated messages list from the response
@@ -80,13 +81,6 @@ export class OutputScope extends OpenTelemetryScope {
     this.setTagMaybe(OpenTelemetryConstants.CHANNEL_NAME_KEY, sourceMetadata?.name);
     this.setTagMaybe(OpenTelemetryConstants.CHANNEL_LINK_KEY, sourceMetadata?.description);
 
-    // Set caller details if provided
-    if (callerDetails) {
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY, callerDetails.callerId);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_UPN_KEY, callerDetails.callerUpn);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY, callerDetails.callerName);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY, callerDetails.callerClientIp);
-    }
   }
 
   /**

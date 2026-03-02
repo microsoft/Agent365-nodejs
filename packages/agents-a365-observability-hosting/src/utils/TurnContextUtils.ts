@@ -20,7 +20,7 @@ function normalizePairs(pairs: Array<[string, string | undefined]>): Array<[stri
 /**
  * Extracts caller-related OpenTelemetry baggage pairs from the TurnContext.
  * @param turnContext The current TurnContext (activity context)
- * @returns Array of [key, value] pairs for caller identity and tenant
+ * @returns Array of [key, value] pairs for caller identity
  */
 export function getCallerBaggagePairs(turnContext: TurnContext): Array<[string, string]> {
   if (!turnContext|| !turnContext.activity?.from) { 
