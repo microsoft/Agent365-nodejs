@@ -212,11 +212,11 @@ export class BaggageBuilder {
   }
 
   /**
-   * Set the channel name (e.g., msteams, outlook).
+   * Set the channel name (e.g., Teams, Slack).
    * @param value The channel name
    * @returns Self for method chaining
    */
-  channelName(value: string | null | undefined): BaggageBuilder {
+  sourceMetadataName(value: string | null | undefined): BaggageBuilder {
     this.set(OpenTelemetryConstants.CHANNEL_NAME_KEY, value);
     return this;
   }
@@ -226,7 +226,7 @@ export class BaggageBuilder {
    * @param value The channel link
    * @returns Self for method chaining
    */
-  channelLink(value: string | null | undefined): BaggageBuilder {
+  sourceMetadataDescription(value: string | null | undefined): BaggageBuilder {
     this.set(OpenTelemetryConstants.CHANNEL_LINK_KEY, value);
     return this;
   }
