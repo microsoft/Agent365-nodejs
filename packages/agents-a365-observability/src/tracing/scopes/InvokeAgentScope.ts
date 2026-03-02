@@ -125,7 +125,7 @@ export class InvokeAgentScope extends OpenTelemetryScope {
    * @param messages Array of input messages
    */
   public recordInputMessages(messages: string[]): void {
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, messages.join(','));
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, JSON.stringify(messages));
   }
 
   /**
@@ -133,6 +133,6 @@ export class InvokeAgentScope extends OpenTelemetryScope {
    * @param messages Array of output messages
    */
   public recordOutputMessages(messages: string[]): void {
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY, messages.join(','));
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY, JSON.stringify(messages));
   }
 }
