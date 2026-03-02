@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - `InferenceScope.recordInputMessages()` / `recordOutputMessages()` now use JSON array format instead of comma-separated strings.
 - `InvokeAgentScope.recordInputMessages()` / `recordOutputMessages()` now use JSON array format instead of comma-separated strings.
+- **BaggageBuilder**: Rename `sourceMetadataName()` to `channelName()` and `sourceMetadataDescription()` to `channelLink()` for consistency with schema naming.
 
 ## [1.1.0] - 2025-12-09
 

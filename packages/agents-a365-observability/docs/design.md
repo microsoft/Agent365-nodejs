@@ -258,7 +258,8 @@ const scope2 = BaggageBuilder.setRequestContext(
 | `sessionId(value)` | `session_id` |
 | `conversationId(value)` | `gen_ai.conversation.id` |
 | `callerUpn(value)` | `gen_ai.caller.upn` |
-| `sourceMetadataName(value)` | `gen_ai.execution.source.name` |
+| `channelName(value)` | `microsoft.channel.name` |
+| `channelLink(value)` | `microsoft.channel.link` |
 
 ## Data Interfaces
 
