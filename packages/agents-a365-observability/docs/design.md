@@ -444,7 +444,6 @@ const customConfig = new ObservabilityConfiguration({
 |----------|--------------|---------|-------------|
 | `observabilityAuthenticationScopes` | `A365_OBSERVABILITY_SCOPES_OVERRIDE` | `['https://api.powerplatform.com/.default']` | OAuth scopes for observability auth |
 | `isObservabilityExporterEnabled` | `ENABLE_A365_OBSERVABILITY_EXPORTER` | `false` | Enable Agent365 exporter |
-| `useCustomDomainForObservability` | `A365_OBSERVABILITY_USE_CUSTOM_DOMAIN` | `false` | Use custom domain for export |
 | `observabilityDomainOverride` | `A365_OBSERVABILITY_DOMAIN_OVERRIDE` | `null` | Custom domain URL override |
 | `observabilityLogLevel` | `A365_OBSERVABILITY_LOG_LEVEL` | `none` | Internal logging level |
 | `clusterCategory` | `CLUSTER_CATEGORY` | `prod` | (Inherited) Environment cluster |
@@ -482,7 +481,6 @@ console.log(config.perRequestMaxTraces);  // Max buffered traces (default: 1000)
 | `ENABLE_A365_OBSERVABILITY_EXPORTER` | Enable/disable Agent365 exporter | `false` |
 | `A365_OBSERVABILITY_SCOPES_OVERRIDE` | Override auth scopes (space-separated) | Production scope |
 | `ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT` | Enable per-request export mode | `false` |
-| `A365_OBSERVABILITY_USE_CUSTOM_DOMAIN` | Use custom domain for export | `false` |
 | `A365_OBSERVABILITY_DOMAIN_OVERRIDE` | Custom domain URL | - |
 | `A365_OBSERVABILITY_LOG_LEVEL` | Internal log level | `none` |
 | `A365_PER_REQUEST_MAX_TRACES` | Max buffered traces (`PerRequestSpanProcessorConfiguration`) | `1000` |

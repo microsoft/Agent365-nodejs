@@ -5,6 +5,18 @@ All notable changes to the Agent365 TypeScript SDK will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **OutputScope**: Tracing scope for outgoing agent messages with caller details, conversation ID, source metadata, and parent span linking.
+- **BaggageMiddleware**: Middleware for automatic OpenTelemetry baggage propagation from TurnContext.
+- **OutputLoggingMiddleware**: Middleware that creates OutputScope spans for outgoing messages with lazy parent span linking via `A365_PARENT_SPAN_KEY`.
+- **ObservabilityHostingManager**: Manager for configuring hosting-layer observability middleware with `ObservabilityHostingOptions`.
+
+### Changed
+- `InferenceScope.recordInputMessages()` / `recordOutputMessages()` now use JSON array format instead of comma-separated strings.
+- `InvokeAgentScope.recordInputMessages()` / `recordOutputMessages()` now use JSON array format instead of comma-separated strings.
+
 ## [1.1.0] - 2025-12-09
 
 ### Changed

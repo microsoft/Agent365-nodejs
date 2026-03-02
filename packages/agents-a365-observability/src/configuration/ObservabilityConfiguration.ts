@@ -44,12 +44,6 @@ export class ObservabilityConfiguration extends RuntimeConfiguration {
     return RuntimeConfiguration.parseEnvBoolean(process.env.ENABLE_A365_OBSERVABILITY_EXPORTER);
   }
 
-  get useCustomDomainForObservability(): boolean {
-    const result = this.observabilityOverrides.useCustomDomainForObservability?.();
-    if (result !== undefined) return result;
-    return RuntimeConfiguration.parseEnvBoolean(process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN);
-  }
-
   get observabilityDomainOverride(): string | null {
     const result = this.observabilityOverrides.observabilityDomainOverride?.();
     if (result !== undefined) {

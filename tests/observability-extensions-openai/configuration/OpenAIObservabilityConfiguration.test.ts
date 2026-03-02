@@ -71,13 +71,6 @@ describe('OpenAIObservabilityConfiguration', () => {
       expect(config.observabilityAuthenticationScopes).toEqual(['custom-scope/.default']);
     });
 
-    it('should inherit useCustomDomainForObservability from override', () => {
-      const config = new OpenAIObservabilityConfiguration({
-        useCustomDomainForObservability: () => true
-      });
-      expect(config.useCustomDomainForObservability).toBe(true);
-    });
-
     it('should inherit observabilityDomainOverride from override', () => {
       const config = new OpenAIObservabilityConfiguration({
         observabilityDomainOverride: () => 'https://custom.domain'
