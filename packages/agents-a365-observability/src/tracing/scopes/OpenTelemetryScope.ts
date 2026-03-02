@@ -37,6 +37,7 @@ export abstract class OpenTelemetryScope implements Disposable {
    *        has already completed (e.g. a tool call whose start time was captured earlier).
    * @param endTime Optional explicit end time (ms epoch, Date, or HrTime). When provided the span will
    *        use this timestamp when {@link dispose} is called instead of the current wall-clock time.
+   * @param callerDetails Optional caller identity details (id, upn, name, client ip).
    */
   protected constructor(
     kind: SpanKind,

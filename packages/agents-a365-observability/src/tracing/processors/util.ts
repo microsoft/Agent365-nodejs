@@ -1,6 +1,5 @@
-// ------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// ------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 
 import { OpenTelemetryConstants as consts } from '../constants';
 
@@ -22,6 +21,7 @@ export const GENERIC_ATTRIBUTES: readonly string[] = [
   consts.GEN_AI_AGENT_UPN_KEY,
   consts.GEN_AI_AGENT_AUID_KEY,
   consts.GEN_AI_AGENT_PLATFORM_ID_KEY,
+  consts.GEN_AI_AGENT_BLUEPRINT_ID_KEY,
   consts.SERVICE_NAME_KEY,
   // Caller / Invoker attributes
   consts.GEN_AI_CALLER_ID_KEY,
@@ -44,6 +44,4 @@ export const INVOKE_AGENT_ATTRIBUTES: readonly string[] = [
   consts.GEN_AI_CALLER_AGENT_UPN_KEY,
   consts.GEN_AI_CALLER_AGENT_APPLICATION_ID_KEY,
   consts.GEN_AI_CALLER_AGENT_PLATFORM_ID_KEY,
-  // Blueprint ID is InvokeAgent-only
-  consts.GEN_AI_AGENT_BLUEPRINT_ID_KEY,
 ];

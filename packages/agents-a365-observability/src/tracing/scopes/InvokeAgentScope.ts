@@ -69,7 +69,6 @@ export class InvokeAgentScope extends OpenTelemetryScope {
     // Set session ID and endpoint information
     this.setTagMaybe(OpenTelemetryConstants.SESSION_ID_KEY, invokeAgentDetails.sessionId);
 
-    // Blueprint ID is InvokeAgent-only
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY, invokeAgentDetails.agentBlueprintId);
 
     if (invokeAgentDetails.endpoint) {
