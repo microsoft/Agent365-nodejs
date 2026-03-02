@@ -74,7 +74,7 @@ export function getTargetAgentBaggagePairs(turnContext: TurnContext): Array<[str
     return [];
   }
   const recipient = turnContext.activity.recipient;
-  const agentId = turnContext.activity?.getAgenticInstanceId();
+  const agentId = turnContext.activity?.getAgenticInstanceId?.() ?? recipient.agenticAppId;
   const agentName = recipient.name;
   const aadObjectId = recipient.aadObjectId;
   const agentDescription  = recipient.role;
@@ -93,7 +93,7 @@ export function getTargetAgentBaggagePairs(turnContext: TurnContext): Array<[str
  * @returns Array of [key, value] for tenant ID
  */
 export function getTenantIdPair(turnContext: TurnContext): Array<[string, string]> {
-  const tenantId = turnContext.activity?.getAgenticTenantId();
+  const tenantId = turnContext.activity?.getAgenticTenantId?.();
   return tenantId ? [[OpenTelemetryConstants.TENANT_ID_KEY, tenantId]] : [];
 }
 

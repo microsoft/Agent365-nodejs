@@ -35,7 +35,7 @@ export const A365_AUTH_TOKEN_KEY = 'A365AuthToken';
 export class OutputLoggingMiddleware implements Middleware {
 
   async onTurn(context: TurnContext, next: () => Promise<void>): Promise<void> {
-    const authToken = context.activity?.isAgenticRequest()
+    const authToken = context.activity?.isAgenticRequest?.()
       ? ''
       : context.turnState.get(A365_AUTH_TOKEN_KEY) as string ?? '';
     const agentDetails = ScopeUtils.deriveAgentDetails(context, authToken);

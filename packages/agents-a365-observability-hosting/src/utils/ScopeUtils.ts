@@ -41,7 +41,7 @@ export class ScopeUtils {
    * @returns Tenant details if a recipient tenant id is present; otherwise undefined.
    */
   public static deriveTenantDetails(turnContext: TurnContext): TenantDetails | undefined {
-    const tenantId = turnContext?.activity?.getAgenticTenantId();
+    const tenantId = turnContext?.activity?.getAgenticTenantId?.();
     return tenantId ? { tenantId } : undefined;
   }
 
@@ -58,7 +58,7 @@ export class ScopeUtils {
     const recipient = turnContext?.activity?.recipient;
     if (!recipient) return undefined;
     const agentId = RuntimeUtility.ResolveAgentIdentity(turnContext, authToken);
-    const agentBlueprintId = turnContext?.activity?.isAgenticRequest()
+    const agentBlueprintId = turnContext?.activity?.isAgenticRequest?.()
       ? RuntimeUtility.getAgentIdFromToken(authToken)
       : undefined;
     return {
@@ -66,9 +66,9 @@ export class ScopeUtils {
       agentName: recipient.name,
       agentAUID: recipient.aadObjectId,
       agentBlueprintId,
-      agentUPN: turnContext?.activity?.getAgenticUser(),
+      agentUPN: turnContext?.activity?.getAgenticUser?.(),
       agentDescription: recipient.role,
-      tenantId: turnContext?.activity?.getAgenticTenantId()
+      tenantId: turnContext?.activity?.getAgenticTenantId?.()
     } as AgentDetails;
   }
 
