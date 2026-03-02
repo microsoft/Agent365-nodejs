@@ -267,61 +267,6 @@ describe('exporter/utils', () => {
     });
   });
 
-  describe('useCustomDomainForObservability', () => {
-    it.each([
-      { value: 'true', expected: true },
-      { value: 'TRUE', expected: true },
-      { value: '1', expected: true },
-      { value: 'yes', expected: true },
-      { value: 'on', expected: true },
-    ])('should return $expected when A365_OBSERVABILITY_USE_CUSTOM_DOMAIN is "$value"', async ({ value, expected }) => {
-      process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN = value;
-      const { useCustomDomainForObservability } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
-      expect(useCustomDomainForObservability()).toBe(expected);
-    });
-
-    it.each([
-      { value: 'false', expected: false },
-      { value: '0', expected: false },
-      { value: '', expected: false },
-    ])('should return $expected when A365_OBSERVABILITY_USE_CUSTOM_DOMAIN is "$value"', async ({ value, expected }) => {
-      process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN = value;
-      const { useCustomDomainForObservability } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
-      expect(useCustomDomainForObservability()).toBe(expected);
-    });
-
-    it('should return false when env var is not set', async () => {
-      delete process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN;
-      const { useCustomDomainForObservability } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
-      expect(useCustomDomainForObservability()).toBe(false);
-    });
-
-    it('should use configProvider override when provided (enabled)', async () => {
-      delete process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN;
-      const provider = new DefaultConfigurationProvider(() => new ObservabilityConfiguration({
-        useCustomDomainForObservability: () => true,
-      }));
-      const { useCustomDomainForObservability } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
-      expect(useCustomDomainForObservability(provider)).toBe(true);
-    });
-
-    it('should use configProvider override when provided (disabled)', async () => {
-      process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN = 'true';
-      const provider = new DefaultConfigurationProvider(() => new ObservabilityConfiguration({
-        useCustomDomainForObservability: () => false,
-      }));
-      const { useCustomDomainForObservability } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
-      expect(useCustomDomainForObservability(provider)).toBe(false);
-    });
-
-    it('should return false when no env var is set and configProvider has no override', async () => {
-      delete process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN;
-      const provider = new DefaultConfigurationProvider(() => new ObservabilityConfiguration());
-      const { useCustomDomainForObservability } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
-      expect(useCustomDomainForObservability(provider)).toBe(false);
-    });
-  });
-
   describe('resolveAgent365Endpoint', () => {
     it('should return production endpoint for prod cluster', async () => {
       const { resolveAgent365Endpoint } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');

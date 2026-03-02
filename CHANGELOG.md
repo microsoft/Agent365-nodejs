@@ -15,14 +15,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`ScopeUtils.populateExecuteToolScopeFromTurnContext(details, turnContext, authToken, ...)`** — New required `authToken: string` parameter.
 - **`ScopeUtils.buildInvokeAgentDetails(details, turnContext, authToken)`** — New required `authToken: string` parameter.
 
-### Changed (`@microsoft/agents-a365-observability-hosting`)
+### Added
+- **OutputScope**: Tracing scope for outgoing agent messages with caller details, conversation ID, source metadata, and parent span linking.
+- **BaggageMiddleware**: Middleware for automatic OpenTelemetry baggage propagation from TurnContext.
+- **OutputLoggingMiddleware**: Middleware that creates OutputScope spans for outgoing messages with lazy parent span linking via `A365_PARENT_SPAN_KEY`.
+- **ObservabilityHostingManager**: Manager for configuring hosting-layer observability middleware with `ObservabilityHostingOptions`.
 
+### Changed
 - `ScopeUtils.deriveAgentDetails` now resolves `agentId` via `RuntimeUtility.ResolveAgentIdentity()` (works for both app-based and blueprint-based agents) instead of reading `recipient.agenticAppId` directly.
 - `ScopeUtils.deriveAgentDetails` now resolves `agentBlueprintId` from the JWT `xms_par_app_azp` claim via `RuntimeUtility.getAgentIdFromToken()` instead of reading `recipient.agenticAppBlueprintId`.
 - `ScopeUtils.deriveAgentDetails` now resolves `agentUPN` via `activity.getAgenticUser()` instead of `recipient.agenticUserId`.
 - `ScopeUtils.deriveTenantDetails` now uses `activity.getAgenticTenantId()` instead of `recipient.tenantId`.
 - `getTargetAgentBaggagePairs` now uses `activity.getAgenticInstanceId()` instead of `recipient.agenticAppId`.
 - `getTenantIdPair` now uses `activity.getAgenticTenantId()` instead of manual `channelData` parsing.
+- `InferenceScope.recordInputMessages()` / `recordOutputMessages()` now use JSON array format instead of comma-separated strings.
+- `InvokeAgentScope.recordInputMessages()` / `recordOutputMessages()` now use JSON array format instead of comma-separated strings.
 
 ## [1.1.0] - 2025-12-09
 

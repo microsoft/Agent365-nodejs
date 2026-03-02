@@ -6,7 +6,7 @@
 import { ExportResult, ExportResultCode } from '@opentelemetry/core';
 import { ReadableSpan, SpanExporter } from '@opentelemetry/sdk-trace-base';
 
-import { PowerPlatformApiDiscovery, ClusterCategory, IConfigurationProvider } from '@microsoft/agents-a365-runtime';
+import { ClusterCategory, IConfigurationProvider } from '@microsoft/agents-a365-runtime';
 import type { ObservabilityConfiguration } from '../../configuration';
 import {
   partitionByIdentity,
@@ -15,7 +15,6 @@ import {
   hexSpanId,
   kindName,
   statusName,
-  useCustomDomainForObservability,
   resolveAgent365Endpoint,
   getAgent365ObservabilityDomainOverride,
   isPerRequestExportEnabled
@@ -82,8 +81,8 @@ interface OTLPStatus {
  * Observability span exporter for Agent365:
  * - Partitions spans by (tenantId, agentId)
  * - Builds OTLP-like JSON: resourceSpans -> scopeSpans -> spans
- * - POSTs per group to https://{endpoint}/maven/agent365/agents/{agentId}/traces?api-version=1
- *   or, when useS2SEndpoint is true, https://{endpoint}/maven/agent365/service/agents/{agentId}/traces?api-version=1
+ * - POSTs per group to https://{endpoint}/observability/tenants/{tenantId}/agents/{agentId}/traces?api-version=1
+ *   or, when useS2SEndpoint is true, https://{endpoint}/observabilityService/tenants/{tenantId}/agents/{agentId}/traces?api-version=1
  * - Adds Bearer token via token_resolver(agentId, tenantId)
  */
 export class Agent365Exporter implements SpanExporter {
@@ -170,27 +169,20 @@ export class Agent365Exporter implements SpanExporter {
 
     const payload = this.buildExportRequest(spans);
     const body = JSON.stringify(payload);
-    const usingCustomServiceEndpoint = useCustomDomainForObservability(this.configProvider);
-    // Select endpoint path based on S2S flag
+    // Select endpoint path based on S2S flag (includes tenantId in path)
     const endpointRelativePath =
       this.options.useS2SEndpoint
-        ? `/maven/agent365/service/agents/${agentId}/traces`
-        : `/maven/agent365/agents/${agentId}/traces`;
+        ? `/observabilityService/tenants/${tenantId}/agents/${agentId}/traces`
+        : `/observability/tenants/${tenantId}/agents/${agentId}/traces`;
 
     let url: string;
     const domainOverride = getAgent365ObservabilityDomainOverride(this.configProvider);
     if (domainOverride) {
       url = `${domainOverride}${endpointRelativePath}?api-version=1`;
-    } else if (usingCustomServiceEndpoint) {
+    } else {
       const base = resolveAgent365Endpoint(this.options.clusterCategory as ClusterCategory);
       url = `${base}${endpointRelativePath}?api-version=1`;
-      logger.info(`[Agent365Exporter] Using custom domain endpoint: ${url}`);
-    } else {
-      // Default behavior: discover PPAPI gateway endpoint per-tenant
-      const discovery = new PowerPlatformApiDiscovery(this.options.clusterCategory as ClusterCategory);
-      const endpoint = discovery.getTenantIslandClusterEndpoint(tenantId);
-      url = `https://${endpoint}${endpointRelativePath}?api-version=1`;
-      logger.info(`[Agent365Exporter] Resolved endpoint: ${url}`);
+      logger.info(`[Agent365Exporter] Using default endpoint: ${url}`);
     }
 
     const headers: Record<string, string> = {
@@ -229,10 +221,8 @@ export class Agent365Exporter implements SpanExporter {
       return;
     }
 
-    // Add tenant id to headers when using custom domain
-    if (usingCustomServiceEndpoint) {
-      headers['x-ms-tenant-id'] = tenantId;
-    }
+    // Always include tenant id header
+    headers['x-ms-tenant-id'] = tenantId;
 
     // Basic retry loop
     const { ok, correlationId } = await this.postWithRetries(url, body, headers);
