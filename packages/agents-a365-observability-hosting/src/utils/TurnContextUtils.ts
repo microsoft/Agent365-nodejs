@@ -6,6 +6,7 @@
 import { TurnContext } from '@microsoft/agents-hosting';
 import { ExecutionType, OpenTelemetryConstants } from '@microsoft/agents-a365-observability';
 import {RoleTypes} from '@microsoft/agents-activity';
+import { Utility as RuntimeUtility } from '@microsoft/agents-a365-runtime';
 
 /**
  * TurnContext utility methods.
@@ -65,16 +66,34 @@ export function getExecutionTypePair(turnContext: TurnContext): Array<[string, s
 }
 
 /**
+ * Resolves the agent instance ID and blueprint ID for embodied (agentic) agents only.
+ * For the non-embodied agent case, we cannot reliably determine whether the token contains an app ID,
+ * or whether the app ID present in the token claims actually corresponds to this agent. Therefore,
+ * we only set agentId and agentBlueprintId for embodied (agentic) agents.
+ * @param turnContext Activity context
+ * @param authToken Auth token for resolving blueprint ID from token claims.
+ * @returns Object with agentId and agentBlueprintId, both undefined for non-embodied agents.
+ */
+export function resolveEmbodiedAgentIds(turnContext: TurnContext, authToken: string): { agentId: string | undefined; agentBlueprintId: string | undefined } {
+  const isAgentic = turnContext?.activity?.isAgenticRequest?.();
+  return {
+    agentId: isAgentic ? turnContext.activity.getAgenticInstanceId?.() : undefined,
+    agentBlueprintId: isAgentic ? RuntimeUtility.getAgentIdFromToken(authToken) : undefined,
+  };
+}
+
+/**
  * Extracts agent/recipient-related OpenTelemetry baggage pairs from the TurnContext.
  * @param turnContext The current TurnContext (activity context)
+ * @param authToken Optional auth token for resolving agent blueprint ID from token claims.
  * @returns Array of [key, value] pairs for agent identity and description
  */
-export function getTargetAgentBaggagePairs(turnContext: TurnContext): Array<[string, string]> {
+export function getTargetAgentBaggagePairs(turnContext: TurnContext, authToken?: string): Array<[string, string]> {
   if (!turnContext || !turnContext.activity?.recipient) {
     return [];
   }
   const recipient = turnContext.activity.recipient;
-  const agentId = turnContext.activity?.getAgenticInstanceId?.() ?? recipient.agenticAppId;
+  const { agentId } = authToken ? resolveEmbodiedAgentIds(turnContext, authToken) : { agentId: turnContext.activity?.isAgenticRequest?.() ? turnContext.activity.getAgenticInstanceId?.() : undefined };
   const agentName = recipient.name;
   const aadObjectId = recipient.aadObjectId;
   const agentDescription  = recipient.role;

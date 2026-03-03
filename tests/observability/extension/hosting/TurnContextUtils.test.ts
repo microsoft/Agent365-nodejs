@@ -20,6 +20,7 @@ describe('TurnContextUtils', () => {
       recipient: { id: 'agent1', name: 'Agent One', agenticAppId: 'agent-app-1', agenticUserId: 'agentic-agent-1', tenantId: 'tenant1', role: 'agenticUser' },
       conversation: { id: 'conv-1', tenantId: 'tenant1' },
       text: 'Hello world',
+      isAgenticRequest: () => true,
       getAgenticInstanceId: () => 'agent-app-1',
       getAgenticUser: () => 'agentic-agent-1',
       getAgenticTenantId: () => 'tenant1',

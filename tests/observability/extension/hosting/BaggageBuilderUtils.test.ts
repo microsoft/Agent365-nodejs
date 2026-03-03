@@ -12,6 +12,7 @@ describe('BaggageBuilderUtils', () => {
       from: { id: 'user1', name: 'User One', agenticUserId: 'agentic-user-1', tenantId: 'tenant1', role: 'user' },
       recipient: { id: 'agent1', name: 'Agent One', agenticAppId: 'agent-app-1', agenticUserId: 'agentic-agent-1', tenantId: 'tenant1', role: 'agent' },
       conversation: { id: 'conv-1', tenantId: 'tenant1' },
+      isAgenticRequest: () => true,
       getAgenticInstanceId: () => 'agent-app-1',
       getAgenticUser: () => 'agentic-agent-1',
       getAgenticTenantId: () => 'tenant1',

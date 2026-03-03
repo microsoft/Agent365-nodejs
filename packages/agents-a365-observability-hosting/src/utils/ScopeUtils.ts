@@ -16,7 +16,7 @@ import {
   InvokeAgentDetails,
   ToolCallDetails,
 } from '@microsoft/agents-a365-observability';
-import { Utility as RuntimeUtility } from '@microsoft/agents-a365-runtime';
+import { resolveEmbodiedAgentIds } from './TurnContextUtils';
 
 /**
  * Unified utilities to populate scope tags from a TurnContext.
@@ -47,9 +47,8 @@ export class ScopeUtils {
 
   /**
    * Derive target agent details from the activity recipient.
-   * Uses {@link RuntimeUtility.ResolveAgentIdentity} to resolve the agent ID (instance ID for blueprint agents,
-   * appid/azp from token for app-based agents). For blueprint agents, the blueprint ID is resolved
-   * from the token's xms_par_app_azp claim via {@link RuntimeUtility.getAgentIdFromToken}.
+   * Uses {@link resolveEmbodiedAgentIds} to resolve the agent ID and blueprint ID, which are only
+   * set for embodied (agentic) agents — see that function for the rationale.
    * @param turnContext Activity context
    * @param authToken Auth token for resolving agent identity from token claims.
    * @returns Agent details built from recipient properties; otherwise undefined.
@@ -57,10 +56,7 @@ export class ScopeUtils {
   public static deriveAgentDetails(turnContext: TurnContext, authToken: string): AgentDetails | undefined {
     const recipient = turnContext?.activity?.recipient;
     if (!recipient) return undefined;
-    const agentId = RuntimeUtility.ResolveAgentIdentity(turnContext, authToken);
-    const agentBlueprintId = turnContext?.activity?.isAgenticRequest?.()
-      ? RuntimeUtility.getAgentIdFromToken(authToken)
-      : undefined;
+    const { agentId, agentBlueprintId } = resolveEmbodiedAgentIds(turnContext, authToken);
     return {
       agentId,
       agentName: recipient.name,

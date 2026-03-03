@@ -3,17 +3,13 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------------------------
 
-// Mock RuntimeUtility methods so tests don't depend on real JWT parsing
+// Mock RuntimeUtility.getAgentIdFromToken so tests don't depend on real JWT parsing
 jest.mock('@microsoft/agents-a365-runtime', () => {
   const actual = jest.requireActual('@microsoft/agents-a365-runtime');
   return {
     ...actual,
     Utility: {
       ...actual.Utility,
-      ResolveAgentIdentity: (context: any, _authToken: string) =>
-        context.activity?.isAgenticRequest?.()
-          ? context.activity?.getAgenticInstanceId?.() || ''
-          : 'test-app-id',
       getAgentIdFromToken: () => 'test-blueprint-id',
     },
   };
@@ -208,7 +204,7 @@ test('deriveTenantDetails returns undefined when getAgenticTenantId() returns un
 test('deriveAgentDetails maps recipient fields to AgentDetails', () => {
   const ctx = makeCtx({ activity: { recipient: { name: 'A', aadObjectId: 'auid', role: 'bot' }, isAgenticRequest: () => false, getAgenticInstanceId: () => 'aid', getAgenticUser: () => 'upn1', getAgenticTenantId: () => 't1' } as any });
   expect(ScopeUtils.deriveAgentDetails(ctx, testAuthToken)).toEqual({
-    agentId: 'test-app-id',
+    agentId: undefined,
     agentName: 'A',
     agentAUID: 'auid',
     agentBlueprintId: undefined,
@@ -295,7 +291,7 @@ test('buildInvokeAgentDetails merges agent (recipient), conversationId, sourceMe
   });
 
   const result = ScopeUtils.buildInvokeAgentDetails(invokeAgentDetails, ctx, testAuthToken);
-  expect(result.agentId).toBe('test-app-id');
+  expect(result.agentId).toBeUndefined();
   expect(result.conversationId).toBe('c-2');
   expect(result.request?.sourceMetadata).toEqual({ id: 'orig-id', name: 'web', description: 'inbox' });
 });

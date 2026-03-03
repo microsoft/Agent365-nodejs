@@ -9,8 +9,10 @@ import {
   CallerDetails,
   ParentSpanRef,
   logger,
+  isPerRequestExportEnabled,
 } from '@microsoft/agents-a365-observability';
 import { ScopeUtils } from '../utils/ScopeUtils';
+import { AgenticTokenCacheInstance } from '../caching/AgenticTokenCache';
 
 /**
  * TurnState key for the parent span reference.
@@ -35,9 +37,7 @@ export const A365_AUTH_TOKEN_KEY = 'A365AuthToken';
 export class OutputLoggingMiddleware implements Middleware {
 
   async onTurn(context: TurnContext, next: () => Promise<void>): Promise<void> {
-    const authToken = context.activity?.isAgenticRequest?.()
-      ? ''
-      : context.turnState.get(A365_AUTH_TOKEN_KEY) as string ?? '';
+    const authToken = this.resolveAuthToken(context);
     const agentDetails = ScopeUtils.deriveAgentDetails(context, authToken);
     const tenantDetails = ScopeUtils.deriveTenantDetails(context);
 
@@ -55,6 +55,23 @@ export class OutputLoggingMiddleware implements Middleware {
     );
 
     await next();
+  }
+
+  /**
+   * Resolve the auth token for agent identity resolution.
+   * When per-request export is enabled, reads from turnState.
+   * Otherwise, reads from the cached observability token.
+   */
+  private resolveAuthToken(context: TurnContext): string {
+    if (isPerRequestExportEnabled()) {
+      return context.turnState.get(A365_AUTH_TOKEN_KEY) as string ?? '';
+    }
+    const agentId = context.activity?.getAgenticInstanceId?.() ?? '';
+    const tenantId = context.activity?.getAgenticTenantId?.() ?? '';
+    if (agentId && tenantId) {
+      return AgenticTokenCacheInstance.getObservabilityToken(agentId, tenantId) ?? '';
+    }
+    return '';
   }
 
   /**
