@@ -22,8 +22,8 @@ export const A365_PARENT_SPAN_KEY = 'A365ParentSpanId';
 
 /**
  * TurnState key for the auth token.
- * Set this in `turnState` so middleware can resolve agent identity from token claims
- * when the request is not an agentic request.
+ * Set this in `turnState` so middleware can resolve the agent blueprint ID
+ * from token claims (used for embodied/agentic requests).
  */
 export const A365_AUTH_TOKEN_KEY = 'A365AuthToken';
 

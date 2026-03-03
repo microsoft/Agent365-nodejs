@@ -76,9 +76,11 @@ export function getExecutionTypePair(turnContext: TurnContext): Array<[string, s
  */
 export function resolveEmbodiedAgentIds(turnContext: TurnContext, authToken: string): { agentId: string | undefined; agentBlueprintId: string | undefined } {
   const isAgentic = turnContext?.activity?.isAgenticRequest?.();
+  const rawAgentId = isAgentic ? turnContext.activity.getAgenticInstanceId?.() : undefined;
+  const rawBlueprintId = isAgentic ? RuntimeUtility.getAgentIdFromToken(authToken) : undefined;
   return {
-    agentId: isAgentic ? turnContext.activity.getAgenticInstanceId?.() : undefined,
-    agentBlueprintId: isAgentic ? RuntimeUtility.getAgentIdFromToken(authToken) : undefined,
+    agentId: rawAgentId || undefined,
+    agentBlueprintId: rawBlueprintId || undefined,
   };
 }
 
