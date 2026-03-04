@@ -9,14 +9,23 @@ import {
   CallerDetails,
   ParentSpanRef,
   logger,
+  isPerRequestExportEnabled,
 } from '@microsoft/agents-a365-observability';
 import { ScopeUtils } from '../utils/ScopeUtils';
+import { AgenticTokenCacheInstance } from '../caching/AgenticTokenCache';
 
 /**
  * TurnState key for the parent span reference.
  * Set this in `turnState` to link OutputScope spans as children of an InvokeAgentScope.
  */
 export const A365_PARENT_SPAN_KEY = 'A365ParentSpanId';
+
+/**
+ * TurnState key for the auth token.
+ * Set this in `turnState` so middleware can resolve the agent blueprint ID
+ * from token claims (used for embodied/agentic requests).
+ */
+export const A365_AUTH_TOKEN_KEY = 'A365AuthToken';
 
 /**
  * Middleware that creates {@link OutputScope} spans for outgoing messages.
@@ -28,7 +37,8 @@ export const A365_PARENT_SPAN_KEY = 'A365ParentSpanId';
 export class OutputLoggingMiddleware implements Middleware {
 
   async onTurn(context: TurnContext, next: () => Promise<void>): Promise<void> {
-    const agentDetails = ScopeUtils.deriveAgentDetails(context);
+    const authToken = this.resolveAuthToken(context);
+    const agentDetails = ScopeUtils.deriveAgentDetails(context, authToken);
     const tenantDetails = ScopeUtils.deriveTenantDetails(context);
 
     if (!agentDetails || !tenantDetails) {
@@ -45,6 +55,23 @@ export class OutputLoggingMiddleware implements Middleware {
     );
 
     await next();
+  }
+
+  /**
+   * Resolve the auth token for agent identity resolution.
+   * When per-request export is enabled, reads from turnState.
+   * Otherwise, reads from the cached observability token.
+   */
+  private resolveAuthToken(context: TurnContext): string {
+    if (isPerRequestExportEnabled()) {
+      return context.turnState.get(A365_AUTH_TOKEN_KEY) as string ?? '';
+    }
+    const agentId = context.activity?.getAgenticInstanceId?.() ?? '';
+    const tenantId = context.activity?.getAgenticTenantId?.() ?? '';
+    if (agentId && tenantId) {
+      return AgenticTokenCacheInstance.getObservabilityToken(agentId, tenantId) ?? '';
+    }
+    return '';
   }
 
   /**

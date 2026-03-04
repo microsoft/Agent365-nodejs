@@ -1,6 +1,24 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+// Mock isPerRequestExportEnabled before importing the middleware
+const mockIsPerRequestExportEnabled = jest.fn().mockReturnValue(false);
+jest.mock('@microsoft/agents-a365-observability', () => {
+  const actual = jest.requireActual('@microsoft/agents-a365-observability');
+  return {
+    ...actual,
+    isPerRequestExportEnabled: (...args: unknown[]) => mockIsPerRequestExportEnabled(...args),
+  };
+});
+
+// Mock AgenticTokenCacheInstance
+const mockGetObservabilityToken = jest.fn().mockReturnValue(null);
+jest.mock('../../../../packages/agents-a365-observability-hosting/src/caching/AgenticTokenCache', () => ({
+  AgenticTokenCacheInstance: {
+    getObservabilityToken: (...args: [string, string]) => mockGetObservabilityToken(...args),
+  },
+}));
+
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
 import { trace, context as otelContext } from '@opentelemetry/api';
@@ -8,7 +26,7 @@ import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-ho
 import { RoleTypes, ActivityTypes, ActivityEventNames } from '@microsoft/agents-activity';
 import type { TurnContext, SendActivitiesHandler } from '@microsoft/agents-hosting';
 
-import { OutputLoggingMiddleware, A365_PARENT_SPAN_KEY } from '../../../../packages/agents-a365-observability-hosting/src/middleware/OutputLoggingMiddleware';
+import { OutputLoggingMiddleware, A365_PARENT_SPAN_KEY, A365_AUTH_TOKEN_KEY } from '../../../../packages/agents-a365-observability-hosting/src/middleware/OutputLoggingMiddleware';
 import { OpenTelemetryConstants, ParentSpanRef } from '@microsoft/agents-a365-observability';
 
 function makeMockTurnContext(options?: {
@@ -24,6 +42,7 @@ function makeMockTurnContext(options?: {
 }): TurnContext & { _sendHandlers: SendActivitiesHandler[]; turnState: Map<string, unknown>; simulateSend: (activities: Array<{ type?: string; text?: string }>) => Promise<Array<{ id: string }>> } {
   const sendHandlers: SendActivitiesHandler[] = [];
 
+  const recipientTenantId = options?.recipientTenantId ?? 'tenant-123';
   const ctx: any = {
     activity: {
       type: options?.activityType,
@@ -45,8 +64,12 @@ function makeMockTurnContext(options?: {
         agenticAppBlueprintId: 'blueprint-1',
         agenticUserId: 'agent@contoso.com',
         role: 'assistant',
-        tenantId: options?.recipientTenantId ?? 'tenant-123',
+        tenantId: recipientTenantId,
       },
+      getAgenticTenantId: () => recipientTenantId,
+      getAgenticUser: () => 'agent@contoso.com',
+      getAgenticInstanceId: () => options?.recipientId ?? 'agent-1',
+      isAgenticRequest: () => false,
     },
     turnState: new Map(),
     onSendActivities(handler: SendActivitiesHandler) {
@@ -100,6 +123,8 @@ describe('OutputLoggingMiddleware', () => {
 
   beforeEach(() => {
     exporter.reset();
+    mockIsPerRequestExportEnabled.mockReturnValue(false);
+    mockGetObservabilityToken.mockReturnValue(null);
   });
 
   afterAll(async () => {
@@ -145,14 +170,15 @@ describe('OutputLoggingMiddleware', () => {
     const middleware = new OutputLoggingMiddleware();
 
     // Missing agent details (no recipient)
-    const ctx1: any = { activity: { text: 'Hello' }, onSendActivities: jest.fn() };
+    const ctx1: any = { activity: { text: 'Hello', isAgenticRequest: () => false, getAgenticTenantId: () => undefined, getAgenticUser: () => undefined }, turnState: new Map(), onSendActivities: jest.fn() };
     let nextCalled = false;
     await middleware.onTurn(ctx1, async () => { nextCalled = true; });
     expect(nextCalled).toBe(true);
 
     // Missing tenant details (recipient but no tenantId)
     const ctx2: any = {
-      activity: { text: 'Hello', recipient: { agenticAppId: 'agent-1', name: 'Agent' } },
+      activity: { text: 'Hello', recipient: { agenticAppId: 'agent-1', name: 'Agent' }, getAgenticTenantId: () => undefined, getAgenticUser: () => undefined, isAgenticRequest: () => false },
+      turnState: new Map(),
       onSendActivities: jest.fn(),
     };
     nextCalled = false;
@@ -278,6 +304,63 @@ describe('OutputLoggingMiddleware', () => {
           handler(ctx, [{ type: 'message', text: 'Reply' }] as any, async () => { throw sendError; })
         ).rejects.toThrow('send pipeline failed');
       }
+    });
+  });
+
+  describe('resolveAuthToken', () => {
+    it('should read token from turnState when per-request export is enabled', async () => {
+      mockIsPerRequestExportEnabled.mockReturnValue(true);
+      const middleware = new OutputLoggingMiddleware();
+      const ctx = makeMockTurnContext({ text: 'Hello' });
+      ctx.turnState.set(A365_AUTH_TOKEN_KEY, 'per-request-token');
+
+      await middleware.onTurn(ctx, async () => {
+        ctx.turnState.set(A365_PARENT_SPAN_KEY, { traceId: '0af7651916cd43dd8448eb211c80319c', spanId: 'b7ad6b7169203331', traceFlags: 1 });
+        await ctx.simulateSend([{ type: 'message', text: 'Reply' }]);
+      });
+
+      expect(mockIsPerRequestExportEnabled).toHaveBeenCalled();
+      expect(mockGetObservabilityToken).not.toHaveBeenCalled();
+    });
+
+    it('should read token from cache when per-request export is disabled', async () => {
+      mockIsPerRequestExportEnabled.mockReturnValue(false);
+      mockGetObservabilityToken.mockReturnValue('cached-obs-token');
+      const middleware = new OutputLoggingMiddleware();
+      const ctx = makeMockTurnContext({ text: 'Hello', recipientId: 'agent-1', recipientTenantId: 'tenant-123' });
+
+      await middleware.onTurn(ctx, async () => {
+        ctx.turnState.set(A365_PARENT_SPAN_KEY, { traceId: '0af7651916cd43dd8448eb211c80319c', spanId: 'b7ad6b7169203331', traceFlags: 1 });
+        await ctx.simulateSend([{ type: 'message', text: 'Reply' }]);
+      });
+
+      expect(mockGetObservabilityToken).toHaveBeenCalledWith('agent-1', 'tenant-123');
+    });
+
+    it('should skip cache when per-request export is disabled and agentId is empty', async () => {
+      mockIsPerRequestExportEnabled.mockReturnValue(false);
+      const middleware = new OutputLoggingMiddleware();
+      const ctx: any = {
+        activity: {
+          text: 'Hello',
+          channelId: 'web',
+          conversation: { id: 'conv-001' },
+          from: { role: RoleTypes.User, aadObjectId: 'user-oid', name: 'User', tenantId: 't' },
+          recipient: { name: 'Agent', aadObjectId: 'oid', role: 'assistant' },
+          getAgenticTenantId: () => 'tenant-123',
+          getAgenticUser: () => 'agent@contoso.com',
+          getAgenticInstanceId: () => '',
+          isAgenticRequest: () => false,
+        },
+        turnState: new Map(),
+        onSendActivities: jest.fn(),
+      };
+
+      let nextCalled = false;
+      await middleware.onTurn(ctx, async () => { nextCalled = true; });
+
+      expect(nextCalled).toBe(true);
+      expect(mockGetObservabilityToken).not.toHaveBeenCalled();
     });
   });
 });

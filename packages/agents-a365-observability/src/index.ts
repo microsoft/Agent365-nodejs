@@ -56,5 +56,8 @@ export { OutputScope } from './tracing/scopes/OutputScope';
 export { logger, setLogger, getLogger, resetLogger, formatError } from './utils/logging';
 export type { ILogger } from './utils/logging';
 
+// Exporter utilities
+export { isPerRequestExportEnabled } from './tracing/exporter/utils';
+
 // Configuration
 export * from './configuration';
