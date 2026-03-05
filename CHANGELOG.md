@@ -21,8 +21,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **OutputLoggingMiddleware**: Middleware that creates OutputScope spans for outgoing messages with lazy parent span linking via `A365_PARENT_SPAN_KEY`.
 - **ObservabilityHostingManager**: Manager for configuring hosting-layer observability middleware with `ObservabilityHostingOptions`.
 
+### Added
+- **Agent365ExporterOptions**: New `httpRequestTimeoutMilliseconds` option (default 30s) controls the per-HTTP-request timeout for backend calls. This is distinct from `exporterTimeoutMilliseconds` which controls the overall BatchSpanProcessor export deadline.
+
 ### Fixed
-- **Agent365Exporter**: `exporterTimeoutMilliseconds` option is now respected for HTTP requests. Previously the exporter used a hardcoded 30-second timeout, ignoring the configured value.
+- **Agent365ExporterOptions**: `exporterTimeoutMilliseconds` default increased from 30s to 60s to allow sufficient time for retries across multiple identity groups within a single export cycle.
 
 ### Changed
 - **ObservabilityHostingManager**: `enableBaggage` option now defaults to `false` (was `true`). Callers must explicitly set `enableBaggage: true` to register the BaggageMiddleware.

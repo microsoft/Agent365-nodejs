@@ -246,7 +246,7 @@ export class Agent365Exporter implements SpanExporter {
           method: 'POST',
           headers,
           body,
-          signal: AbortSignal.timeout(this.options.exporterTimeoutMilliseconds)
+          signal: AbortSignal.timeout(this.options.httpRequestTimeoutMilliseconds)
         });
 
         correlationId = response?.headers?.get('x-ms-correlation-id') || response?.headers?.get('x-correlation-id') || 'unknown';
