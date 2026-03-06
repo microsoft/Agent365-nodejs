@@ -45,7 +45,7 @@ export class Agent365ExporterOptions {
   public scheduledDelayMilliseconds: number = 5000;
 
   /** Maximum time (ms) the BatchSpanProcessor waits for the entire export() call to complete. */
-  public exporterTimeoutMilliseconds: number = 60000;
+  public exporterTimeoutMilliseconds: number = 90000;
 
   /** Timeout (ms) for each individual HTTP request to the observability backend. Each retry attempt gets a fresh timeout. */
   public httpRequestTimeoutMilliseconds: number = 30000;
