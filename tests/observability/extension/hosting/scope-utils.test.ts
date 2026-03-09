@@ -63,14 +63,15 @@ function makeTurnContext(
 }
 
 describe('ScopeUtils.populateFromTurnContext', () => {
+  const originalEnv = process.env;
   let spy: jest.SpyInstance;
   beforeEach(() => {
-    process.env.AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED = 'true';
+    process.env = { ...originalEnv, AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED: 'true' };
     spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
    });
 
   afterEach(() => {
-    delete process.env.AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED;
+    process.env = originalEnv;
     spy.mockRestore();
   });
 

@@ -12,8 +12,8 @@ type RunWithSpan = { run: Run; span: Span; startTime: number; lastAccessTime: nu
 export class LangChainTracer extends BaseTracer {
   private static readonly MAX_RUNS = 10_000;
   private tracer: Tracer;
-  private runs: Record<string, RunWithSpan> = {};
-  private parentByRunId: Record<string, string | undefined> = {};
+  private runs = new Map<string, RunWithSpan>();
+  private parentByRunId = new Map<string, string | undefined>();
 
 
   constructor(tracer: Tracer) {
@@ -28,7 +28,7 @@ export class LangChainTracer extends BaseTracer {
   }
 
   async onRunCreate(run: Run) {
-    this.parentByRunId[run.id] = run.parent_run_id;
+    this.parentByRunId.set(run.id, run.parent_run_id);
     if (super.onRunCreate) await super.onRunCreate(run);
     this.startTracing(run);
   }
@@ -60,7 +60,7 @@ export class LangChainTracer extends BaseTracer {
       spanName = `${operation} ${Utils.getModel(run) || run.name}`.trim();
     }
 
-    if (Object.keys(this.runs).length >= LangChainTracer.MAX_RUNS) {
+    if (this.runs.size >= LangChainTracer.MAX_RUNS) {
       logger.warn(`[LangChainTracer] Max runs (${LangChainTracer.MAX_RUNS}) reached, skipping span`);
       return;
     }
@@ -72,7 +72,7 @@ export class LangChainTracer extends BaseTracer {
       attributes: { [OpenTelemetryConstants.GEN_AI_SYSTEM_KEY]: "langchain" },
     }, activeContext);
 
-    this.runs[run.id] = { run, span, startTime, lastAccessTime: startTime };
+    this.runs.set(run.id, { run, span, startTime, lastAccessTime: startTime });
   }
 
   protected async _endTrace(run: Run) {
@@ -83,13 +83,13 @@ export class LangChainTracer extends BaseTracer {
     const operation = Utils.getOperationType(run);
     if (run.tags?.includes("langsmith:hidden") || run.name?.startsWith("Branch") || operation === "unknown") {
       logger.info(`Skipping internal run: ${run.name} (parent: ${run.parent_run_id})`);
-      delete this.parentByRunId[run.id];
+      this.parentByRunId.delete(run.id);
       return;
     }
 
-    const entry = this.runs[run.id];
+    const entry = this.runs.get(run.id);
     if (!entry) {
-      delete this.parentByRunId[run.id];
+      this.parentByRunId.delete(run.id);
       return;
     }
 
@@ -100,7 +100,7 @@ export class LangChainTracer extends BaseTracer {
       if (run.error) {
         span.setStatus({ code: SpanStatusCode.ERROR });
         const errorMsg = String(run.error);
-        span.setAttribute(OpenTelemetryConstants.ERROR_MESSAGE_KEY, errorMsg.length > 1024 ? errorMsg.substring(0, 1024) + '...[truncated]' : errorMsg);
+        span.setAttribute(OpenTelemetryConstants.ERROR_MESSAGE_KEY, errorMsg.length > 1024 ? errorMsg.substring(0, 1010) + '...[truncated]' : errorMsg);
 
       } else {
         span.setStatus({ code: SpanStatusCode.OK });
@@ -128,8 +128,8 @@ export class LangChainTracer extends BaseTracer {
       span.setStatus({ code: SpanStatusCode.ERROR });
     } finally {
       span.end(run.end_time ?? undefined);
-      delete this.runs[run.id];
-      delete this.parentByRunId[run.id];
+      this.runs.delete(run.id);
+      this.parentByRunId.delete(run.id);
       await super._endTrace(run);
     }
   }
@@ -138,9 +138,9 @@ export class LangChainTracer extends BaseTracer {
     let pid = run.parent_run_id;
 
     while (pid) {
-      const entry = this.runs[pid];
+      const entry = this.runs.get(pid);
       if (entry) return entry.span.spanContext();
-      pid = this.parentByRunId[pid];
+      pid = this.parentByRunId.get(pid);
     }
     return undefined;
   }
