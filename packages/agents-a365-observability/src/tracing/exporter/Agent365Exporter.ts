@@ -24,7 +24,6 @@ import logger, { formatError } from '../../utils/logging';
 import { Agent365ExporterOptions } from './Agent365ExporterOptions';
 import { ExporterEventNames } from './ExporterEventNames';
 
-const DEFAULT_HTTP_TIMEOUT_SECONDS = 30000; // 30 seconds in ms
 const DEFAULT_MAX_RETRIES = 3;
 
 interface OTLPExportRequest {
@@ -247,7 +246,7 @@ export class Agent365Exporter implements SpanExporter {
           method: 'POST',
           headers,
           body,
-          signal: AbortSignal.timeout(DEFAULT_HTTP_TIMEOUT_SECONDS)
+          signal: AbortSignal.timeout(this.options.httpRequestTimeoutMilliseconds)
         });
 
         correlationId = response?.headers?.get('x-ms-correlation-id') || response?.headers?.get('x-correlation-id') || 'unknown';
