@@ -171,6 +171,7 @@ export class ScopeUtils {
    * @param authToken Auth token for resolving agent identity from token claims.
    * @param startTime Optional explicit start time (ms epoch, Date, or HrTime).
    * @param endTime Optional explicit end time (ms epoch, Date, or HrTime).
+   * @param spanKind Optional span kind override. Defaults to `SpanKind.CLIENT`.
    * @returns A started `InvokeAgentScope` enriched with context-derived parameters.
    */
   static populateInvokeAgentScopeFromTurnContext(
@@ -236,6 +237,7 @@ export class ScopeUtils {
    * @param startTime Optional explicit start time (ms epoch, Date, or HrTime). Useful when recording a
    *        tool call after execution has already completed.
    * @param endTime Optional explicit end time (ms epoch, Date, or HrTime).
+   * @param spanKind Optional span kind override. Defaults to `SpanKind.INTERNAL`.
    * @returns A started `ExecuteToolScope` enriched with context-derived parameters.
    */
   static populateExecuteToolScopeFromTurnContext(

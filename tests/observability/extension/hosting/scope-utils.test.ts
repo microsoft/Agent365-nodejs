@@ -311,22 +311,32 @@ test('buildInvokeAgentDetails keeps base request when TurnContext has no overrid
 
 describe('ScopeUtils spanKind forwarding', () => {
   test('populateInvokeAgentScopeFromTurnContext forwards SpanKind.SERVER', () => {
+    const spy = jest.spyOn(InvokeAgentScope, 'start');
     const ctx = makeTurnContext('hello', 'web', 'https://web', 'conv-span');
     const scope = ScopeUtils.populateInvokeAgentScopeFromTurnContext(
       { agentId: 'test-agent' }, ctx, testAuthToken,
       undefined, undefined, SpanKind.SERVER
     );
-    expect(scope).toBeInstanceOf(InvokeAgentScope);
+    expect(spy).toHaveBeenCalledWith(
+      expect.anything(), expect.anything(), expect.anything(), expect.anything(),
+      undefined, undefined, undefined, SpanKind.SERVER
+    );
     scope?.dispose();
+    spy.mockRestore();
   });
 
   test('populateExecuteToolScopeFromTurnContext forwards SpanKind.CLIENT', () => {
+    const spy = jest.spyOn(ExecuteToolScope, 'start');
     const ctx = makeTurnContext(undefined, 'cli', 'https://cli', 'conv-span');
     const scope = ScopeUtils.populateExecuteToolScopeFromTurnContext(
       { toolName: 'search' }, ctx, testAuthToken,
       undefined, undefined, SpanKind.CLIENT
     );
-    expect(scope).toBeInstanceOf(ExecuteToolScope);
+    expect(spy).toHaveBeenCalledWith(
+      expect.anything(), expect.anything(), expect.anything(), expect.anything(),
+      expect.anything(), undefined, undefined, undefined, SpanKind.CLIENT
+    );
     scope?.dispose();
+    spy.mockRestore();
   });
 });
