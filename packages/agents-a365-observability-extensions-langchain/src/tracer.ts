@@ -4,12 +4,13 @@
 import { context, trace, Span, SpanKind, SpanStatusCode, Tracer } from "@opentelemetry/api";
 import { BaseTracer, Run } from "@langchain/core/tracers/base";
 import { isTracingSuppressed } from "@opentelemetry/core";
-import { logger, OpenTelemetryConstants } from "@microsoft/agents-a365-observability";
+import { logger, OpenTelemetryConstants, defaultObservabilityConfigurationProvider } from "@microsoft/agents-a365-observability";
 import * as Utils from "./Utils";
 
 type RunWithSpan = { run: Run; span: Span; startTime: number; lastAccessTime: number };
 
 export class LangChainTracer extends BaseTracer {
+  private static readonly MAX_RUNS = 10_000;
   private tracer: Tracer;
   private runs: Record<string, RunWithSpan> = {};
   private parentByRunId: Record<string, string | undefined> = {};
@@ -59,6 +60,11 @@ export class LangChainTracer extends BaseTracer {
       spanName = `${operation} ${Utils.getModel(run) || run.name}`.trim();
     }
 
+    if (Object.keys(this.runs).length >= LangChainTracer.MAX_RUNS) {
+      logger.warn(`[LangChainTracer] Max runs (${LangChainTracer.MAX_RUNS}) reached, skipping span`);
+      return;
+    }
+
     const startTime = run.start_time ?? Date.now();
     const span = this.tracer.startSpan(spanName, {
       kind: SpanKind.INTERNAL,
@@ -77,11 +83,13 @@ export class LangChainTracer extends BaseTracer {
     const operation = Utils.getOperationType(run);
     if (run.tags?.includes("langsmith:hidden") || run.name?.startsWith("Branch") || operation === "unknown") {
       logger.info(`Skipping internal run: ${run.name} (parent: ${run.parent_run_id})`);
+      delete this.parentByRunId[run.id];
       return;
     }
 
     const entry = this.runs[run.id];
     if (!entry) {
+      delete this.parentByRunId[run.id];
       return;
     }
 
@@ -91,7 +99,8 @@ export class LangChainTracer extends BaseTracer {
 
       if (run.error) {
         span.setStatus({ code: SpanStatusCode.ERROR });
-        span.setAttribute(OpenTelemetryConstants.ERROR_MESSAGE_KEY, String(run.error));
+        const errorMsg = String(run.error);
+        span.setAttribute(OpenTelemetryConstants.ERROR_MESSAGE_KEY, errorMsg.length > 1024 ? errorMsg.substring(0, 1024) + '...[truncated]' : errorMsg);
 
       } else {
         span.setStatus({ code: SpanStatusCode.OK });
@@ -100,14 +109,19 @@ export class LangChainTracer extends BaseTracer {
       // Set all attributes
       Utils.setOperationTypeAttribute(operation, span);
       Utils.setAgentAttributes(run, span);
-      Utils.setToolAttributes(run, span);
-      Utils.setInputMessagesAttribute(run, span);
-      Utils.setOutputMessagesAttribute(run, span);
-      Utils.setSystemInstructionsAttribute(run, span);
       Utils.setModelAttribute(run, span);
       Utils.setProviderNameAttribute(run, span);
       Utils.setSessionIdAttribute(run, span);
       Utils.setTokenAttributes(run, span);
+
+      // Content attributes gated by content recording setting
+      const contentRecording = defaultObservabilityConfigurationProvider.getConfiguration().isContentRecordingEnabled;
+      if (contentRecording) {
+        Utils.setToolAttributes(run, span);
+        Utils.setInputMessagesAttribute(run, span);
+        Utils.setOutputMessagesAttribute(run, span);
+        Utils.setSystemInstructionsAttribute(run, span);
+      }
 
     } catch (error) {
       logger.error(`[LangChainTracer] Error setting span attributes for run ${run.name}: ${error instanceof Error ? error.message : String(error)}`);

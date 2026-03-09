@@ -466,6 +466,7 @@ describe('OpenAIAgentsTraceProcessor', () => {
     };
 
     beforeEach(() => {
+      process.env.AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED = 'true';
       spansByName = {};
       tracerSpy = jest.spyOn(tracer as any, 'startSpan').mockImplementation((...args: unknown[]) => {
         const name = args[0] as string;
@@ -476,6 +477,7 @@ describe('OpenAIAgentsTraceProcessor', () => {
     });
 
     afterEach(() => {
+      delete process.env.AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED;
       tracerSpy.mockRestore();
     });
 

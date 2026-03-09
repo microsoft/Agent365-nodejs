@@ -61,4 +61,15 @@ export class ObservabilityConfiguration extends RuntimeConfiguration {
       ?? process.env.A365_OBSERVABILITY_LOG_LEVEL
       ?? 'none';
   }
+
+  /**
+   * Whether content recording is enabled for telemetry spans.
+   * When disabled, sensitive content (prompts, completions, tool I/O, system instructions)
+   * is not recorded as span attributes.
+   */
+  get isContentRecordingEnabled(): boolean {
+    const result = this.observabilityOverrides.isContentRecordingEnabled?.();
+    if (result !== undefined) return result;
+    return RuntimeConfiguration.parseEnvBoolean(process.env.AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED);
+  }
 }
