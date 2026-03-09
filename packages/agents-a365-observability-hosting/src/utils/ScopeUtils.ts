@@ -4,7 +4,7 @@
 // ------------------------------------------------------------------------------
 
 import { TurnContext } from '@microsoft/agents-hosting';
-import { TimeInput } from '@opentelemetry/api';
+import { SpanKind, TimeInput } from '@opentelemetry/api';
 import {
   InvokeAgentScope,
   InferenceScope,
@@ -178,7 +178,8 @@ export class ScopeUtils {
     turnContext: TurnContext,
     authToken: string,
     startTime?: TimeInput,
-    endTime?: TimeInput
+    endTime?: TimeInput,
+    spanKind?: SpanKind
   ): InvokeAgentScope {
     const tenant = ScopeUtils.deriveTenantDetails(turnContext);
     const callerAgent = ScopeUtils.deriveCallerAgent(turnContext);
@@ -189,7 +190,7 @@ export class ScopeUtils {
       throw new Error('populateInvokeAgentScopeFromTurnContext: Missing tenant details on TurnContext (recipient)');
     }
 
-    const scope = InvokeAgentScope.start(invokeAgentDetails, tenant, callerAgent, caller, undefined, startTime, endTime);
+    const scope = InvokeAgentScope.start(invokeAgentDetails, tenant, callerAgent, caller, undefined, startTime, endTime, spanKind);
     this.setInputMessageTags(scope, turnContext);
     return scope;
   }
@@ -242,7 +243,8 @@ export class ScopeUtils {
     turnContext: TurnContext,
     authToken: string,
     startTime?: TimeInput,
-    endTime?: TimeInput
+    endTime?: TimeInput,
+    spanKind?: SpanKind
   ): ExecuteToolScope {
     const agent = ScopeUtils.deriveAgentDetails(turnContext, authToken);
     const tenant = ScopeUtils.deriveTenantDetails(turnContext);
@@ -254,7 +256,7 @@ export class ScopeUtils {
     if (!tenant) {
       throw new Error('populateExecuteToolScopeFromTurnContext: Missing tenant details on TurnContext (recipient)');
     }
-    const scope = ExecuteToolScope.start(details, agent, tenant, conversationId, sourceMetadata, undefined, startTime, endTime);
+    const scope = ExecuteToolScope.start(details, agent, tenant, conversationId, sourceMetadata, undefined, startTime, endTime, spanKind);
     return scope;
   }
 

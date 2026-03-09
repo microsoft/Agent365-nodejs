@@ -24,6 +24,8 @@ export class ExecuteToolScope extends OpenTelemetryScope {
    *        tool call after execution has already completed.
    * @param endTime Optional explicit end time (ms epoch, Date, or HrTime). When provided, the span will
    *        use this timestamp when disposed instead of the current wall-clock time.
+   * @param spanKind Optional span kind override. Defaults to `SpanKind.INTERNAL`.
+   *   Use `SpanKind.CLIENT` when the tool calls an external service.
    * @returns A new ExecuteToolScope instance.
    */
   public static start(
@@ -34,9 +36,10 @@ export class ExecuteToolScope extends OpenTelemetryScope {
     sourceMetadata?: Pick<SourceMetadata, "name" | "description">,
     parentContext?: ParentContext,
     startTime?: TimeInput,
-    endTime?: TimeInput
+    endTime?: TimeInput,
+    spanKind?: SpanKind
   ): ExecuteToolScope {
-    return new ExecuteToolScope(details, agentDetails, tenantDetails, conversationId, sourceMetadata, parentContext, startTime, endTime);
+    return new ExecuteToolScope(details, agentDetails, tenantDetails, conversationId, sourceMetadata, parentContext, startTime, endTime, spanKind);
   }
 
   private constructor(
@@ -47,10 +50,11 @@ export class ExecuteToolScope extends OpenTelemetryScope {
     sourceMetadata?: Pick<SourceMetadata, "name" | "description">,
     parentContext?: ParentContext,
     startTime?: TimeInput,
-    endTime?: TimeInput
+    endTime?: TimeInput,
+    spanKind?: SpanKind
   ) {
     super(
-      SpanKind.INTERNAL,
+      spanKind ?? SpanKind.INTERNAL,
       OpenTelemetryConstants.EXECUTE_TOOL_OPERATION_NAME,
       `${OpenTelemetryConstants.EXECUTE_TOOL_OPERATION_NAME} ${details.toolName}`,
       agentDetails,
