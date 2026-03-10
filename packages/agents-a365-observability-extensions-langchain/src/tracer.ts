@@ -100,7 +100,7 @@ export class LangChainTracer extends BaseTracer {
       if (run.error) {
         span.setStatus({ code: SpanStatusCode.ERROR });
         const errorMsg = String(run.error);
-        span.setAttribute(OpenTelemetryConstants.ERROR_MESSAGE_KEY, errorMsg.length > 1024 ? errorMsg.substring(0, 1010) + '...[truncated]' : errorMsg);
+        span.setAttribute(OpenTelemetryConstants.ERROR_MESSAGE_KEY, errorMsg.length > 8192 ? errorMsg.substring(0, 8178) + '...[truncated]' : errorMsg);
 
       } else {
         span.setStatus({ code: SpanStatusCode.OK });

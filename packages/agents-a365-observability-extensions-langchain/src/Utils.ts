@@ -5,7 +5,7 @@ import { Run } from "@langchain/core/tracers/base";
 import { Span } from "@opentelemetry/api";
 import { OpenTelemetryConstants } from "@microsoft/agents-a365-observability";
 
-const MAX_ATTRIBUTE_LENGTH = 32_768;
+const MAX_ATTRIBUTE_LENGTH = 8_192;
 
 function truncateValue(value: string): string {
   if (value.length > MAX_ATTRIBUTE_LENGTH) {
