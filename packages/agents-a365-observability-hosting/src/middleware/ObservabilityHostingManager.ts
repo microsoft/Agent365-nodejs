@@ -10,7 +10,7 @@ import { OutputLoggingMiddleware } from './OutputLoggingMiddleware';
  * Configuration options for the hosting observability layer.
  */
 export interface ObservabilityHostingOptions {
-  /** Enable baggage propagation middleware. Defaults to true. */
+  /** Enable baggage propagation middleware. Defaults to false. */
   enableBaggage?: boolean;
 
   /** Enable output logging middleware for tracing outgoing messages. Defaults to false. */
@@ -42,7 +42,7 @@ export class ObservabilityHostingManager {
       return;
     }
 
-    const enableBaggage = options.enableBaggage !== false;
+    const enableBaggage = options.enableBaggage === true;
     const enableOutputLogging = options.enableOutputLogging === true;
 
     if (enableBaggage) {
