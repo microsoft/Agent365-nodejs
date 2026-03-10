@@ -12,9 +12,18 @@ import { Span as AgentsSpan, SpanData } from '@openai/agents-core/dist/tracing/s
  * @param obj - The object to stringify
  * @returns JSON string representation or string conversion if JSON.stringify fails
  */
+const MAX_ATTRIBUTE_LENGTH = 32_768;
+
+function truncateValue(value: string): string {
+  if (value.length > MAX_ATTRIBUTE_LENGTH) {
+    return value.substring(0, MAX_ATTRIBUTE_LENGTH) + '...[truncated]';
+  }
+  return value;
+}
+
 export function safeJsonDumps(obj: unknown): string {
   try {
-    return JSON.stringify(obj);
+    return truncateValue(JSON.stringify(obj));
   } catch {
     return String(obj);
   }

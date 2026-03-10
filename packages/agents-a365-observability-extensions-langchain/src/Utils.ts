@@ -5,6 +5,15 @@ import { Run } from "@langchain/core/tracers/base";
 import { Span } from "@opentelemetry/api";
 import { OpenTelemetryConstants } from "@microsoft/agents-a365-observability";
 
+const MAX_ATTRIBUTE_LENGTH = 32_768;
+
+function truncateValue(value: string): string {
+  if (value.length > MAX_ATTRIBUTE_LENGTH) {
+    return value.substring(0, MAX_ATTRIBUTE_LENGTH) + '...[truncated]';
+  }
+  return value;
+}
+
 // Type guards
 export function isString(value: unknown): value is string {
   return typeof value === "string";
@@ -51,8 +60,8 @@ export function setToolAttributes(run: Run, span: Span) {
   if (isString(run.name))  { 
     span.setAttribute(OpenTelemetryConstants.GEN_AI_TOOL_NAME_KEY, run.name);
   }
-  if (run.inputs) span.setAttribute(OpenTelemetryConstants.GEN_AI_TOOL_ARGS_KEY, JSON.stringify(run.inputs?.input ?? run.inputs));
-  if (run.outputs?.output?.kwargs?.content) span.setAttribute(OpenTelemetryConstants.GEN_AI_TOOL_CALL_RESULT_KEY, JSON.stringify(run.outputs?.output?.kwargs?.content));
+  if (run.inputs) span.setAttribute(OpenTelemetryConstants.GEN_AI_TOOL_ARGS_KEY, truncateValue(JSON.stringify(run.inputs?.input ?? run.inputs)));
+  if (run.outputs?.output?.kwargs?.content) span.setAttribute(OpenTelemetryConstants.GEN_AI_TOOL_CALL_RESULT_KEY, truncateValue(JSON.stringify(run.outputs?.output?.kwargs?.content)));
   span.setAttribute(OpenTelemetryConstants.GEN_AI_TOOL_TYPE_KEY, "extension");  
   if (run.outputs?.output?.tool_call_id) span.setAttribute(OpenTelemetryConstants.GEN_AI_TOOL_CALL_ID_KEY, run.outputs?.output?.tool_call_id);
 }
@@ -77,7 +86,7 @@ export function setInputMessagesAttribute(run: Run, span: Span) {
     .filter(Boolean);
 
   if (processed.length > 0) {
-    span.setAttribute(OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, JSON.stringify(processed));
+    span.setAttribute(OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, truncateValue(JSON.stringify(processed)));
   }
 }
 
@@ -214,7 +223,7 @@ export function setOutputMessagesAttribute(run: Run, span: Span) {
   }
 
   if (messages.length > 0) {
-    span.setAttribute(OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY, JSON.stringify(messages));
+    span.setAttribute(OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY, truncateValue(JSON.stringify(messages)));
   }
 }
 
@@ -263,7 +272,7 @@ export function setSystemInstructionsAttribute(run: Run, span: Span) {
   }
 
   const prompts = Array.isArray(inputs.prompts) ? inputs.prompts.map(p => String(p ?? "").trim()).filter(Boolean).join("\n") : "";
-  if (prompts) return span.setAttribute(OpenTelemetryConstants.GEN_AI_SYSTEM_INSTRUCTIONS_KEY, prompts);
+  if (prompts) return span.setAttribute(OpenTelemetryConstants.GEN_AI_SYSTEM_INSTRUCTIONS_KEY, truncateValue(prompts));
 
   const messages = Array.isArray(inputs.messages) ? inputs.messages : [];
   const systemText = messages
@@ -271,7 +280,7 @@ export function setSystemInstructionsAttribute(run: Run, span: Span) {
     .map((m: Record<string, unknown>) => String((m.lc_kwargs as Record<string, unknown> | undefined)?.content ?? "").trim())
     .filter(Boolean)
     .join("\n");
-  if (systemText) span.setAttribute(OpenTelemetryConstants.GEN_AI_SYSTEM_INSTRUCTIONS_KEY, systemText);
+  if (systemText) span.setAttribute(OpenTelemetryConstants.GEN_AI_SYSTEM_INSTRUCTIONS_KEY, truncateValue(systemText));
 }
 
 // Tokens (input and output)
