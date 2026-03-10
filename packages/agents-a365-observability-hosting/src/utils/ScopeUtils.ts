@@ -15,10 +15,10 @@ import {
   InferenceDetails,
   InvokeAgentDetails,
   ToolCallDetails,
-  ObservabilityConfiguration,
   defaultObservabilityConfigurationProvider,
 } from '@microsoft/agents-a365-observability';
-import { IConfigurationProvider } from '@microsoft/agents-a365-runtime';
+import type { ObservabilityConfiguration } from '@microsoft/agents-a365-observability';
+import type { IConfigurationProvider } from '@microsoft/agents-a365-runtime';
 import { resolveEmbodiedAgentIds } from './TurnContextUtils';
 
 /**
