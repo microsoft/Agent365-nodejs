@@ -8,7 +8,7 @@
  */
 
 import { context, trace as OtelTrace, Span as OtelSpan, Tracer as OtelTracer } from '@opentelemetry/api';
-import { OpenTelemetryConstants, InferenceOperationType, logger } from '@microsoft/agents-a365-observability';
+import { OpenTelemetryConstants, InferenceOperationType, logger, truncateValue } from '@microsoft/agents-a365-observability';
 import * as Constants from './Constants';
 import * as Utils from './Utils';
 import {
@@ -251,11 +251,11 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
       // Store the output field for GEN_AI_RESPONSE_CONTENT_KEY
       if (resp.output && contentRecording) {
         if (typeof resp.output === 'string') {
-          otelSpan.setAttribute(OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY, resp.output);
+          otelSpan.setAttribute(OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY, truncateValue(resp.output));
         } else {
           otelSpan.setAttribute(
             OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY,
-            this.buildOutputMessages(resp.output  as Array<{ role: string; content: Array<{ type: string; text: string }> }>)
+            truncateValue(this.buildOutputMessages(resp.output  as Array<{ role: string; content: Array<{ type: string; text: string }> }>))
           );
         }
       }
@@ -280,19 +280,19 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
           if (Array.isArray(parsed)) {
             otelSpan.setAttribute(
               OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY,
-              this.buildInputMessages(parsed)
+              truncateValue(this.buildInputMessages(parsed))
             );
             return;
           }
         } catch {
           // If parsing fails, fall back to raw string behavior
         }
-        otelSpan.setAttribute(OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, inputObj);
+        otelSpan.setAttribute(OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, truncateValue(inputObj as string));
       } else if (Array.isArray(inputObj)) {
         // build the input messages from array
         otelSpan.setAttribute(
           OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY,
-          this.buildInputMessages(inputObj)
+          truncateValue(this.buildInputMessages(inputObj))
         );
       }
     }

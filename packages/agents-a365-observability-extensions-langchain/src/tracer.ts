@@ -80,6 +80,8 @@ export class LangChainTracer extends BaseTracer {
 
   protected async _endTrace(run: Run) {
     if (isTracingSuppressed(context.active())) {
+      this.parentByRunId.delete(run.id);
+      this.runs.delete(run.id);
       return;
     }
     // Skip internal runs
