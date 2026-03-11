@@ -50,15 +50,10 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
     ['generation' + Constants.GEN_AI_REQUEST_CONTENT_KEY, OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY],
   ]);
 
-  constructor(tracer: OtelTracer, options?: { suppressInvokeAgentInput?: boolean }) {
+  constructor(tracer: OtelTracer, options?: { suppressInvokeAgentInput?: boolean; isContentRecordingEnabled?: boolean }) {
     this.tracer = tracer;
     this.suppressInvokeAgentInput = options?.suppressInvokeAgentInput ?? false;
-    this.isContentRecordingEnabled = OpenAIAgentsTraceProcessor.parseContentRecordingEnv();
-  }
-
-  private static parseContentRecordingEnv(): boolean {
-    const value = process.env[OpenTelemetryConstants.TRACE_CONTENTS_ENVIRONMENT_VARIABLE]?.toLowerCase().trim();
-    return value === 'true' || value === '1' || value === 'yes' || value === 'on';
+    this.isContentRecordingEnabled = options?.isContentRecordingEnabled ?? false;
   }
 
   private static readonly CONTENT_KEYS = new Set([

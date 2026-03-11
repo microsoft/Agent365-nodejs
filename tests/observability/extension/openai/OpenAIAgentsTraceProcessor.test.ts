@@ -16,11 +16,8 @@ import { trace } from '@opentelemetry/api';
 
 describe('OpenAIAgentsTraceProcessor', () => {
   let tracer: Tracer;
-  let savedContentRecording: string | undefined;
 
   beforeEach(() => {
-    savedContentRecording = process.env.AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED;
-    process.env.AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED = 'true';
     // Initialize ObservabilityManager for testing
     ObservabilityManager.start({
       serviceName: 'openai-agents-test',
@@ -30,11 +27,6 @@ describe('OpenAIAgentsTraceProcessor', () => {
   });
 
   afterEach(async () => {
-    if (savedContentRecording === undefined) {
-      delete process.env.AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED;
-    } else {
-      process.env.AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED = savedContentRecording;
-    }
     await ObservabilityManager.shutdown();
   });
 
@@ -42,7 +34,7 @@ describe('OpenAIAgentsTraceProcessor', () => {
     let processor: OpenAIAgentsTraceProcessor;
 
     beforeEach(() => {
-      processor = new OpenAIAgentsTraceProcessor(tracer);
+      processor = new OpenAIAgentsTraceProcessor(tracer, { isContentRecordingEnabled: true });
     });
 
     afterEach(async () => {
@@ -488,7 +480,7 @@ describe('OpenAIAgentsTraceProcessor', () => {
     });
 
     it('does not record GEN_AI_INPUT_MESSAGES when disabled', async () => {
-      const processor = new OpenAIAgentsTraceProcessor(tracer, { suppressInvokeAgentInput: true });
+      const processor = new OpenAIAgentsTraceProcessor(tracer, { suppressInvokeAgentInput: true, isContentRecordingEnabled: true });
       const traceData = { traceId: 'trace-suppress', name: 'Agent' } as any;
       await processor.onTraceStart(traceData);
 
@@ -512,7 +504,7 @@ describe('OpenAIAgentsTraceProcessor', () => {
     });
 
     it('records GEN_AI_INPUT_MESSAGES when enabled (default)', async () => {
-      const processor = new OpenAIAgentsTraceProcessor(tracer);
+      const processor = new OpenAIAgentsTraceProcessor(tracer, { isContentRecordingEnabled: true });
       const traceData = { traceId: 'trace-allow', name: 'Agent' } as any;
       await processor.onTraceStart(traceData);
 
@@ -536,7 +528,7 @@ describe('OpenAIAgentsTraceProcessor', () => {
     });
 
     it('suppresses input on response spans when disabled', async () => {
-      const processor = new OpenAIAgentsTraceProcessor(tracer, { suppressInvokeAgentInput: true });
+      const processor = new OpenAIAgentsTraceProcessor(tracer, { suppressInvokeAgentInput: true, isContentRecordingEnabled: true });
       const traceData = { traceId: 'trace-resp', name: 'Agent' } as any;
       await processor.onTraceStart(traceData);
 
@@ -560,7 +552,7 @@ describe('OpenAIAgentsTraceProcessor', () => {
     });
 
     it('records full array JSON when only assistant messages are present', async () => {
-      const processor = new OpenAIAgentsTraceProcessor(tracer);
+      const processor = new OpenAIAgentsTraceProcessor(tracer, { isContentRecordingEnabled: true });
       const traceData = { traceId: 'trace-assistant-only', name: 'Agent' } as any;
       await processor.onTraceStart(traceData);
 
@@ -596,7 +588,7 @@ describe('OpenAIAgentsTraceProcessor', () => {
       expect(parsed).toEqual(inputArray);
     });
     it('records user text content for array _input on response spans', async () => {
-      const processor = new OpenAIAgentsTraceProcessor(tracer);
+      const processor = new OpenAIAgentsTraceProcessor(tracer, { isContentRecordingEnabled: true });
       const traceData = { traceId: 'trace-array-input', name: 'Agent' } as any;
       await processor.onTraceStart(traceData);
 
@@ -629,7 +621,7 @@ describe('OpenAIAgentsTraceProcessor', () => {
     });
 
     it('parses stringified array _input and records only user text content', async () => {
-      const processor = new OpenAIAgentsTraceProcessor(tracer);
+      const processor = new OpenAIAgentsTraceProcessor(tracer, { isContentRecordingEnabled: true });
       const traceData = { traceId: 'trace-array-input-string', name: 'Agent' } as any;
       await processor.onTraceStart(traceData);
 
@@ -665,7 +657,7 @@ describe('OpenAIAgentsTraceProcessor', () => {
     });
 
     it('records [gen_ai.input.messages] attribute for array input with non standard schema on response spans', async () => {
-      const processor = new OpenAIAgentsTraceProcessor(tracer);
+      const processor = new OpenAIAgentsTraceProcessor(tracer, { isContentRecordingEnabled: true });
       const traceData = { traceId: 'trace-array-input', name: 'Agent' } as any;
       await processor.onTraceStart(traceData);
       const inputArray = [
@@ -698,7 +690,7 @@ describe('OpenAIAgentsTraceProcessor', () => {
     });
 
     it('records GEN_AI_OUTPUT_MESSAGES as plain string when output is a string', async () => {
-      const processor = new OpenAIAgentsTraceProcessor(tracer);
+      const processor = new OpenAIAgentsTraceProcessor(tracer, { isContentRecordingEnabled: true });
       const traceData = { traceId: 'trace-output-string', name: 'Agent' } as any;
       await processor.onTraceStart(traceData);
 
@@ -725,7 +717,7 @@ describe('OpenAIAgentsTraceProcessor', () => {
     });
 
     it('records GEN_AI_OUTPUT_MESSAGES as aggregated texts when output is structured', async () => {
-      const processor = new OpenAIAgentsTraceProcessor(tracer);
+      const processor = new OpenAIAgentsTraceProcessor(tracer, { isContentRecordingEnabled: true });
       const traceData = { traceId: 'trace-output-structured', name: 'Agent' } as any;
       await processor.onTraceStart(traceData);
 
@@ -764,8 +756,7 @@ describe('OpenAIAgentsTraceProcessor', () => {
       expect(parsed).toEqual(['Hello user 1', 'Hello user 2']);
     });
 
-    it('suppresses all content attributes when AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED is not set', async () => {
-      delete process.env.AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED;
+    it('suppresses all content attributes when isContentRecordingEnabled is false', async () => {
       const processor = new OpenAIAgentsTraceProcessor(tracer);
       const traceData = { traceId: 'trace-no-content', name: 'Agent' } as any;
       await processor.onTraceStart(traceData);

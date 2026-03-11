@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Content recording gate** — OpenAI and LangChain auto-instrumentation extensions now respect the `AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED` environment variable. When not set or `false`, sensitive content (prompts, completions, tool I/O) is omitted from telemetry spans.
+- **`OpenAIAgentsInstrumentationConfig.isContentRecordingEnabled`** — Optional `boolean` to enable content recording in OpenAI trace processor.
+- **`LangChainTraceInstrumentor.instrument(module, options?)`** — New optional `{ isContentRecordingEnabled?: boolean }` parameter to enable content recording in LangChain tracer.
 - **`truncateValue`** / **`MAX_ATTRIBUTE_LENGTH`** — Exported utilities for attribute value truncation (8192 char limit).
 
 ### Breaking Changes (`@microsoft/agents-a365-observability-hosting`)

@@ -17,15 +17,10 @@ export class LangChainTracer extends BaseTracer {
   private parentByRunId = new Map<string, string | undefined>();
 
 
-  constructor(tracer: Tracer) {
+  constructor(tracer: Tracer, options?: { isContentRecordingEnabled?: boolean }) {
     super();
     this.tracer = tracer;
-    this.isContentRecordingEnabled = LangChainTracer.parseContentRecordingEnv();
-  }
-
-  private static parseContentRecordingEnv(): boolean {
-    const value = process.env[OpenTelemetryConstants.TRACE_CONTENTS_ENVIRONMENT_VARIABLE]?.toLowerCase().trim();
-    return value === 'true' || value === '1' || value === 'yes' || value === 'on';
+    this.isContentRecordingEnabled = options?.isContentRecordingEnabled ?? false;
   }
 
   name = "OpenTelemetryLangChainTracer";
