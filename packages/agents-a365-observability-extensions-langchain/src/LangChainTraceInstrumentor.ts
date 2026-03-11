@@ -41,7 +41,6 @@ class LangChainTraceInstrumentorImpl extends InstrumentationBase<Instrumentation
       "agent365-langchain",
       "1.0.0"
     );
-
     LangChainTraceInstrumentorImpl._instance = this;
     logger.info("[LangChainTraceInstrumentor] Initialized and automatically enabled");
   }
@@ -150,7 +149,8 @@ export class LangChainTraceInstrumentor {
   }
 
   /**
-   * Initialize and auto-instrument for LangChain 
+   * Initialize and auto-instrument for LangChain
+   * @param module The CallbackManager module to instrument
    */
   static instrument(module: CallbackManagerModuleType): void {
     LangChainTraceInstrumentorImpl.getInstance().manuallyInstrumentImpl(module);
@@ -186,7 +186,7 @@ export class LangChainTraceInstrumentor {
 
 export function addTracerToHandlers(
   tracer: Tracer,
-  handlers: CallbackManagerModule.Callbacks | undefined
+  handlers: CallbackManagerModule.Callbacks | undefined,
 ): CallbackManagerModule.Callbacks {
   if (handlers == null) {
     return [new LangChainTracer(tracer)];

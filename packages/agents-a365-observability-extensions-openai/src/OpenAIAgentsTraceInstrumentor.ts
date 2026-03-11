@@ -100,7 +100,7 @@ export class OpenAIAgentsTraceInstrumentor extends InstrumentationBase<OpenAIAge
     trace.getTracerProvider();
 
     this.processor = new OpenAIAgentsTraceProcessor(agent365Tracer, {
-      suppressInvokeAgentInput: this._config.suppressInvokeAgentInput ?? false
+      suppressInvokeAgentInput: this._config.suppressInvokeAgentInput ?? false,
     });
 
     // Register the processor directly using the imported setTraceProcessors function

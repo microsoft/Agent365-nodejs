@@ -16,8 +16,11 @@ import { trace } from '@opentelemetry/api';
 
 describe('OpenAIAgentsTraceProcessor', () => {
   let tracer: Tracer;
+  let savedContentRecording: string | undefined;
 
   beforeEach(() => {
+    savedContentRecording = process.env.AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED;
+    process.env.AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED = 'true';
     // Initialize ObservabilityManager for testing
     ObservabilityManager.start({
       serviceName: 'openai-agents-test',
@@ -27,6 +30,11 @@ describe('OpenAIAgentsTraceProcessor', () => {
   });
 
   afterEach(async () => {
+    if (savedContentRecording === undefined) {
+      delete process.env.AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED;
+    } else {
+      process.env.AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED = savedContentRecording;
+    }
     await ObservabilityManager.shutdown();
   });
 
@@ -465,10 +473,7 @@ describe('OpenAIAgentsTraceProcessor', () => {
       };
     };
 
-    const originalEnv = process.env;
-
     beforeEach(() => {
-      process.env = { ...originalEnv, AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED: 'true' };
       spansByName = {};
       tracerSpy = jest.spyOn(tracer as any, 'startSpan').mockImplementation((...args: unknown[]) => {
         const name = args[0] as string;
@@ -479,7 +484,6 @@ describe('OpenAIAgentsTraceProcessor', () => {
     });
 
     afterEach(() => {
-      process.env = originalEnv;
       tracerSpy.mockRestore();
     });
 
@@ -759,5 +763,41 @@ describe('OpenAIAgentsTraceProcessor', () => {
       const parsed = JSON.parse(value);
       expect(parsed).toEqual(['Hello user 1', 'Hello user 2']);
     });
+
+    it('suppresses all content attributes when AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED is not set', async () => {
+      delete process.env.AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED;
+      const processor = new OpenAIAgentsTraceProcessor(tracer);
+      const traceData = { traceId: 'trace-no-content', name: 'Agent' } as any;
+      await processor.onTraceStart(traceData);
+
+      // Generation span with input/output
+      const genSpan = {
+        spanId: 'gen-no-content',
+        traceId: 'trace-no-content',
+        startedAt: new Date().toISOString(),
+        spanData: {
+          type: 'generation' as const,
+          model: 'gpt-4',
+          input: [{ role: 'user', content: 'secret prompt' }],
+          output: { id: 'resp-1', choices: [{ text: 'secret response' }] },
+        },
+      } as any;
+
+      await processor.onSpanStart(genSpan);
+      await processor.onSpanEnd(genSpan);
+
+      const mock = spansByName['generation'];
+      const attrs = mock._attrs as Array<[string, unknown]>;
+      const contentKeys = attrs.filter(([k]) =>
+        k === OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY ||
+        k === OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY
+      );
+      expect(contentKeys).toHaveLength(0);
+
+      // Model attribute should still be present (non-content)
+      const modelAttr = attrs.find(([k]) => k === OpenTelemetryConstants.GEN_AI_REQUEST_MODEL_KEY);
+      expect(modelAttr).toBeDefined();
+    });
+
   });
 });

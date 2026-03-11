@@ -8,7 +8,7 @@
  */
 
 import { context, trace as OtelTrace, Span as OtelSpan, Tracer as OtelTracer } from '@opentelemetry/api';
-import { OpenTelemetryConstants, InferenceOperationType, defaultObservabilityConfigurationProvider, logger } from '@microsoft/agents-a365-observability';
+import { OpenTelemetryConstants, InferenceOperationType, logger } from '@microsoft/agents-a365-observability';
 import * as Constants from './Constants';
 import * as Utils from './Utils';
 import {
@@ -33,6 +33,7 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
 
   private readonly tracer: OtelTracer;
   private readonly suppressInvokeAgentInput: boolean;
+  private readonly isContentRecordingEnabled: boolean;
   private readonly rootSpans: Map<string, OtelSpan> = new Map();
   private readonly otelSpans: Map<string, OtelSpan> = new Map();
   private readonly tokens: Map<string, ContextToken> = new Map();
@@ -52,6 +53,12 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
   constructor(tracer: OtelTracer, options?: { suppressInvokeAgentInput?: boolean }) {
     this.tracer = tracer;
     this.suppressInvokeAgentInput = options?.suppressInvokeAgentInput ?? false;
+    this.isContentRecordingEnabled = OpenAIAgentsTraceProcessor.parseContentRecordingEnv();
+  }
+
+  private static parseContentRecordingEnv(): boolean {
+    const value = process.env[OpenTelemetryConstants.TRACE_CONTENTS_ENVIRONMENT_VARIABLE]?.toLowerCase().trim();
+    return value === 'true' || value === '1' || value === 'yes' || value === 'on';
   }
 
   private static readonly CONTENT_KEYS = new Set([
@@ -206,18 +213,19 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
    */
   private processSpanData(otelSpan: OtelSpan, data: SpanData, traceId: string): void {
     const type = data.type;
+    const contentRecording = this.isContentRecordingEnabled;
 
     switch (type) {
     case 'response':
-      this.processResponseSpanData(otelSpan, data);
+      this.processResponseSpanData(otelSpan, data, contentRecording);
       break;
 
     case 'generation':
-      this.processGenerationSpanData(otelSpan, data, traceId);
+      this.processGenerationSpanData(otelSpan, data, traceId, contentRecording);
       break;
 
     case 'function':
-      this.processFunctionSpanData(otelSpan, data, traceId);
+      this.processFunctionSpanData(otelSpan, data, traceId, contentRecording);
       break;
 
     case 'mcp_tools':
@@ -237,8 +245,7 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
   /**
    * Process response span data
    */
-  private processResponseSpanData(otelSpan: OtelSpan, data: SpanData): void {
-    const contentRecording = defaultObservabilityConfigurationProvider.getConfiguration().isContentRecordingEnabled;
+  private processResponseSpanData(otelSpan: OtelSpan, data: SpanData, contentRecording: boolean): void {
     const responseData = data as Record<string, unknown>;
     // Handle both formats: _response/_input (actual format) and response/input (legacy format)
     const responseObj = responseData._response || responseData.response;
@@ -325,8 +332,7 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
   /**
    * Process generation span data
    */
-  private processGenerationSpanData(otelSpan: OtelSpan, data: SpanData, traceId: string): void {
-    const contentRecording = defaultObservabilityConfigurationProvider.getConfiguration().isContentRecordingEnabled;
+  private processGenerationSpanData(otelSpan: OtelSpan, data: SpanData, traceId: string, contentRecording: boolean): void {
     const attrs = Utils.getAttributesFromGenerationSpanData(data);
     Object.entries(attrs).forEach(([key, value]) => {
       const shouldExcludeKey = key === OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY
@@ -355,8 +361,7 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
   /**
    * Process function/tool span data
    */
-  private processFunctionSpanData(otelSpan: OtelSpan, data: SpanData, traceId: string): void {
-    const contentRecording = defaultObservabilityConfigurationProvider.getConfiguration().isContentRecordingEnabled;
+  private processFunctionSpanData(otelSpan: OtelSpan, data: SpanData, traceId: string, contentRecording: boolean): void {
     const functionData = data as Record<string, unknown>;
     const attrs = Utils.getAttributesFromFunctionSpanData(data);
     Object.entries(attrs).forEach(([key, value]) => {
