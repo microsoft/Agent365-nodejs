@@ -80,6 +80,12 @@ export class LangChainTracer extends BaseTracer {
 
   protected async _endTrace(run: Run) {
     if (isTracingSuppressed(context.active())) {
+      // Even when suppressed, end any span that was started before suppression kicked in
+      // to avoid abandoned spans that are never exported or closed.
+      const suppressedEntry = this.runs.get(run.id);
+      if (suppressedEntry) {
+        suppressedEntry.span.end(run.end_time ?? undefined);
+      }
       this.parentByRunId.delete(run.id);
       this.runs.delete(run.id);
       return;
@@ -88,13 +94,11 @@ export class LangChainTracer extends BaseTracer {
     const operation = Utils.getOperationType(run);
     if (run.tags?.includes("langsmith:hidden") || run.name?.startsWith("Branch") || operation === "unknown") {
       logger.info(`Skipping internal run: ${run.name} (parent: ${run.parent_run_id})`);
-      this.parentByRunId.delete(run.id);
       return;
     }
 
     const entry = this.runs.get(run.id);
     if (!entry) {
-      this.parentByRunId.delete(run.id);
       return;
     }
 
