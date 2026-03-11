@@ -127,12 +127,12 @@ export function getAttributesFromFunctionSpanData(data: SpanData): Record<string
 
   if (funcData.input) {
     attributes[Constants.GEN_AI_REQUEST_CONTENT_KEY] =
-      typeof funcData.input === 'string' ? funcData.input : safeJsonDumps(funcData.input);
+      typeof funcData.input === 'string' ? truncateValue(funcData.input) : safeJsonDumps(funcData.input);
     attributes[OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY] = 'application/json';
   }
 
   if (funcData.output !== undefined && funcData.output !== null) {
-    const output = typeof funcData.output === 'object' ? safeJsonDumps(funcData.output) : String(funcData.output);
+    const output = typeof funcData.output === 'object' ? safeJsonDumps(funcData.output) : truncateValue(String(funcData.output));
     attributes[Constants.GEN_AI_RESPONSE_CONTENT_KEY] = output;
   }
 
