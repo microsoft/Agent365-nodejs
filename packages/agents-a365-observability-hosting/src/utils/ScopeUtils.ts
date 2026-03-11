@@ -15,10 +15,7 @@ import {
   InferenceDetails,
   InvokeAgentDetails,
   ToolCallDetails,
-  defaultObservabilityConfigurationProvider,
 } from '@microsoft/agents-a365-observability';
-import type { ObservabilityConfiguration } from '@microsoft/agents-a365-observability';
-import type { IConfigurationProvider } from '@microsoft/agents-a365-runtime';
 import { resolveEmbodiedAgentIds } from './TurnContextUtils';
 
 /**
@@ -31,9 +28,8 @@ export class ScopeUtils {
   private static setInputMessageTags(
     scope: InvokeAgentScope | InferenceScope,
     turnContext: TurnContext,
-    configProvider: IConfigurationProvider<ObservabilityConfiguration> = defaultObservabilityConfigurationProvider
   ): InvokeAgentScope | InferenceScope {
-    if (turnContext?.activity?.text && configProvider.getConfiguration().isContentRecordingEnabled) {
+    if (turnContext?.activity?.text) {
       scope.recordInputMessages([turnContext.activity.text]);
     }
     return scope;

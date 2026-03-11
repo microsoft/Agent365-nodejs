@@ -9,7 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **`ObservabilityConfiguration.isContentRecordingEnabled`** — Gates recording of sensitive content (prompts, completions, tool I/O) in telemetry spans. Defaults `false`; enable via `AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED=true` or programmatic override in `ObservabilityConfigurationOptions`.
 - **`OpenAIAgentsInstrumentationConfig.isContentRecordingEnabled`** — Optional `boolean` to enable content recording in OpenAI trace processor.
 - **`LangChainTraceInstrumentor.instrument(module, options?)`** — New optional `{ isContentRecordingEnabled?: boolean }` parameter to enable content recording in LangChain tracer.
 - **`truncateValue`** / **`MAX_ATTRIBUTE_LENGTH`** — Exported utilities for attribute value truncation (8192 char limit).

@@ -61,15 +61,4 @@ export type ObservabilityConfigurationOptions = RuntimeConfigurationOptions & {
    * @default 'none'
    */
   observabilityLogLevel?: () => string;
-
-  /**
-   * Override to enable/disable content recording in telemetry spans.
-   * When disabled, sensitive content (prompts, completions, tool I/O, system instructions)
-   * is not recorded as span attributes.
-   *
-   * @returns `true` to enable content recording, `false` to disable.
-   * @envvar AZURE_TRACING_GEN_AI_CONTENT_RECORDING_ENABLED - 'true' to enable.
-   * @default false
-   */
-  isContentRecordingEnabled?: () => boolean;
 };
