@@ -503,7 +503,7 @@ describe('OpenAIAgentsTraceProcessor', () => {
       expect(keys).not.toContain(OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY);
     });
 
-    it('records GEN_AI_INPUT_MESSAGES when enabled (default)', async () => {
+    it('records GEN_AI_INPUT_MESSAGES when content recording is enabled', async () => {
       const processor = new OpenAIAgentsTraceProcessor(tracer, { isContentRecordingEnabled: true });
       const traceData = { traceId: 'trace-allow', name: 'Agent' } as any;
       await processor.onTraceStart(traceData);

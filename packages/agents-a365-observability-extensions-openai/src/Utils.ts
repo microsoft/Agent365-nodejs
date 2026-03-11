@@ -3,7 +3,7 @@
 // ------------------------------------------------------------------------------
 
 import { SpanStatusCode } from '@opentelemetry/api';
-import { OpenTelemetryConstants } from '@microsoft/agents-a365-observability';
+import { OpenTelemetryConstants, truncateValue } from '@microsoft/agents-a365-observability';
 import * as Constants from './Constants';
 import { Span as AgentsSpan, SpanData } from '@openai/agents-core/dist/tracing/spans';
 
@@ -12,20 +12,11 @@ import { Span as AgentsSpan, SpanData } from '@openai/agents-core/dist/tracing/s
  * @param obj - The object to stringify
  * @returns JSON string representation or string conversion if JSON.stringify fails
  */
-const MAX_ATTRIBUTE_LENGTH = 8_192;
-
-function truncateValue(value: string): string {
-  if (value.length > MAX_ATTRIBUTE_LENGTH) {
-    return value.substring(0, MAX_ATTRIBUTE_LENGTH) + '...[truncated]';
-  }
-  return value;
-}
-
 export function safeJsonDumps(obj: unknown): string {
   try {
     return truncateValue(JSON.stringify(obj));
   } catch {
-    return String(obj);
+    return truncateValue(String(obj));
   }
 }
 
