@@ -25,7 +25,10 @@ import { resolveEmbodiedAgentIds } from './TurnContextUtils';
 export class ScopeUtils {
 
 
-  private static setInputMessageTags(scope: InvokeAgentScope | InferenceScope, turnContext: TurnContext): InvokeAgentScope | InferenceScope {
+  private static setInputMessageTags(
+    scope: InvokeAgentScope | InferenceScope,
+    turnContext: TurnContext,
+  ): InvokeAgentScope | InferenceScope {
     if (turnContext?.activity?.text) {
       scope.recordInputMessages([turnContext.activity.text]);
     }

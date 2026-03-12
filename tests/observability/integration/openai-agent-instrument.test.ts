@@ -43,6 +43,7 @@ describe("OpenAI Trace Processor Integration Tests", () => {
       enabled: true,
       tracerName: TEST_INSTRUMENTATION_NAME,
       tracerVersion: TEST_INSTRUMENTATION_VERSION,
+      isContentRecordingEnabled: true,
     });
 
     // Start observability
