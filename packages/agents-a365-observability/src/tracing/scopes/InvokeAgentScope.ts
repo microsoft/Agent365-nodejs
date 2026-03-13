@@ -26,6 +26,8 @@ export class InvokeAgentScope extends OpenTelemetryScope {
    *   Accepts a ParentSpanRef (manual traceId/spanId) or an OTel Context (e.g. from extractTraceContext).
    * @param startTime Optional explicit start time (ms epoch, Date, or HrTime).
    * @param endTime Optional explicit end time (ms epoch, Date, or HrTime).
+   * @param spanKind Optional span kind override. Defaults to `SpanKind.CLIENT`.
+   *   Use `SpanKind.SERVER` when the agent is receiving an inbound request.
    * @returns A new InvokeAgentScope instance.
    */
   public static start(
@@ -35,9 +37,10 @@ export class InvokeAgentScope extends OpenTelemetryScope {
     callerDetails?: CallerDetails,
     parentContext?: ParentContext,
     startTime?: TimeInput,
-    endTime?: TimeInput
+    endTime?: TimeInput,
+    spanKind?: SpanKind
   ): InvokeAgentScope {
-    return new InvokeAgentScope(invokeAgentDetails, tenantDetails, callerAgentDetails, callerDetails, parentContext, startTime, endTime);
+    return new InvokeAgentScope(invokeAgentDetails, tenantDetails, callerAgentDetails, callerDetails, parentContext, startTime, endTime, spanKind);
   }
 
   private constructor(
@@ -47,10 +50,11 @@ export class InvokeAgentScope extends OpenTelemetryScope {
     callerDetails?: CallerDetails,
     parentContext?: ParentContext,
     startTime?: TimeInput,
-    endTime?: TimeInput
+    endTime?: TimeInput,
+    spanKind?: SpanKind
   ) {
     super(
-      SpanKind.CLIENT,
+      spanKind ?? SpanKind.CLIENT,
       OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME,
       invokeAgentDetails.agentName
         ? `${OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME} ${invokeAgentDetails.agentName}`

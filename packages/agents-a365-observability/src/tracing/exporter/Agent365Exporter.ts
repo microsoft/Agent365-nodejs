@@ -24,7 +24,6 @@ import logger, { formatError } from '../../utils/logging';
 import { Agent365ExporterOptions } from './Agent365ExporterOptions';
 import { ExporterEventNames } from './ExporterEventNames';
 
-const DEFAULT_HTTP_TIMEOUT_SECONDS = 30000; // 30 seconds in ms
 const DEFAULT_MAX_RETRIES = 3;
 
 interface OTLPExportRequest {
@@ -172,8 +171,8 @@ export class Agent365Exporter implements SpanExporter {
     // Select endpoint path based on S2S flag (includes tenantId in path)
     const endpointRelativePath =
       this.options.useS2SEndpoint
-        ? `/observabilityService/tenants/${tenantId}/agents/${agentId}/traces`
-        : `/observability/tenants/${tenantId}/agents/${agentId}/traces`;
+        ? `/observabilityService/tenants/${encodeURIComponent(tenantId)}/agents/${encodeURIComponent(agentId)}/traces`
+        : `/observability/tenants/${encodeURIComponent(tenantId)}/agents/${encodeURIComponent(agentId)}/traces`;
 
     let url: string;
     const domainOverride = getAgent365ObservabilityDomainOverride(this.configProvider);
@@ -247,7 +246,7 @@ export class Agent365Exporter implements SpanExporter {
           method: 'POST',
           headers,
           body,
-          signal: AbortSignal.timeout(DEFAULT_HTTP_TIMEOUT_SECONDS)
+          signal: AbortSignal.timeout(this.options.httpRequestTimeoutMilliseconds)
         });
 
         correlationId = response?.headers?.get('x-ms-correlation-id') || response?.headers?.get('x-correlation-id') || 'unknown';
@@ -261,7 +260,7 @@ export class Agent365Exporter implements SpanExporter {
         // Retry transient errors
         if ([408, 429].includes(response.status) || (response.status >= 500 && response.status < 600)) {
           if (attempt < DEFAULT_MAX_RETRIES) {
-            const sleepMs = 200 * (attempt + 1);
+            const sleepMs = 200 * (attempt + 1) + Math.floor(Math.random() * 100);
             logger.warn(`[Agent365Exporter] Transient error ${response.status}, correlation ID: ${correlationId}, retrying after ${sleepMs}ms`);
             await this.sleep(sleepMs);
             continue;

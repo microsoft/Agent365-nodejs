@@ -41,7 +41,7 @@ const agentId = 'agent-22222222-2222-2222-2222-222222222222';
 // Patch global fetch
 const originalFetch = global.fetch;
 
-type FetchCallArgs = [string, { headers: Record<string, string>; body?: unknown }];
+type FetchCallArgs = [string, { headers: Record<string, string>; body?: unknown; signal?: AbortSignal }];
 
 function getFetchCalls(): FetchCallArgs[] {
   const f = global.fetch as unknown as { mock?: { calls?: unknown[][] } };
@@ -285,6 +285,31 @@ describe('Agent365Exporter', () => {
     expect(headersArg['x-ms-tenant-id']).toBe(tenantId);
   });
 
+
+  it('passes httpRequestTimeoutMilliseconds to fetch AbortSignal.timeout', async () => {
+    const customTimeout = 12345;
+    mockFetchSequence([200]);
+    const opts = new Agent365ExporterOptions();
+    opts.clusterCategory = 'local';
+    opts.tokenResolver = () => 'tok';
+    opts.httpRequestTimeoutMilliseconds = customTimeout;
+
+    const timeoutSpy = jest.spyOn(AbortSignal, 'timeout');
+    const exporter = new Agent365Exporter(opts);
+    const spans = [
+      makeSpan({
+        [OpenTelemetryConstants.TENANT_ID_KEY]: tenantId,
+        [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]: agentId
+      })
+    ];
+
+    const callback = jest.fn();
+    await exporter.export(spans, callback);
+
+    expect(callback).toHaveBeenCalledWith({ code: ExportResultCode.SUCCESS });
+    expect(timeoutSpy).toHaveBeenCalledWith(customTimeout);
+    timeoutSpy.mockRestore();
+  });
 
   describe('per-request export (token from OTel Context)', () => {
     let contextManager: AsyncLocalStorageContextManager | undefined;

@@ -55,6 +55,10 @@ export { InferenceScope } from './tracing/scopes/InferenceScope';
 export { OutputScope } from './tracing/scopes/OutputScope';
 export { logger, setLogger, getLogger, resetLogger, formatError } from './utils/logging';
 export type { ILogger } from './utils/logging';
+export { truncateValue, MAX_ATTRIBUTE_LENGTH } from './tracing/util';
+
+// Exporter utilities
+export { isPerRequestExportEnabled } from './tracing/exporter/utils';
 
 // Configuration
 export * from './configuration';

@@ -4,7 +4,7 @@
 // ------------------------------------------------------------------------------
 
 import { TurnContext } from '@microsoft/agents-hosting';
-import { TimeInput } from '@opentelemetry/api';
+import { SpanKind, TimeInput } from '@opentelemetry/api';
 import {
   InvokeAgentScope,
   InferenceScope,
@@ -16,6 +16,7 @@ import {
   InvokeAgentDetails,
   ToolCallDetails,
 } from '@microsoft/agents-a365-observability';
+import { resolveEmbodiedAgentIds } from './TurnContextUtils';
 
 /**
  * Unified utilities to populate scope tags from a TurnContext.
@@ -24,7 +25,10 @@ import {
 export class ScopeUtils {
 
 
-  private static setInputMessageTags(scope: InvokeAgentScope | InferenceScope, turnContext: TurnContext): InvokeAgentScope | InferenceScope {
+  private static setInputMessageTags(
+    scope: InvokeAgentScope | InferenceScope,
+    turnContext: TurnContext,
+  ): InvokeAgentScope | InferenceScope {
     if (turnContext?.activity?.text) {
       scope.recordInputMessages([turnContext.activity.text]);
     }
@@ -40,26 +44,30 @@ export class ScopeUtils {
    * @returns Tenant details if a recipient tenant id is present; otherwise undefined.
    */
   public static deriveTenantDetails(turnContext: TurnContext): TenantDetails | undefined {
-    const tenantId = turnContext?.activity?.recipient?.tenantId;
+    const tenantId = turnContext?.activity?.getAgenticTenantId?.();
     return tenantId ? { tenantId } : undefined;
   }
 
   /**
    * Derive target agent details from the activity recipient.
+   * Uses {@link resolveEmbodiedAgentIds} to resolve the agent ID and blueprint ID, which are only
+   * set for embodied (agentic) agents — see that function for the rationale.
    * @param turnContext Activity context
+   * @param authToken Auth token for resolving agent identity from token claims.
    * @returns Agent details built from recipient properties; otherwise undefined.
    */
-  public static deriveAgentDetails(turnContext: TurnContext): AgentDetails | undefined {
+  public static deriveAgentDetails(turnContext: TurnContext, authToken: string): AgentDetails | undefined {
     const recipient = turnContext?.activity?.recipient;
     if (!recipient) return undefined;
+    const { agentId, agentBlueprintId } = resolveEmbodiedAgentIds(turnContext, authToken);
     return {
-      agentId: recipient.agenticAppId,
+      agentId,
       agentName: recipient.name,
       agentAUID: recipient.aadObjectId,
-      agentBlueprintId: recipient.agenticAppBlueprintId,
-      agentUPN: recipient.agenticUserId,
+      agentBlueprintId,
+      agentUPN: turnContext?.activity?.getAgenticUser?.(),
       agentDescription: recipient.role,
-      tenantId: recipient.tenantId
+      tenantId: turnContext?.activity?.getAgenticTenantId?.()
     } as AgentDetails;
   }
 
@@ -127,6 +135,7 @@ export class ScopeUtils {
    * Also records input messages from the context if present.
    * @param details The inference call details (model, provider, tokens, etc.).
    * @param turnContext The current activity context to derive scope parameters from.
+   * @param authToken Auth token for resolving agent identity from token claims.
    * @param startTime Optional explicit start time (ms epoch, Date, or HrTime).
    * @param endTime Optional explicit end time (ms epoch, Date, or HrTime).
    * @returns A started `InferenceScope` enriched with context-derived parameters.
@@ -134,10 +143,11 @@ export class ScopeUtils {
   static populateInferenceScopeFromTurnContext(
     details: InferenceDetails,
     turnContext: TurnContext,
+    authToken: string,
     startTime?: TimeInput,
     endTime?: TimeInput
   ): InferenceScope {
-    const agent = ScopeUtils.deriveAgentDetails(turnContext);
+    const agent = ScopeUtils.deriveAgentDetails(turnContext, authToken);
     const tenant = ScopeUtils.deriveTenantDetails(turnContext);
     const conversationId = ScopeUtils.deriveConversationId(turnContext);
     const sourceMetadata = ScopeUtils.deriveSourceMetadataObject(turnContext);
@@ -161,26 +171,30 @@ export class ScopeUtils {
    * Also sets execution type and input messages from the context if present.
    * @param details The invoke-agent call details to be augmented and used for the scope.
    * @param turnContext The current activity context to derive scope parameters from.
+   * @param authToken Auth token for resolving agent identity from token claims.
    * @param startTime Optional explicit start time (ms epoch, Date, or HrTime).
    * @param endTime Optional explicit end time (ms epoch, Date, or HrTime).
+   * @param spanKind Optional span kind override. Defaults to `SpanKind.CLIENT`.
    * @returns A started `InvokeAgentScope` enriched with context-derived parameters.
    */
   static populateInvokeAgentScopeFromTurnContext(
     details: InvokeAgentDetails,
     turnContext: TurnContext,
+    authToken: string,
     startTime?: TimeInput,
-    endTime?: TimeInput
+    endTime?: TimeInput,
+    spanKind?: SpanKind
   ): InvokeAgentScope {
     const tenant = ScopeUtils.deriveTenantDetails(turnContext);
     const callerAgent = ScopeUtils.deriveCallerAgent(turnContext);
     const caller = ScopeUtils.deriveCallerDetails(turnContext);
-    const invokeAgentDetails = ScopeUtils.buildInvokeAgentDetails(details, turnContext);
+    const invokeAgentDetails = ScopeUtils.buildInvokeAgentDetailsCore(details, turnContext, authToken);
 
     if (!tenant) {
       throw new Error('populateInvokeAgentScopeFromTurnContext: Missing tenant details on TurnContext (recipient)');
     }
 
-    const scope = InvokeAgentScope.start(invokeAgentDetails, tenant, callerAgent, caller, undefined, startTime, endTime);
+    const scope = InvokeAgentScope.start(invokeAgentDetails, tenant, callerAgent, caller, undefined, startTime, endTime, spanKind);
     this.setInputMessageTags(scope, turnContext);
     return scope;
   }
@@ -189,10 +203,15 @@ export class ScopeUtils {
    * Build InvokeAgentDetails by merging provided details with agent info, conversation id and source metadata from the TurnContext.
    * @param details Base invoke-agent details to augment
    * @param turnContext Activity context
+   * @param authToken Auth token for resolving agent identity from token claims.
    * @returns New InvokeAgentDetails suitable for starting an InvokeAgentScope.
    */
-  public static buildInvokeAgentDetails(details: InvokeAgentDetails, turnContext: TurnContext): InvokeAgentDetails {
-    const agent = ScopeUtils.deriveAgentDetails(turnContext);
+  public static buildInvokeAgentDetails(details: InvokeAgentDetails, turnContext: TurnContext, authToken: string): InvokeAgentDetails {
+    return ScopeUtils.buildInvokeAgentDetailsCore(details, turnContext, authToken);
+  }
+
+  private static buildInvokeAgentDetailsCore(details: InvokeAgentDetails, turnContext: TurnContext, authToken: string): InvokeAgentDetails {
+    const agent = ScopeUtils.deriveAgentDetails(turnContext, authToken);
     const srcMetaFromContext = ScopeUtils.deriveSourceMetadataObject(turnContext);
     const baseRequest = details.request ?? {};
     const baseSource = baseRequest.sourceMetadata ?? {};
@@ -217,18 +236,22 @@ export class ScopeUtils {
    * Derives `agentDetails`, `tenantDetails`, `conversationId`, and `sourceMetadata` (channel name/link) from context.
    * @param details The tool call details (name, type, args, call id, etc.).
    * @param turnContext The current activity context to derive scope parameters from.
+   * @param authToken Auth token for resolving agent identity from token claims.
    * @param startTime Optional explicit start time (ms epoch, Date, or HrTime). Useful when recording a
    *        tool call after execution has already completed.
    * @param endTime Optional explicit end time (ms epoch, Date, or HrTime).
+   * @param spanKind Optional span kind override. Defaults to `SpanKind.INTERNAL`.
    * @returns A started `ExecuteToolScope` enriched with context-derived parameters.
    */
   static populateExecuteToolScopeFromTurnContext(
     details: ToolCallDetails,
     turnContext: TurnContext,
+    authToken: string,
     startTime?: TimeInput,
-    endTime?: TimeInput
+    endTime?: TimeInput,
+    spanKind?: SpanKind
   ): ExecuteToolScope {
-    const agent = ScopeUtils.deriveAgentDetails(turnContext);
+    const agent = ScopeUtils.deriveAgentDetails(turnContext, authToken);
     const tenant = ScopeUtils.deriveTenantDetails(turnContext);
     const conversationId = ScopeUtils.deriveConversationId(turnContext);
     const sourceMetadata = ScopeUtils.deriveSourceMetadataObject(turnContext);
@@ -238,7 +261,7 @@ export class ScopeUtils {
     if (!tenant) {
       throw new Error('populateExecuteToolScopeFromTurnContext: Missing tenant details on TurnContext (recipient)');
     }
-    const scope = ExecuteToolScope.start(details, agent, tenant, conversationId, sourceMetadata, undefined, startTime, endTime);
+    const scope = ExecuteToolScope.start(details, agent, tenant, conversationId, sourceMetadata, undefined, startTime, endTime, undefined, spanKind);
     return scope;
   }
 

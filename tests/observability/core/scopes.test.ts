@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach, jest } from '@jest/globals';
-import { trace } from '@opentelemetry/api';
+import { trace, SpanKind } from '@opentelemetry/api';
 
 import {
   ExecuteToolScope,
@@ -541,6 +541,30 @@ describe('Scopes', () => {
 
       expect(spanStartMs).toBeGreaterThanOrEqual(before - 1);
       expect(spanEndMs).toBeLessThanOrEqual(after + 1);
+    });
+
+    it.each([
+      ['CLIENT (default)', undefined, SpanKind.CLIENT],
+      ['SERVER', SpanKind.SERVER, SpanKind.SERVER],
+    ])('InvokeAgentScope spanKind: %s', (_label, input, expected) => {
+      const scope = InvokeAgentScope.start(
+        { agentId: 'test-agent' }, testTenantDetails,
+        undefined, undefined, undefined, undefined, undefined, input
+      );
+      scope.dispose();
+      expect(getFinishedSpan().kind).toBe(expected);
+    });
+
+    it.each([
+      ['INTERNAL (default)', undefined, SpanKind.INTERNAL],
+      ['CLIENT', SpanKind.CLIENT, SpanKind.CLIENT],
+    ])('ExecuteToolScope spanKind: %s', (_label, input, expected) => {
+      const scope = ExecuteToolScope.start(
+        { toolName: 'my-tool' }, testAgentDetails, testTenantDetails,
+        undefined, undefined, undefined, undefined, undefined, undefined, input
+      );
+      scope.dispose();
+      expect(getFinishedSpan().kind).toBe(expected);
     });
   });
 });

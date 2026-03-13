@@ -9,9 +9,13 @@ import { BaggageBuilder, OpenTelemetryConstants } from '@microsoft/agents-a365-o
 describe('BaggageBuilderUtils', () => {
   const mockTurnContext = {
     activity: {
-      from: { id: 'user1', name: 'User One', agenticUserId: 'agentic-user-1', tenantId: 'tenant1', aadObjectId: 'aad-object-1', agenticAppBlueprintId: 'blueprint-123', role: 'user' },
-      recipient: { id: 'agent1', name: 'Agent One', agenticAppId: 'agent-app-1', agenticUserId: 'agentic-agent-1', tenantId: 'tenant1', aadObjectId: 'aad-object-2', role: 'agent' },
-      channelData: {},
+      from: { id: 'user1', name: 'User One', agenticUserId: 'agentic-user-1', tenantId: 'tenant1', role: 'user' },
+      recipient: { id: 'agent1', name: 'Agent One', agenticAppId: 'agent-app-1', agenticUserId: 'agentic-agent-1', tenantId: 'tenant1', role: 'agent' },
+      conversation: { id: 'conv-1', tenantId: 'tenant1' },
+      isAgenticRequest: () => true,
+      getAgenticInstanceId: () => 'agent-app-1',
+      getAgenticUser: () => 'agentic-agent-1',
+      getAgenticTenantId: () => 'tenant1',
     },
   } as any;
 
@@ -41,15 +45,15 @@ describe('BaggageBuilderUtils', () => {
     expect(result).toBe(builder);
     // Validate every expected OpenTelemetry baggage key and value
     const asObj = Object.fromEntries(capturedPairs);
-    expect(asObj[OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY]).toBe('aad-object-1');
+    expect(asObj[OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY]).toBeUndefined();
     expect(asObj[OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY]).toBe('User One');
     expect(asObj[OpenTelemetryConstants.GEN_AI_CALLER_UPN_KEY]).toBe('agentic-user-1');
     expect(asObj[OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]).toBe('agent-app-1');
     expect(asObj[OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY]).toBe('Agent One');
-    expect(asObj[OpenTelemetryConstants.GEN_AI_AGENT_AUID_KEY]).toBe('aad-object-2');
+    expect(asObj[OpenTelemetryConstants.GEN_AI_AGENT_AUID_KEY]).toBeUndefined();
     expect(asObj[OpenTelemetryConstants.GEN_AI_AGENT_DESCRIPTION_KEY]).toBe('agent');
-    expect(asObj[OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY]).toBe('blueprint-123');
-    expect(asObj[OpenTelemetryConstants.GEN_AI_AGENT_UPN_KEY]).toBe(undefined);
+    expect(asObj[OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY]).toBeUndefined();
+    expect(asObj[OpenTelemetryConstants.GEN_AI_AGENT_UPN_KEY]).toBeUndefined();
     expect(asObj[OpenTelemetryConstants.TENANT_ID_KEY]).toBe('tenant1');
   });
 

@@ -21,6 +21,7 @@ function makeMockTurnContext(options?: {
   activityType?: string;
   activityName?: string;
 }): TurnContext {
+  const recipientTenantId = options?.recipientTenantId ?? 'tenant-123';
   const ctx: any = {
     activity: {
       type: options?.activityType,
@@ -42,8 +43,12 @@ function makeMockTurnContext(options?: {
         agenticAppBlueprintId: 'blueprint-1',
         agenticUserId: 'agent@contoso.com',
         role: 'assistant',
-        tenantId: options?.recipientTenantId ?? 'tenant-123',
+        tenantId: recipientTenantId,
       },
+      getAgenticTenantId: () => recipientTenantId,
+      getAgenticUser: () => 'agent@contoso.com',
+      getAgenticInstanceId: () => options?.recipientId ?? 'agent-1',
+      isAgenticRequest: () => false,
     },
     turnState: new Map(),
   };
@@ -97,7 +102,7 @@ describe('BaggageMiddleware', () => {
 
     expect(capturedBaggage[OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY]).toBe('user-oid');
     expect(capturedBaggage[OpenTelemetryConstants.TENANT_ID_KEY]).toBe('tenant-123');
-    expect(capturedBaggage[OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]).toBe('agent-1');
+    expect(capturedBaggage[OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]).toBeUndefined();
     expect(capturedBaggage[OpenTelemetryConstants.CHANNEL_NAME_KEY]).toBe('web');
     expect(capturedBaggage[OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY]).toBe('conv-001');
   });
