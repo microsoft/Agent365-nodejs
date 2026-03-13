@@ -8,7 +8,8 @@ import {
   InferenceDetails,
   AgentDetails,
   TenantDetails,
-  SourceMetadata
+  SourceMetadata,
+  CallerDetails
 } from '../contracts';
 import { ParentContext } from '../context/trace-context-propagation';
 
@@ -27,6 +28,7 @@ export class InferenceScope extends OpenTelemetryScope {
    *   Accepts a ParentSpanRef (manual traceId/spanId) or an OTel Context (e.g. from extractTraceContext).
    * @param startTime Optional explicit start time (ms epoch, Date, or HrTime).
    * @param endTime Optional explicit end time (ms epoch, Date, or HrTime).
+   * @param callerDetails Optional caller details.
    * @returns A new InferenceScope instance
    */
   public static start(
@@ -37,9 +39,10 @@ export class InferenceScope extends OpenTelemetryScope {
     sourceMetadata?: Pick<SourceMetadata, "name" | "description">,
     parentContext?: ParentContext,
     startTime?: TimeInput,
-    endTime?: TimeInput
+    endTime?: TimeInput,
+    callerDetails?: CallerDetails
   ): InferenceScope {
-    return new InferenceScope(details, agentDetails, tenantDetails, conversationId, sourceMetadata, parentContext, startTime, endTime);
+    return new InferenceScope(details, agentDetails, tenantDetails, conversationId, sourceMetadata, parentContext, startTime, endTime, callerDetails);
   }
 
   private constructor(
@@ -50,7 +53,8 @@ export class InferenceScope extends OpenTelemetryScope {
     sourceMetadata?: Pick<SourceMetadata, "name" | "description">,
     parentContext?: ParentContext,
     startTime?: TimeInput,
-    endTime?: TimeInput
+    endTime?: TimeInput,
+    callerDetails?: CallerDetails
   ) {
     super(
       SpanKind.CLIENT,
@@ -60,20 +64,31 @@ export class InferenceScope extends OpenTelemetryScope {
       tenantDetails,
       parentContext,
       startTime,
-      endTime
+      endTime,
+      callerDetails
     );
 
     // Set core inference information matching C# implementation
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY, details.operationName.toString());
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_REQUEST_MODEL_KEY, details.model);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY, details.providerName);
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_INPUT_TOKENS_KEY, details.inputTokens?.toString());
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY, details.outputTokens?.toString());
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_RESPONSE_FINISH_REASONS_KEY, details.finishReasons?.join(','));
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_RESPONSE_ID_KEY, details.responseId);
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_INPUT_TOKENS_KEY, details.inputTokens);
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY, details.outputTokens);
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_RESPONSE_FINISH_REASONS_KEY, details.finishReasons);
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_THOUGHT_PROCESS_KEY, details.thoughtProcess);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, conversationId);
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY, sourceMetadata?.name);
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY, sourceMetadata?.description);    
+    this.setTagMaybe(OpenTelemetryConstants.CHANNEL_NAME_KEY, sourceMetadata?.name);
+    this.setTagMaybe(OpenTelemetryConstants.CHANNEL_LINK_KEY, sourceMetadata?.description);
+
+    // Set endpoint information if provided
+    if (details.endpoint) {
+      this.setTagMaybe(OpenTelemetryConstants.SERVER_ADDRESS_KEY, details.endpoint.host);
+
+      // Only record port if it is different from 443 (default HTTPS port)
+      if (details.endpoint.port && details.endpoint.port !== 443) {
+        this.setTagMaybe(OpenTelemetryConstants.SERVER_PORT_KEY, details.endpoint.port.toString());
+      }
+    }
   }
 
   /**
@@ -97,7 +112,7 @@ export class InferenceScope extends OpenTelemetryScope {
    * @param inputTokens Number of input tokens
    */
   public recordInputTokens(inputTokens: number): void {
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_INPUT_TOKENS_KEY, inputTokens.toString());
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_INPUT_TOKENS_KEY, inputTokens);
   }
 
   /**
@@ -105,17 +120,7 @@ export class InferenceScope extends OpenTelemetryScope {
    * @param outputTokens Number of output tokens
    */
   public recordOutputTokens(outputTokens: number): void {
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY, outputTokens.toString());
-  }
-
-  /**
-   * Records the response id for telemetry tracking.
-   * @param responseId The response ID
-   */
-  public recordResponseId(responseId: string): void {
-    if (responseId && responseId.trim()) {
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_RESPONSE_ID_KEY, responseId);
-    }
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY, outputTokens);
   }
 
   /**
@@ -124,7 +129,7 @@ export class InferenceScope extends OpenTelemetryScope {
    */
   public recordFinishReasons(finishReasons: string[]): void {
     if (finishReasons && finishReasons.length > 0) {
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_RESPONSE_FINISH_REASONS_KEY, finishReasons.join(','));
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_RESPONSE_FINISH_REASONS_KEY, finishReasons);
     }
   }
 

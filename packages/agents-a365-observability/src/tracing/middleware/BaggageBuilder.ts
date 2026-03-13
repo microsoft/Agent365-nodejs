@@ -16,7 +16,6 @@ import { OpenTelemetryConstants } from '../constants';
  * const scope = new BaggageBuilder()
  *   .tenantId("tenant-123")
  *   .agentId("agent-456")
- *   .correlationId("corr-789")
  *   .build();
  *
  * scope.enter();
@@ -30,12 +29,13 @@ export class BaggageBuilder {
   private pairs: Map<string, string> = new Map();
 
   /**
-   * Set the operation source baggage value.
-   * @param value The operation source value
+   * Set the service name baggage value.
+   * Used for server spans to identify the service (e.g., ATG, ACF).
+   * @param value The service name
    * @returns Self for method chaining
    */
-  operationSource(value: string | null | undefined): BaggageBuilder {
-    this.set(OpenTelemetryConstants.OPERATION_SOURCE_KEY, value);
+  serviceName(value: string | null | undefined): BaggageBuilder {
+    this.set(OpenTelemetryConstants.SERVICE_NAME_KEY, value);
     return this;
   }
 
@@ -65,7 +65,7 @@ export class BaggageBuilder {
    * @returns Self for method chaining
    */
   agentAuid(value: string | null | undefined): BaggageBuilder {
-    this.set(OpenTelemetryConstants.GEN_AI_AGENT_AUID_KEY, value);
+    this.set(OpenTelemetryConstants.AGENT_USER_ID_KEY, value);
     return this;
   }
 
@@ -75,7 +75,7 @@ export class BaggageBuilder {
    * @returns Self for method chaining
    */
   agentUpn(value: string | null | undefined): BaggageBuilder {
-    this.set(OpenTelemetryConstants.GEN_AI_AGENT_UPN_KEY, value);
+    this.set(OpenTelemetryConstants.AGENT_EMAIL_KEY, value);
     return this;
   }
 
@@ -85,17 +85,7 @@ export class BaggageBuilder {
    * @returns Self for method chaining
    */
   agentBlueprintId(value: string | null | undefined): BaggageBuilder {
-    this.set(OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY, value);
-    return this;
-  }
-
-  /**
-   * Set the correlation ID baggage value.
-   * @param value The correlation ID
-   * @returns Self for method chaining
-   */
-  correlationId(value: string | null | undefined): BaggageBuilder {
-    this.set(OpenTelemetryConstants.CORRELATION_ID_KEY, value);
+    this.set(OpenTelemetryConstants.AGENT_BLUEPRINT_ID_KEY, value);
     return this;
   }
 
@@ -115,17 +105,7 @@ export class BaggageBuilder {
    * @returns Self for method chaining
    */
   callerId(value: string | null | undefined): BaggageBuilder {
-    this.set(OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY, value);
-    return this;
-  }
-
-  /**
-   * Set the hiring manager ID baggage value.
-   * @param value The hiring manager ID
-   * @returns Self for method chaining
-   */
-  hiringManagerId(value: string | null | undefined): BaggageBuilder {
-    this.set(OpenTelemetryConstants.HIRING_MANAGER_ID_KEY, value);
+    this.set(OpenTelemetryConstants.USER_ID_KEY, value);
     return this;
   }
 
@@ -136,16 +116,6 @@ export class BaggageBuilder {
    */
   agentName(value: string | null | undefined): BaggageBuilder {
     this.set(OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY, value);
-    return this;
-  }
-
-  /**
-   * Set the agent type baggage value.
-   * @param value The agent type
-   * @returns Self for method chaining
-   */
-  agentType(value: string | null | undefined): BaggageBuilder {
-    this.set(OpenTelemetryConstants.GEN_AI_AGENT_TYPE_KEY, value);
     return this;
   }
 
@@ -185,7 +155,7 @@ export class BaggageBuilder {
    * @returns Self for method chaining
    */
   callerName(value: string | null | undefined): BaggageBuilder {
-    this.set(OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY, value);
+    this.set(OpenTelemetryConstants.USER_NAME_KEY, value);
     return this;
   }
 
@@ -195,7 +165,7 @@ export class BaggageBuilder {
    * @returns Self for method chaining
    */
   callerUpn(value: string | null | undefined): BaggageBuilder {
-    this.set(OpenTelemetryConstants.GEN_AI_CALLER_UPN_KEY, value);
+    this.set(OpenTelemetryConstants.USER_EMAIL_KEY, value);
     return this;
   }
 
@@ -207,7 +177,7 @@ export class BaggageBuilder {
    * @returns Self for method chaining
    */
   callerClientIp(value: string | null | undefined): BaggageBuilder {
-    this.set(OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY, value);
+    this.set(OpenTelemetryConstants.CLIENT_ADDRESS_KEY, value);
     return this;
   }
 
@@ -217,7 +187,7 @@ export class BaggageBuilder {
    * @returns Self for method chaining
    */
   callerAgentPlatformId(value: string | null | undefined): BaggageBuilder {
-    this.set(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_PLATFORM_ID_KEY, value);
+    this.set(OpenTelemetryConstants.CALLER_AGENT_PLATFORM_ID_KEY, value);
     return this;
   }
 
@@ -242,32 +212,22 @@ export class BaggageBuilder {
   }
 
   /**
-   * Set the execution source metadata ID (e.g., channel ID).
-   * @param value The source metadata ID
-   * @returns Self for method chaining
-   */
-  sourceMetadataId(value: string | null | undefined): BaggageBuilder {
-    this.set(OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_ID_KEY, value);
-    return this;
-  }
-
-  /**
-   * Set the execution source metadata name (e.g., channel name).
-   * @param value The source metadata name
+   * Set the channel name (e.g., Teams, Slack).
+   * @param value The channel name
    * @returns Self for method chaining
    */
   sourceMetadataName(value: string | null | undefined): BaggageBuilder {
-    this.set(OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY, value);
+    this.set(OpenTelemetryConstants.CHANNEL_NAME_KEY, value);
     return this;
   }
 
   /**
-   * Set the execution source metadata description (e.g., channel description).
-   * @param value The source metadata description
+   * Set the channel link/URL.
+   * @param value The channel link
    * @returns Self for method chaining
    */
   sourceMetadataDescription(value: string | null | undefined): BaggageBuilder {
-    this.set(OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY, value);
+    this.set(OpenTelemetryConstants.CHANNEL_LINK_KEY, value);
     return this;
   }
 
@@ -326,18 +286,15 @@ export class BaggageBuilder {
    * Convenience method to begin a request baggage scope with common fields.
    * @param tenantId The tenant ID
    * @param agentId The agent ID
-   * @param correlationId The correlation ID
    * @returns A context manager that restores the previous baggage on exit
    */
   static setRequestContext(
     tenantId?: string | null,
     agentId?: string | null,
-    correlationId?: string | null,
   ): BaggageScope {
     return new BaggageBuilder()
       .tenantId(tenantId)
       .agentId(agentId)
-      .correlationId(correlationId)
       .build();
   }
 }

@@ -82,13 +82,13 @@ describe('ScopeUtils.populateFromTurnContext', () => {
     expect(calls).toEqual(
       expect.arrayContaining([
         [OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, 'conv-A'],
-        [OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY, 'web'],
-        [OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY, 'https://web'],
+        [OpenTelemetryConstants.CHANNEL_NAME_KEY, 'web'],
+        [OpenTelemetryConstants.CHANNEL_LINK_KEY, 'https://web'],
         [OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY, 'Agent One'],
-        [OpenTelemetryConstants.GEN_AI_AGENT_AUID_KEY, 'agent-oid'],
+        [OpenTelemetryConstants.AGENT_USER_ID_KEY, 'agent-oid'],
         [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY, 'agent-1'],
-        [OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY, 'test-blueprint-id'],
-        [OpenTelemetryConstants.GEN_AI_AGENT_UPN_KEY, 'agent-upn@contoso.com'],
+        [OpenTelemetryConstants.AGENT_BLUEPRINT_ID_KEY, 'test-blueprint-id'],
+        [OpenTelemetryConstants.AGENT_EMAIL_KEY, 'agent-upn@contoso.com'],
         [OpenTelemetryConstants.GEN_AI_AGENT_DESCRIPTION_KEY, 'assistant'],
         [OpenTelemetryConstants.TENANT_ID_KEY, 'tenant-123'],
         [OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, JSON.stringify(['input text'])]
@@ -142,26 +142,24 @@ describe('ScopeUtils.populateFromTurnContext', () => {
     const scope = ScopeUtils.populateInvokeAgentScopeFromTurnContext(details, ctx, testAuthToken) as InvokeAgentScope;
     expect(scope).toBeInstanceOf(InvokeAgentScope);
     const calls = spy.mock.calls.map(args => [args[0], args[1]]);
-    expect(calls).toEqual(
-      expect.arrayContaining([
-        [OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, 'conv-B'],
-        [OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY, 'teams'],
-        [OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY, 'https://teams'],
-        [OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY, 'user-oid'],
-        [OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY, 'Test User'],
-        [OpenTelemetryConstants.GEN_AI_CALLER_UPN_KEY, 'user@contoso.com'],
-        [OpenTelemetryConstants.GEN_AI_CALLER_TENANT_ID_KEY, 'tenant-xyz'],
-        [OpenTelemetryConstants.GEN_AI_CALLER_AGENT_USER_ID_KEY, 'user-oid'],
-        [OpenTelemetryConstants.GEN_AI_CALLER_AGENT_NAME_KEY, 'Test User'],
-        [OpenTelemetryConstants.GEN_AI_CALLER_AGENT_ID_KEY, 'callerAgent-1'],
-        [OpenTelemetryConstants.GEN_AI_CALLER_AGENT_APPLICATION_ID_KEY, 'caller-agentBlueprintId'],
-        [OpenTelemetryConstants.TENANT_ID_KEY, 'tenant-123'],
-        [OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, JSON.stringify(['invoke message'])],
-        [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY, 'agent-1'],
-        [OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY, 'Agent One'],
-        [OpenTelemetryConstants.GEN_AI_AGENT_DESCRIPTION_KEY, 'assistant']
-      ])
-    );
+    const expected = [
+      [OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, 'conv-B'],
+      [OpenTelemetryConstants.CHANNEL_NAME_KEY, 'teams'],
+      [OpenTelemetryConstants.CHANNEL_LINK_KEY, 'https://teams'],
+      [OpenTelemetryConstants.USER_ID_KEY, 'user-oid'],
+      [OpenTelemetryConstants.USER_NAME_KEY, 'Test User'],
+      [OpenTelemetryConstants.USER_EMAIL_KEY, 'user@contoso.com'],
+      [OpenTelemetryConstants.CALLER_AGENT_USER_ID_KEY, 'user-oid'],
+      [OpenTelemetryConstants.CALLER_AGENT_NAME_KEY, 'Test User'],
+      [OpenTelemetryConstants.CALLER_AGENT_ID_KEY, 'callerAgent-1'],
+      [OpenTelemetryConstants.CALLER_AGENT_BLUEPRINT_ID_KEY, 'caller-agentBlueprintId'],
+      [OpenTelemetryConstants.TENANT_ID_KEY, 'tenant-123'],
+      [OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, JSON.stringify(['invoke message'])],
+      [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY, 'agent-1'],
+      [OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY, 'Agent One'],
+      [OpenTelemetryConstants.GEN_AI_AGENT_DESCRIPTION_KEY, 'assistant']
+    ];
+    expect(calls).toEqual(expect.arrayContaining(expected));
     scope?.dispose();
   });
 
@@ -174,9 +172,9 @@ describe('ScopeUtils.populateFromTurnContext', () => {
     expect(calls).toEqual(
       expect.arrayContaining([
         [OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, 'conv-C'],
-        [OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY, 'cli'],
-        [OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY, 'https://cli'],
-        [OpenTelemetryConstants.GEN_AI_AGENT_AUID_KEY, 'agent-oid'],
+        [OpenTelemetryConstants.CHANNEL_NAME_KEY, 'cli'],
+        [OpenTelemetryConstants.CHANNEL_LINK_KEY, 'https://cli'],
+        [OpenTelemetryConstants.AGENT_USER_ID_KEY, 'agent-oid'],
         [OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY, 'Agent One'],
         [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY, 'agent-1'],
         [OpenTelemetryConstants.GEN_AI_AGENT_DESCRIPTION_KEY, 'assistant'],
@@ -334,7 +332,7 @@ describe('ScopeUtils spanKind forwarding', () => {
     );
     expect(spy).toHaveBeenCalledWith(
       expect.anything(), expect.anything(), expect.anything(), expect.anything(),
-      expect.anything(), undefined, undefined, undefined, SpanKind.CLIENT
+      expect.anything(), undefined, undefined, undefined, undefined, SpanKind.CLIENT
     );
     scope?.dispose();
     spy.mockRestore();

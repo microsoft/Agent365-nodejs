@@ -179,7 +179,7 @@ describe('Scopes', () => {
 
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
       expect(calls).toEqual(expect.arrayContaining([
-        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CALLER_AGENT_PLATFORM_ID_KEY, val: 'caller-platform-xyz' })
+        expect.objectContaining({ key: OpenTelemetryConstants.CALLER_AGENT_PLATFORM_ID_KEY, val: 'caller-platform-xyz' })
       ]));
 
       scope?.dispose();
@@ -212,8 +212,7 @@ describe('Scopes', () => {
 
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
       expect(calls).toEqual(expect.arrayContaining([
-        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY, val: '10.0.0.5' }),
-        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CALLER_AGENT_CLIENT_IP_KEY, val: '192.168.1.100' })
+        expect.objectContaining({ key: OpenTelemetryConstants.CLIENT_ADDRESS_KEY, val: '10.0.0.5' }),
       ]));
 
       scope1?.dispose();
@@ -224,16 +223,36 @@ describe('Scopes', () => {
 
   describe('ExecuteToolScope', () => {
     it('should create scope with tool details', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const callerDetails: CallerDetails = {
+        callerId: 'caller-tool-1',
+        callerUpn: 'tool.user@contoso.com',
+        callerName: 'Tool User',
+        tenantId: 'tool-tenant',
+        callerClientIp: '10.0.0.10'
+      };
       const scope = ExecuteToolScope.start({
         toolName: 'test-tool',
         arguments: '{"param": "value"}',
         toolCallId: 'call-123',
         description: 'A test tool',
         toolType: 'test'
-      }, testAgentDetails, testTenantDetails);
+      }, testAgentDetails, testTenantDetails, undefined, undefined, undefined, undefined, undefined, callerDetails);
 
       expect(scope).toBeInstanceOf(ExecuteToolScope);
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.USER_ID_KEY, val: 'caller-tool-1' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.USER_NAME_KEY, val: 'Tool User' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.CLIENT_ADDRESS_KEY, val: '10.0.0.10' })
+      ]));
+      // Validate raw attribute key strings for schema correctness (OTel standard)
+      const keySet = new Set(calls.map(c => c.key));
+      expect(keySet).toContain('user.id');
+      expect(keySet).toContain('user.name');
+      expect(keySet).toContain('client.address');
       scope?.dispose();
+      spy.mockRestore();
     });
 
     it('should record response', () => {
@@ -264,8 +283,8 @@ describe('Scopes', () => {
 
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
       expect(calls).toEqual(expect.arrayContaining([
-        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY, val: 'ChannelTool' }),
-        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY, val: 'https://channel/tool' })
+        expect.objectContaining({ key: OpenTelemetryConstants.CHANNEL_NAME_KEY, val: 'ChannelTool' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.CHANNEL_LINK_KEY, val: 'https://channel/tool' })
       ]));
 
       scope?.dispose();
@@ -277,20 +296,39 @@ describe('Scopes', () => {
 
   describe('InferenceScope', () => {
     it('should create scope with inference details', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const callerDetails: CallerDetails = {
+        callerId: 'caller-inf-1',
+        callerUpn: 'inf.user@contoso.com',
+        callerName: 'Inf User',
+        tenantId: 'inf-tenant',
+        callerClientIp: '10.0.0.20'
+      };
       const inferenceDetails: InferenceDetails = {
         operationName: InferenceOperationType.CHAT,
         model: 'gpt-4',
         providerName: 'openai',
         inputTokens: 100,
         outputTokens: 150,
-        responseId: 'resp-123',
         finishReasons: ['stop']
       };
-      
-      const scope = InferenceScope.start(inferenceDetails, testAgentDetails, testTenantDetails);
+
+      const scope = InferenceScope.start(inferenceDetails, testAgentDetails, testTenantDetails, undefined, undefined, undefined, undefined, undefined, callerDetails);
 
       expect(scope).toBeInstanceOf(InferenceScope);
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.USER_ID_KEY, val: 'caller-inf-1' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.USER_NAME_KEY, val: 'Inf User' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.CLIENT_ADDRESS_KEY, val: '10.0.0.20' })
+      ]));
+      // Validate raw attribute key strings for schema correctness (OTel standard)
+      const keySet = new Set(calls.map(c => c.key));
+      expect(keySet).toContain('user.id');
+      expect(keySet).toContain('user.name');
+      expect(keySet).toContain('client.address');
       scope?.dispose();
+      spy.mockRestore();
     });
 
     it('should create scope with minimal details', () => {
@@ -317,7 +355,6 @@ describe('Scopes', () => {
       expect(() => scope?.recordOutputMessages(['Generated response'])).not.toThrow();
       expect(() => scope?.recordInputTokens(50)).not.toThrow();
       expect(() => scope?.recordOutputTokens(100)).not.toThrow();
-      expect(() => scope?.recordResponseId('resp-456')).not.toThrow();
       expect(() => scope?.recordFinishReasons(['stop', 'length'])).not.toThrow();
       scope?.dispose();
     });
@@ -353,8 +390,8 @@ describe('Scopes', () => {
 
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
       expect(calls).toEqual(expect.arrayContaining([
-        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY, val: 'ChannelInf' }),
-        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY, val: 'https://channel/inf' })
+        expect.objectContaining({ key: OpenTelemetryConstants.CHANNEL_NAME_KEY, val: 'ChannelInf' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.CHANNEL_LINK_KEY, val: 'https://channel/inf' })
       ]));
 
       scope?.dispose();
@@ -440,7 +477,6 @@ describe('Scopes', () => {
       const span = getFinishedSpan();
       expect(hrtimeToMs(span.startTime as [number, number])).toBeCloseTo(customStart, -1);
       expect(hrtimeToMs(span.endTime as [number, number])).toBeCloseTo(customEnd, -1);
-      expect(span.attributes['operation.duration']).toBeCloseTo(5.0, 1);
     });
 
     it('setEndTime should override end time when called before dispose', () => {
@@ -458,7 +494,6 @@ describe('Scopes', () => {
       const span = getFinishedSpan();
       expect(hrtimeToMs(span.startTime as [number, number])).toBeCloseTo(customStart, -1);
       expect(hrtimeToMs(span.endTime as [number, number])).toBeCloseTo(laterEnd, -1);
-      expect(span.attributes['operation.duration']).toBeCloseTo(8.0, 1);
     });
 
     it('should support Date objects as start and end times', () => {
@@ -475,7 +510,6 @@ describe('Scopes', () => {
       const span = getFinishedSpan();
       expect(hrtimeToMs(span.startTime as [number, number])).toBeCloseTo(customStart.getTime(), -1);
       expect(hrtimeToMs(span.endTime as [number, number])).toBeCloseTo(customEnd.getTime(), -1);
-      expect(span.attributes['operation.duration']).toBeCloseTo(5.0, 1);
     });
 
     it('should support HrTime tuples as start and end times', () => {
@@ -493,7 +527,6 @@ describe('Scopes', () => {
       const span = getFinishedSpan();
       expect(hrtimeToMs(span.startTime as [number, number])).toBeCloseTo(1700000000000, -1);
       expect(hrtimeToMs(span.endTime as [number, number])).toBeCloseTo(1700000005500, -1);
-      expect(span.attributes['operation.duration']).toBeCloseTo(5.5, 1);
     });
 
     it('should use wall-clock time when no custom times are provided', () => {
@@ -528,10 +561,37 @@ describe('Scopes', () => {
     ])('ExecuteToolScope spanKind: %s', (_label, input, expected) => {
       const scope = ExecuteToolScope.start(
         { toolName: 'my-tool' }, testAgentDetails, testTenantDetails,
-        undefined, undefined, undefined, undefined, undefined, input
+        undefined, undefined, undefined, undefined, undefined, undefined, input
       );
       scope.dispose();
       expect(getFinishedSpan().kind).toBe(expected);
     });
+  });
+});
+
+// Validate attribute key constant values use the new schema namespace.
+describe('Attribute key schema values', () => {
+  it('caller keys use OTel standard user.* / client.* namespace', () => {
+    expect(OpenTelemetryConstants.USER_ID_KEY).toBe('user.id');
+    expect(OpenTelemetryConstants.USER_NAME_KEY).toBe('user.name');
+    expect(OpenTelemetryConstants.USER_EMAIL_KEY).toBe('user.email');
+    expect(OpenTelemetryConstants.CLIENT_ADDRESS_KEY).toBe('client.address');
+  });
+
+  it('caller agent keys use microsoft.a365.* namespace', () => {
+    expect(OpenTelemetryConstants.CALLER_AGENT_ID_KEY).toBe('microsoft.a365.caller.agent.id');
+    expect(OpenTelemetryConstants.CALLER_AGENT_NAME_KEY).toBe('microsoft.a365.caller.agent.name');
+    expect(OpenTelemetryConstants.CALLER_AGENT_BLUEPRINT_ID_KEY).toBe('microsoft.a365.caller.agent.blueprint.id');
+  });
+
+  it('channel keys use microsoft.channel.* namespace', () => {
+    expect(OpenTelemetryConstants.CHANNEL_NAME_KEY).toBe('microsoft.channel.name');
+    expect(OpenTelemetryConstants.CHANNEL_LINK_KEY).toBe('microsoft.channel.link');
+  });
+
+  it('session and tenant keys use microsoft.* namespace', () => {
+    expect(OpenTelemetryConstants.SESSION_ID_KEY).toBe('microsoft.session.id');
+    expect(OpenTelemetryConstants.SESSION_DESCRIPTION_KEY).toBe('microsoft.session.description');
+    expect(OpenTelemetryConstants.TENANT_ID_KEY).toBe('microsoft.tenant.id');
   });
 });

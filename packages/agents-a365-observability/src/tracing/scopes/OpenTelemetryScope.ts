@@ -3,7 +3,7 @@
 
 import { trace, SpanKind, Span, SpanStatusCode, Attributes, context, AttributeValue, SpanContext, TimeInput } from '@opentelemetry/api';
 import { OpenTelemetryConstants } from '../constants';
-import { AgentDetails, TenantDetails } from '../contracts';
+import { AgentDetails, TenantDetails, CallerDetails } from '../contracts';
 import { createContextWithParentSpanRef } from '../context/parent-span-context';
 import { ParentContext, isParentSpanRef } from '../context/trace-context-propagation';
 import logger from '../../utils/logging';
@@ -37,6 +37,7 @@ export abstract class OpenTelemetryScope implements Disposable {
    *        has already completed (e.g. a tool call whose start time was captured earlier).
    * @param endTime Optional explicit end time (ms epoch, Date, or HrTime). When provided the span will
    *        use this timestamp when {@link dispose} is called instead of the current wall-clock time.
+   * @param callerDetails Optional caller identity details (id, upn, name, client ip).
    */
   protected constructor(
     kind: SpanKind,
@@ -46,7 +47,8 @@ export abstract class OpenTelemetryScope implements Disposable {
     tenantDetails?: TenantDetails,
     parentContext?: ParentContext,
     startTime?: TimeInput,
-    endTime?: TimeInput
+    endTime?: TimeInput,
+    callerDetails?: CallerDetails
   ) {
     // Determine the context to use for span creation
     let currentContext = context.active();
@@ -68,7 +70,6 @@ export abstract class OpenTelemetryScope implements Disposable {
       kind,
       startTime,
       attributes: {
-        [OpenTelemetryConstants.GEN_AI_SYSTEM_KEY]: OpenTelemetryConstants.GEN_AI_SYSTEM_VALUE,
         [OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY]: operationName,
       },
     }, currentContext);
@@ -85,19 +86,26 @@ export abstract class OpenTelemetryScope implements Disposable {
     if (agentDetails) {
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY, agentDetails.agentId);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY, agentDetails.agentName);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_TYPE_KEY, agentDetails.agentType);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_DESCRIPTION_KEY, agentDetails.agentDescription);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_PLATFORM_ID_KEY, agentDetails.platformId);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, agentDetails.conversationId);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_ICON_URI_KEY, agentDetails.iconUri);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_AUID_KEY, agentDetails.agentAUID);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_UPN_KEY, agentDetails.agentUPN);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY, agentDetails.agentBlueprintId);
+      this.setTagMaybe(OpenTelemetryConstants.AGENT_USER_ID_KEY, agentDetails.agentAUID);
+      this.setTagMaybe(OpenTelemetryConstants.AGENT_EMAIL_KEY, agentDetails.agentUPN);
+      this.setTagMaybe(OpenTelemetryConstants.AGENT_BLUEPRINT_ID_KEY, agentDetails.agentBlueprintId);
     }
 
     // Set tenant details if provided
     if (tenantDetails) {
       this.setTagMaybe(OpenTelemetryConstants.TENANT_ID_KEY, tenantDetails.tenantId);
+    }
+
+    // Set caller details if provided
+    if (callerDetails) {
+      this.setTagMaybe(OpenTelemetryConstants.USER_ID_KEY, callerDetails.callerId);
+      this.setTagMaybe(OpenTelemetryConstants.USER_EMAIL_KEY, callerDetails.callerUpn);
+      this.setTagMaybe(OpenTelemetryConstants.USER_NAME_KEY, callerDetails.callerName);
+      this.setTagMaybe(OpenTelemetryConstants.CLIENT_ADDRESS_KEY, callerDetails.callerClientIp);
     }
   }
 
@@ -176,9 +184,9 @@ export abstract class OpenTelemetryScope implements Disposable {
    * @param name The tag name
    * @param value The tag value
    */
-  protected setTagMaybe<T extends string | number | boolean>(name: string, value: T | null | undefined): void {
+  protected setTagMaybe<T extends string | number | boolean | string[] | number[]>(name: string, value: T | null | undefined): void {
     if (value != null) {
-      this.span.setAttributes({ [name]: value as string | number | boolean });
+      this.span.setAttributes({ [name]: value as string | number | boolean | string[] | number[] });
     }
   }
 
@@ -239,10 +247,6 @@ export abstract class OpenTelemetryScope implements Disposable {
       finalTags[OpenTelemetryConstants.ERROR_TYPE_KEY] = this.errorType;
       this.span.setAttributes({ [OpenTelemetryConstants.ERROR_TYPE_KEY]: this.errorType });
     }
-
-    // Record duration metric (would typically use a meter here)
-    // For now, we'll add it as a span attribute
-    this.span.setAttributes({ 'operation.duration': duration });
 
     this.hasEnded = true;
     logger.info(`[A365Observability] Ending span[${this.span.spanContext().spanId}], duration: ${duration}s`);

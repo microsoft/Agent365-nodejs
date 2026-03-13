@@ -109,7 +109,6 @@ export class OutputLoggingMiddleware implements Middleware {
         callerDetails,
         conversationId,
         sourceMetadata,
-        undefined,
         parentSpanRef,
       );
       try {

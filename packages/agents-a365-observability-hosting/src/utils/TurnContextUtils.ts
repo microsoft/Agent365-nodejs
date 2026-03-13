@@ -21,7 +21,7 @@ function normalizePairs(pairs: Array<[string, string | undefined]>): Array<[stri
 /**
  * Extracts caller-related OpenTelemetry baggage pairs from the TurnContext.
  * @param turnContext The current TurnContext (activity context)
- * @returns Array of [key, value] pairs for caller identity and tenant
+ * @returns Array of [key, value] pairs for caller identity
  */
 export function getCallerBaggagePairs(turnContext: TurnContext): Array<[string, string]> {
   if (!turnContext|| !turnContext.activity?.from) { 
@@ -31,11 +31,10 @@ export function getCallerBaggagePairs(turnContext: TurnContext): Array<[string, 
     
   const upn = from.agenticUserId;
   const pairs: Array<[string, string | undefined]> = [
-    [OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY, from.aadObjectId],
-    [OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY, from.name],
-    [OpenTelemetryConstants.GEN_AI_CALLER_UPN_KEY, upn],
-    [OpenTelemetryConstants.GEN_AI_CALLER_TENANT_ID_KEY, from.tenantId],
-    [OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY, from.agenticAppBlueprintId]
+    [OpenTelemetryConstants.USER_ID_KEY, from.aadObjectId],
+    [OpenTelemetryConstants.USER_NAME_KEY, from.name],
+    [OpenTelemetryConstants.USER_EMAIL_KEY, upn],
+    [OpenTelemetryConstants.CALLER_AGENT_BLUEPRINT_ID_KEY, from.agenticAppBlueprintId]
   ];
   return normalizePairs(pairs);
 }
@@ -103,7 +102,7 @@ export function getTargetAgentBaggagePairs(turnContext: TurnContext, authToken?:
     [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY, agentId],
     [OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY, agentName],
     [OpenTelemetryConstants.GEN_AI_AGENT_DESCRIPTION_KEY, agentDescription],
-    [OpenTelemetryConstants.GEN_AI_AGENT_AUID_KEY, aadObjectId],
+    [OpenTelemetryConstants.AGENT_USER_ID_KEY, aadObjectId],
   ];
   return normalizePairs(pairs);
 }
@@ -128,8 +127,8 @@ export function getSourceMetadataBaggagePairs(turnContext: TurnContext): Array<[
     return [];
   }  
   const pairs: Array<[string, string | undefined]> = [
-    [OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY, turnContext.activity?.channelId],
-    [OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY, turnContext.activity?.channelIdSubChannel as string | undefined]
+    [OpenTelemetryConstants.CHANNEL_NAME_KEY, turnContext.activity?.channelId],
+    [OpenTelemetryConstants.CHANNEL_LINK_KEY, turnContext.activity?.channelIdSubChannel as string | undefined]
   ];
   return normalizePairs(pairs);
 }
