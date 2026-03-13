@@ -90,7 +90,7 @@ describe('Agent365Exporter', () => {
       makeSpan({
         [OpenTelemetryConstants.TENANT_ID_KEY]: tenantId,
         [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]: agentId,
-        [OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY]: '10.0.0.5'
+        [OpenTelemetryConstants.CLIENT_ADDRESS_KEY]: '10.0.0.5'
       })
     ];
 
@@ -109,7 +109,7 @@ describe('Agent365Exporter', () => {
     expect(exportedSpan.attributes).toBeDefined();
     expect(exportedSpan.attributes[OpenTelemetryConstants.TENANT_ID_KEY]).toBe(tenantId);
     expect(exportedSpan.attributes[OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]).toBe(agentId);
-    expect(exportedSpan.attributes[OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY]).toBe('10.0.0.5');
+    expect(exportedSpan.attributes[OpenTelemetryConstants.CLIENT_ADDRESS_KEY]).toBe('10.0.0.5');
   });
 
   it.each([

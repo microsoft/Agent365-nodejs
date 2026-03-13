@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking Changes - A365 Observability Schema Migration
+
+**Telemetry attribute names have been updated to align with the official A365 Observability Schema:**
+
+#### Human Caller Attributes (Now OTel Standard)
+- `GEN_AI_CALLER_ID_KEY` → `USER_ID_KEY` (`user.id`)
+- `GEN_AI_CALLER_NAME_KEY` → `USER_NAME_KEY` (`user.name`)
+- `GEN_AI_CALLER_UPN_KEY` → `USER_EMAIL_KEY` (`user.email`)
+- `GEN_AI_CALLER_CLIENT_IP_KEY` → `CLIENT_ADDRESS_KEY` (`client.address`)
+
+#### Agent Identity Attributes
+- `GEN_AI_AGENT_AUID_KEY` → `AGENT_USER_ID_KEY` (`microsoft.agent.user.id`)
+- `GEN_AI_AGENT_UPN_KEY` → `AGENT_EMAIL_KEY` (`microsoft.agent.user.email`)
+- `GEN_AI_AGENT_BLUEPRINT_ID_KEY` → `AGENT_BLUEPRINT_ID_KEY` (`microsoft.a365.agent.blueprint.id`)
+
+#### Agent-to-Agent Caller Attributes
+- `GEN_AI_CALLER_AGENT_USER_ID_KEY` → `CALLER_AGENT_USER_ID_KEY` (`microsoft.a365.caller.agent.user.id`)
+- `GEN_AI_CALLER_AGENT_UPN_KEY` → `CALLER_AGENT_EMAIL_KEY` (`microsoft.a365.caller.agent.user.email`)
+- `GEN_AI_CALLER_AGENT_NAME_KEY` → `CALLER_AGENT_NAME_KEY` (`microsoft.a365.caller.agent.name`)
+- `GEN_AI_CALLER_AGENT_ID_KEY` → `CALLER_AGENT_ID_KEY` (`microsoft.a365.caller.agent.id`)
+- `GEN_AI_CALLER_AGENT_APPLICATION_ID_KEY` → `CALLER_AGENT_BLUEPRINT_ID_KEY` (`microsoft.a365.caller.agent.blueprint.id`)
+- `GEN_AI_CALLER_AGENT_PLATFORM_ID_KEY` → `CALLER_AGENT_PLATFORM_ID_KEY` (`microsoft.a365.caller.agent.platform.id`)
+
+**Migration Impact:** All code using the old constant names must be updated to use the new names. The attribute values now follow OTel semantic conventions for human callers (`user.*`) and Microsoft-specific namespaces for agent attributes (`microsoft.*`).
+
 ### Added
 
 - **`OpenAIAgentsInstrumentationConfig.isContentRecordingEnabled`** — Optional `boolean` to enable content recording in OpenAI trace processor.

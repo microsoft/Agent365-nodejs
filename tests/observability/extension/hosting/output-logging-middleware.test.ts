@@ -199,8 +199,8 @@ describe('OutputLoggingMiddleware', () => {
     const outputSpan = exporter.getFinishedSpans().find(s => s.name.includes('output_messages'));
     expect(outputSpan).toBeDefined();
 
-    expect(outputSpan!.attributes[OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY]).toBe('user-oid');
-    expect(outputSpan!.attributes[OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY]).toBe('Test User');
+    expect(outputSpan!.attributes[OpenTelemetryConstants.USER_ID_KEY]).toBe('user-oid');
+    expect(outputSpan!.attributes[OpenTelemetryConstants.USER_NAME_KEY]).toBe('Test User');
     expect(outputSpan!.attributes[OpenTelemetryConstants.CHANNEL_NAME_KEY]).toBe('teams');
   });
 

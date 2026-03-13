@@ -73,7 +73,7 @@ export class InvokeAgentScope extends OpenTelemetryScope {
     // Set session ID and endpoint information
     this.setTagMaybe(OpenTelemetryConstants.SESSION_ID_KEY, invokeAgentDetails.sessionId);
 
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY, invokeAgentDetails.agentBlueprintId);
+    this.setTagMaybe(OpenTelemetryConstants.AGENT_BLUEPRINT_ID_KEY, invokeAgentDetails.agentBlueprintId);
 
     if (invokeAgentDetails.endpoint) {
       this.setTagMaybe(OpenTelemetryConstants.SERVER_ADDRESS_KEY, invokeAgentDetails.endpoint.host);
@@ -97,12 +97,12 @@ export class InvokeAgentScope extends OpenTelemetryScope {
 
     // Set caller agent details tags
     if (callerAgentDetails) {
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_NAME_KEY, callerAgentDetails.agentName);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_ID_KEY, callerAgentDetails.agentId);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_APPLICATION_ID_KEY, callerAgentDetails.agentBlueprintId);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_USER_ID_KEY, callerAgentDetails.agentAUID);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_UPN_KEY, callerAgentDetails.agentUPN);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_PLATFORM_ID_KEY, callerAgentDetails.platformId);
+      this.setTagMaybe(OpenTelemetryConstants.CALLER_AGENT_NAME_KEY, callerAgentDetails.agentName);
+      this.setTagMaybe(OpenTelemetryConstants.CALLER_AGENT_ID_KEY, callerAgentDetails.agentId);
+      this.setTagMaybe(OpenTelemetryConstants.CALLER_AGENT_BLUEPRINT_ID_KEY, callerAgentDetails.agentBlueprintId);
+      this.setTagMaybe(OpenTelemetryConstants.CALLER_AGENT_USER_ID_KEY, callerAgentDetails.agentAUID);
+      this.setTagMaybe(OpenTelemetryConstants.CALLER_AGENT_EMAIL_KEY, callerAgentDetails.agentUPN);
+      this.setTagMaybe(OpenTelemetryConstants.CALLER_AGENT_PLATFORM_ID_KEY, callerAgentDetails.platformId);
     }
   }
 

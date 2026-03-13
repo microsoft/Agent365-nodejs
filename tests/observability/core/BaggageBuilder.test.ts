@@ -56,7 +56,7 @@ describe('BaggageBuilder', () => {
       expect(scope).toBeInstanceOf(BaggageScope);
 
       const bag = propagation.getBaggage((scope as any).contextWithBaggage);
-      expect(bag?.getEntry(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_PLATFORM_ID_KEY)?.value).toBe('caller-platform-xyz');
+      expect(bag?.getEntry(OpenTelemetryConstants.CALLER_AGENT_PLATFORM_ID_KEY)?.value).toBe('caller-platform-xyz');
     });
   });
 
@@ -77,7 +77,7 @@ describe('BaggageBuilder', () => {
       const pairs: Array<[string, string]> = [
         [OpenTelemetryConstants.TENANT_ID_KEY, 'tenant-123'],
         [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY, 'agent-456'],
-        [OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY, '10.0.0.5']
+        [OpenTelemetryConstants.CLIENT_ADDRESS_KEY, '10.0.0.5']
       ];
       builder.setPairs(pairs);
 
@@ -87,7 +87,7 @@ describe('BaggageBuilder', () => {
       const bag = propagation.getBaggage((scope as any).contextWithBaggage);
       expect(bag?.getEntry(OpenTelemetryConstants.TENANT_ID_KEY)?.value).toBe('tenant-123');
       expect(bag?.getEntry(OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY)?.value).toBe('agent-456');
-      expect(bag?.getEntry(OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY)?.value).toBe('10.0.0.5');
+      expect(bag?.getEntry(OpenTelemetryConstants.CLIENT_ADDRESS_KEY)?.value).toBe('10.0.0.5');
     });
 
     it('should ignore null values', () => {

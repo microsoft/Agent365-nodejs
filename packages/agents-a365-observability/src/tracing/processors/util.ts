@@ -18,16 +18,16 @@ export const GENERIC_ATTRIBUTES: readonly string[] = [
   consts.GEN_AI_AGENT_NAME_KEY,
   consts.GEN_AI_AGENT_DESCRIPTION_KEY,
   consts.SESSION_DESCRIPTION_KEY,
-  consts.GEN_AI_AGENT_UPN_KEY,
-  consts.GEN_AI_AGENT_AUID_KEY,
+  consts.AGENT_EMAIL_KEY,
+  consts.AGENT_USER_ID_KEY,
   consts.GEN_AI_AGENT_PLATFORM_ID_KEY,
-  consts.GEN_AI_AGENT_BLUEPRINT_ID_KEY,
+  consts.AGENT_BLUEPRINT_ID_KEY,
   consts.SERVICE_NAME_KEY,
   // Caller / Invoker attributes
-  consts.GEN_AI_CALLER_ID_KEY,
-  consts.GEN_AI_CALLER_NAME_KEY,
-  consts.GEN_AI_CALLER_UPN_KEY,
-  consts.GEN_AI_CALLER_CLIENT_IP_KEY,
+  consts.USER_ID_KEY,
+  consts.USER_NAME_KEY,
+  consts.USER_EMAIL_KEY,
+  consts.CLIENT_ADDRESS_KEY,
   // Channel attributes
   consts.CHANNEL_NAME_KEY,
   consts.CHANNEL_LINK_KEY,
@@ -38,10 +38,10 @@ export const GENERIC_ATTRIBUTES: readonly string[] = [
  */
 export const INVOKE_AGENT_ATTRIBUTES: readonly string[] = [
   // Caller Agent (A2A) attributes
-  consts.GEN_AI_CALLER_AGENT_ID_KEY,
-  consts.GEN_AI_CALLER_AGENT_NAME_KEY,
-  consts.GEN_AI_CALLER_AGENT_USER_ID_KEY,
-  consts.GEN_AI_CALLER_AGENT_UPN_KEY,
-  consts.GEN_AI_CALLER_AGENT_APPLICATION_ID_KEY,
-  consts.GEN_AI_CALLER_AGENT_PLATFORM_ID_KEY,
+  consts.CALLER_AGENT_ID_KEY,
+  consts.CALLER_AGENT_NAME_KEY,
+  consts.CALLER_AGENT_USER_ID_KEY,
+  consts.CALLER_AGENT_EMAIL_KEY,
+  consts.CALLER_AGENT_BLUEPRINT_ID_KEY,
+  consts.CALLER_AGENT_PLATFORM_ID_KEY,
 ];

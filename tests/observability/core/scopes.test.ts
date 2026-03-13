@@ -179,7 +179,7 @@ describe('Scopes', () => {
 
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
       expect(calls).toEqual(expect.arrayContaining([
-        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CALLER_AGENT_PLATFORM_ID_KEY, val: 'caller-platform-xyz' })
+        expect.objectContaining({ key: OpenTelemetryConstants.CALLER_AGENT_PLATFORM_ID_KEY, val: 'caller-platform-xyz' })
       ]));
 
       scope?.dispose();
@@ -212,7 +212,7 @@ describe('Scopes', () => {
 
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
       expect(calls).toEqual(expect.arrayContaining([
-        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY, val: '10.0.0.5' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.CLIENT_ADDRESS_KEY, val: '10.0.0.5' }),
       ]));
 
       scope1?.dispose();
@@ -242,14 +242,14 @@ describe('Scopes', () => {
       expect(scope).toBeInstanceOf(ExecuteToolScope);
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
       expect(calls).toEqual(expect.arrayContaining([
-        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY, val: 'caller-tool-1' }),
-        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY, val: 'Tool User' }),
-        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY, val: '10.0.0.10' })
+        expect.objectContaining({ key: OpenTelemetryConstants.USER_ID_KEY, val: 'caller-tool-1' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.USER_NAME_KEY, val: 'Tool User' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.CLIENT_ADDRESS_KEY, val: '10.0.0.10' })
       ]));
-      // Validate raw attribute key strings for schema correctness
+      // Validate raw attribute key strings for schema correctness (OTel standard)
       const keySet = new Set(calls.map(c => c.key));
-      expect(keySet).toContain('microsoft.caller.id');
-      expect(keySet).toContain('microsoft.caller.name');
+      expect(keySet).toContain('user.id');
+      expect(keySet).toContain('user.name');
       expect(keySet).toContain('client.address');
       scope?.dispose();
       spy.mockRestore();
@@ -318,14 +318,14 @@ describe('Scopes', () => {
       expect(scope).toBeInstanceOf(InferenceScope);
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
       expect(calls).toEqual(expect.arrayContaining([
-        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY, val: 'caller-inf-1' }),
-        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY, val: 'Inf User' }),
-        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY, val: '10.0.0.20' })
+        expect.objectContaining({ key: OpenTelemetryConstants.USER_ID_KEY, val: 'caller-inf-1' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.USER_NAME_KEY, val: 'Inf User' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.CLIENT_ADDRESS_KEY, val: '10.0.0.20' })
       ]));
-      // Validate raw attribute key strings for schema correctness
+      // Validate raw attribute key strings for schema correctness (OTel standard)
       const keySet = new Set(calls.map(c => c.key));
-      expect(keySet).toContain('microsoft.caller.id');
-      expect(keySet).toContain('microsoft.caller.name');
+      expect(keySet).toContain('user.id');
+      expect(keySet).toContain('user.name');
       expect(keySet).toContain('client.address');
       scope?.dispose();
       spy.mockRestore();
@@ -571,17 +571,17 @@ describe('Scopes', () => {
 
 // Validate attribute key constant values use the new schema namespace.
 describe('Attribute key schema values', () => {
-  it('caller keys use microsoft.* / client.* namespace', () => {
-    expect(OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY).toBe('microsoft.caller.id');
-    expect(OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY).toBe('microsoft.caller.name');
-    expect(OpenTelemetryConstants.GEN_AI_CALLER_UPN_KEY).toBe('microsoft.caller.upn');
-    expect(OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY).toBe('client.address');
+  it('caller keys use OTel standard user.* / client.* namespace', () => {
+    expect(OpenTelemetryConstants.USER_ID_KEY).toBe('user.id');
+    expect(OpenTelemetryConstants.USER_NAME_KEY).toBe('user.name');
+    expect(OpenTelemetryConstants.USER_EMAIL_KEY).toBe('user.email');
+    expect(OpenTelemetryConstants.CLIENT_ADDRESS_KEY).toBe('client.address');
   });
 
   it('caller agent keys use microsoft.a365.* namespace', () => {
-    expect(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_ID_KEY).toBe('microsoft.a365.caller.agent.id');
-    expect(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_NAME_KEY).toBe('microsoft.a365.caller.agent.name');
-    expect(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_APPLICATION_ID_KEY).toBe('microsoft.a365.caller.agent.blueprint.id');
+    expect(OpenTelemetryConstants.CALLER_AGENT_ID_KEY).toBe('microsoft.a365.caller.agent.id');
+    expect(OpenTelemetryConstants.CALLER_AGENT_NAME_KEY).toBe('microsoft.a365.caller.agent.name');
+    expect(OpenTelemetryConstants.CALLER_AGENT_BLUEPRINT_ID_KEY).toBe('microsoft.a365.caller.agent.blueprint.id');
   });
 
   it('channel keys use microsoft.channel.* namespace', () => {

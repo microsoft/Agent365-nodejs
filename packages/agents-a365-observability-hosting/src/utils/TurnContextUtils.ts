@@ -31,10 +31,10 @@ export function getCallerBaggagePairs(turnContext: TurnContext): Array<[string, 
     
   const upn = from.agenticUserId;
   const pairs: Array<[string, string | undefined]> = [
-    [OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY, from.aadObjectId],
-    [OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY, from.name],
-    [OpenTelemetryConstants.GEN_AI_CALLER_UPN_KEY, upn],
-    [OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY, from.agenticAppBlueprintId]
+    [OpenTelemetryConstants.USER_ID_KEY, from.aadObjectId],
+    [OpenTelemetryConstants.USER_NAME_KEY, from.name],
+    [OpenTelemetryConstants.USER_EMAIL_KEY, upn],
+    [OpenTelemetryConstants.CALLER_AGENT_BLUEPRINT_ID_KEY, from.agenticAppBlueprintId]
   ];
   return normalizePairs(pairs);
 }
@@ -102,7 +102,7 @@ export function getTargetAgentBaggagePairs(turnContext: TurnContext, authToken?:
     [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY, agentId],
     [OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY, agentName],
     [OpenTelemetryConstants.GEN_AI_AGENT_DESCRIPTION_KEY, agentDescription],
-    [OpenTelemetryConstants.GEN_AI_AGENT_AUID_KEY, aadObjectId],
+    [OpenTelemetryConstants.AGENT_USER_ID_KEY, aadObjectId],
   ];
   return normalizePairs(pairs);
 }

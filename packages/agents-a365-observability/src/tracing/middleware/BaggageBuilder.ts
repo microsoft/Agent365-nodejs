@@ -65,7 +65,7 @@ export class BaggageBuilder {
    * @returns Self for method chaining
    */
   agentAuid(value: string | null | undefined): BaggageBuilder {
-    this.set(OpenTelemetryConstants.GEN_AI_AGENT_AUID_KEY, value);
+    this.set(OpenTelemetryConstants.AGENT_USER_ID_KEY, value);
     return this;
   }
 
@@ -75,7 +75,7 @@ export class BaggageBuilder {
    * @returns Self for method chaining
    */
   agentUpn(value: string | null | undefined): BaggageBuilder {
-    this.set(OpenTelemetryConstants.GEN_AI_AGENT_UPN_KEY, value);
+    this.set(OpenTelemetryConstants.AGENT_EMAIL_KEY, value);
     return this;
   }
 
@@ -85,7 +85,7 @@ export class BaggageBuilder {
    * @returns Self for method chaining
    */
   agentBlueprintId(value: string | null | undefined): BaggageBuilder {
-    this.set(OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY, value);
+    this.set(OpenTelemetryConstants.AGENT_BLUEPRINT_ID_KEY, value);
     return this;
   }
 
@@ -105,7 +105,7 @@ export class BaggageBuilder {
    * @returns Self for method chaining
    */
   callerId(value: string | null | undefined): BaggageBuilder {
-    this.set(OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY, value);
+    this.set(OpenTelemetryConstants.USER_ID_KEY, value);
     return this;
   }
 
@@ -155,7 +155,7 @@ export class BaggageBuilder {
    * @returns Self for method chaining
    */
   callerName(value: string | null | undefined): BaggageBuilder {
-    this.set(OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY, value);
+    this.set(OpenTelemetryConstants.USER_NAME_KEY, value);
     return this;
   }
 
@@ -165,7 +165,7 @@ export class BaggageBuilder {
    * @returns Self for method chaining
    */
   callerUpn(value: string | null | undefined): BaggageBuilder {
-    this.set(OpenTelemetryConstants.GEN_AI_CALLER_UPN_KEY, value);
+    this.set(OpenTelemetryConstants.USER_EMAIL_KEY, value);
     return this;
   }
 
@@ -177,7 +177,7 @@ export class BaggageBuilder {
    * @returns Self for method chaining
    */
   callerClientIp(value: string | null | undefined): BaggageBuilder {
-    this.set(OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY, value);
+    this.set(OpenTelemetryConstants.CLIENT_ADDRESS_KEY, value);
     return this;
   }
 
@@ -187,7 +187,7 @@ export class BaggageBuilder {
    * @returns Self for method chaining
    */
   callerAgentPlatformId(value: string | null | undefined): BaggageBuilder {
-    this.set(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_PLATFORM_ID_KEY, value);
+    this.set(OpenTelemetryConstants.CALLER_AGENT_PLATFORM_ID_KEY, value);
     return this;
   }
 
