@@ -258,6 +258,7 @@ const scope2 = BaggageBuilder.setRequestContext(
 | `sessionId(value)` | `session_id` |
 | `conversationId(value)` | `gen_ai.conversation.id` |
 | `callerUpn(value)` | `gen_ai.caller.upn` |
+| `operationSource(value)` | `service.name` |
 | `channelName(value)` | `gen_ai.execution.source.name` |
 | `channelLink(value)` | `gen_ai.execution.source.description` |
 

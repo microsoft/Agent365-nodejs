@@ -51,10 +51,10 @@ export enum InferenceOperationType {
  * Represents channel for an invocation
  */
 export interface Channel {
-  /** Unique identifier for the channel (e.g., agent ID, user ID, system component ID) */
+  /** Unique identifier for the channel (e.g., Teams channel ID, Slack workspace ID) */
   id?: string;
 
-  /** Human-readable name of the channel */
+  /** Human-readable name of the channel (e.g., "Teams", "Slack", "web") */
   name?: string;
 
   /** Optional icon identifier or URL for visual representation of the channel */
@@ -63,7 +63,7 @@ export interface Channel {
   /** The role of the entity invoking through this channel */
   role?: InvocationRole;
 
-  /** Optional description providing additional context about the channel */
+  /** Optional description or link providing additional context about the channel */
   description?: string;
 }
 

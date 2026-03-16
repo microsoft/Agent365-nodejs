@@ -279,7 +279,91 @@ describe('Scopes', () => {
     });
   });
 
+  describe('endpoint.port serialization', () => {
+    it('should record non-443 port as a number on ExecuteToolScope', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const scope = ExecuteToolScope.start(
+        { toolName: 'test-tool', endpoint: { host: 'tools.example.com', port: 8080 } },
+        testAgentDetails, testTenantDetails
+      );
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.SERVER_PORT_KEY, val: 8080 })
+      ]));
+      scope?.dispose();
+      spy.mockRestore();
+    });
 
+    it('should omit port 443 on ExecuteToolScope', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const scope = ExecuteToolScope.start(
+        { toolName: 'test-tool', endpoint: { host: 'tools.example.com', port: 443 } },
+        testAgentDetails, testTenantDetails
+      );
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).not.toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.SERVER_PORT_KEY })
+      ]));
+      scope?.dispose();
+      spy.mockRestore();
+    });
+
+    it('should record non-443 port as a number on InferenceScope', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const scope = InferenceScope.start(
+        { operationName: InferenceOperationType.CHAT, model: 'gpt-4', endpoint: { host: 'api.openai.com', port: 8443 } },
+        testAgentDetails, testTenantDetails
+      );
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.SERVER_PORT_KEY, val: 8443 })
+      ]));
+      scope?.dispose();
+      spy.mockRestore();
+    });
+
+    it('should omit port 443 on InferenceScope', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const scope = InferenceScope.start(
+        { operationName: InferenceOperationType.CHAT, model: 'gpt-4', endpoint: { host: 'api.openai.com', port: 443 } },
+        testAgentDetails, testTenantDetails
+      );
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).not.toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.SERVER_PORT_KEY })
+      ]));
+      scope?.dispose();
+      spy.mockRestore();
+    });
+
+    it('should record non-443 port as a number on InvokeAgentScope', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const scope = InvokeAgentScope.start(
+        { agentId: 'test-agent', endpoint: { host: 'agent.example.com', port: 9090 } },
+        testTenantDetails
+      );
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.SERVER_PORT_KEY, val: 9090 })
+      ]));
+      scope?.dispose();
+      spy.mockRestore();
+    });
+
+    it('should omit port 443 on InvokeAgentScope', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const scope = InvokeAgentScope.start(
+        { agentId: 'test-agent', endpoint: { host: 'agent.example.com', port: 443 } },
+        testTenantDetails
+      );
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).not.toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.SERVER_PORT_KEY })
+      ]));
+      scope?.dispose();
+      spy.mockRestore();
+    });
+  });
 
   describe('InferenceScope', () => {
     it('should create scope with inference details', () => {
