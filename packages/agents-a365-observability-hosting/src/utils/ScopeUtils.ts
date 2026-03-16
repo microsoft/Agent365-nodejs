@@ -261,7 +261,7 @@ export class ScopeUtils {
     if (!tenant) {
       throw new Error('populateExecuteToolScopeFromTurnContext: Missing tenant details on TurnContext (recipient)');
     }
-    const scope = ExecuteToolScope.start(details, agent, tenant, conversationId, sourceMetadata, undefined, startTime, endTime, spanKind);
+    const scope = ExecuteToolScope.start(details, agent, tenant, conversationId, sourceMetadata, undefined, startTime, endTime, undefined, spanKind);
     return scope;
   }
 

@@ -3,7 +3,7 @@
 
 import { SpanKind, TimeInput } from '@opentelemetry/api';
 import { OpenTelemetryScope } from './OpenTelemetryScope';
-import { ToolCallDetails, AgentDetails, TenantDetails, SourceMetadata } from '../contracts';
+import { ToolCallDetails, AgentDetails, TenantDetails, SourceMetadata, CallerDetails } from '../contracts';
 import { ParentContext } from '../context/trace-context-propagation';
 import { OpenTelemetryConstants } from '../constants';
 
@@ -24,6 +24,7 @@ export class ExecuteToolScope extends OpenTelemetryScope {
    *        tool call after execution has already completed.
    * @param endTime Optional explicit end time (ms epoch, Date, or HrTime). When provided, the span will
    *        use this timestamp when disposed instead of the current wall-clock time.
+   * @param callerDetails Optional caller details.
    * @param spanKind Optional span kind override. Defaults to `SpanKind.INTERNAL`.
    *   Use `SpanKind.CLIENT` when the tool calls an external service.
    * @returns A new ExecuteToolScope instance.
@@ -37,9 +38,10 @@ export class ExecuteToolScope extends OpenTelemetryScope {
     parentContext?: ParentContext,
     startTime?: TimeInput,
     endTime?: TimeInput,
+    callerDetails?: CallerDetails,
     spanKind?: SpanKind
   ): ExecuteToolScope {
-    return new ExecuteToolScope(details, agentDetails, tenantDetails, conversationId, sourceMetadata, parentContext, startTime, endTime, spanKind);
+    return new ExecuteToolScope(details, agentDetails, tenantDetails, conversationId, sourceMetadata, parentContext, startTime, endTime, callerDetails, spanKind);
   }
 
   private constructor(
@@ -51,6 +53,7 @@ export class ExecuteToolScope extends OpenTelemetryScope {
     parentContext?: ParentContext,
     startTime?: TimeInput,
     endTime?: TimeInput,
+    callerDetails?: CallerDetails,
     spanKind?: SpanKind
   ) {
     super(
@@ -61,7 +64,8 @@ export class ExecuteToolScope extends OpenTelemetryScope {
       tenantDetails,
       parentContext,
       startTime,
-      endTime
+      endTime,
+      callerDetails
     );
 
     // Destructure the details object to match C# pattern
@@ -73,8 +77,8 @@ export class ExecuteToolScope extends OpenTelemetryScope {
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_TOOL_CALL_ID_KEY, toolCallId);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_TOOL_DESCRIPTION_KEY, description);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, conversationId);
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY, sourceMetadata?.name);
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY, sourceMetadata?.description);    
+    this.setTagMaybe(OpenTelemetryConstants.CHANNEL_NAME_KEY, sourceMetadata?.name);
+    this.setTagMaybe(OpenTelemetryConstants.CHANNEL_LINK_KEY, sourceMetadata?.description);    
 
 
     // Set endpoint information if provided
@@ -83,7 +87,7 @@ export class ExecuteToolScope extends OpenTelemetryScope {
 
       // Only record port if it is different from 443 (default HTTPS port)
       if (endpoint.port && endpoint.port !== 443) {
-        this.setTagMaybe(OpenTelemetryConstants.SERVER_PORT_KEY, endpoint.port);
+        this.setTagMaybe(OpenTelemetryConstants.SERVER_PORT_KEY, endpoint.port.toString());
       }
     }
   }
@@ -93,6 +97,6 @@ export class ExecuteToolScope extends OpenTelemetryScope {
    * @param response The tool execution response
    */
   public recordResponse(response: string): void {
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EVENT_CONTENT, response);
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_TOOL_CALL_RESULT_KEY, response);
   }
 }

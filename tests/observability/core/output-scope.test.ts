@@ -111,7 +111,7 @@ describe('OutputScope', () => {
 
     const scope = OutputScope.start(
       { messages: ['Test'] }, testAgentDetails, testTenantDetails,
-      undefined, undefined, undefined, undefined,
+      undefined, undefined, undefined,
       { traceId: parentTraceId, spanId: parentSpanId } as ParentSpanRef
     );
     scope.dispose();

@@ -1,6 +1,6 @@
 packages:
   - 'packages/agents-a365-*'
-  - 'tests-agent/*'
+  # - 'tests-agent/*'  # Excluded from workspace
   - 'tests'
 
 catalog:

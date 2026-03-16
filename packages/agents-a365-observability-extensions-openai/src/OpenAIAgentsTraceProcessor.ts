@@ -42,9 +42,9 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
   private readonly spanNames: Map<OtelSpan, string> = new Map();
 
   private readonly keyMappings: Map<string, string> = new Map([
-    ['mcp_tools' + Constants.GEN_AI_RESPONSE_CONTENT_KEY, OpenTelemetryConstants.GEN_AI_EVENT_CONTENT],
+    ['mcp_tools' + Constants.GEN_AI_RESPONSE_CONTENT_KEY, OpenTelemetryConstants.GEN_AI_TOOL_CALL_RESULT_KEY],
     ['mcp_tools' + Constants.GEN_AI_REQUEST_CONTENT_KEY, OpenTelemetryConstants.GEN_AI_TOOL_ARGS_KEY],
-    ['function' + Constants.GEN_AI_RESPONSE_CONTENT_KEY, OpenTelemetryConstants.GEN_AI_EVENT_CONTENT],
+    ['function' + Constants.GEN_AI_RESPONSE_CONTENT_KEY, OpenTelemetryConstants.GEN_AI_TOOL_CALL_RESULT_KEY],
     ['function' + Constants.GEN_AI_REQUEST_CONTENT_KEY, OpenTelemetryConstants.GEN_AI_TOOL_ARGS_KEY],
     ['generation' + Constants.GEN_AI_RESPONSE_CONTENT_KEY, OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY],
     ['generation' + Constants.GEN_AI_REQUEST_CONTENT_KEY, OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY],
@@ -59,8 +59,8 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
   private static readonly CONTENT_KEYS = new Set([
     OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY,
     OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY,
-    OpenTelemetryConstants.GEN_AI_EVENT_CONTENT,
     OpenTelemetryConstants.GEN_AI_TOOL_ARGS_KEY,
+    OpenTelemetryConstants.GEN_AI_TOOL_CALL_RESULT_KEY,
     Constants.GEN_AI_REQUEST_CONTENT_KEY,
     Constants.GEN_AI_RESPONSE_CONTENT_KEY,
   ]);
@@ -138,7 +138,7 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
         startTime,
         attributes: {
           [OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY]: Utils.getSpanKind(spanData),
-          [OpenTelemetryConstants.GEN_AI_SYSTEM_KEY]: 'openai',
+          [OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY]: 'openai',
         },
       },
       parentContext
