@@ -120,7 +120,7 @@ export function getTenantIdPair(turnContext: TurnContext): Array<[string, string
 /**
  * Extracts channel baggage pairs from the TurnContext.
  * @param turnContext The current TurnContext (activity context)
- * @returns Array of [key, value] pairs for channel name and link
+ * @returns Array of [key, value] pairs for channel name and subchannel description
  */
 export function getChannelBaggagePairs(turnContext: TurnContext): Array<[string, string]> {
   if (!turnContext) { 
