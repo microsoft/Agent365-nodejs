@@ -29,7 +29,6 @@ describe('SpanProcessor', () => {
     it('should copy generic attributes from baggage to span', () => {
       const baggageEntries = {
         [OpenTelemetryConstants.TENANT_ID_KEY]: 'tenant-123',
-        [OpenTelemetryConstants.CORRELATION_ID_KEY]: 'corr-456',
         [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]: 'agent-789'
       };
 
@@ -162,14 +161,23 @@ describe('SpanProcessor', () => {
   describe('attribute registry application', () => {
     it('should apply all generic attributes', () => {
       expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.TENANT_ID_KEY);
-      expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.CORRELATION_ID_KEY);
       expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY);
       expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.SESSION_ID_KEY);
+      expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY);
+      expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY);
+      expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.GEN_AI_CALLER_UPN_KEY);
+      expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY);
+      expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.CHANNEL_NAME_KEY);
+      expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.CHANNEL_LINK_KEY);
+      expect(GENERIC_ATTRIBUTES).not.toContain('correlation.id');
     });
 
     it('should apply invoke agent specific attributes', () => {
-      expect(INVOKE_AGENT_ATTRIBUTES).toContain(OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY);
-      expect(INVOKE_AGENT_ATTRIBUTES).toContain(OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY);
+      expect(INVOKE_AGENT_ATTRIBUTES).toContain(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_ID_KEY);
+    });
+
+    it('should include blueprint ID in generic attributes', () => {
+      expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY);
     });
   });
 

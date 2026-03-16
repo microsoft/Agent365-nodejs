@@ -25,21 +25,11 @@ describe('BaggageBuilder', () => {
       expect(scope).toBeInstanceOf(BaggageScope);
     });
 
-    it('should set correlation ID', () => {
-      const builder = new BaggageBuilder();
-      builder.correlationId('corr-789');
-
-      const scope = builder.build();
-      expect(scope).toBeInstanceOf(BaggageScope);
-    });
-
     it('should chain multiple setters', () => {
       const builder = new BaggageBuilder()
         .tenantId('tenant-123')
         .agentId('agent-456')
-        .correlationId('corr-789')
         .agentName('TestAgent')
-        .agentType('assistant')
         .agentPlatformId('platform-xyz-123')
         .conversationId('conv-001');
 
@@ -56,17 +46,6 @@ describe('BaggageBuilder', () => {
 
       const bag = propagation.getBaggage((scope as any).contextWithBaggage);
       expect(bag?.getEntry(OpenTelemetryConstants.GEN_AI_AGENT_PLATFORM_ID_KEY)?.value).toBe('platform-abc-456');
-    });
-
-    it('should set agent type', () => {
-      const builder = new BaggageBuilder();
-      builder.agentType('assistant');
-
-      const scope = builder.build();
-      expect(scope).toBeInstanceOf(BaggageScope);
-
-      const bag = propagation.getBaggage((scope as any).contextWithBaggage);
-      expect(bag?.getEntry(OpenTelemetryConstants.GEN_AI_AGENT_TYPE_KEY)?.value).toBe('assistant');
     });
 
     it('should set caller agent platform ID via fluent API', () => {
@@ -115,8 +94,7 @@ describe('BaggageBuilder', () => {
       const builder = new BaggageBuilder();
       builder.setPairs({
         [OpenTelemetryConstants.TENANT_ID_KEY]: 'tenant-123',
-        [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]: null,
-        [OpenTelemetryConstants.CORRELATION_ID_KEY]: undefined
+        [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]: null
       });
 
       const scope = builder.build();
@@ -156,8 +134,7 @@ describe('BaggageBuilder', () => {
     it('should create scope with common fields', () => {
       const scope = BaggageBuilder.setRequestContext(
         'tenant-123',
-        'agent-456',
-        'corr-789'
+        'agent-456'
       );
 
       expect(scope).toBeInstanceOf(BaggageScope);
@@ -166,8 +143,7 @@ describe('BaggageBuilder', () => {
     it('should handle null values', () => {
       const scope = BaggageBuilder.setRequestContext(
         null,
-        'agent-456',
-        null
+        'agent-456'
       );
 
       expect(scope).toBeInstanceOf(BaggageScope);
@@ -179,7 +155,6 @@ describe('BaggageBuilder', () => {
       const scope = new BaggageBuilder()
         .tenantId('tenant-123')
         .agentId('agent-456')
-        .correlationId('corr-789')
         .sessionId('session-0001')
         .sessionDescription('My session desc')
         .build();

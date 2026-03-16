@@ -201,7 +201,7 @@ describe('OutputLoggingMiddleware', () => {
 
     expect(outputSpan!.attributes[OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY]).toBe('user-oid');
     expect(outputSpan!.attributes[OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY]).toBe('Test User');
-    expect(outputSpan!.attributes[OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY]).toBe('teams');
+    expect(outputSpan!.attributes[OpenTelemetryConstants.CHANNEL_NAME_KEY]).toBe('teams');
   });
 
   it('should link OutputScope to parent when parentSpanRef is set in turnState', async () => {
