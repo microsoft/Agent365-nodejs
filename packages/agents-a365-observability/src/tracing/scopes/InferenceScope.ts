@@ -8,7 +8,7 @@ import {
   InferenceDetails,
   AgentDetails,
   TenantDetails,
-  SourceMetadata,
+  Channel,
   CallerDetails
 } from '../contracts';
 import { ParentContext } from '../context/trace-context-propagation';
@@ -23,7 +23,7 @@ export class InferenceScope extends OpenTelemetryScope {
    * @param agentDetails The agent details
    * @param tenantDetails The tenant details
    * @param conversationId Optional conversation id to tag on the span (`gen_ai.conversation.id`).
-   * @param sourceMetadata Optional source metadata; only `name` (channel name) and `description` (channel link/URL) are used for tagging.
+   * @param channel Optional channel; only `name` (channel name) and `description` (channel link/URL) are used for tagging.
    * @param parentContext Optional parent context for cross-async-boundary tracing.
    *   Accepts a ParentSpanRef (manual traceId/spanId) or an OTel Context (e.g. from extractTraceContext).
    * @param startTime Optional explicit start time (ms epoch, Date, or HrTime).
@@ -36,13 +36,13 @@ export class InferenceScope extends OpenTelemetryScope {
     agentDetails: AgentDetails,
     tenantDetails: TenantDetails,
     conversationId?: string,
-    sourceMetadata?: Pick<SourceMetadata, "name" | "description">,
+    channel?: Pick<Channel, "name" | "description">,
     parentContext?: ParentContext,
     startTime?: TimeInput,
     endTime?: TimeInput,
     callerDetails?: CallerDetails
   ): InferenceScope {
-    return new InferenceScope(details, agentDetails, tenantDetails, conversationId, sourceMetadata, parentContext, startTime, endTime, callerDetails);
+    return new InferenceScope(details, agentDetails, tenantDetails, conversationId, channel, parentContext, startTime, endTime, callerDetails);
   }
 
   private constructor(
@@ -50,7 +50,7 @@ export class InferenceScope extends OpenTelemetryScope {
     agentDetails: AgentDetails,
     tenantDetails: TenantDetails,
     conversationId?: string,
-    sourceMetadata?: Pick<SourceMetadata, "name" | "description">,
+    channel?: Pick<Channel, "name" | "description">,
     parentContext?: ParentContext,
     startTime?: TimeInput,
     endTime?: TimeInput,
@@ -77,8 +77,8 @@ export class InferenceScope extends OpenTelemetryScope {
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_RESPONSE_FINISH_REASONS_KEY, details.finishReasons);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_THOUGHT_PROCESS_KEY, details.thoughtProcess);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, conversationId);
-    this.setTagMaybe(OpenTelemetryConstants.CHANNEL_NAME_KEY, sourceMetadata?.name);
-    this.setTagMaybe(OpenTelemetryConstants.CHANNEL_LINK_KEY, sourceMetadata?.description);
+    this.setTagMaybe(OpenTelemetryConstants.CHANNEL_NAME_KEY, channel?.name);
+    this.setTagMaybe(OpenTelemetryConstants.CHANNEL_LINK_KEY, channel?.description);
 
     // Set endpoint information if provided
     if (details.endpoint) {
@@ -86,7 +86,7 @@ export class InferenceScope extends OpenTelemetryScope {
 
       // Only record port if it is different from 443 (default HTTPS port)
       if (details.endpoint.port && details.endpoint.port !== 443) {
-        this.setTagMaybe(OpenTelemetryConstants.SERVER_PORT_KEY, details.endpoint.port.toString());
+        this.setTagMaybe(OpenTelemetryConstants.SERVER_PORT_KEY, details.endpoint.port);
       }
     }
   }

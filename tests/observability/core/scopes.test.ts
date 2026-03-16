@@ -262,27 +262,14 @@ describe('Scopes', () => {
       scope?.dispose();
     });
    
-    it('should set conversationId when provided', () => {
+    it('should set conversationId and channel tags when provided', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
-      const scope = (ExecuteToolScope as unknown as any).start({ toolName: 'test-tool' }, testAgentDetails, testTenantDetails, 'conv-tool-123');
+      const scope = (ExecuteToolScope as unknown as any).start({ toolName: 'test-tool' }, testAgentDetails, testTenantDetails, 'conv-tool-123', { name: 'ChannelTool', description: 'https://channel/tool' });
       expect(scope).toBeInstanceOf(ExecuteToolScope);
 
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
       expect(calls).toEqual(expect.arrayContaining([
-        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, val: 'conv-tool-123' })
-      ]));
-
-      scope?.dispose();
-      spy.mockRestore();
-    });
-
-    it('should set source metadata tags when provided', () => {
-      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
-      const scope = (ExecuteToolScope as unknown as any).start({ toolName: 'test-tool' }, testAgentDetails, testTenantDetails, undefined, { name: 'ChannelTool', description: 'https://channel/tool' });
-      expect(scope).toBeInstanceOf(ExecuteToolScope);
-
-      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
-      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, val: 'conv-tool-123' }),
         expect.objectContaining({ key: OpenTelemetryConstants.CHANNEL_NAME_KEY, val: 'ChannelTool' }),
         expect.objectContaining({ key: OpenTelemetryConstants.CHANNEL_LINK_KEY, val: 'https://channel/tool' })
       ]));
@@ -359,37 +346,19 @@ describe('Scopes', () => {
       scope?.dispose();
     });
 
-     it('should set conversationId when provided', () => {
+     it('should set conversationId and channel tags when provided', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
       const inferenceDetails: InferenceDetails = {
         operationName: InferenceOperationType.CHAT,
         model: 'gpt-4'
       };
 
-      const scope = (InferenceScope as unknown as any).start(inferenceDetails, testAgentDetails, testTenantDetails, 'conv-inf-123');
+      const scope = (InferenceScope as unknown as any).start(inferenceDetails, testAgentDetails, testTenantDetails, 'conv-inf-123', { name: 'ChannelInf', description: 'https://channel/inf' });
       expect(scope).toBeInstanceOf(InferenceScope);
 
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
       expect(calls).toEqual(expect.arrayContaining([
-        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, val: 'conv-inf-123' })
-      ]));
-
-      scope?.dispose();
-      spy.mockRestore();
-    });
-
-    it('should set source metadata tags when provided', () => {
-      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
-      const inferenceDetails: InferenceDetails = {
-        operationName: InferenceOperationType.CHAT,
-        model: 'gpt-4'
-      };
-
-      const scope = (InferenceScope as unknown as any).start(inferenceDetails, testAgentDetails, testTenantDetails, undefined, { name: 'ChannelInf', description: 'https://channel/inf' });
-      expect(scope).toBeInstanceOf(InferenceScope);
-
-      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
-      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, val: 'conv-inf-123' }),
         expect.objectContaining({ key: OpenTelemetryConstants.CHANNEL_NAME_KEY, val: 'ChannelInf' }),
         expect.objectContaining({ key: OpenTelemetryConstants.CHANNEL_LINK_KEY, val: 'https://channel/inf' })
       ]));

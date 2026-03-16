@@ -48,10 +48,10 @@ export class OutputLoggingMiddleware implements Middleware {
 
     const callerDetails = ScopeUtils.deriveCallerDetails(context);
     const conversationId = ScopeUtils.deriveConversationId(context);
-    const sourceMetadata = ScopeUtils.deriveSourceMetadataObject(context);
+    const channel = ScopeUtils.deriveChannelObject(context);
 
     context.onSendActivities(
-      this._createSendHandler(context, agentDetails, tenantDetails, callerDetails, conversationId, sourceMetadata)
+      this._createSendHandler(context, agentDetails, tenantDetails, callerDetails, conversationId, channel)
     );
 
     await next();
@@ -84,7 +84,7 @@ export class OutputLoggingMiddleware implements Middleware {
     tenantDetails: TenantDetails,
     callerDetails?: CallerDetails,
     conversationId?: string,
-    sourceMetadata?: { name?: string; description?: string },
+    channel?: { name?: string; description?: string },
   ): SendActivitiesHandler {
     return async (_ctx, activities, sendNext) => {
       const messages = activities
@@ -108,7 +108,7 @@ export class OutputLoggingMiddleware implements Middleware {
         tenantDetails,
         callerDetails,
         conversationId,
-        sourceMetadata,
+        channel,
         parentSpanRef,
       );
       try {

@@ -48,22 +48,22 @@ export enum InferenceOperationType {
 
 
 /**
- * Represents metadata about the source of an invocation
+ * Represents channel for an invocation
  */
-export interface SourceMetadata {
-  /** Unique identifier for the source (e.g., agent ID, user ID, system component ID) */
+export interface Channel {
+  /** Unique identifier for the channel (e.g., agent ID, user ID, system component ID) */
   id?: string;
 
-  /** Human-readable name of the source */
+  /** Human-readable name of the channel */
   name?: string;
 
-  /** Optional icon identifier or URL for visual representation of the source */
+  /** Optional icon identifier or URL for visual representation of the channel */
   iconUri?: string;
 
-  /** The role of the source invoking the agent */
+  /** The role of the entity invoking through this channel */
   role?: InvocationRole;
 
-  /** Optional description providing additional context about the source */
+  /** Optional description providing additional context about the channel */
   description?: string;
 }
 
@@ -80,8 +80,8 @@ export interface AgentRequest {
   /** Optional session identifier for grouping related requests */
   sessionId?: string;
 
-  /** Optional metadata about the source of the invocation */
-  sourceMetadata?: SourceMetadata;
+  /** Optional channel for the invocation */
+  channel?: Channel;
 }
 
 /**

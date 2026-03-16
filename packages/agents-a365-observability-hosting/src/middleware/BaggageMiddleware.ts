@@ -9,7 +9,7 @@ import {
   getCallerBaggagePairs,
   getTargetAgentBaggagePairs,
   getTenantIdPair,
-  getSourceMetadataBaggagePairs,
+  getChannelBaggagePairs,
   getConversationIdAndItemLinkPairs,
 } from '../utils/TurnContextUtils';
 
@@ -33,7 +33,7 @@ export class BaggageMiddleware implements Middleware {
       .setPairs(getCallerBaggagePairs(context))
       .setPairs(getTargetAgentBaggagePairs(context))
       .setPairs(getTenantIdPair(context))
-      .setPairs(getSourceMetadataBaggagePairs(context))
+      .setPairs(getChannelBaggagePairs(context))
       .setPairs(getConversationIdAndItemLinkPairs(context))
       .setPairs(getExecutionTypePair(context))
       .build();

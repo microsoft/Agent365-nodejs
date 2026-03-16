@@ -9,7 +9,7 @@ import {
   getExecutionTypePair,
   getTargetAgentBaggagePairs,
   getTenantIdPair,
-  getSourceMetadataBaggagePairs,
+  getChannelBaggagePairs,
   getConversationIdAndItemLinkPairs
 } from './TurnContextUtils';
 import { BaggageBuilder } from '@microsoft/agents-a365-observability';
@@ -34,7 +34,7 @@ export class BaggageBuilderUtils {
     this.setExecutionTypeBaggage(builder, turnContext);
     this.setTargetAgentBaggage(builder, turnContext);
     this.setTenantIdBaggage(builder, turnContext);
-    this.setSourceMetadataBaggage(builder, turnContext);
+    this.setChannelBaggage(builder, turnContext);
     this.setConversationIdBaggage(builder, turnContext);
     return builder;
   }
@@ -88,13 +88,13 @@ export class BaggageBuilderUtils {
 
 
   /**
-   * Sets the source metadata baggage values from the TurnContext.
+   * Sets the channel baggage values from the TurnContext.
    * @param builder The BaggageBuilder instance.
    * @param turnContext The TurnContext containing activity information.
    * @returns The updated BaggageBuilder instance.
    */
-  static setSourceMetadataBaggage(builder: BaggageBuilder, turnContext: TurnContext): BaggageBuilder {
-    builder.setPairs(getSourceMetadataBaggagePairs(turnContext));
+  static setChannelBaggage(builder: BaggageBuilder, turnContext: TurnContext): BaggageBuilder {
+    builder.setPairs(getChannelBaggagePairs(turnContext));
     return builder;
   }
 

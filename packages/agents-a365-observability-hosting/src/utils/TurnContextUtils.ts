@@ -118,11 +118,11 @@ export function getTenantIdPair(turnContext: TurnContext): Array<[string, string
 }
 
 /**
- * Extracts source metadata baggage pairs from the TurnContext.
+ * Extracts channel baggage pairs from the TurnContext.
  * @param turnContext The current TurnContext (activity context)
  * @returns Array of [key, value] pairs for channel name and link
  */
-export function getSourceMetadataBaggagePairs(turnContext: TurnContext): Array<[string, string]> {
+export function getChannelBaggagePairs(turnContext: TurnContext): Array<[string, string]> {
   if (!turnContext) { 
     return [];
   }  

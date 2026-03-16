@@ -156,7 +156,7 @@ scope.recordOutputMessages(['Hi there!']);
 **Span attributes recorded:**
 - Server address and port
 - Session ID
-- Execution type and source metadata
+- Execution type and channel
 - Input/output messages
 - Caller details (ID, UPN, name, tenant, client IP)
 - Caller agent details (if agent-to-agent)
@@ -177,7 +177,7 @@ using scope = InferenceScope.start(
   agentDetails,
   tenantDetails,
   conversationId,
-  sourceMetadata
+  channel
 );
 
 scope.recordInputMessages(['User message']);
@@ -207,7 +207,7 @@ using scope = ExecuteToolScope.start(
   agentDetails,
   tenantDetails,
   conversationId,
-  sourceMetadata
+  channel
 );
 
 // ... tool execution ...
@@ -258,7 +258,8 @@ const scope2 = BaggageBuilder.setRequestContext(
 | `sessionId(value)` | `session_id` |
 | `conversationId(value)` | `gen_ai.conversation.id` |
 | `callerUpn(value)` | `gen_ai.caller.upn` |
-| `sourceMetadataName(value)` | `gen_ai.execution.source.name` |
+| `channelName(value)` | `gen_ai.execution.source.name` |
+| `channelLink(value)` | `gen_ai.execution.source.description` |
 
 ## Data Interfaces
 

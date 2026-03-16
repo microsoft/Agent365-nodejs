@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Breaking Changes (`@microsoft/agents-a365-observability`)
+
+- **`SourceMetadata` renamed to `Channel`** — The exported interface representing invocation channel information is renamed from `SourceMetadata` to `Channel`.
+- **`AgentRequest.sourceMetadata` renamed to `AgentRequest.channel`** — The optional property on `AgentRequest` is renamed from `sourceMetadata` to `channel` (type changed from `SourceMetadata` to `Channel`).
+- **`BaggageBuilder.serviceName()` renamed to `BaggageBuilder.operationSource()`** — Fluent setter for the service name baggage value.
+- **`BaggageBuilder.sourceMetadataName()` renamed to `BaggageBuilder.channelName()`** — Fluent setter for the channel name baggage value.
+- **`BaggageBuilder.sourceMetadataDescription()` renamed to `BaggageBuilder.channelLink()`** — Fluent setter for the channel link baggage value.
+- **`InferenceScope.start()` parameter `sourceMetadata` renamed to `channel`** — Type changed from `Pick<SourceMetadata, "name" | "description">` to `Pick<Channel, "name" | "description">`.
+- **`ExecuteToolScope.start()` parameter `sourceMetadata` renamed to `channel`** — Type changed from `Pick<SourceMetadata, "name" | "description">` to `Pick<Channel, "name" | "description">`.
+- **`InvokeAgentScope`** now reads `request.channel` instead of `request.sourceMetadata` for channel name/link tags.
+
+### Breaking Changes (`@microsoft/agents-a365-observability-hosting`)
+
+- **`ScopeUtils.deriveSourceMetadataObject()` renamed to `ScopeUtils.deriveChannelObject()`**.
+- **`BaggageBuilderUtils.setSourceMetadataBaggage()` renamed to `BaggageBuilderUtils.setChannelBaggage()`**.
+- **`getSourceMetadataBaggagePairs()` renamed to `getChannelBaggagePairs()`** in `TurnContextUtils`.
+
 ### Added
 
 - **`OpenAIAgentsInstrumentationConfig.isContentRecordingEnabled`** — Optional `boolean` to enable content recording in OpenAI trace processor.
@@ -86,7 +103,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Agent-to-agent invocations
 - Error tracking and performance metrics
 - Request/response content (configurable)
-- Source metadata and execution context
+- Channel metadata and execution context
 
 ### Requirements
 - Node.js 18.0 or later

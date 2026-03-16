@@ -3,7 +3,7 @@
 
 import { SpanKind, TimeInput } from '@opentelemetry/api';
 import { OpenTelemetryScope } from './OpenTelemetryScope';
-import { ToolCallDetails, AgentDetails, TenantDetails, SourceMetadata, CallerDetails } from '../contracts';
+import { ToolCallDetails, AgentDetails, TenantDetails, Channel, CallerDetails } from '../contracts';
 import { ParentContext } from '../context/trace-context-propagation';
 import { OpenTelemetryConstants } from '../constants';
 
@@ -17,7 +17,7 @@ export class ExecuteToolScope extends OpenTelemetryScope {
    * @param agentDetails The agent details
    * @param tenantDetails The tenant details
    * @param conversationId Optional conversation id to tag on the span (`gen_ai.conversation.id`).
-   * @param sourceMetadata Optional source metadata; only `name` (channel name) and `description` (channel link/URL) are used for tagging.
+   * @param channel Optional channel; only `name` (channel name) and `description` (channel link/URL) are used for tagging.
    * @param parentContext Optional parent context for cross-async-boundary tracing.
    *   Accepts a ParentSpanRef (manual traceId/spanId) or an OTel Context (e.g. from extractTraceContext).
    * @param startTime Optional explicit start time (ms epoch, Date, or HrTime). Useful when recording a
@@ -34,14 +34,14 @@ export class ExecuteToolScope extends OpenTelemetryScope {
     agentDetails: AgentDetails,
     tenantDetails: TenantDetails,
     conversationId?: string,
-    sourceMetadata?: Pick<SourceMetadata, "name" | "description">,
+    channel?: Pick<Channel, "name" | "description">,
     parentContext?: ParentContext,
     startTime?: TimeInput,
     endTime?: TimeInput,
     callerDetails?: CallerDetails,
     spanKind?: SpanKind
   ): ExecuteToolScope {
-    return new ExecuteToolScope(details, agentDetails, tenantDetails, conversationId, sourceMetadata, parentContext, startTime, endTime, callerDetails, spanKind);
+    return new ExecuteToolScope(details, agentDetails, tenantDetails, conversationId, channel, parentContext, startTime, endTime, callerDetails, spanKind);
   }
 
   private constructor(
@@ -49,7 +49,7 @@ export class ExecuteToolScope extends OpenTelemetryScope {
     agentDetails: AgentDetails,
     tenantDetails: TenantDetails,
     conversationId?: string,
-    sourceMetadata?: Pick<SourceMetadata, "name" | "description">,
+    channel?: Pick<Channel, "name" | "description">,
     parentContext?: ParentContext,
     startTime?: TimeInput,
     endTime?: TimeInput,
@@ -77,8 +77,8 @@ export class ExecuteToolScope extends OpenTelemetryScope {
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_TOOL_CALL_ID_KEY, toolCallId);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_TOOL_DESCRIPTION_KEY, description);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, conversationId);
-    this.setTagMaybe(OpenTelemetryConstants.CHANNEL_NAME_KEY, sourceMetadata?.name);
-    this.setTagMaybe(OpenTelemetryConstants.CHANNEL_LINK_KEY, sourceMetadata?.description);    
+    this.setTagMaybe(OpenTelemetryConstants.CHANNEL_NAME_KEY, channel?.name);
+    this.setTagMaybe(OpenTelemetryConstants.CHANNEL_LINK_KEY, channel?.description);    
 
 
     // Set endpoint information if provided
@@ -87,7 +87,7 @@ export class ExecuteToolScope extends OpenTelemetryScope {
 
       // Only record port if it is different from 443 (default HTTPS port)
       if (endpoint.port && endpoint.port !== 443) {
-        this.setTagMaybe(OpenTelemetryConstants.SERVER_PORT_KEY, endpoint.port.toString());
+        this.setTagMaybe(OpenTelemetryConstants.SERVER_PORT_KEY, endpoint.port);
       }
     }
   }

@@ -130,6 +130,20 @@ describe('BaggageBuilder', () => {
     });
   });
 
+  describe('operationSource, channelName, and channelLink', () => {
+    it.each([
+      ['operationSource', 'ATG', OpenTelemetryConstants.SERVICE_NAME_KEY],
+      ['channelName', 'teams', OpenTelemetryConstants.CHANNEL_NAME_KEY],
+      ['channelLink', 'https://teams/channel', OpenTelemetryConstants.CHANNEL_LINK_KEY],
+    ] as const)('%s should set the correct baggage key', (method, value, expectedKey) => {
+      const builder = new BaggageBuilder();
+      (builder as any)[method](value);
+      const scope = builder.build();
+      const bag = propagation.getBaggage((scope as any).contextWithBaggage);
+      expect(bag?.getEntry(expectedKey)?.value).toBe(value);
+    });
+  });
+
   describe('setRequestContext static method', () => {
     it('should create scope with common fields', () => {
       const scope = BaggageBuilder.setRequestContext(
