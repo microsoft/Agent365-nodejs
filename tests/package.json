@@ -25,7 +25,6 @@
     "directory": "tests"
   },
   "dependencies": {
-    "@azure/monitor-opentelemetry-exporter": "catalog:",
     "@microsoft/agents-a365-observability": "workspace:*",
     "@microsoft/agents-a365-observability-extensions-langchain": "workspace:*",
     "@microsoft/agents-a365-observability-extensions-openai": "workspace:*",
