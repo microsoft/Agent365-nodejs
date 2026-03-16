@@ -76,7 +76,7 @@ export class OutputScope extends OpenTelemetryScope {
       JSON.stringify(this._outputMessages)
     );
 
-    // Set conversation, execution type, and channel
+    // Set conversation and channel
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, conversationId);
     this.setTagMaybe(OpenTelemetryConstants.CHANNEL_NAME_KEY, channel?.name);
     this.setTagMaybe(OpenTelemetryConstants.CHANNEL_LINK_KEY, channel?.description);
