@@ -38,7 +38,6 @@
     "directory": "packages/agents-a365-observability"
   },
   "dependencies": {
-    "@azure/monitor-opentelemetry-exporter": "catalog:",
     "@microsoft/agents-a365-runtime": "workspace:*",
     "@opentelemetry/api": "catalog:",
     "@opentelemetry/exporter-trace-otlp-http": "catalog:",
