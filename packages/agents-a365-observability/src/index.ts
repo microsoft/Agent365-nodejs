@@ -32,7 +32,7 @@ export {
 export {
   ExecutionType,
   InvocationRole,
-  SourceMetadata,
+  Channel,
   AgentRequest,
   AgentDetails,
   TenantDetails,

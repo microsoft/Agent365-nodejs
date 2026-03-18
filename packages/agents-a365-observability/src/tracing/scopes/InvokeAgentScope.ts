@@ -80,16 +80,16 @@ export class InvokeAgentScope extends OpenTelemetryScope {
 
       // Only record port if it is different from 443 (default HTTPS port)
       if (invokeAgentDetails.endpoint.port && invokeAgentDetails.endpoint.port !== 443) {
-        this.setTagMaybe(OpenTelemetryConstants.SERVER_PORT_KEY, invokeAgentDetails.endpoint.port.toString());
+        this.setTagMaybe(OpenTelemetryConstants.SERVER_PORT_KEY, invokeAgentDetails.endpoint.port);
       }
     }
 
     // Set request-related tags
     const requestToUse = invokeAgentDetails.request;
     if (requestToUse) {
-      if (requestToUse.sourceMetadata) {
-        this.setTagMaybe(OpenTelemetryConstants.CHANNEL_NAME_KEY, requestToUse.sourceMetadata.name);
-        this.setTagMaybe(OpenTelemetryConstants.CHANNEL_LINK_KEY, requestToUse.sourceMetadata.description);
+      if (requestToUse.channel) {
+        this.setTagMaybe(OpenTelemetryConstants.CHANNEL_NAME_KEY, requestToUse.channel.name);
+        this.setTagMaybe(OpenTelemetryConstants.CHANNEL_LINK_KEY, requestToUse.channel.description);
       }
     }
 

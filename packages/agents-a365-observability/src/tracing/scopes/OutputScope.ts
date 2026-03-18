@@ -3,7 +3,7 @@
 
 import { SpanKind, TimeInput } from '@opentelemetry/api';
 import { OpenTelemetryScope } from './OpenTelemetryScope';
-import { AgentDetails, TenantDetails, CallerDetails, OutputResponse, SourceMetadata } from '../contracts';
+import { AgentDetails, TenantDetails, CallerDetails, OutputResponse, Channel } from '../contracts';
 import { ParentContext } from '../context/trace-context-propagation';
 import { OpenTelemetryConstants } from '../constants';
 
@@ -21,7 +21,7 @@ export class OutputScope extends OpenTelemetryScope {
    * @param tenantDetails The tenant details.
    * @param callerDetails Optional caller identity details (id, upn, name, client ip).
    * @param conversationId Optional conversation identifier.
-   * @param sourceMetadata Optional source metadata; only `name` and `description` are used for tagging.
+   * @param channel Optional channel metadata; only `name` and `description` are used for tagging.
    * @param parentContext Optional parent context for cross-async-boundary tracing.
    *   Accepts a ParentSpanRef (manual traceId/spanId) or an OTel Context (e.g. from extractTraceContext).
    * @param startTime Optional explicit start time (ms epoch, Date, or HrTime).
@@ -34,12 +34,12 @@ export class OutputScope extends OpenTelemetryScope {
     tenantDetails: TenantDetails,
     callerDetails?: CallerDetails,
     conversationId?: string,
-    sourceMetadata?: Pick<SourceMetadata, "name" | "description">,
+    channel?: Pick<Channel, "name" | "description">,
     parentContext?: ParentContext,
     startTime?: TimeInput,
     endTime?: TimeInput
   ): OutputScope {
-    return new OutputScope(response, agentDetails, tenantDetails, callerDetails, conversationId, sourceMetadata, parentContext, startTime, endTime);
+    return new OutputScope(response, agentDetails, tenantDetails, callerDetails, conversationId, channel, parentContext, startTime, endTime);
   }
 
   private constructor(
@@ -48,7 +48,7 @@ export class OutputScope extends OpenTelemetryScope {
     tenantDetails: TenantDetails,
     callerDetails?: CallerDetails,
     conversationId?: string,
-    sourceMetadata?: Pick<SourceMetadata, "name" | "description">,
+    channel?: Pick<Channel, "name" | "description">,
     parentContext?: ParentContext,
     startTime?: TimeInput,
     endTime?: TimeInput
@@ -76,10 +76,10 @@ export class OutputScope extends OpenTelemetryScope {
       JSON.stringify(this._outputMessages)
     );
 
-    // Set conversation, execution type, and source metadata
+    // Set conversation and channel
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, conversationId);
-    this.setTagMaybe(OpenTelemetryConstants.CHANNEL_NAME_KEY, sourceMetadata?.name);
-    this.setTagMaybe(OpenTelemetryConstants.CHANNEL_LINK_KEY, sourceMetadata?.description);
+    this.setTagMaybe(OpenTelemetryConstants.CHANNEL_NAME_KEY, channel?.name);
+    this.setTagMaybe(OpenTelemetryConstants.CHANNEL_LINK_KEY, channel?.description);
 
   }
 

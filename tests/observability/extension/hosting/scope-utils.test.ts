@@ -261,20 +261,20 @@ test('deriveConversationId returns undefined when missing', () => {
   expect(ScopeUtils.deriveConversationId(ctx)).toBeUndefined();
 });
 
-test('deriveSourceMetadataObject maps channel name/description', () => {
+test('deriveChannelObject maps channel name/description', () => {
   const ctx = makeCtx({ activity: { channelId: 'teams', channelIdSubChannel: 'chat' } as any });
-  expect(ScopeUtils.deriveSourceMetadataObject(ctx)).toEqual({ name: 'teams', description: 'chat' });
+  expect(ScopeUtils.deriveChannelObject(ctx)).toEqual({ name: 'teams', description: 'chat' });
 });
 
-test('deriveSourceMetadataObject returns undefined fields when none', () => {
+test('deriveChannelObject returns undefined fields when none', () => {
   const ctx = makeCtx({ activity: {} as any });
-  expect(ScopeUtils.deriveSourceMetadataObject(ctx)).toEqual({ name: undefined, description: undefined });
+  expect(ScopeUtils.deriveChannelObject(ctx)).toEqual({ name: undefined, description: undefined });
 });
 
-test('buildInvokeAgentDetails merges agent (recipient), conversationId, sourceMetadata', () => {
+test('buildInvokeAgentDetails merges agent (recipient), conversationId, channel', () => {
   const invokeAgentDetails: InvokeAgentDetails = {
     agentId: 'provided',
-    request: { content: 'hi', executionType: ExecutionType.HumanToAgent, sourceMetadata: { id: 'orig-id' } },
+    request: { content: 'hi', executionType: ExecutionType.HumanToAgent, channel: { id: 'orig-id' } },
   };
   const ctx = makeCtx({
     activity: {
@@ -292,19 +292,19 @@ test('buildInvokeAgentDetails merges agent (recipient), conversationId, sourceMe
   const result = ScopeUtils.buildInvokeAgentDetails(invokeAgentDetails, ctx, testAuthToken);
   expect(result.agentId).toBeUndefined();
   expect(result.conversationId).toBe('c-2');
-  expect(result.request?.sourceMetadata).toEqual({ id: 'orig-id', name: 'web', description: 'inbox' });
+  expect(result.request?.channel).toEqual({ id: 'orig-id', name: 'web', description: 'inbox' });
 });
 
 test('buildInvokeAgentDetails keeps base request when TurnContext has no overrides', () => {
   const invokeAgentDetails: InvokeAgentDetails = {
     agentId: 'base-agent',
-    request: { content: 'hi', executionType: ExecutionType.HumanToAgent, sourceMetadata: { description: 'keep', name: 'keep-name' }},
+    request: { content: 'hi', executionType: ExecutionType.HumanToAgent, channel: { description: 'keep', name: 'keep-name' }},
   };
   const ctx = makeCtx({ activity: {} as any });
   const result = ScopeUtils.buildInvokeAgentDetails(invokeAgentDetails, ctx, testAuthToken);
   expect(result.agentId).toBe('base-agent');
   expect(result.conversationId).toBeUndefined();
-  expect(result.request?.sourceMetadata).toEqual({ description: 'keep', name: 'keep-name' });
+  expect(result.request?.channel).toEqual({ description: 'keep', name: 'keep-name' });
 });
 
 describe('ScopeUtils spanKind forwarding', () => {

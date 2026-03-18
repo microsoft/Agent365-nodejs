@@ -8,7 +8,7 @@ import {
   getExecutionTypePair,
   getTargetAgentBaggagePairs,
   getTenantIdPair,
-  getSourceMetadataBaggagePairs,
+  getChannelBaggagePairs,
   getConversationIdAndItemLinkPairs
 } from '@microsoft/agents-a365-observability-hosting';
 import { OpenTelemetryConstants, ExecutionType } from '@microsoft/agents-a365-observability';
@@ -59,8 +59,8 @@ describe('TurnContextUtils', () => {
     expect(pairs.length).toBeGreaterThan(0);
   });
 
-  it('should get source metadata baggage pairs', () => {
-    const pairs = getSourceMetadataBaggagePairs(mockTurnContext);
+  it('should get channel baggage pairs', () => {
+    const pairs = getChannelBaggagePairs(mockTurnContext);
     expect(Array.isArray(pairs)).toBe(true);
   });
 

@@ -262,27 +262,14 @@ describe('Scopes', () => {
       scope?.dispose();
     });
    
-    it('should set conversationId when provided', () => {
+    it('should set conversationId and channel tags when provided', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
-      const scope = (ExecuteToolScope as unknown as any).start({ toolName: 'test-tool' }, testAgentDetails, testTenantDetails, 'conv-tool-123');
+      const scope = (ExecuteToolScope as unknown as any).start({ toolName: 'test-tool' }, testAgentDetails, testTenantDetails, 'conv-tool-123', { name: 'ChannelTool', description: 'https://channel/tool' });
       expect(scope).toBeInstanceOf(ExecuteToolScope);
 
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
       expect(calls).toEqual(expect.arrayContaining([
-        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, val: 'conv-tool-123' })
-      ]));
-
-      scope?.dispose();
-      spy.mockRestore();
-    });
-
-    it('should set source metadata tags when provided', () => {
-      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
-      const scope = (ExecuteToolScope as unknown as any).start({ toolName: 'test-tool' }, testAgentDetails, testTenantDetails, undefined, { name: 'ChannelTool', description: 'https://channel/tool' });
-      expect(scope).toBeInstanceOf(ExecuteToolScope);
-
-      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
-      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, val: 'conv-tool-123' }),
         expect.objectContaining({ key: OpenTelemetryConstants.CHANNEL_NAME_KEY, val: 'ChannelTool' }),
         expect.objectContaining({ key: OpenTelemetryConstants.CHANNEL_LINK_KEY, val: 'https://channel/tool' })
       ]));
@@ -292,7 +279,91 @@ describe('Scopes', () => {
     });
   });
 
+  describe('endpoint.port serialization', () => {
+    it('should record non-443 port as a number on ExecuteToolScope', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const scope = ExecuteToolScope.start(
+        { toolName: 'test-tool', endpoint: { host: 'tools.example.com', port: 8080 } },
+        testAgentDetails, testTenantDetails
+      );
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.SERVER_PORT_KEY, val: 8080 })
+      ]));
+      scope?.dispose();
+      spy.mockRestore();
+    });
 
+    it('should omit port 443 on ExecuteToolScope', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const scope = ExecuteToolScope.start(
+        { toolName: 'test-tool', endpoint: { host: 'tools.example.com', port: 443 } },
+        testAgentDetails, testTenantDetails
+      );
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).not.toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.SERVER_PORT_KEY })
+      ]));
+      scope?.dispose();
+      spy.mockRestore();
+    });
+
+    it('should record non-443 port as a number on InferenceScope', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const scope = InferenceScope.start(
+        { operationName: InferenceOperationType.CHAT, model: 'gpt-4', endpoint: { host: 'api.openai.com', port: 8443 } },
+        testAgentDetails, testTenantDetails
+      );
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.SERVER_PORT_KEY, val: 8443 })
+      ]));
+      scope?.dispose();
+      spy.mockRestore();
+    });
+
+    it('should omit port 443 on InferenceScope', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const scope = InferenceScope.start(
+        { operationName: InferenceOperationType.CHAT, model: 'gpt-4', endpoint: { host: 'api.openai.com', port: 443 } },
+        testAgentDetails, testTenantDetails
+      );
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).not.toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.SERVER_PORT_KEY })
+      ]));
+      scope?.dispose();
+      spy.mockRestore();
+    });
+
+    it('should record non-443 port as a number on InvokeAgentScope', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const scope = InvokeAgentScope.start(
+        { agentId: 'test-agent', endpoint: { host: 'agent.example.com', port: 9090 } },
+        testTenantDetails
+      );
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.SERVER_PORT_KEY, val: 9090 })
+      ]));
+      scope?.dispose();
+      spy.mockRestore();
+    });
+
+    it('should omit port 443 on InvokeAgentScope', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const scope = InvokeAgentScope.start(
+        { agentId: 'test-agent', endpoint: { host: 'agent.example.com', port: 443 } },
+        testTenantDetails
+      );
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).not.toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.SERVER_PORT_KEY })
+      ]));
+      scope?.dispose();
+      spy.mockRestore();
+    });
+  });
 
   describe('InferenceScope', () => {
     it('should create scope with inference details', () => {
@@ -359,37 +430,19 @@ describe('Scopes', () => {
       scope?.dispose();
     });
 
-     it('should set conversationId when provided', () => {
+     it('should set conversationId and channel tags when provided', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
       const inferenceDetails: InferenceDetails = {
         operationName: InferenceOperationType.CHAT,
         model: 'gpt-4'
       };
 
-      const scope = (InferenceScope as unknown as any).start(inferenceDetails, testAgentDetails, testTenantDetails, 'conv-inf-123');
+      const scope = (InferenceScope as unknown as any).start(inferenceDetails, testAgentDetails, testTenantDetails, 'conv-inf-123', { name: 'ChannelInf', description: 'https://channel/inf' });
       expect(scope).toBeInstanceOf(InferenceScope);
 
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
       expect(calls).toEqual(expect.arrayContaining([
-        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, val: 'conv-inf-123' })
-      ]));
-
-      scope?.dispose();
-      spy.mockRestore();
-    });
-
-    it('should set source metadata tags when provided', () => {
-      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
-      const inferenceDetails: InferenceDetails = {
-        operationName: InferenceOperationType.CHAT,
-        model: 'gpt-4'
-      };
-
-      const scope = (InferenceScope as unknown as any).start(inferenceDetails, testAgentDetails, testTenantDetails, undefined, { name: 'ChannelInf', description: 'https://channel/inf' });
-      expect(scope).toBeInstanceOf(InferenceScope);
-
-      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
-      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, val: 'conv-inf-123' }),
         expect.objectContaining({ key: OpenTelemetryConstants.CHANNEL_NAME_KEY, val: 'ChannelInf' }),
         expect.objectContaining({ key: OpenTelemetryConstants.CHANNEL_LINK_KEY, val: 'https://channel/inf' })
       ]));

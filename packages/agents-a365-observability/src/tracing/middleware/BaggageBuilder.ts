@@ -29,12 +29,12 @@ export class BaggageBuilder {
   private pairs: Map<string, string> = new Map();
 
   /**
-   * Set the service name baggage value.
+   * Set the operation source baggage value.
    * Used for server spans to identify the service (e.g., ATG, ACF).
-   * @param value The service name
+   * @param value The operation source
    * @returns Self for method chaining
    */
-  serviceName(value: string | null | undefined): BaggageBuilder {
+  operationSource(value: string | null | undefined): BaggageBuilder {
     this.set(OpenTelemetryConstants.SERVICE_NAME_KEY, value);
     return this;
   }
@@ -216,7 +216,7 @@ export class BaggageBuilder {
    * @param value The channel name
    * @returns Self for method chaining
    */
-  sourceMetadataName(value: string | null | undefined): BaggageBuilder {
+  channelName(value: string | null | undefined): BaggageBuilder {
     this.set(OpenTelemetryConstants.CHANNEL_NAME_KEY, value);
     return this;
   }
@@ -226,7 +226,7 @@ export class BaggageBuilder {
    * @param value The channel link
    * @returns Self for method chaining
    */
-  sourceMetadataDescription(value: string | null | undefined): BaggageBuilder {
+  channelLink(value: string | null | undefined): BaggageBuilder {
     this.set(OpenTelemetryConstants.CHANNEL_LINK_KEY, value);
     return this;
   }
