@@ -14,3 +14,6 @@ export const AGENT_LIFECYCLE = 'agentlifecycle';
 export const USER_CREATED_LIFECYCLE_EVENT = 'agenticuseridentitycreated';
 export const USER_WORKLOAD_ONBOARDING_LIFECYCLE_EVENT = 'agenticuserworkloadonboardingupdated';
 export const USER_DELETED_LIFECYCLE_EVENT = 'agenticuserdeleted';
+export const USER_UNDELETED_LIFECYCLE_EVENT = 'agenticuserundeleted';
+export const USER_UPDATED_LIFECYCLE_EVENT = 'agenticuseridentityupdated';
+export const USER_MANAGER_UPDATED_LIFECYCLE_EVENT = 'agenticusermanagerupdated';

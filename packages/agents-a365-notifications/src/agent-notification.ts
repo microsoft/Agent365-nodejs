@@ -11,6 +11,9 @@ import {
   USER_CREATED_LIFECYCLE_EVENT,
   USER_WORKLOAD_ONBOARDING_LIFECYCLE_EVENT,
   USER_DELETED_LIFECYCLE_EVENT,
+  USER_UNDELETED_LIFECYCLE_EVENT,
+  USER_UPDATED_LIFECYCLE_EVENT,
+  USER_MANAGER_UPDATED_LIFECYCLE_EVENT
 } from './constants';
 
 /**
@@ -281,6 +284,57 @@ function onAgenticUserIdentityDeletedNotification(
 }
 
 /**
+ * Registers a route handler for all lifecycle notifications.
+ *
+ * @param this - The agent application
+ * @param handler - The notification handler
+ * @param rank - Rank order in which to evaluate this
+ * @param autoSignInHandlers - handlers
+ */
+function onAgenticUserIdentityUndeletedNotification(
+  this: AgentApplication<TurnState>,
+  handler: AgentNotificationHandler<TurnState>,
+  rank = 32767,
+  autoSignInHandlers?: string[]
+): void {
+  onLifecycleNotificationInternal(this, USER_UNDELETED_LIFECYCLE_EVENT, handler, rank, autoSignInHandlers);
+}
+
+/**
+ * Registers a route handler for all lifecycle notifications.
+ *
+ * @param this - The agent application
+ * @param handler - The notification handler
+ * @param rank - Rank order in which to evaluate this
+ * @param autoSignInHandlers - handlers
+ */
+function onAgenticUserIdentityUpdatedNotification(
+  this: AgentApplication<TurnState>,
+  handler: AgentNotificationHandler<TurnState>,
+  rank = 32767,
+  autoSignInHandlers?: string[]
+): void {
+  onLifecycleNotificationInternal(this, USER_UPDATED_LIFECYCLE_EVENT, handler, rank, autoSignInHandlers);
+}
+
+/**
+ * Registers a route handler for all lifecycle notifications.
+ *
+ * @param this - The agent application
+ * @param handler - The notification handler
+ * @param rank - Rank order in which to evaluate this
+ * @param autoSignInHandlers - handlers
+ */
+function onAgenticUserManagerUpdatedNotification(
+  this: AgentApplication<TurnState>,
+  handler: AgentNotificationHandler<TurnState>,
+  rank = 32767,
+  autoSignInHandlers?: string[]
+): void {
+  onLifecycleNotificationInternal(this, USER_MANAGER_UPDATED_LIFECYCLE_EVENT, handler, rank, autoSignInHandlers);
+}
+
+/**
  * Checks if the given channel ID is an agentic channel.
  */
 function isAgenticChannel(channelId: string): boolean {
@@ -307,7 +361,10 @@ function isValidLifecycleEvent(lifecycleEvent: string): boolean {
   const validLifecycleEvents = [
     USER_CREATED_LIFECYCLE_EVENT,
     USER_WORKLOAD_ONBOARDING_LIFECYCLE_EVENT,
-    USER_DELETED_LIFECYCLE_EVENT
+    USER_DELETED_LIFECYCLE_EVENT,
+    USER_UNDELETED_LIFECYCLE_EVENT,
+    USER_UPDATED_LIFECYCLE_EVENT,
+    USER_MANAGER_UPDATED_LIFECYCLE_EVENT
   ];
   return validLifecycleEvents.includes(lifecycleEvent.toLowerCase());
 }
@@ -323,6 +380,9 @@ declare module '@microsoft/agents-hosting' {
     onAgenticUserCreatedNotification(routeHandler: AgentNotificationHandler<TState>, rank?: number, autoSignInHandlers?: string[]): void;
     onAgenticUserWorkloadOnboardingNotification(routeHandler: AgentNotificationHandler<TState>, rank?: number, autoSignInHandlers?: string[]): void;
     onAgenticUserDeletedNotification(routeHandler: AgentNotificationHandler<TState>, rank?: number, autoSignInHandlers?: string[]): void;
+    onAgenticUserUndeletedNotification(routeHandler: AgentNotificationHandler<TState>, rank?: number, autoSignInHandlers?: string[]): void;
+    onAgenticUserUpdatedNotification(routeHandler: AgentNotificationHandler<TState>, rank?: number, autoSignInHandlers?: string[]): void;
+    onAgenticUserManagerUpdatedNotification(routeHandler: AgentNotificationHandler<TState>, rank?: number, autoSignInHandlers?: string[]): void;
   }
 }
 
@@ -335,3 +395,6 @@ AgentApplication.prototype.onLifecycleNotification = onLifecycleNotification;
 AgentApplication.prototype.onAgenticUserCreatedNotification = onAgenticUserIdentityCreatedNotification;
 AgentApplication.prototype.onAgenticUserWorkloadOnboardingNotification = onAgenticUserWorkloadOnboardingNotification;
 AgentApplication.prototype.onAgenticUserDeletedNotification = onAgenticUserIdentityDeletedNotification;
+AgentApplication.prototype.onAgenticUserUndeletedNotification = onAgenticUserIdentityUndeletedNotification;
+AgentApplication.prototype.onAgenticUserUpdatedNotification = onAgenticUserIdentityUpdatedNotification;
+AgentApplication.prototype.onAgenticUserManagerUpdatedNotification = onAgenticUserManagerUpdatedNotification;
