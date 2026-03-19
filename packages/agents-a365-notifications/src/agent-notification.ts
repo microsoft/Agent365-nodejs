@@ -284,7 +284,7 @@ function onAgenticUserIdentityDeletedNotification(
 }
 
 /**
- * Registers a route handler for all lifecycle notifications.
+ * Registers a route handler for user identity undeleted lifecycle notifications.
  *
  * @param this - The agent application
  * @param handler - The notification handler
@@ -301,7 +301,7 @@ function onAgenticUserIdentityUndeletedNotification(
 }
 
 /**
- * Registers a route handler for all lifecycle notifications.
+ * Registers a route handler for user identity updated lifecycle notifications.
  *
  * @param this - The agent application
  * @param handler - The notification handler
@@ -318,7 +318,7 @@ function onAgenticUserIdentityUpdatedNotification(
 }
 
 /**
- * Registers a route handler for all lifecycle notifications.
+ * Registers a route handler for user manager updated lifecycle notifications.
  *
  * @param this - The agent application
  * @param handler - The notification handler
