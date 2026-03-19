@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking Changes (`@microsoft/agents-a365-observability`)
 
+- **`InvokeAgentDetails` — inheritance → composition.** `InvokeAgentDetails` no longer extends `AgentDetails`. Agent identity is now accessed via `details.details` (e.g., `invokeAgentDetails.details.agentId` instead of `invokeAgentDetails.agentId`). This aligns with the .NET (`Details`) and Python (`details`) SDKs.
+- **`InvokeAgentDetails` — removed fields.** `request`, `providerName`, and `agentBlueprintId` have been removed from the interface. Use `details.providerName` and `details.agentBlueprintId` from the nested `AgentDetails` instead. Pass `request` as a separate parameter to `InvokeAgentScope.start()`.
+- **`InvokeAgentScope.start()` — new signature.** Parameters `request` (position 3) and `conversationId` (position 6) are now explicit parameters, matching the .NET SDK. The `channel` parameter has been removed; channel data is derived from `request.channel`.
 - **`SourceMetadata` renamed to `Channel`** — The exported interface representing invocation channel information is renamed from `SourceMetadata` to `Channel`.
 - **`AgentRequest.sourceMetadata` renamed to `AgentRequest.channel`** — The optional property on `AgentRequest` is renamed from `sourceMetadata` to `channel` (type changed from `SourceMetadata` to `Channel`).
 - **`BaggageBuilder.serviceName()` renamed to `BaggageBuilder.operationSource()`** — Fluent setter for the service name baggage value.
@@ -17,6 +20,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`InferenceScope.start()` parameter `sourceMetadata` renamed to `channel`** — Type changed from `Pick<SourceMetadata, "name" | "description">` to `Pick<Channel, "name" | "description">`.
 - **`ExecuteToolScope.start()` parameter `sourceMetadata` renamed to `channel`** — Type changed from `Pick<SourceMetadata, "name" | "description">` to `Pick<Channel, "name" | "description">`.
 - **`InvokeAgentScope`** now reads `request.channel` instead of `request.sourceMetadata` for channel name/link tags.
+
+### Added (`@microsoft/agents-a365-observability`)
+
+- **`OpenTelemetryScope.setStartTime()`** — Adjusts the internal duration baseline after construction.
+- **`OpenTelemetryScope.recordCancellation()`** — Records a cancellation event on the span with `error.type = 'TaskCanceledException'` (aligned with Python SDK).
+- **`OpenTelemetryConstants.ERROR_TYPE_CANCELLED`** — Constant for the cancellation error type value.
 
 ### Breaking Changes (`@microsoft/agents-a365-observability-hosting`)
 

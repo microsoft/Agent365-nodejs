@@ -15,6 +15,7 @@ import {
   InferenceDetails,
   InvokeAgentDetails,
   ToolCallDetails,
+  AgentRequest,
 } from '@microsoft/agents-a365-observability';
 import { resolveEmbodiedAgentIds } from './TurnContextUtils';
 
@@ -188,23 +189,35 @@ export class ScopeUtils {
     const tenant = ScopeUtils.deriveTenantDetails(turnContext);
     const callerAgent = ScopeUtils.deriveCallerAgent(turnContext);
     const caller = ScopeUtils.deriveCallerDetails(turnContext);
+    const conversationId = ScopeUtils.deriveConversationId(turnContext);
+    const channel = ScopeUtils.deriveChannelObject(turnContext);
+
+    // Merge agent identity from TurnContext into details.details
     const invokeAgentDetails = ScopeUtils.buildInvokeAgentDetailsCore(details, turnContext, authToken);
+
+    // Build the request with channel info from context
+    const request: AgentRequest = {
+      channel: {
+        ...(channel.name !== undefined ? { name: channel.name } : {}),
+        ...(channel.description !== undefined ? { description: channel.description } : {}),
+      },
+    };
 
     if (!tenant) {
       throw new Error('populateInvokeAgentScopeFromTurnContext: Missing tenant details on TurnContext (recipient)');
     }
 
-    const scope = InvokeAgentScope.start(invokeAgentDetails, tenant, callerAgent, caller, undefined, startTime, endTime, spanKind);
+    const scope = InvokeAgentScope.start(invokeAgentDetails, tenant, request, callerAgent, caller, conversationId, undefined, startTime, endTime, spanKind);
     this.setInputMessageTags(scope, turnContext);
     return scope;
   }
 
   /**
-   * Build InvokeAgentDetails by merging provided details with agent info, conversation id and channel from the TurnContext.
+   * Build InvokeAgentDetails by merging provided details with agent info from the TurnContext.
    * @param details Base invoke-agent details to augment
    * @param turnContext Activity context
    * @param authToken Auth token for resolving agent identity from token claims.
-   * @returns New InvokeAgentDetails suitable for starting an InvokeAgentScope.
+   * @returns New InvokeAgentDetails with merged `details.details` (agent identity).
    */
   public static buildInvokeAgentDetails(details: InvokeAgentDetails, turnContext: TurnContext, authToken: string): InvokeAgentDetails {
     return ScopeUtils.buildInvokeAgentDetailsCore(details, turnContext, authToken);
@@ -212,22 +225,18 @@ export class ScopeUtils {
 
   private static buildInvokeAgentDetailsCore(details: InvokeAgentDetails, turnContext: TurnContext, authToken: string): InvokeAgentDetails {
     const agent = ScopeUtils.deriveAgentDetails(turnContext, authToken);
-    const channelFromContext = ScopeUtils.deriveChannelObject(turnContext);
-    const baseRequest = details.request ?? {};
-    const baseChannel = baseRequest.channel ?? {};
-    const mergedChannel = {
-      ...baseChannel,
-      ...(channelFromContext.name !== undefined ? { name: channelFromContext.name } : {}),
-      ...(channelFromContext.description !== undefined ? { description: channelFromContext.description } : {}),
+    const conversationId = ScopeUtils.deriveConversationId(turnContext);
+
+    // Merge derived agent identity into details.details
+    const mergedAgent: AgentDetails = {
+      ...details.details,
+      ...(agent ?? {}),
+      conversationId: conversationId ?? details.details?.conversationId,
     };
+
     return {
       ...details,
-      ...agent,
-      conversationId: ScopeUtils.deriveConversationId(turnContext),
-      request: {
-        ...baseRequest,
-        channel: mergedChannel
-      }
+      details: mergedAgent,
     };
   }
 

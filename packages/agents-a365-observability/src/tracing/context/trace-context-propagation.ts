@@ -76,7 +76,7 @@ export function injectTraceContext(
  * @example
  * ```typescript
  * const parentCtx = extractTraceContext(req.headers);
- * const scope = InvokeAgentScope.start(details, tenantDetails, undefined, undefined, parentCtx);
+ * const scope = InvokeAgentScope.start(details, tenantDetails, undefined, undefined, undefined, undefined, parentCtx);
  * ```
  */
 export function extractTraceContext(

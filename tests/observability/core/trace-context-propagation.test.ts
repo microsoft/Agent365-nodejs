@@ -141,7 +141,7 @@ describe('Trace Context Propagation', () => {
       const spanId = 'b7ad6b7169203331';
       const extractedCtx = extractTraceContext({ traceparent: `00-${traceId}-${spanId}-01` });
 
-      const scope = InvokeAgentScope.start({ agentId: 'ctx-agent' }, testTenantDetails, undefined, undefined, extractedCtx);
+      const scope = InvokeAgentScope.start({ details: { agentId: 'ctx-agent' } }, testTenantDetails, undefined, undefined, undefined, undefined, extractedCtx);
       expect(scope.getSpanContext().traceId).toBe(traceId);
       scope.dispose();
 
@@ -161,7 +161,7 @@ describe('Trace Context Propagation', () => {
         isRemote: true,
       };
 
-      const scope = InvokeAgentScope.start({ agentId: 'remote-agent' }, testTenantDetails, undefined, undefined, parentRef);
+      const scope = InvokeAgentScope.start({ details: { agentId: 'remote-agent' } }, testTenantDetails, undefined, undefined, undefined, undefined, parentRef);
       scope.dispose();
 
       await flushProvider.forceFlush();

@@ -45,9 +45,11 @@ describe('Scopes', () => {
   describe('InvokeAgentScope', () => {
     it('should create scope with agent details', () => {
       const invokeAgentDetails: InvokeAgentDetails = {
-        agentId: 'test-agent',
-        agentName: 'Test Agent',
-        agentDescription: 'A test agent'
+        details: {
+          agentId: 'test-agent',
+          agentName: 'Test Agent',
+          agentDescription: 'A test agent'
+        }
       };
       
       const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
@@ -58,7 +60,7 @@ describe('Scopes', () => {
 
     it('should create scope with agent ID only', () => {
       const invokeAgentDetails: InvokeAgentDetails = {
-        agentId: 'simple-agent'
+        details: { agentId: 'simple-agent' }
       };
       
       const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
@@ -69,11 +71,13 @@ describe('Scopes', () => {
 
     it('should create scope with additional details', () => {
       const invokeAgentDetails: InvokeAgentDetails = {
-        agentId: 'test-agent',
-        agentName: 'Test Agent',
-        agentDescription: 'A test agent',
-        conversationId: 'conv-123',
-        iconUri: 'https://example.com/icon.png'
+        details: {
+          agentId: 'test-agent',
+          agentName: 'Test Agent',
+          agentDescription: 'A test agent',
+          conversationId: 'conv-123',
+          iconUri: 'https://example.com/icon.png'
+        }
       };
       
       const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
@@ -84,9 +88,11 @@ describe('Scopes', () => {
 
     it('should create scope with platformId', () => {
       const invokeAgentDetails: InvokeAgentDetails = {
-        agentId: 'test-agent',
-        agentName: 'Test Agent',
-        platformId: 'platform-xyz-123'
+        details: {
+          agentId: 'test-agent',
+          agentName: 'Test Agent',
+          platformId: 'platform-xyz-123'
+        }
       };
       
       const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
@@ -97,8 +103,10 @@ describe('Scopes', () => {
 
     it('should create scope with caller details', () => {
       const invokeAgentDetails: InvokeAgentDetails = {
-        agentId: 'test-agent',
-        agentName: 'Test Agent'
+        details: {
+          agentId: 'test-agent',
+          agentName: 'Test Agent'
+        }
       };
       
       const callerDetails: CallerDetails = {
@@ -108,14 +116,14 @@ describe('Scopes', () => {
         tenantId: 'test-tenant'
       };
       
-      const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails, undefined, callerDetails);
+      const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails, undefined, undefined, callerDetails);
 
       expect(scope).toBeInstanceOf(InvokeAgentScope);
       scope?.dispose();
     });
 
     it('should record response', () => {
-      const invokeAgentDetails: InvokeAgentDetails = { agentId: 'test-agent' };
+      const invokeAgentDetails: InvokeAgentDetails = { details: { agentId: 'test-agent' } };
       const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
 
       expect(() => scope?.recordResponse('Test response')).not.toThrow();
@@ -123,7 +131,7 @@ describe('Scopes', () => {
     });
 
     it('should record input and output messages', () => {
-      const invokeAgentDetails: InvokeAgentDetails = { agentId: 'test-agent' };
+      const invokeAgentDetails: InvokeAgentDetails = { details: { agentId: 'test-agent' } };
       const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
 
       expect(() => scope?.recordInputMessages(['Input message 1', 'Input message 2'])).not.toThrow();
@@ -132,7 +140,7 @@ describe('Scopes', () => {
     });
 
     it('should record error', () => {
-      const invokeAgentDetails: InvokeAgentDetails = { agentId: 'test-agent' };
+      const invokeAgentDetails: InvokeAgentDetails = { details: { agentId: 'test-agent' } };
       const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
       const error = new Error('Test error');
 
@@ -140,12 +148,60 @@ describe('Scopes', () => {
       scope?.dispose();
     });
 
+    it('should set conversationId from explicit param', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const scope = InvokeAgentScope.start(
+        { details: { agentId: 'test-agent', conversationId: 'from-details' } },
+        testTenantDetails,
+        undefined, undefined, undefined,
+        'explicit-conv-id'
+      );
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, val: 'explicit-conv-id' })
+      ]));
+      scope?.dispose();
+      spy.mockRestore();
+    });
+
+    it('should fall back to agent.conversationId when conversationId param is omitted', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const scope = InvokeAgentScope.start(
+        { details: { agentId: 'test-agent', conversationId: 'from-details' } },
+        testTenantDetails
+      );
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, val: 'from-details' })
+      ]));
+      scope?.dispose();
+      spy.mockRestore();
+    });
+
+    it('should set channel tags from request.channel', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const scope = InvokeAgentScope.start(
+        { details: { agentId: 'test-agent' } },
+        testTenantDetails,
+        { channel: { name: 'Teams', description: 'https://teams.link' } }
+      );
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.CHANNEL_NAME_KEY, val: 'Teams' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.CHANNEL_LINK_KEY, val: 'https://teams.link' })
+      ]));
+      scope?.dispose();
+      spy.mockRestore();
+    });
+
     it('should propagate platformId in span attributes', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
       const invokeAgentDetails: InvokeAgentDetails = {
-        agentId: 'test-agent',
-        agentName: 'Test Agent',
-        platformId: 'test-platform-123'
+        details: {
+          agentId: 'test-agent',
+          agentName: 'Test Agent',
+          platformId: 'test-platform-123'
+        }
       };
 
       const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
@@ -163,8 +219,10 @@ describe('Scopes', () => {
     it('should propagate caller agent platformId in span attributes', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
       const invokeAgentDetails: InvokeAgentDetails = {
-        agentId: 'test-agent',
-        agentName: 'Test Agent'
+        details: {
+          agentId: 'test-agent',
+          agentName: 'Test Agent'
+        }
       };
       const callerAgentDetails: AgentDetails = {
         agentId: 'caller-agent',
@@ -174,7 +232,7 @@ describe('Scopes', () => {
         platformId: 'caller-platform-xyz'
       } as any;
 
-      const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails, callerAgentDetails, undefined);
+      const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails, undefined, callerAgentDetails, undefined);
       expect(scope).toBeInstanceOf(InvokeAgentScope);
 
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
@@ -189,8 +247,10 @@ describe('Scopes', () => {
     it('should set caller and caller-agent IP tags', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
       const invokeAgentDetails: InvokeAgentDetails = {
-        agentId: 'test-agent',
-        agentName: 'Test Agent'
+        details: {
+          agentId: 'test-agent',
+          agentName: 'Test Agent'
+        }
       };
       const callerDetails: CallerDetails = {
         callerId: 'user-123',
@@ -205,9 +265,9 @@ describe('Scopes', () => {
         agentClientIP: '192.168.1.100'
       } as any;
 
-      const scope1 = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails, undefined, callerDetails);
+      const scope1 = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails, undefined, undefined, callerDetails);
       expect(scope1).toBeInstanceOf(InvokeAgentScope);
-      const scope2 = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails, callerAgentDetails, undefined);
+      const scope2 = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails, undefined, callerAgentDetails, undefined);
       expect(scope2).toBeInstanceOf(InvokeAgentScope);
 
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
@@ -339,7 +399,7 @@ describe('Scopes', () => {
     it('should record non-443 port as a number on InvokeAgentScope', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
       const scope = InvokeAgentScope.start(
-        { agentId: 'test-agent', endpoint: { host: 'agent.example.com', port: 9090 } },
+        { details: { agentId: 'test-agent' }, endpoint: { host: 'agent.example.com', port: 9090 } },
         testTenantDetails
       );
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
@@ -353,7 +413,7 @@ describe('Scopes', () => {
     it('should omit port 443 on InvokeAgentScope', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
       const scope = InvokeAgentScope.start(
-        { agentId: 'test-agent', endpoint: { host: 'agent.example.com', port: 443 } },
+        { details: { agentId: 'test-agent' }, endpoint: { host: 'agent.example.com', port: 443 } },
         testTenantDetails
       );
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
@@ -454,7 +514,7 @@ describe('Scopes', () => {
 
   describe('Dispose pattern', () => {
     it('should support manual dispose', () => {
-      const invokeAgentDetails: InvokeAgentDetails = { agentId: 'test-agent' };
+      const invokeAgentDetails: InvokeAgentDetails = { details: { agentId: 'test-agent' } };
       const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
       scope?.recordResponse('Manual dispose test');
 
@@ -601,8 +661,8 @@ describe('Scopes', () => {
       ['SERVER', SpanKind.SERVER, SpanKind.SERVER],
     ])('InvokeAgentScope spanKind: %s', (_label, input, expected) => {
       const scope = InvokeAgentScope.start(
-        { agentId: 'test-agent' }, testTenantDetails,
-        undefined, undefined, undefined, undefined, undefined, input
+        { details: { agentId: 'test-agent' } }, testTenantDetails,
+        undefined, undefined, undefined, undefined, undefined, undefined, undefined, input
       );
       scope.dispose();
       expect(getFinishedSpan().kind).toBe(expected);
@@ -618,6 +678,52 @@ describe('Scopes', () => {
       );
       scope.dispose();
       expect(getFinishedSpan().kind).toBe(expected);
+    });
+
+    it('setStartTime should adjust duration baseline when called after construction', () => {
+      const laterStart = 1700000002000; // 2 seconds after original start
+      const customEnd  = 1700000010000; // 10 seconds epoch
+
+      const scope = ExecuteToolScope.start(
+        { toolName: 'my-tool' }, testAgentDetails, testTenantDetails,
+        undefined, undefined, undefined,
+        1700000000000, customEnd
+      );
+      scope.setStartTime(laterStart);
+      // setStartTime adjusts the internal baseline, not the OTel span startTime
+      scope.dispose();
+
+      const span = getFinishedSpan();
+      // The OTel span startTime remains the constructor-provided value
+      expect(hrtimeToMs(span.startTime as [number, number])).toBeCloseTo(1700000000000, -1);
+      // The span endTime should reflect the custom end
+      expect(hrtimeToMs(span.endTime as [number, number])).toBeCloseTo(customEnd, -1);
+    });
+
+    it('recordCancellation should set error status and error.type attribute with default reason', () => {
+      const scope = ExecuteToolScope.start(
+        { toolName: 'my-tool' }, testAgentDetails, testTenantDetails
+      );
+      scope.recordCancellation();
+      scope.dispose();
+
+      const span = getFinishedSpan();
+      expect(span.status.code).toBe(2); // SpanStatusCode.ERROR
+      expect(span.status.message).toBe('Task was cancelled');
+      expect(span.attributes[OpenTelemetryConstants.ERROR_TYPE_KEY]).toBe('TaskCanceledException');
+    });
+
+    it('recordCancellation should use custom reason', () => {
+      const scope = ExecuteToolScope.start(
+        { toolName: 'my-tool' }, testAgentDetails, testTenantDetails
+      );
+      scope.recordCancellation('User aborted');
+      scope.dispose();
+
+      const span = getFinishedSpan();
+      expect(span.status.code).toBe(2); // SpanStatusCode.ERROR
+      expect(span.status.message).toBe('User aborted');
+      expect(span.attributes[OpenTelemetryConstants.ERROR_TYPE_KEY]).toBe('TaskCanceledException');
     });
   });
 });

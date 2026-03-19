@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { trace, SpanKind, Span, SpanStatusCode, Attributes, context, AttributeValue, SpanContext, TimeInput } from '@opentelemetry/api';
+import { trace, SpanKind, Span, SpanStatusCode, context, AttributeValue, SpanContext, TimeInput } from '@opentelemetry/api';
 import { OpenTelemetryConstants } from '../constants';
 import { AgentDetails, TenantDetails, CallerDetails } from '../contracts';
 import { createContextWithParentSpanRef } from '../context/parent-span-context';
@@ -180,11 +180,12 @@ export abstract class OpenTelemetryScope implements Disposable {
   }
 
   /**
-   * Sets a tag on the span if telemetry is enabled
+   * Sets a tag on the span if the value is not null or undefined.
+   * @internal Intended for use by scope subclasses and SDK internals only.
    * @param name The tag name
    * @param value The tag value
    */
-  protected setTagMaybe<T extends string | number | boolean | string[] | number[]>(name: string, value: T | null | undefined): void {
+  public setTagMaybe<T extends string | number | boolean | string[] | number[]>(name: string, value: T | null | undefined): void {
     if (value != null) {
       this.span.setAttributes({ [name]: value as string | number | boolean | string[] | number[] });
     }
@@ -214,6 +215,17 @@ export abstract class OpenTelemetryScope implements Disposable {
   }
 
   /**
+   * Sets a custom start time for the scope.
+   * Note: this does not change the span's recorded start time (which is fixed at creation),
+   * but it adjusts the start time used for internal duration calculation at end method to allow 
+   * for more accurate duration reporting when the actual operation start time is known.
+   * @param startTime The start time as milliseconds since epoch, a Date, or an HrTime tuple.
+   */
+  public setStartTime(startTime: TimeInput): void {
+    this.customStartTime = startTime;
+  }
+
+  /**
    * Sets a custom end time for the scope.
    * When set, {@link dispose} will pass this value to `span.end()` instead of using the current wall-clock time.
    * This is useful when the actual end time of the operation is known before the scope is disposed.
@@ -221,6 +233,21 @@ export abstract class OpenTelemetryScope implements Disposable {
    */
   public setEndTime(endTime: TimeInput): void {
     this.customEndTime = endTime;
+  }
+
+  /**
+   * Records a cancellation event on the span.
+   * Sets the span status to ERROR with the cancellation reason and marks the error type as 'TaskCanceledException'.
+   * @param reason Optional cancellation reason. Defaults to 'Task was cancelled'.
+   */
+  public recordCancellation(reason?: string): void {
+    const message = reason ?? 'Task was cancelled';
+    logger.info(`[A365Observability] Recording cancellation on span[${this.span.spanContext().spanId}]: ${message}`);
+    this.span.setStatus({
+      code: SpanStatusCode.ERROR,
+      message
+    });
+    this.span.setAttributes({ [OpenTelemetryConstants.ERROR_TYPE_KEY]: OpenTelemetryConstants.ERROR_TYPE_CANCELLED });
   }
 
   /**
@@ -240,16 +267,13 @@ export abstract class OpenTelemetryScope implements Disposable {
       ? OpenTelemetryScope.timeInputToMs(this.customEndTime)
       : Date.now();
     const durationMs = Math.max(0, endMs - startMs);
-    const duration = durationMs / 1000;
 
-    const finalTags:Attributes = {};
     if (this.errorType) {
-      finalTags[OpenTelemetryConstants.ERROR_TYPE_KEY] = this.errorType;
       this.span.setAttributes({ [OpenTelemetryConstants.ERROR_TYPE_KEY]: this.errorType });
     }
 
     this.hasEnded = true;
-    logger.info(`[A365Observability] Ending span[${this.span.spanContext().spanId}], duration: ${duration}s`);
+    logger.info(`[A365Observability] Ending span[${this.span.spanContext().spanId}], duration: ${(durationMs / 1000).toFixed(3)}s`);
   }
 
   /**

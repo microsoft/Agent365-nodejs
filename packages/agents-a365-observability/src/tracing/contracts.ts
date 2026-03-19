@@ -1,6 +1,5 @@
-// ------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// ------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 
 /**
  * Represents different types of agent invocations
@@ -197,11 +196,11 @@ export interface ServiceEndpoint {
 }
 
 /**
- * Details for invoking another agent
+ * Details for invoking another agent.
  */
-export interface InvokeAgentDetails extends AgentDetails {
-  /** The request payload for the agent invocation */
-  request?: AgentRequest;
+export interface InvokeAgentDetails {
+  /** The agent identity details (composition – matches .NET `Details` / Python `details`). */
+  details: AgentDetails;
 
   /** The endpoint for the agent invocation */
   endpoint?: ServiceEndpoint;
