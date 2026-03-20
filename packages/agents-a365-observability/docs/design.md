@@ -129,23 +129,20 @@ abstract class OpenTelemetryScope implements Disposable {
 Traces agent invocation operations:
 
 ```typescript
-import { InvokeAgentScope, InvokeAgentDetails, TenantDetails } from '@microsoft/agents-a365-observability';
+import { InvokeAgentScope, InvokeAgentDetails, Request, CallerDetails } from '@microsoft/agents-a365-observability';
 
-using scope = InvokeAgentScope.start(
-  {
-    agentId: 'agent-123',
-    agentName: 'MyAgent',
-    endpoint: { host: 'api.example.com', port: 443 },
-    sessionId: 'session-456',
-    request: {
-      content: 'Hello',
-      executionType: ExecutionType.HumanToAgent
-    }
-  },
-  { tenantId: 'tenant-789' },
-  callerAgentDetails,  // Optional caller agent
-  callerDetails        // Optional caller user
-);
+const request: Request = { content: 'Hello', channel: { name: 'Teams' } };
+const invokeAgentDetails: InvokeAgentDetails = {
+  details: { agentId: 'agent-123', agentName: 'MyAgent', tenantId: 'tenant-789' },
+  endpoint: { host: 'api.example.com', port: 443 },
+  sessionId: 'session-456'
+};
+const callerInfo: CallerDetails = {
+  userDetails: { callerId: 'user-1', callerName: 'User' },
+  callerAgentDetails: callerAgent  // Optional, for A2A scenarios
+};
+
+using scope = InvokeAgentScope.start(request, invokeAgentDetails, callerInfo);
 
 scope.recordInputMessages(['Hello']);
 // ... agent processing ...
@@ -156,9 +153,9 @@ scope.recordOutputMessages(['Hi there!']);
 **Span attributes recorded:**
 - Server address and port
 - Session ID
-- Execution type and channel
+- Channel name and link
 - Input/output messages
-- Caller details (ID, UPN, name, tenant, client IP)
+- User details (ID, UPN, name, tenant, client IP)
 - Caller agent details (if agent-to-agent)
 
 #### InferenceScope ([InferenceScope.ts](../src/tracing/scopes/InferenceScope.ts))
@@ -169,15 +166,13 @@ Traces LLM/AI model inference calls:
 import { InferenceScope, InferenceDetails, InferenceOperationType } from '@microsoft/agents-a365-observability';
 
 using scope = InferenceScope.start(
+  { conversationId: 'conv-123' },  // Request (optional)
   {
     operationName: InferenceOperationType.CHAT,
     model: 'gpt-4',
     providerName: 'openai'
   },
-  agentDetails,
-  tenantDetails,
-  conversationId,
-  channel
+  agentDetails  // Must include tenantId
 );
 
 scope.recordInputMessages(['User message']);
@@ -197,6 +192,7 @@ Traces tool execution operations:
 import { ExecuteToolScope, ToolCallDetails } from '@microsoft/agents-a365-observability';
 
 using scope = ExecuteToolScope.start(
+  { conversationId: 'conv-123' },  // Request (optional)
   {
     toolName: 'search',
     arguments: JSON.stringify({ query: 'weather' }),
@@ -204,10 +200,7 @@ using scope = ExecuteToolScope.start(
     toolType: 'mcp',
     endpoint: { host: 'tools.example.com' }
   },
-  agentDetails,
-  tenantDetails,
-  conversationId,
-  channel
+  agentDetails  // Must include tenantId
 );
 
 // ... tool execution ...
@@ -267,8 +260,8 @@ const scope2 = BaggageBuilder.setRequestContext(
 ### InvokeAgentDetails
 
 ```typescript
-interface InvokeAgentDetails extends AgentDetails {
-  request?: AgentRequest;
+interface InvokeAgentDetails {
+  details: AgentDetails;
   endpoint?: ServiceEndpoint;
   sessionId?: string;
 }

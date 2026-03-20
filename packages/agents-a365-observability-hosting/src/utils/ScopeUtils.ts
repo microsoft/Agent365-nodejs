@@ -205,7 +205,7 @@ export class ScopeUtils {
     // Merge agent identity from TurnContext into details.details
     const invokeAgentDetails = ScopeUtils.buildInvokeAgentDetailsCore(details, turnContext, authToken);
 
-    // Build the request only when there is concrete channel or conversationId info
+    // Build the request with channel and conversationId from context
     const hasChannel = channel.name !== undefined || channel.description !== undefined;
     const request: Request = {
       conversationId,
