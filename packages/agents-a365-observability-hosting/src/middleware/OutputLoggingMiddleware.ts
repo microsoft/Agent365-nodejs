@@ -41,7 +41,7 @@ export class OutputLoggingMiddleware implements Middleware {
     const authToken = this.resolveAuthToken(context);
     const agentDetails = ScopeUtils.deriveAgentDetails(context, authToken);
 
-    if (!agentDetails) {
+    if (!agentDetails || !agentDetails.tenantId) {
       await next();
       return;
     }
