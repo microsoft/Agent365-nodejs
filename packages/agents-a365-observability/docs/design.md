@@ -166,13 +166,13 @@ Traces LLM/AI model inference calls:
 import { InferenceScope, InferenceDetails, InferenceOperationType } from '@microsoft/agents-a365-observability';
 
 using scope = InferenceScope.start(
-  { conversationId: 'conv-123' },  // Request (optional)
   {
     operationName: InferenceOperationType.CHAT,
     model: 'gpt-4',
     providerName: 'openai'
   },
-  agentDetails  // Must include tenantId
+  agentDetails,  // Must include tenantId
+  { conversationId: 'conv-123' }  // Request (optional)
 );
 
 scope.recordInputMessages(['User message']);
@@ -192,7 +192,6 @@ Traces tool execution operations:
 import { ExecuteToolScope, ToolCallDetails } from '@microsoft/agents-a365-observability';
 
 using scope = ExecuteToolScope.start(
-  { conversationId: 'conv-123' },  // Request (optional)
   {
     toolName: 'search',
     arguments: JSON.stringify({ query: 'weather' }),

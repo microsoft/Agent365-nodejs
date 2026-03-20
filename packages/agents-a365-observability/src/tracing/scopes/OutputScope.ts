@@ -16,27 +16,27 @@ export class OutputScope extends OpenTelemetryScope {
   /**
    * Creates and starts a new scope for output message tracing.
    *
-   * @param request Optional request context (conversationId, channel).
    * @param response The response containing initial output messages.
    * @param agentDetails The agent producing the output. Tenant ID is derived from `agentDetails.tenantId`.
+   * @param request Optional request context (conversationId, channel).
    * @param userDetails Optional human caller identity details.
    * @param spanDetails Optional span configuration (parentContext, startTime, endTime).
    * @returns A new OutputScope instance.
    */
   public static start(
-    request: Request,
     response: OutputResponse,
     agentDetails: AgentDetails,
+    request?: Request,
     userDetails?: UserDetails,
     spanDetails?: SpanDetails
   ): OutputScope {
-    return new OutputScope(request, response, agentDetails, userDetails, spanDetails);
+    return new OutputScope(response, agentDetails, request, userDetails, spanDetails);
   }
 
   private constructor(
-    request: Request,
     response: OutputResponse,
     agentDetails: AgentDetails,
+    request?: Request,
     userDetails?: UserDetails,
     spanDetails?: SpanDetails
   ) {

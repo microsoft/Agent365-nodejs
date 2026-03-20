@@ -291,13 +291,13 @@ describe('Scopes', () => {
         tenantId: 'tool-tenant',
         callerClientIp: '10.0.0.10'
       };
-      const scope = ExecuteToolScope.start({}, {
+      const scope = ExecuteToolScope.start({
         toolName: 'test-tool',
         arguments: '{"param": "value"}',
         toolCallId: 'call-123',
         description: 'A test tool',
         toolType: 'test'
-      }, testAgentDetails, callerDetails);
+      }, testAgentDetails, undefined, callerDetails);
 
       expect(scope).toBeInstanceOf(ExecuteToolScope);
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
@@ -316,7 +316,7 @@ describe('Scopes', () => {
     });
 
     it('should record response', () => {
-      const scope = ExecuteToolScope.start({}, { toolName: 'test-tool' }, testAgentDetails);
+      const scope = ExecuteToolScope.start({ toolName: 'test-tool' }, testAgentDetails);
 
       expect(() => scope?.recordResponse('Tool result')).not.toThrow();
       scope?.dispose();
@@ -325,8 +325,8 @@ describe('Scopes', () => {
     it('should set conversationId and channel tags when provided', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
       const scope = ExecuteToolScope.start(
-        { conversationId: 'conv-tool-123', channel: { name: 'ChannelTool', description: 'https://channel/tool' } },
-        { toolName: 'test-tool' }, testAgentDetails
+        { toolName: 'test-tool' }, testAgentDetails,
+        { conversationId: 'conv-tool-123', channel: { name: 'ChannelTool', description: 'https://channel/tool' } }
       );
       expect(scope).toBeInstanceOf(ExecuteToolScope);
 
@@ -346,7 +346,6 @@ describe('Scopes', () => {
     it('should record non-443 port as a number on ExecuteToolScope', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
       const scope = ExecuteToolScope.start(
-        undefined,
         { toolName: 'test-tool', endpoint: { host: 'tools.example.com', port: 8080 } },
         testAgentDetails
       );
@@ -361,7 +360,6 @@ describe('Scopes', () => {
     it('should omit port 443 on ExecuteToolScope', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
       const scope = ExecuteToolScope.start(
-        undefined,
         { toolName: 'test-tool', endpoint: { host: 'tools.example.com', port: 443 } },
         testAgentDetails
       );
@@ -376,7 +374,6 @@ describe('Scopes', () => {
     it('should record non-443 port as a number on InferenceScope', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
       const scope = InferenceScope.start(
-        undefined,
         { operationName: InferenceOperationType.CHAT, model: 'gpt-4', endpoint: { host: 'api.openai.com', port: 8443 } },
         testAgentDetails
       );
@@ -391,7 +388,6 @@ describe('Scopes', () => {
     it('should omit port 443 on InferenceScope', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
       const scope = InferenceScope.start(
-        undefined,
         { operationName: InferenceOperationType.CHAT, model: 'gpt-4', endpoint: { host: 'api.openai.com', port: 443 } },
         testAgentDetails
       );
@@ -451,7 +447,7 @@ describe('Scopes', () => {
         finishReasons: ['stop']
       };
 
-      const scope = InferenceScope.start({}, inferenceDetails, testAgentDetails, callerDetails);
+      const scope = InferenceScope.start(inferenceDetails, testAgentDetails, undefined, callerDetails);
 
       expect(scope).toBeInstanceOf(InferenceScope);
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
@@ -475,7 +471,7 @@ describe('Scopes', () => {
         model: 'gpt-3.5-turbo'
       };
 
-      const scope = InferenceScope.start({}, inferenceDetails, testAgentDetails);
+      const scope = InferenceScope.start(inferenceDetails, testAgentDetails);
 
       expect(scope).toBeInstanceOf(InferenceScope);
       scope?.dispose();
@@ -487,7 +483,7 @@ describe('Scopes', () => {
         model: 'gpt-4'
       };
 
-      const scope = InferenceScope.start({}, inferenceDetails, testAgentDetails);
+      const scope = InferenceScope.start(inferenceDetails, testAgentDetails);
 
       expect(() => scope?.recordInputMessages(['Input message'])).not.toThrow();
       expect(() => scope?.recordOutputMessages(['Generated response'])).not.toThrow();
@@ -505,8 +501,8 @@ describe('Scopes', () => {
       };
 
       const scope = InferenceScope.start(
-        { conversationId: 'conv-inf-123', channel: { name: 'ChannelInf', description: 'https://channel/inf' } },
-        inferenceDetails, testAgentDetails
+        inferenceDetails, testAgentDetails,
+        { conversationId: 'conv-inf-123', channel: { name: 'ChannelInf', description: 'https://channel/inf' } }
       );
       expect(scope).toBeInstanceOf(InferenceScope);
 
@@ -535,7 +531,7 @@ describe('Scopes', () => {
       const toolDetails: ToolCallDetails = { toolName: 'test-tool' };
 
       expect(() => {
-        const scope = ExecuteToolScope.start({}, toolDetails, testAgentDetails);
+        const scope = ExecuteToolScope.start(toolDetails, testAgentDetails);
         try {
           scope?.recordResponse('Automatic disposal test');
         } finally {
@@ -591,8 +587,8 @@ describe('Scopes', () => {
       const customEnd   = 1700000005000; // 5 seconds later
 
       const scope = ExecuteToolScope.start(
-        undefined, { toolName: 'my-tool' }, testAgentDetails,
-        undefined, { startTime: customStart, endTime: customEnd }
+        { toolName: 'my-tool' }, testAgentDetails,
+        undefined, undefined, { startTime: customStart, endTime: customEnd }
       );
       scope.dispose();
 
@@ -606,8 +602,8 @@ describe('Scopes', () => {
       const laterEnd    = 1700000048000; // 8 seconds later
 
       const scope = ExecuteToolScope.start(
-        undefined, { toolName: 'my-tool' }, testAgentDetails,
-        undefined, { startTime: customStart }
+        { toolName: 'my-tool' }, testAgentDetails,
+        undefined, undefined, { startTime: customStart }
       );
       scope.setEndTime(laterEnd);
       scope.dispose();
@@ -622,8 +618,8 @@ describe('Scopes', () => {
       const customEnd   = new Date('2023-11-14T22:13:25.000Z'); // 5 seconds later
 
       const scope = ExecuteToolScope.start(
-        undefined, { toolName: 'my-tool' }, testAgentDetails,
-        undefined, { startTime: customStart, endTime: customEnd }
+        { toolName: 'my-tool' }, testAgentDetails,
+        undefined, undefined, { startTime: customStart, endTime: customEnd }
       );
       scope.dispose();
 
@@ -638,8 +634,8 @@ describe('Scopes', () => {
       const customEnd: [number, number]   = [1700000005, 500000000];   // 5.5 seconds later
 
       const scope = ExecuteToolScope.start(
-        undefined, { toolName: 'my-tool' }, testAgentDetails,
-        undefined, { startTime: customStart, endTime: customEnd }
+        { toolName: 'my-tool' }, testAgentDetails,
+        undefined, undefined, { startTime: customStart, endTime: customEnd }
       );
       scope.dispose();
 
@@ -650,7 +646,7 @@ describe('Scopes', () => {
 
     it('should use wall-clock time when no custom times are provided', () => {
       const before = Date.now();
-      const scope = ExecuteToolScope.start({}, { toolName: 'my-tool' }, testAgentDetails);
+      const scope = ExecuteToolScope.start({ toolName: 'my-tool' }, testAgentDetails);
       scope.dispose();
       const after = Date.now();
 
@@ -681,8 +677,8 @@ describe('Scopes', () => {
       ['CLIENT', SpanKind.CLIENT, SpanKind.CLIENT],
     ])('ExecuteToolScope spanKind: %s', (_label, input, expected) => {
       const scope = ExecuteToolScope.start(
-        undefined, { toolName: 'my-tool' }, testAgentDetails,
-        undefined, input !== undefined ? { spanKind: input } : undefined
+        { toolName: 'my-tool' }, testAgentDetails,
+        undefined, undefined, input !== undefined ? { spanKind: input } : undefined
       );
       scope.dispose();
       expect(getFinishedSpan().kind).toBe(expected);
@@ -690,7 +686,7 @@ describe('Scopes', () => {
 
     it('recordCancellation should set error status and error.type attribute with default reason', () => {
       const scope = ExecuteToolScope.start(
-        undefined, { toolName: 'my-tool' }, testAgentDetails
+        { toolName: 'my-tool' }, testAgentDetails
       );
       scope.recordCancellation();
       scope.dispose();
@@ -703,7 +699,7 @@ describe('Scopes', () => {
 
     it('recordCancellation should use custom reason', () => {
       const scope = ExecuteToolScope.start(
-        undefined, { toolName: 'my-tool' }, testAgentDetails
+        { toolName: 'my-tool' }, testAgentDetails
       );
       scope.recordCancellation('User aborted');
       scope.dispose();

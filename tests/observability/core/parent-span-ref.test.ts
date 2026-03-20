@@ -113,7 +113,7 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
           model: 'gpt-4',
           providerName: 'openai',
         };
-        return InferenceScope.start({}, inferenceDetails, testAgentDetails, undefined, { parentContext: parentRef });
+        return InferenceScope.start(inferenceDetails, testAgentDetails, undefined, undefined, { parentContext: parentRef });
       },
       (name: string) => name.toLowerCase().includes('chat'),
     ],
@@ -124,7 +124,7 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
           toolName: 'test-tool',
           arguments: '{"param": "value"}',
         };
-        return ExecuteToolScope.start({}, toolDetails, testAgentDetails, undefined, { parentContext: parentRef });
+        return ExecuteToolScope.start(toolDetails, testAgentDetails, undefined, undefined, { parentContext: parentRef });
       },
       (name: string) => name.toLowerCase().includes('execute_tool'),
     ],
@@ -225,7 +225,7 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
       const activeParentSpan = trace.wrapSpanContext(spanContext);
       const baseCtx = trace.setSpan(otelContext.active(), activeParentSpan);
       const childScope = otelContext.with(baseCtx, () =>
-        InferenceScope.start({}, inferenceDetails, testAgentDetails, undefined, { parentContext: parentRef })
+        InferenceScope.start(inferenceDetails, testAgentDetails, undefined, undefined, { parentContext: parentRef })
       );
       expect(childScope.getSpanContext().traceId).toBe(spanContext.traceId);
 

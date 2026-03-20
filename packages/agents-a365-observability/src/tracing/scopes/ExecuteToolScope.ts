@@ -19,27 +19,27 @@ export class ExecuteToolScope extends OpenTelemetryScope {
   /**
    * Creates and starts a new scope for tool execution tracing.
    *
-   * @param request Optional request context (conversationId, channel).
    * @param details The tool call details (name, type, args, call id, etc.).
    * @param agentDetails The agent executing the tool. Tenant ID is derived from `agentDetails.tenantId`.
+   * @param request Optional request context (conversationId, channel).
    * @param userDetails Optional human caller identity.
    * @param spanDetails Optional span configuration (parentContext, startTime, endTime, spanKind).
    * @returns A new ExecuteToolScope instance.
    */
   public static start(
-    request: Request,
     details: ToolCallDetails,
     agentDetails: AgentDetails,
+    request?: Request,
     userDetails?: UserDetails,
     spanDetails?: SpanDetails
   ): ExecuteToolScope {
-    return new ExecuteToolScope(request, details, agentDetails, userDetails, spanDetails);
+    return new ExecuteToolScope(details, agentDetails, request, userDetails, spanDetails);
   }
 
   private constructor(
-    request: Request,
     details: ToolCallDetails,
     agentDetails: AgentDetails,
+    request?: Request,
     userDetails?: UserDetails,
     spanDetails?: SpanDetails
   ) {
