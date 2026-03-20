@@ -13,7 +13,7 @@ export type HeadersCarrier = Record<string, string | string[] | undefined>;
 /**
  * A parent context for span creation. Accepts either:
  * - {@link ParentSpanRef}: explicit traceId/spanId pair (manual approach)
- * - {@link Context}: an OTel Context, typically from {@link extractTraceContext} or `propagation.extract()`
+ * - {@link Context}: an OTel Context, typically from {@link extractContextFromHeaders} or `propagation.extract()`
  */
 export type ParentContext = ParentSpanRef | Context;
 
@@ -52,11 +52,11 @@ export function isParentSpanRef(value: ParentContext): value is ParentSpanRef {
  * @example
  * ```typescript
  * const headers: Record<string, string> = {};
- * injectTraceContext(headers);
+ * injectContextToHeaders(headers);
  * await fetch('http://service-b/process', { headers });
  * ```
  */
-export function injectTraceContext(
+export function injectContextToHeaders(
   headers: Record<string, string>,
   ctx?: Context
 ): Record<string, string> {
@@ -75,11 +75,11 @@ export function injectTraceContext(
  *
  * @example
  * ```typescript
- * const parentCtx = extractTraceContext(req.headers);
- * const scope = InvokeAgentScope.start(details, tenantDetails, undefined, undefined, undefined, undefined, parentCtx);
+ * const parentCtx = extractContextFromHeaders(req.headers);
+ * const scope = InvokeAgentScope.start(request, invokeAgentDetails, undefined, { parentContext: parentCtx });
  * ```
  */
-export function extractTraceContext(
+export function extractContextFromHeaders(
   headers: HeadersCarrier,
   baseCtx?: Context
 ): Context {
@@ -98,11 +98,11 @@ export function extractTraceContext(
  * @example
  * ```typescript
  * runWithExtractedTraceContext(req.headers, () => {
- *   const scope = InvokeAgentScope.start(details, tenantDetails);
+ *   const scope = InvokeAgentScope.start(undefined, invokeAgentDetails);
  *   scope.dispose();
  * });
  * ```
  */
 export function runWithExtractedTraceContext<T>(headers: HeadersCarrier, callback: () => T): T {
-  return context.with(extractTraceContext(headers), callback);
+  return context.with(extractContextFromHeaders(headers), callback);
 }

@@ -9,23 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking Changes (`@microsoft/agents-a365-observability`)
 
-- **`InvokeAgentDetails` — inheritance → composition.** `InvokeAgentDetails` no longer extends `AgentDetails`. Agent identity is now accessed via `details.details` (e.g., `invokeAgentDetails.details.agentId` instead of `invokeAgentDetails.agentId`). This aligns with the .NET (`Details`) and Python (`details`) SDKs.
-- **`InvokeAgentDetails` — removed fields.** `request`, `providerName`, and `agentBlueprintId` have been removed from the interface. Use `details.providerName` and `details.agentBlueprintId` from the nested `AgentDetails` instead. Pass `request` as a separate parameter to `InvokeAgentScope.start()`.
-- **`InvokeAgentScope.start()` — new signature.** Parameters `request` (position 3) and `conversationId` (position 6) are now explicit parameters, matching the .NET SDK. The `channel` parameter has been removed; channel data is derived from `request.channel`.
+- **`InvokeAgentDetails` — inheritance → composition.** No longer extends `AgentDetails`. Agent identity is accessed via `invokeAgentDetails.details.agentId`. Removed `request`, `providerName`, `agentBlueprintId` fields.
+- **`InvokeAgentScope.start()` — new signature.** `start(request?, invokeAgentDetails, callerInfo?, spanDetails?)`. Tenant ID is derived from `invokeAgentDetails.details.tenantId` (required). `callerDetails` and `callerAgentDetails` are wrapped in `InvokeAgentCallerDetails`. Span options (`parentContext`, `startTime`, `endTime`, `spanKind`) are grouped in `SpanDetails`.
+- **`InferenceScope.start()` — new signature.** `start(request?, details, agentDetails, callerDetails?, spanDetails?)`. Tenant ID derived from `agentDetails.tenantId` (required). `channel` and `conversationId` moved into `InferenceRequest`.
+- **`ExecuteToolScope.start()` — new signature.** `start(request?, details, agentDetails, callerDetails?, spanDetails?)`. Tenant ID derived from `agentDetails.tenantId` (required). `channel` and `conversationId` moved into `ToolRequest`.
+- **`OutputScope.start()` — new signature.** `start(request?, response, agentDetails, callerDetails?, spanDetails?)`. Tenant ID derived from `agentDetails.tenantId` (required).
+- **`tenantDetails` parameter removed** from all scope `start()` methods. Tenant ID is now required on `AgentDetails.tenantId`; scopes throw if missing.
+- **`injectTraceContext()` renamed to `injectContextToHeaders()`**.
+- **`extractTraceContext()` renamed to `extractContextFromHeaders()`**.
+- **`OpenTelemetryScope.setStartTime()` removed.** Use `SpanDetails.startTime` on scope construction instead.
+- **`AgentRequest.conversationId`** — New optional field for passing conversation ID via the request object.
 - **`SourceMetadata` renamed to `Channel`** — The exported interface representing invocation channel information is renamed from `SourceMetadata` to `Channel`.
 - **`AgentRequest.sourceMetadata` renamed to `AgentRequest.channel`** — The optional property on `AgentRequest` is renamed from `sourceMetadata` to `channel` (type changed from `SourceMetadata` to `Channel`).
 - **`BaggageBuilder.serviceName()` renamed to `BaggageBuilder.operationSource()`** — Fluent setter for the service name baggage value.
 - **`BaggageBuilder.sourceMetadataName()` renamed to `BaggageBuilder.channelName()`** — Fluent setter for the channel name baggage value.
 - **`BaggageBuilder.sourceMetadataDescription()` renamed to `BaggageBuilder.channelLink()`** — Fluent setter for the channel link baggage value.
-- **`InferenceScope.start()` parameter `sourceMetadata` renamed to `channel`** — Type changed from `Pick<SourceMetadata, "name" | "description">` to `Pick<Channel, "name" | "description">`.
-- **`ExecuteToolScope.start()` parameter `sourceMetadata` renamed to `channel`** — Type changed from `Pick<SourceMetadata, "name" | "description">` to `Pick<Channel, "name" | "description">`.
-- **`InvokeAgentScope`** now reads `request.channel` instead of `request.sourceMetadata` for channel name/link tags.
 
 ### Added (`@microsoft/agents-a365-observability`)
 
-- **`OpenTelemetryScope.setStartTime()`** — Adjusts the internal duration baseline after construction.
+- **`SpanDetails`** — New interface grouping `parentContext`, `startTime`, `endTime`, `spanKind` for scope construction.
+- **`InvokeAgentCallerDetails`** — New interface wrapping `callerDetails` and `callerAgentDetails` for `InvokeAgentScope`.
+- **`InferenceRequest`** — New interface for inference scope request context (`conversationId`, `channel`).
+- **`ToolRequest`** — New interface for tool scope request context (`conversationId`, `channel`).
+- **`OutputRequest`** — New interface for output scope request context (`conversationId`, `channel`).
 - **`OpenTelemetryScope.recordCancellation()`** — Records a cancellation event on the span with `error.type = 'TaskCanceledException'` (aligned with Python SDK).
 - **`OpenTelemetryConstants.ERROR_TYPE_CANCELLED`** — Constant for the cancellation error type value.
+- **`ObservabilityBuilder.withServiceNamespace()`** — Configures the `service.namespace` resource attribute.
 
 ### Breaking Changes (`@microsoft/agents-a365-observability-hosting`)
 

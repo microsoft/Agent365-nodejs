@@ -5,9 +5,10 @@ import { TurnContext, Middleware, SendActivitiesHandler } from '@microsoft/agent
 import {
   OutputScope,
   AgentDetails,
-  TenantDetails,
   CallerDetails,
   ParentSpanRef,
+  OutputRequest,
+  SpanDetails,
   logger,
   isPerRequestExportEnabled,
 } from '@microsoft/agents-a365-observability';
@@ -39,9 +40,8 @@ export class OutputLoggingMiddleware implements Middleware {
   async onTurn(context: TurnContext, next: () => Promise<void>): Promise<void> {
     const authToken = this.resolveAuthToken(context);
     const agentDetails = ScopeUtils.deriveAgentDetails(context, authToken);
-    const tenantDetails = ScopeUtils.deriveTenantDetails(context);
 
-    if (!agentDetails || !tenantDetails) {
+    if (!agentDetails) {
       await next();
       return;
     }
@@ -50,8 +50,13 @@ export class OutputLoggingMiddleware implements Middleware {
     const conversationId = ScopeUtils.deriveConversationId(context);
     const channel = ScopeUtils.deriveChannelObject(context);
 
+    const request: OutputRequest = {
+      conversationId,
+      channel,
+    };
+
     context.onSendActivities(
-      this._createSendHandler(context, agentDetails, tenantDetails, callerDetails, conversationId, channel)
+      this._createSendHandler(context, agentDetails, callerDetails, request)
     );
 
     await next();
@@ -81,10 +86,8 @@ export class OutputLoggingMiddleware implements Middleware {
   private _createSendHandler(
     turnContext: TurnContext,
     agentDetails: AgentDetails,
-    tenantDetails: TenantDetails,
     callerDetails?: CallerDetails,
-    conversationId?: string,
-    channel?: { name?: string; description?: string },
+    request?: OutputRequest,
   ): SendActivitiesHandler {
     return async (_ctx, activities, sendNext) => {
       const messages = activities
@@ -102,14 +105,16 @@ export class OutputLoggingMiddleware implements Middleware {
         );
       }
 
+      const spanDetails: SpanDetails | undefined = parentSpanRef
+        ? { parentContext: parentSpanRef }
+        : undefined;
+
       const outputScope = OutputScope.start(
+        request,
         { messages },
         agentDetails,
-        tenantDetails,
         callerDetails,
-        conversationId,
-        channel,
-        parentSpanRef,
+        spanDetails,
       );
       try {
         return await sendNext();

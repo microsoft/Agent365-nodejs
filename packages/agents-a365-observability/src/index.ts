@@ -23,8 +23,8 @@ export { ParentSpanRef, runWithParentSpanRef, createContextWithParentSpanRef } f
 export {
   HeadersCarrier,
   ParentContext,
-  injectTraceContext,
-  extractTraceContext,
+  injectContextToHeaders,
+  extractContextFromHeaders,
   runWithExtractedTraceContext
 } from './tracing/context/trace-context-propagation';
 
@@ -45,6 +45,11 @@ export {
   InferenceOperationType,
   InferenceResponse,
   OutputResponse,
+  OutputRequest,
+  SpanDetails,
+  InferenceRequest,
+  ToolRequest,
+  InvokeAgentCallerDetails,
 } from './tracing/contracts';
 
 // Scopes

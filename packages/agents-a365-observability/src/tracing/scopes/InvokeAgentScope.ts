@@ -1,16 +1,15 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { SpanKind, TimeInput } from '@opentelemetry/api';
+import { SpanKind } from '@opentelemetry/api';
 import { OpenTelemetryScope } from './OpenTelemetryScope';
 import {
   InvokeAgentDetails,
-  TenantDetails,
   CallerDetails,
-  AgentDetails,
-  AgentRequest
+  InvokeAgentCallerDetails,
+  AgentRequest,
+  SpanDetails,
 } from '../contracts';
-import { ParentContext } from '../context/trace-context-propagation';
 import { OpenTelemetryConstants } from '../constants';
 
 /**
@@ -19,67 +18,72 @@ import { OpenTelemetryConstants } from '../constants';
 export class InvokeAgentScope extends OpenTelemetryScope {
   /**
    * Creates and starts a new scope for agent invocation tracing.
-   * @param invokeAgentDetails The details of the agent invocation (agent identity via `.details`, endpoint, sessionId).
-   * @param tenantDetails The tenant details.
-   * @param request Optional request payload (content, executionType, channel).
-   * @param callerAgentDetails The details of the caller agent.
-   * @param callerDetails The details of the non-agentic caller.
-   * @param conversationId Optional conversation id to tag on the span (`gen_ai.conversation.id`).
-   * @param parentContext Optional parent context for cross-async-boundary tracing.
-   *   Accepts a ParentSpanRef (manual traceId/spanId) or an OTel Context (e.g. from extractTraceContext).
-   * @param startTime Optional explicit start time (ms epoch, Date, or HrTime).
-   * @param endTime Optional explicit end time (ms epoch, Date, or HrTime).
-   * @param spanKind Optional span kind override. Defaults to `SpanKind.CLIENT`.
-   *   Use `SpanKind.SERVER` when the agent is receiving an inbound request.
+   *
+   * @param request Optional request payload (content, executionType, channel, conversationId).
+   * @param invokeAgentDetails The details of the agent invocation (agent identity via `.details`, endpoint).
+   *   Tenant ID is derived from `invokeAgentDetails.details.tenantId`.
+   * @param callerInfo Optional caller information. Supports three scenarios:
+   *   - Human caller only: `{ callerDetails: { callerId, callerName, ... } }`
+   *   - Agent caller only: `{ callerAgentDetails: { agentId, agentName, ... } }` —
+   *     `microsoft.caller.*` attributes are derived from the agent details.
+   *   - Both (A2A with human in chain): `{ callerDetails: { ... }, callerAgentDetails: { ... } }`
+   * @param spanDetails Optional span configuration (parentContext, startTime, endTime, spanKind).
    * @returns A new InvokeAgentScope instance.
    */
   public static start(
+    request: AgentRequest | undefined,
     invokeAgentDetails: InvokeAgentDetails,
-    tenantDetails: TenantDetails,
-    request?: AgentRequest,
-    callerAgentDetails?: AgentDetails,
-    callerDetails?: CallerDetails,
-    conversationId?: string,
-    parentContext?: ParentContext,
-    startTime?: TimeInput,
-    endTime?: TimeInput,
-    spanKind?: SpanKind
+    callerInfo?: InvokeAgentCallerDetails,
+    spanDetails?: SpanDetails
   ): InvokeAgentScope {
-    return new InvokeAgentScope(invokeAgentDetails, tenantDetails, request, callerAgentDetails, callerDetails, conversationId, parentContext, startTime, endTime, spanKind);
+    return new InvokeAgentScope(request, invokeAgentDetails, callerInfo, spanDetails);
   }
 
   private constructor(
+    request: AgentRequest | undefined,
     invokeAgentDetails: InvokeAgentDetails,
-    tenantDetails: TenantDetails,
-    request?: AgentRequest,
-    callerAgentDetails?: AgentDetails,
-    callerDetails?: CallerDetails,
-    conversationId?: string,
-    parentContext?: ParentContext,
-    startTime?: TimeInput,
-    endTime?: TimeInput,
-    spanKind?: SpanKind
+    callerInfo?: InvokeAgentCallerDetails,
+    spanDetails?: SpanDetails
   ) {
     const agent = invokeAgentDetails.details;
 
+    // Derive tenant details from agent.tenantId (required for telemetry)
+    if (!agent.tenantId) {
+      throw new Error('InvokeAgentScope: tenantId is required on invokeAgentDetails.details');
+    }
+    const tenantDetails = { tenantId: agent.tenantId };
+
+    // Resolve CallerDetails for the base class (microsoft.caller.* attributes).
+    // When only callerAgentDetails is provided (agent-only caller), derive CallerDetails from it.
+    let baseCallerDetails: CallerDetails | undefined = callerInfo?.callerDetails;
+    if (!baseCallerDetails && callerInfo?.callerAgentDetails) {
+      const callerAgent = callerInfo.callerAgentDetails;
+      baseCallerDetails = {
+        callerId: callerAgent.agentAUID,
+        callerUpn: callerAgent.agentUPN,
+        callerName: callerAgent.agentName,
+        tenantId: callerAgent.tenantId,
+      };
+    }
+
     super(
-      spanKind ?? SpanKind.CLIENT,
+      spanDetails?.spanKind ?? SpanKind.CLIENT,
       OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME,
       agent.agentName
         ? `${OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME} ${agent.agentName}`
         : OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME,
       agent,
       tenantDetails,
-      parentContext,
-      startTime,
-      endTime,
-      callerDetails
+      spanDetails?.parentContext,
+      spanDetails?.startTime,
+      spanDetails?.endTime,
+      baseCallerDetails
     );
 
     // Set provider name from agent details
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY, agent.providerName);
 
-    // Set session ID and endpoint information
+    // Set session ID
     this.setTagMaybe(OpenTelemetryConstants.SESSION_ID_KEY, invokeAgentDetails.sessionId);
 
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY, agent.agentBlueprintId);
@@ -93,23 +97,24 @@ export class InvokeAgentScope extends OpenTelemetryScope {
       }
     }
 
-    // Set channel tags from request (aligned with .NET/Python: channel lives inside request)
+    // Set channel tags from request
     if (request?.channel) {
       this.setTagMaybe(OpenTelemetryConstants.CHANNEL_NAME_KEY, request.channel.name);
       this.setTagMaybe(OpenTelemetryConstants.CHANNEL_LINK_KEY, request.channel.description);
     }
 
-    // Use explicit conversationId param, falling back to agent.conversationId
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, conversationId ?? agent.conversationId);
+    // Use explicit conversationId from request, falling back to agent.conversationId
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, request?.conversationId ?? agent.conversationId);
 
-    // Set caller agent details tags
-    if (callerAgentDetails) {
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_NAME_KEY, callerAgentDetails.agentName);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_ID_KEY, callerAgentDetails.agentId);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_APPLICATION_ID_KEY, callerAgentDetails.agentBlueprintId);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_USER_ID_KEY, callerAgentDetails.agentAUID);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_UPN_KEY, callerAgentDetails.agentUPN);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_PLATFORM_ID_KEY, callerAgentDetails.platformId);
+    // Set caller agent details tags for A2A scenarios
+    const callerAgent = callerInfo?.callerAgentDetails;
+    if (callerAgent) {
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_NAME_KEY, callerAgent.agentName);
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_ID_KEY, callerAgent.agentId);
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_APPLICATION_ID_KEY, callerAgent.agentBlueprintId);
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_USER_ID_KEY, callerAgent.agentAUID);
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_UPN_KEY, callerAgent.agentUPN);
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_PLATFORM_ID_KEY, callerAgent.platformId);
     }
   }
 
