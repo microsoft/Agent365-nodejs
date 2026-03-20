@@ -27,7 +27,7 @@ export class InferenceScope extends OpenTelemetryScope {
    * @returns A new InferenceScope instance
    */
   public static start(
-    request: Request | undefined,
+    request: Request,
     details: InferenceDetails,
     agentDetails: AgentDetails,
     userDetails?: UserDetails,
@@ -37,7 +37,7 @@ export class InferenceScope extends OpenTelemetryScope {
   }
 
   private constructor(
-    request: Request | undefined,
+    request: Request,
     details: InferenceDetails,
     agentDetails: AgentDetails,
     userDetails?: UserDetails,

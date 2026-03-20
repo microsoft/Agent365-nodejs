@@ -159,12 +159,10 @@ export class ScopeUtils {
     }
 
     const hasChannel = channel.name !== undefined || channel.description !== undefined;
-    const request: Request | undefined = (conversationId || hasChannel)
-      ? {
-          conversationId,
-          ...(hasChannel ? { channel: { name: channel.name, description: channel.description } } : {}),
-        }
-      : undefined;
+    const request: Request = {
+      conversationId,
+      ...(hasChannel ? { channel: { name: channel.name, description: channel.description } } : {}),
+    };
 
     const spanDetails: SpanDetails | undefined = (startTime || endTime)
       ? { startTime, endTime }
@@ -285,12 +283,10 @@ export class ScopeUtils {
     }
 
     const hasChannel = channel.name !== undefined || channel.description !== undefined;
-    const request: Request | undefined = (conversationId || hasChannel)
-      ? {
-          conversationId,
-          ...(hasChannel ? { channel: { name: channel.name, description: channel.description } } : {}),
-        }
-      : undefined;
+    const request: Request = {
+      conversationId,
+      ...(hasChannel ? { channel: { name: channel.name, description: channel.description } } : {}),
+    };
 
     const spanDetailsObj: SpanDetails | undefined = (startTime || endTime || spanKind)
       ? { startTime, endTime, spanKind }

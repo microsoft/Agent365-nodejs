@@ -24,7 +24,7 @@ export class OutputScope extends OpenTelemetryScope {
    * @returns A new OutputScope instance.
    */
   public static start(
-    request: Request | undefined,
+    request: Request,
     response: OutputResponse,
     agentDetails: AgentDetails,
     userDetails?: UserDetails,
@@ -34,7 +34,7 @@ export class OutputScope extends OpenTelemetryScope {
   }
 
   private constructor(
-    request: Request | undefined,
+    request: Request,
     response: OutputResponse,
     agentDetails: AgentDetails,
     userDetails?: UserDetails,

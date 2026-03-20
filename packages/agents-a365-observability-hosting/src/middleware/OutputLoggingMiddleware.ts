@@ -110,7 +110,7 @@ export class OutputLoggingMiddleware implements Middleware {
         : undefined;
 
       const outputScope = OutputScope.start(
-        request,
+        request ?? {},
         { messages },
         agentDetails,
         userDetails,

@@ -291,7 +291,7 @@ describe('Scopes', () => {
         tenantId: 'tool-tenant',
         callerClientIp: '10.0.0.10'
       };
-      const scope = ExecuteToolScope.start(undefined, {
+      const scope = ExecuteToolScope.start({}, {
         toolName: 'test-tool',
         arguments: '{"param": "value"}',
         toolCallId: 'call-123',
@@ -316,7 +316,7 @@ describe('Scopes', () => {
     });
 
     it('should record response', () => {
-      const scope = ExecuteToolScope.start(undefined, { toolName: 'test-tool' }, testAgentDetails);
+      const scope = ExecuteToolScope.start({}, { toolName: 'test-tool' }, testAgentDetails);
 
       expect(() => scope?.recordResponse('Tool result')).not.toThrow();
       scope?.dispose();
@@ -451,7 +451,7 @@ describe('Scopes', () => {
         finishReasons: ['stop']
       };
 
-      const scope = InferenceScope.start(undefined, inferenceDetails, testAgentDetails, callerDetails);
+      const scope = InferenceScope.start({}, inferenceDetails, testAgentDetails, callerDetails);
 
       expect(scope).toBeInstanceOf(InferenceScope);
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
@@ -475,7 +475,7 @@ describe('Scopes', () => {
         model: 'gpt-3.5-turbo'
       };
 
-      const scope = InferenceScope.start(undefined, inferenceDetails, testAgentDetails);
+      const scope = InferenceScope.start({}, inferenceDetails, testAgentDetails);
 
       expect(scope).toBeInstanceOf(InferenceScope);
       scope?.dispose();
@@ -487,7 +487,7 @@ describe('Scopes', () => {
         model: 'gpt-4'
       };
 
-      const scope = InferenceScope.start(undefined, inferenceDetails, testAgentDetails);
+      const scope = InferenceScope.start({}, inferenceDetails, testAgentDetails);
 
       expect(() => scope?.recordInputMessages(['Input message'])).not.toThrow();
       expect(() => scope?.recordOutputMessages(['Generated response'])).not.toThrow();
@@ -535,7 +535,7 @@ describe('Scopes', () => {
       const toolDetails: ToolCallDetails = { toolName: 'test-tool' };
 
       expect(() => {
-        const scope = ExecuteToolScope.start(undefined, toolDetails, testAgentDetails);
+        const scope = ExecuteToolScope.start({}, toolDetails, testAgentDetails);
         try {
           scope?.recordResponse('Automatic disposal test');
         } finally {
@@ -650,7 +650,7 @@ describe('Scopes', () => {
 
     it('should use wall-clock time when no custom times are provided', () => {
       const before = Date.now();
-      const scope = ExecuteToolScope.start(undefined, { toolName: 'my-tool' }, testAgentDetails);
+      const scope = ExecuteToolScope.start({}, { toolName: 'my-tool' }, testAgentDetails);
       scope.dispose();
       const after = Date.now();
 

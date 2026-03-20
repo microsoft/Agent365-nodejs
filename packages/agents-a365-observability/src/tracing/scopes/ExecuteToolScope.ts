@@ -27,7 +27,7 @@ export class ExecuteToolScope extends OpenTelemetryScope {
    * @returns A new ExecuteToolScope instance.
    */
   public static start(
-    request: Request | undefined,
+    request: Request,
     details: ToolCallDetails,
     agentDetails: AgentDetails,
     userDetails?: UserDetails,
@@ -37,7 +37,7 @@ export class ExecuteToolScope extends OpenTelemetryScope {
   }
 
   private constructor(
-    request: Request | undefined,
+    request: Request,
     details: ToolCallDetails,
     agentDetails: AgentDetails,
     userDetails?: UserDetails,

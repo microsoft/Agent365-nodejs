@@ -98,7 +98,7 @@ export function extractContextFromHeaders(
  * @example
  * ```typescript
  * runWithExtractedTraceContext(req.headers, () => {
- *   const scope = InvokeAgentScope.start(undefined, invokeAgentDetails);
+ *   const scope = InvokeAgentScope.start({}, invokeAgentDetails);
  *   scope.dispose();
  * });
  * ```
