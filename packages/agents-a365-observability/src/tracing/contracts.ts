@@ -70,14 +70,12 @@ export interface Channel {
 }
 
 /**
- * Represents a request to an agent with telemetry context
+ * Represents a request with telemetry context.
+ * Used across all scope types for channel and conversation tracking.
  */
-export interface AgentRequest {
+export interface Request {
   /** The content of the request */
   content?: string;
-
-  /** The type of invocation (how the agent was called) */
-  executionType?: ExecutionType;
 
   /** Optional session identifier for grouping related requests */
   sessionId?: string;
@@ -87,28 +85,6 @@ export interface AgentRequest {
 
   /** Optional conversation identifier */
   conversationId?: string;
-}
-
-/**
- * Represents a request context for inference operations
- */
-export interface InferenceRequest {
-  /** Optional conversation identifier */
-  conversationId?: string;
-
-  /** Optional channel; only `name` (channel name) and `description` (channel link/URL) are used for tagging. */
-  channel?: Pick<Channel, "name" | "description">;
-}
-
-/**
- * Represents a request context for tool execution operations
- */
-export interface ToolRequest {
-  /** Optional conversation identifier */
-  conversationId?: string;
-
-  /** Optional channel; only `name` (channel name) and `description` (channel link/URL) are used for tagging. */
-  channel?: Pick<Channel, "name" | "description">;
 }
 
 /**
@@ -181,9 +157,9 @@ export interface ToolCallDetails {
 }
 
 /**
- * Details about a caller
+ * Details about the human user caller.
  */
-export interface CallerDetails {
+export interface UserDetails {
   /** The unique identifier for the caller */
   callerId?: string;
 
@@ -204,12 +180,12 @@ export interface CallerDetails {
 }
 
 /**
- * Caller details for agent invocation scopes.
+ * Caller details for scope creation.
  * Supports human callers, agent callers, or both (A2A with a human in the chain).
  */
-export interface InvokeAgentCallerDetails {
-  /** Optional human/non-agentic caller identity */
-  callerDetails?: CallerDetails;
+export interface CallerDetails {
+  /** Optional human caller identity */
+  userDetails?: UserDetails;
 
   /** Optional calling agent identity for A2A (agent-to-agent) scenarios */
   callerAgentDetails?: AgentDetails;
@@ -297,17 +273,6 @@ export interface InferenceResponse {
   /** Number of output tokens generated */
   outputTokens?: number;
 
-}
-
-/**
- * Represents a request context for output message operations
- */
-export interface OutputRequest {
-  /** Optional conversation identifier */
-  conversationId?: string;
-
-  /** Optional channel; only `name` (channel name) and `description` (channel link/URL) are used for tagging. */
-  channel?: Pick<Channel, "name" | "description">;
 }
 
 /**

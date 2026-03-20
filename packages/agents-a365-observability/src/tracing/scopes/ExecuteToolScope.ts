@@ -6,8 +6,8 @@ import { OpenTelemetryScope } from './OpenTelemetryScope';
 import {
   ToolCallDetails,
   AgentDetails,
-  CallerDetails,
-  ToolRequest,
+  UserDetails,
+  Request,
   SpanDetails,
 } from '../contracts';
 import { OpenTelemetryConstants } from '../constants';
@@ -22,25 +22,25 @@ export class ExecuteToolScope extends OpenTelemetryScope {
    * @param request Optional request context (conversationId, channel).
    * @param details The tool call details (name, type, args, call id, etc.).
    * @param agentDetails The agent executing the tool. Tenant ID is derived from `agentDetails.tenantId`.
-   * @param callerDetails Optional caller identity.
+   * @param userDetails Optional human caller identity.
    * @param spanDetails Optional span configuration (parentContext, startTime, endTime, spanKind).
    * @returns A new ExecuteToolScope instance.
    */
   public static start(
-    request: ToolRequest | undefined,
+    request: Request | undefined,
     details: ToolCallDetails,
     agentDetails: AgentDetails,
-    callerDetails?: CallerDetails,
+    userDetails?: UserDetails,
     spanDetails?: SpanDetails
   ): ExecuteToolScope {
-    return new ExecuteToolScope(request, details, agentDetails, callerDetails, spanDetails);
+    return new ExecuteToolScope(request, details, agentDetails, userDetails, spanDetails);
   }
 
   private constructor(
-    request: ToolRequest | undefined,
+    request: Request | undefined,
     details: ToolCallDetails,
     agentDetails: AgentDetails,
-    callerDetails?: CallerDetails,
+    userDetails?: UserDetails,
     spanDetails?: SpanDetails
   ) {
     // Derive tenant details from agentDetails.tenantId (required for telemetry)
@@ -58,7 +58,7 @@ export class ExecuteToolScope extends OpenTelemetryScope {
       spanDetails?.parentContext,
       spanDetails?.startTime,
       spanDetails?.endTime,
-      callerDetails
+      userDetails
     );
 
     // Destructure the details object

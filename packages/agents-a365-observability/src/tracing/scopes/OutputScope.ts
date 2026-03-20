@@ -3,7 +3,7 @@
 
 import { SpanKind } from '@opentelemetry/api';
 import { OpenTelemetryScope } from './OpenTelemetryScope';
-import { AgentDetails, CallerDetails, OutputResponse, OutputRequest, SpanDetails } from '../contracts';
+import { AgentDetails, UserDetails, OutputResponse, Request, SpanDetails } from '../contracts';
 import { OpenTelemetryConstants } from '../constants';
 
 /**
@@ -19,25 +19,25 @@ export class OutputScope extends OpenTelemetryScope {
    * @param request Optional request context (conversationId, channel).
    * @param response The response containing initial output messages.
    * @param agentDetails The agent producing the output. Tenant ID is derived from `agentDetails.tenantId`.
-   * @param callerDetails Optional caller identity details.
+   * @param userDetails Optional human caller identity details.
    * @param spanDetails Optional span configuration (parentContext, startTime, endTime).
    * @returns A new OutputScope instance.
    */
   public static start(
-    request: OutputRequest | undefined,
+    request: Request | undefined,
     response: OutputResponse,
     agentDetails: AgentDetails,
-    callerDetails?: CallerDetails,
+    userDetails?: UserDetails,
     spanDetails?: SpanDetails
   ): OutputScope {
-    return new OutputScope(request, response, agentDetails, callerDetails, spanDetails);
+    return new OutputScope(request, response, agentDetails, userDetails, spanDetails);
   }
 
   private constructor(
-    request: OutputRequest | undefined,
+    request: Request | undefined,
     response: OutputResponse,
     agentDetails: AgentDetails,
-    callerDetails?: CallerDetails,
+    userDetails?: UserDetails,
     spanDetails?: SpanDetails
   ) {
     // Derive tenant details from agentDetails.tenantId (required for telemetry)
@@ -57,7 +57,7 @@ export class OutputScope extends OpenTelemetryScope {
       spanDetails?.parentContext,
       spanDetails?.startTime,
       spanDetails?.endTime,
-      callerDetails
+      userDetails
     );
 
     // Initialize accumulated messages list from the response

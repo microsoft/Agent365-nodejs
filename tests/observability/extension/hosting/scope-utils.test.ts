@@ -236,7 +236,7 @@ test('deriveCallerAgent returns undefined without from', () => {
   expect(ScopeUtils.deriveCallerAgent(ctx)).toBeUndefined();
 });
 
-test('deriveCallerDetails maps from to CallerDetails', () => {
+test('deriveCallerDetails maps from to UserDetails', () => {
   const ctx = makeCtx({ activity: { from: { aadObjectId: 'uid', agenticUserId: 'upn', name: 'User', tenantId: 't3' } } as any });
   expect(ScopeUtils.deriveCallerDetails(ctx)).toEqual({
     callerId: 'uid',

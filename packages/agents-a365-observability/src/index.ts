@@ -33,11 +33,12 @@ export {
   ExecutionType,
   InvocationRole,
   Channel,
-  AgentRequest,
+  Request,
   AgentDetails,
   TenantDetails,
   ToolCallDetails,
   InvokeAgentDetails,
+  UserDetails,
   CallerDetails,
   EnhancedAgentDetails,
   ServiceEndpoint,
@@ -45,11 +46,7 @@ export {
   InferenceOperationType,
   InferenceResponse,
   OutputResponse,
-  OutputRequest,
   SpanDetails,
-  InferenceRequest,
-  ToolRequest,
-  InvokeAgentCallerDetails,
 } from './tracing/contracts';
 
 // Scopes

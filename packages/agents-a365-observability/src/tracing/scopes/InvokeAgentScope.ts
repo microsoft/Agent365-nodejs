@@ -6,8 +6,7 @@ import { OpenTelemetryScope } from './OpenTelemetryScope';
 import {
   InvokeAgentDetails,
   CallerDetails,
-  InvokeAgentCallerDetails,
-  AgentRequest,
+  Request,
   SpanDetails,
 } from '../contracts';
 import { OpenTelemetryConstants } from '../constants';
@@ -19,30 +18,29 @@ export class InvokeAgentScope extends OpenTelemetryScope {
   /**
    * Creates and starts a new scope for agent invocation tracing.
    *
-   * @param request Optional request payload (content, executionType, channel, conversationId).
+   * @param request Request payload (channel, conversationId, content, sessionId).
    * @param invokeAgentDetails The details of the agent invocation (agent identity via `.details`, endpoint).
    *   Tenant ID is derived from `invokeAgentDetails.details.tenantId`.
    * @param callerInfo Optional caller information. Supports three scenarios:
-   *   - Human caller only: `{ callerDetails: { callerId, callerName, ... } }`
-   *   - Agent caller only: `{ callerAgentDetails: { agentId, agentName, ... } }` —
-   *     `microsoft.caller.*` attributes are derived from the agent details.
-   *   - Both (A2A with human in chain): `{ callerDetails: { ... }, callerAgentDetails: { ... } }`
+   *   - Human caller only: `{ userDetails: { callerId, callerName, ... } }`
+   *   - Agent caller only: `{ callerAgentDetails: { agentId, agentName, ... } }`
+   *   - Both (A2A with human in chain): `{ userDetails: { ... }, callerAgentDetails: { ... } }`
    * @param spanDetails Optional span configuration (parentContext, startTime, endTime, spanKind).
    * @returns A new InvokeAgentScope instance.
    */
   public static start(
-    request: AgentRequest | undefined,
+    request: Request,
     invokeAgentDetails: InvokeAgentDetails,
-    callerInfo?: InvokeAgentCallerDetails,
+    callerInfo?: CallerDetails,
     spanDetails?: SpanDetails
   ): InvokeAgentScope {
     return new InvokeAgentScope(request, invokeAgentDetails, callerInfo, spanDetails);
   }
 
   private constructor(
-    request: AgentRequest | undefined,
+    request: Request,
     invokeAgentDetails: InvokeAgentDetails,
-    callerInfo?: InvokeAgentCallerDetails,
+    callerInfo?: CallerDetails,
     spanDetails?: SpanDetails
   ) {
     const agent = invokeAgentDetails.details;
@@ -52,19 +50,6 @@ export class InvokeAgentScope extends OpenTelemetryScope {
       throw new Error('InvokeAgentScope: tenantId is required on invokeAgentDetails.details');
     }
     const tenantDetails = { tenantId: agent.tenantId };
-
-    // Resolve CallerDetails for the base class (microsoft.caller.* attributes).
-    // When only callerAgentDetails is provided (agent-only caller), derive CallerDetails from it.
-    let baseCallerDetails: CallerDetails | undefined = callerInfo?.callerDetails;
-    if (!baseCallerDetails && callerInfo?.callerAgentDetails) {
-      const callerAgent = callerInfo.callerAgentDetails;
-      baseCallerDetails = {
-        callerId: callerAgent.agentAUID,
-        callerUpn: callerAgent.agentUPN,
-        callerName: callerAgent.agentName,
-        tenantId: callerAgent.tenantId,
-      };
-    }
 
     super(
       spanDetails?.spanKind ?? SpanKind.CLIENT,
@@ -77,7 +62,7 @@ export class InvokeAgentScope extends OpenTelemetryScope {
       spanDetails?.parentContext,
       spanDetails?.startTime,
       spanDetails?.endTime,
-      baseCallerDetails
+      callerInfo?.userDetails
     );
 
     // Set provider name from agent details

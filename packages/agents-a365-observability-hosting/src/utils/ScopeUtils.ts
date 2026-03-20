@@ -10,14 +10,12 @@ import {
   InferenceScope,
   ExecuteToolScope,
   AgentDetails,
+  UserDetails,
   CallerDetails,
   InferenceDetails,
   InvokeAgentDetails,
-  InvokeAgentCallerDetails,
   ToolCallDetails,
-  AgentRequest,
-  InferenceRequest,
-  ToolRequest,
+  Request,
   SpanDetails,
 } from '@microsoft/agents-a365-observability';
 import { resolveEmbodiedAgentIds } from './TurnContextUtils';
@@ -97,11 +95,11 @@ export class ScopeUtils {
 
 
   /**
-   * Derive caller identity details (id, upn, name, tenant, client ip) from the activity from.
+   * Derive human caller identity details (id, upn, name, tenant) from the activity from.
    * @param turnContext Activity context
-   * @returns Caller details when available; otherwise undefined.
+   * @returns User details when available; otherwise undefined.
    */
-  public static deriveCallerDetails(turnContext: TurnContext): CallerDetails | undefined {
+  public static deriveCallerDetails(turnContext: TurnContext): UserDetails | undefined {
     const from = turnContext?.activity?.from;
     if (!from) return undefined;
     return {
@@ -109,7 +107,7 @@ export class ScopeUtils {
       callerUpn: from.agenticUserId,
       callerName: from.name,
       tenantId: from.tenantId,
-    } as CallerDetails;
+    } as UserDetails;
   }
 
   /**
@@ -161,7 +159,7 @@ export class ScopeUtils {
     }
 
     const hasChannel = channel.name !== undefined || channel.description !== undefined;
-    const request: InferenceRequest | undefined = (conversationId || hasChannel)
+    const request: Request | undefined = (conversationId || hasChannel)
       ? {
           conversationId,
           ...(hasChannel ? { channel: { name: channel.name, description: channel.description } } : {}),
@@ -179,9 +177,10 @@ export class ScopeUtils {
 
   /**
    * Create an `InvokeAgentScope` using `details` and values derived from the provided `TurnContext`.
-   * Populates `conversationId` and `request.channel` (name/link) in `details` from the `TurnContext`, overriding any existing values.
-   * Derives `callerAgentDetails` (from caller) and `callerDetails` (from user).
-   * Also sets execution type and input messages from the context if present.
+   * Builds a separate `Request` with `conversationId` and `channel` from context.
+   * Merges agent identity from context into `invokeAgentDetails.details`.
+   * Derives `callerAgentDetails` (from caller) and `userDetails` (human caller).
+   * Also records input messages from the context if present.
    * @param details The invoke-agent call details to be augmented and used for the scope.
    * @param turnContext The current activity context to derive scope parameters from.
    * @param authToken Auth token for resolving agent identity from token claims.
@@ -208,16 +207,14 @@ export class ScopeUtils {
 
     // Build the request only when there is concrete channel or conversationId info
     const hasChannel = channel.name !== undefined || channel.description !== undefined;
-    const request: AgentRequest | undefined = (conversationId || hasChannel)
-      ? {
-          conversationId,
-          ...(hasChannel ? { channel: { name: channel.name, description: channel.description } } : {}),
-        }
-      : undefined;
+    const request: Request = {
+      conversationId,
+      ...(hasChannel ? { channel: { name: channel.name, description: channel.description } } : {}),
+    };
 
     // Build caller info with both human caller and caller agent details
-    const callerInfo: InvokeAgentCallerDetails = {
-      callerDetails: caller,
+    const callerInfo: CallerDetails = {
+      userDetails: caller,
       callerAgentDetails: callerAgent,
     };
 
@@ -288,7 +285,7 @@ export class ScopeUtils {
     }
 
     const hasChannel = channel.name !== undefined || channel.description !== undefined;
-    const request: ToolRequest | undefined = (conversationId || hasChannel)
+    const request: Request | undefined = (conversationId || hasChannel)
       ? {
           conversationId,
           ...(hasChannel ? { channel: { name: channel.name, description: channel.description } } : {}),

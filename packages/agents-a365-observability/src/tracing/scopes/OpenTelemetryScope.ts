@@ -3,7 +3,7 @@
 
 import { trace, SpanKind, Span, SpanStatusCode, context, AttributeValue, SpanContext, TimeInput } from '@opentelemetry/api';
 import { OpenTelemetryConstants } from '../constants';
-import { AgentDetails, TenantDetails, CallerDetails } from '../contracts';
+import { AgentDetails, TenantDetails, UserDetails } from '../contracts';
 import { createContextWithParentSpanRef } from '../context/parent-span-context';
 import { ParentContext, isParentSpanRef } from '../context/trace-context-propagation';
 import logger from '../../utils/logging';
@@ -37,7 +37,7 @@ export abstract class OpenTelemetryScope implements Disposable {
    *        has already completed (e.g. a tool call whose start time was captured earlier).
    * @param endTime Optional explicit end time (ms epoch, Date, or HrTime). When provided the span will
    *        use this timestamp when {@link dispose} is called instead of the current wall-clock time.
-   * @param callerDetails Optional caller identity details (id, upn, name, client ip).
+   * @param userDetails Optional human caller identity details (id, upn, name, client ip).
    */
   protected constructor(
     kind: SpanKind,
@@ -48,7 +48,7 @@ export abstract class OpenTelemetryScope implements Disposable {
     parentContext?: ParentContext,
     startTime?: TimeInput,
     endTime?: TimeInput,
-    callerDetails?: CallerDetails
+    userDetails?: UserDetails
   ) {
     // Determine the context to use for span creation
     let currentContext = context.active();
@@ -101,11 +101,11 @@ export abstract class OpenTelemetryScope implements Disposable {
     }
 
     // Set caller details if provided
-    if (callerDetails) {
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY, callerDetails.callerId);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_UPN_KEY, callerDetails.callerUpn);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY, callerDetails.callerName);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY, callerDetails.callerClientIp);
+    if (userDetails) {
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY, userDetails.callerId);
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_UPN_KEY, userDetails.callerUpn);
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY, userDetails.callerName);
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY, userDetails.callerClientIp);
     }
   }
 

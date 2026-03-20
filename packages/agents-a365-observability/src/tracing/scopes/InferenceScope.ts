@@ -7,8 +7,8 @@ import { OpenTelemetryConstants } from '../constants';
 import {
   InferenceDetails,
   AgentDetails,
-  CallerDetails,
-  InferenceRequest,
+  UserDetails,
+  Request,
   SpanDetails,
 } from '../contracts';
 
@@ -22,25 +22,25 @@ export class InferenceScope extends OpenTelemetryScope {
    * @param request Optional request context (conversationId, channel).
    * @param details The inference call details (model, provider, tokens, etc.).
    * @param agentDetails The agent performing the inference. Tenant ID is derived from `agentDetails.tenantId`.
-   * @param callerDetails Optional caller identity.
+   * @param userDetails Optional human caller identity.
    * @param spanDetails Optional span configuration (parentContext, startTime, endTime).
    * @returns A new InferenceScope instance
    */
   public static start(
-    request: InferenceRequest | undefined,
+    request: Request | undefined,
     details: InferenceDetails,
     agentDetails: AgentDetails,
-    callerDetails?: CallerDetails,
+    userDetails?: UserDetails,
     spanDetails?: SpanDetails
   ): InferenceScope {
-    return new InferenceScope(request, details, agentDetails, callerDetails, spanDetails);
+    return new InferenceScope(request, details, agentDetails, userDetails, spanDetails);
   }
 
   private constructor(
-    request: InferenceRequest | undefined,
+    request: Request | undefined,
     details: InferenceDetails,
     agentDetails: AgentDetails,
-    callerDetails?: CallerDetails,
+    userDetails?: UserDetails,
     spanDetails?: SpanDetails
   ) {
     // Derive tenant details from agentDetails.tenantId (required for telemetry)
@@ -58,7 +58,7 @@ export class InferenceScope extends OpenTelemetryScope {
       spanDetails?.parentContext,
       spanDetails?.startTime,
       spanDetails?.endTime,
-      callerDetails
+      userDetails
     );
 
     // Set core inference information

@@ -139,7 +139,7 @@ describe('Trace Context Propagation', () => {
       const extractedCtx = extractContextFromHeaders({ traceparent: `00-${traceId}-${spanId}-01` });
 
       const scope = InvokeAgentScope.start(
-        undefined,
+        {},
         { details: { agentId: 'ctx-agent', tenantId: 'test-tenant' } },
         undefined,
         { parentContext: extractedCtx }
@@ -164,7 +164,7 @@ describe('Trace Context Propagation', () => {
       };
 
       const scope = InvokeAgentScope.start(
-        undefined,
+        {},
         { details: { agentId: 'remote-agent', tenantId: 'test-tenant' } },
         undefined,
         { parentContext: parentRef }

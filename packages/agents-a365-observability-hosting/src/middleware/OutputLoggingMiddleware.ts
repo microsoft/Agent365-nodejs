@@ -5,9 +5,9 @@ import { TurnContext, Middleware, SendActivitiesHandler } from '@microsoft/agent
 import {
   OutputScope,
   AgentDetails,
-  CallerDetails,
+  UserDetails,
   ParentSpanRef,
-  OutputRequest,
+  Request,
   SpanDetails,
   logger,
   isPerRequestExportEnabled,
@@ -46,17 +46,17 @@ export class OutputLoggingMiddleware implements Middleware {
       return;
     }
 
-    const callerDetails = ScopeUtils.deriveCallerDetails(context);
+    const userDetails = ScopeUtils.deriveCallerDetails(context);
     const conversationId = ScopeUtils.deriveConversationId(context);
     const channel = ScopeUtils.deriveChannelObject(context);
 
-    const request: OutputRequest = {
+    const request: Request = {
       conversationId,
       channel,
     };
 
     context.onSendActivities(
-      this._createSendHandler(context, agentDetails, callerDetails, request)
+      this._createSendHandler(context, agentDetails, userDetails, request)
     );
 
     await next();
@@ -86,8 +86,8 @@ export class OutputLoggingMiddleware implements Middleware {
   private _createSendHandler(
     turnContext: TurnContext,
     agentDetails: AgentDetails,
-    callerDetails?: CallerDetails,
-    request?: OutputRequest,
+    userDetails?: UserDetails,
+    request?: Request,
   ): SendActivitiesHandler {
     return async (_ctx, activities, sendNext) => {
       const messages = activities
@@ -113,7 +113,7 @@ export class OutputLoggingMiddleware implements Middleware {
         request,
         { messages },
         agentDetails,
-        callerDetails,
+        userDetails,
         spanDetails,
       );
       try {
