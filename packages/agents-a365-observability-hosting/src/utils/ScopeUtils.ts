@@ -213,7 +213,7 @@ export class ScopeUtils {
     };
 
     // Build caller info with both human caller and caller agent details
-    const callerInfo: CallerDetails = {
+    const callerDetails: CallerDetails = {
       userDetails: caller,
       callerAgentDetails: callerAgent,
     };
@@ -222,7 +222,7 @@ export class ScopeUtils {
       ? { startTime, endTime, spanKind }
       : undefined;
 
-    const scope = InvokeAgentScope.start(request, invokeAgentDetails, callerInfo, spanDetailsObj);
+    const scope = InvokeAgentScope.start(request, invokeAgentDetails, callerDetails, spanDetailsObj);
     this.setInputMessageTags(scope, turnContext);
     return scope;
   }

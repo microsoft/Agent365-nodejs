@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Breaking Changes (`@microsoft/agents-a365-observability`)
 
 - **`InvokeAgentDetails` — inheritance → composition.** No longer extends `AgentDetails`. Agent identity is accessed via `invokeAgentDetails.details.agentId`. Removed `request`, `providerName`, `agentBlueprintId` fields.
-- **`InvokeAgentScope.start()` — new signature.** `start(request, invokeAgentDetails, callerInfo?, spanDetails?)`. `request` is required. Tenant ID is derived from `invokeAgentDetails.details.tenantId` (required). `userDetails` and `callerAgentDetails` are wrapped in `CallerDetails`. Span options (`parentContext`, `startTime`, `endTime`, `spanKind`) are grouped in `SpanDetails`.
+- **`InvokeAgentScope.start()` — new signature.** `start(request, invokeAgentDetails, callerDetails?, spanDetails?)`. `request` is required. Tenant ID is derived from `invokeAgentDetails.details.tenantId` (required). `userDetails` and `callerAgentDetails` are wrapped in `CallerDetails`. Span options (`parentContext`, `startTime`, `endTime`, `spanKind`) are grouped in `SpanDetails`.
 - **`InferenceScope.start()` — new signature.** `start(request?, details, agentDetails, userDetails?, spanDetails?)`. Tenant ID derived from `agentDetails.tenantId` (required). `channel` and `conversationId` moved into `Request`.
 - **`ExecuteToolScope.start()` — new signature.** `start(request?, details, agentDetails, userDetails?, spanDetails?)`. Tenant ID derived from `agentDetails.tenantId` (required). `channel` and `conversationId` moved into `Request`.
 - **`OutputScope.start()` — new signature.** `start(request?, response, agentDetails, userDetails?, spanDetails?)`. Tenant ID derived from `agentDetails.tenantId` (required).

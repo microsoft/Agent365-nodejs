@@ -21,7 +21,7 @@ export class InvokeAgentScope extends OpenTelemetryScope {
    * @param request Request payload (channel, conversationId, content, sessionId).
    * @param invokeAgentDetails The details of the agent invocation (agent identity via `.details`, endpoint).
    *   Tenant ID is derived from `invokeAgentDetails.details.tenantId`.
-   * @param callerInfo Optional caller information. Supports three scenarios:
+   * @param callerDetails Optional caller information. Supports three scenarios:
    *   - Human caller only: `{ userDetails: { callerId, callerName, ... } }`
    *   - Agent caller only: `{ callerAgentDetails: { agentId, agentName, ... } }`
    *   - Both (A2A with human in chain): `{ userDetails: { ... }, callerAgentDetails: { ... } }`
@@ -31,16 +31,16 @@ export class InvokeAgentScope extends OpenTelemetryScope {
   public static start(
     request: Request,
     invokeAgentDetails: InvokeAgentDetails,
-    callerInfo?: CallerDetails,
+    callerDetails?: CallerDetails,
     spanDetails?: SpanDetails
   ): InvokeAgentScope {
-    return new InvokeAgentScope(request, invokeAgentDetails, callerInfo, spanDetails);
+    return new InvokeAgentScope(request, invokeAgentDetails, callerDetails, spanDetails);
   }
 
   private constructor(
     request: Request,
     invokeAgentDetails: InvokeAgentDetails,
-    callerInfo?: CallerDetails,
+    callerDetails?: CallerDetails,
     spanDetails?: SpanDetails
   ) {
     const agent = invokeAgentDetails.details;
@@ -62,7 +62,7 @@ export class InvokeAgentScope extends OpenTelemetryScope {
       spanDetails?.parentContext,
       spanDetails?.startTime,
       spanDetails?.endTime,
-      callerInfo?.userDetails
+      callerDetails?.userDetails
     );
 
     // Set provider name from agent details
@@ -92,7 +92,7 @@ export class InvokeAgentScope extends OpenTelemetryScope {
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, request?.conversationId ?? agent.conversationId);
 
     // Set caller agent details tags for A2A scenarios
-    const callerAgent = callerInfo?.callerAgentDetails;
+    const callerAgent = callerDetails?.callerAgentDetails;
     if (callerAgent) {
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_NAME_KEY, callerAgent.agentName);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_ID_KEY, callerAgent.agentId);
