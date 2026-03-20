@@ -6,7 +6,6 @@ import {
   InvokeAgentScope,
   InferenceScope,
   AgentDetails,
-  TenantDetails,
   InvokeAgentDetails,
   ToolCallDetails,
   InferenceDetails,
@@ -35,10 +34,7 @@ describe('Scopes', () => {
     agentId: 'test-agent',
     agentName: 'Test Agent',
     agentDescription: 'A test agent',
-    conversationId: 'test-conv-123'
-  };
-
-  const testTenantDetails: TenantDetails = {
+    conversationId: 'test-conv-123',
     tenantId: 'test-tenant-456'
   };
 
@@ -48,11 +44,12 @@ describe('Scopes', () => {
         details: {
           agentId: 'test-agent',
           agentName: 'Test Agent',
-          agentDescription: 'A test agent'
+          agentDescription: 'A test agent',
+          tenantId: 'test-tenant-456'
         }
       };
-      
-      const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
+
+      const scope = InvokeAgentScope.start(undefined, invokeAgentDetails);
 
       expect(scope).toBeInstanceOf(InvokeAgentScope);
       scope?.dispose();
@@ -60,10 +57,10 @@ describe('Scopes', () => {
 
     it('should create scope with agent ID only', () => {
       const invokeAgentDetails: InvokeAgentDetails = {
-        details: { agentId: 'simple-agent' }
+        details: { agentId: 'simple-agent', tenantId: 'test-tenant-456' }
       };
-      
-      const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
+
+      const scope = InvokeAgentScope.start(undefined, invokeAgentDetails);
 
       expect(scope).toBeInstanceOf(InvokeAgentScope);
       scope?.dispose();
@@ -76,11 +73,12 @@ describe('Scopes', () => {
           agentName: 'Test Agent',
           agentDescription: 'A test agent',
           conversationId: 'conv-123',
-          iconUri: 'https://example.com/icon.png'
+          iconUri: 'https://example.com/icon.png',
+          tenantId: 'test-tenant-456'
         }
       };
-      
-      const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
+
+      const scope = InvokeAgentScope.start(undefined, invokeAgentDetails);
 
       expect(scope).toBeInstanceOf(InvokeAgentScope);
       scope?.dispose();
@@ -91,11 +89,12 @@ describe('Scopes', () => {
         details: {
           agentId: 'test-agent',
           agentName: 'Test Agent',
-          platformId: 'platform-xyz-123'
+          platformId: 'platform-xyz-123',
+          tenantId: 'test-tenant-456'
         }
       };
-      
-      const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
+
+      const scope = InvokeAgentScope.start(undefined, invokeAgentDetails);
 
       expect(scope).toBeInstanceOf(InvokeAgentScope);
       scope?.dispose();
@@ -105,34 +104,35 @@ describe('Scopes', () => {
       const invokeAgentDetails: InvokeAgentDetails = {
         details: {
           agentId: 'test-agent',
-          agentName: 'Test Agent'
+          agentName: 'Test Agent',
+          tenantId: 'test-tenant-456'
         }
       };
-      
+
       const callerDetails: CallerDetails = {
         callerId: 'user-123',
         callerName: 'Test User',
         callerUpn: 'test.user@contoso.com',
         tenantId: 'test-tenant'
       };
-      
-      const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails, undefined, undefined, callerDetails);
+
+      const scope = InvokeAgentScope.start(undefined, invokeAgentDetails, { callerDetails });
 
       expect(scope).toBeInstanceOf(InvokeAgentScope);
       scope?.dispose();
     });
 
     it('should record response', () => {
-      const invokeAgentDetails: InvokeAgentDetails = { details: { agentId: 'test-agent' } };
-      const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
+      const invokeAgentDetails: InvokeAgentDetails = { details: { agentId: 'test-agent', tenantId: 'test-tenant-456' } };
+      const scope = InvokeAgentScope.start(undefined, invokeAgentDetails);
 
       expect(() => scope?.recordResponse('Test response')).not.toThrow();
       scope?.dispose();
     });
 
     it('should record input and output messages', () => {
-      const invokeAgentDetails: InvokeAgentDetails = { details: { agentId: 'test-agent' } };
-      const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
+      const invokeAgentDetails: InvokeAgentDetails = { details: { agentId: 'test-agent', tenantId: 'test-tenant-456' } };
+      const scope = InvokeAgentScope.start(undefined, invokeAgentDetails);
 
       expect(() => scope?.recordInputMessages(['Input message 1', 'Input message 2'])).not.toThrow();
       expect(() => scope?.recordOutputMessages(['Output message 1', 'Output message 2'])).not.toThrow();
@@ -140,8 +140,8 @@ describe('Scopes', () => {
     });
 
     it('should record error', () => {
-      const invokeAgentDetails: InvokeAgentDetails = { details: { agentId: 'test-agent' } };
-      const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
+      const invokeAgentDetails: InvokeAgentDetails = { details: { agentId: 'test-agent', tenantId: 'test-tenant-456' } };
+      const scope = InvokeAgentScope.start(undefined, invokeAgentDetails);
       const error = new Error('Test error');
 
       expect(() => scope?.recordError(error)).not.toThrow();
@@ -151,10 +151,8 @@ describe('Scopes', () => {
     it('should set conversationId from explicit param', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
       const scope = InvokeAgentScope.start(
-        { details: { agentId: 'test-agent', conversationId: 'from-details' } },
-        testTenantDetails,
-        undefined, undefined, undefined,
-        'explicit-conv-id'
+        { conversationId: 'explicit-conv-id' },
+        { details: { agentId: 'test-agent', conversationId: 'from-details', tenantId: 'test-tenant-456' } }
       );
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
       expect(calls).toEqual(expect.arrayContaining([
@@ -167,8 +165,8 @@ describe('Scopes', () => {
     it('should fall back to agent.conversationId when conversationId param is omitted', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
       const scope = InvokeAgentScope.start(
-        { details: { agentId: 'test-agent', conversationId: 'from-details' } },
-        testTenantDetails
+        undefined,
+        { details: { agentId: 'test-agent', conversationId: 'from-details', tenantId: 'test-tenant-456' } }
       );
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
       expect(calls).toEqual(expect.arrayContaining([
@@ -181,9 +179,8 @@ describe('Scopes', () => {
     it('should set channel tags from request.channel', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
       const scope = InvokeAgentScope.start(
-        { details: { agentId: 'test-agent' } },
-        testTenantDetails,
-        { channel: { name: 'Teams', description: 'https://teams.link' } }
+        { channel: { name: 'Teams', description: 'https://teams.link' } },
+        { details: { agentId: 'test-agent', tenantId: 'test-tenant-456' } }
       );
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
       expect(calls).toEqual(expect.arrayContaining([
@@ -200,11 +197,12 @@ describe('Scopes', () => {
         details: {
           agentId: 'test-agent',
           agentName: 'Test Agent',
-          platformId: 'test-platform-123'
+          platformId: 'test-platform-123',
+          tenantId: 'test-tenant-456'
         }
       };
 
-      const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
+      const scope = InvokeAgentScope.start(undefined, invokeAgentDetails);
       expect(scope).toBeInstanceOf(InvokeAgentScope);
 
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
@@ -221,7 +219,8 @@ describe('Scopes', () => {
       const invokeAgentDetails: InvokeAgentDetails = {
         details: {
           agentId: 'test-agent',
-          agentName: 'Test Agent'
+          agentName: 'Test Agent',
+          tenantId: 'test-tenant-456'
         }
       };
       const callerAgentDetails: AgentDetails = {
@@ -232,7 +231,7 @@ describe('Scopes', () => {
         platformId: 'caller-platform-xyz'
       } as any;
 
-      const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails, undefined, callerAgentDetails, undefined);
+      const scope = InvokeAgentScope.start(undefined, invokeAgentDetails, { callerAgentDetails });
       expect(scope).toBeInstanceOf(InvokeAgentScope);
 
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
@@ -249,7 +248,8 @@ describe('Scopes', () => {
       const invokeAgentDetails: InvokeAgentDetails = {
         details: {
           agentId: 'test-agent',
-          agentName: 'Test Agent'
+          agentName: 'Test Agent',
+          tenantId: 'test-tenant-456'
         }
       };
       const callerDetails: CallerDetails = {
@@ -265,9 +265,9 @@ describe('Scopes', () => {
         agentClientIP: '192.168.1.100'
       } as any;
 
-      const scope1 = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails, undefined, undefined, callerDetails);
+      const scope1 = InvokeAgentScope.start(undefined, invokeAgentDetails, { callerDetails });
       expect(scope1).toBeInstanceOf(InvokeAgentScope);
-      const scope2 = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails, undefined, callerAgentDetails, undefined);
+      const scope2 = InvokeAgentScope.start(undefined, invokeAgentDetails, { callerAgentDetails });
       expect(scope2).toBeInstanceOf(InvokeAgentScope);
 
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
@@ -291,13 +291,13 @@ describe('Scopes', () => {
         tenantId: 'tool-tenant',
         callerClientIp: '10.0.0.10'
       };
-      const scope = ExecuteToolScope.start({
+      const scope = ExecuteToolScope.start(undefined, {
         toolName: 'test-tool',
         arguments: '{"param": "value"}',
         toolCallId: 'call-123',
         description: 'A test tool',
         toolType: 'test'
-      }, testAgentDetails, testTenantDetails, undefined, undefined, undefined, undefined, undefined, callerDetails);
+      }, testAgentDetails, callerDetails);
 
       expect(scope).toBeInstanceOf(ExecuteToolScope);
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
@@ -316,15 +316,18 @@ describe('Scopes', () => {
     });
 
     it('should record response', () => {
-      const scope = ExecuteToolScope.start({ toolName: 'test-tool' }, testAgentDetails, testTenantDetails);
+      const scope = ExecuteToolScope.start(undefined, { toolName: 'test-tool' }, testAgentDetails);
 
       expect(() => scope?.recordResponse('Tool result')).not.toThrow();
       scope?.dispose();
     });
-   
+
     it('should set conversationId and channel tags when provided', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
-      const scope = (ExecuteToolScope as unknown as any).start({ toolName: 'test-tool' }, testAgentDetails, testTenantDetails, 'conv-tool-123', { name: 'ChannelTool', description: 'https://channel/tool' });
+      const scope = ExecuteToolScope.start(
+        { conversationId: 'conv-tool-123', channel: { name: 'ChannelTool', description: 'https://channel/tool' } },
+        { toolName: 'test-tool' }, testAgentDetails
+      );
       expect(scope).toBeInstanceOf(ExecuteToolScope);
 
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
@@ -343,8 +346,9 @@ describe('Scopes', () => {
     it('should record non-443 port as a number on ExecuteToolScope', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
       const scope = ExecuteToolScope.start(
+        undefined,
         { toolName: 'test-tool', endpoint: { host: 'tools.example.com', port: 8080 } },
-        testAgentDetails, testTenantDetails
+        testAgentDetails
       );
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
       expect(calls).toEqual(expect.arrayContaining([
@@ -357,8 +361,9 @@ describe('Scopes', () => {
     it('should omit port 443 on ExecuteToolScope', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
       const scope = ExecuteToolScope.start(
+        undefined,
         { toolName: 'test-tool', endpoint: { host: 'tools.example.com', port: 443 } },
-        testAgentDetails, testTenantDetails
+        testAgentDetails
       );
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
       expect(calls).not.toEqual(expect.arrayContaining([
@@ -371,8 +376,9 @@ describe('Scopes', () => {
     it('should record non-443 port as a number on InferenceScope', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
       const scope = InferenceScope.start(
+        undefined,
         { operationName: InferenceOperationType.CHAT, model: 'gpt-4', endpoint: { host: 'api.openai.com', port: 8443 } },
-        testAgentDetails, testTenantDetails
+        testAgentDetails
       );
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
       expect(calls).toEqual(expect.arrayContaining([
@@ -385,8 +391,9 @@ describe('Scopes', () => {
     it('should omit port 443 on InferenceScope', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
       const scope = InferenceScope.start(
+        undefined,
         { operationName: InferenceOperationType.CHAT, model: 'gpt-4', endpoint: { host: 'api.openai.com', port: 443 } },
-        testAgentDetails, testTenantDetails
+        testAgentDetails
       );
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
       expect(calls).not.toEqual(expect.arrayContaining([
@@ -399,8 +406,8 @@ describe('Scopes', () => {
     it('should record non-443 port as a number on InvokeAgentScope', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
       const scope = InvokeAgentScope.start(
-        { details: { agentId: 'test-agent' }, endpoint: { host: 'agent.example.com', port: 9090 } },
-        testTenantDetails
+        undefined,
+        { details: { agentId: 'test-agent', tenantId: 'test-tenant-456' }, endpoint: { host: 'agent.example.com', port: 9090 } }
       );
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
       expect(calls).toEqual(expect.arrayContaining([
@@ -413,8 +420,8 @@ describe('Scopes', () => {
     it('should omit port 443 on InvokeAgentScope', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
       const scope = InvokeAgentScope.start(
-        { details: { agentId: 'test-agent' }, endpoint: { host: 'agent.example.com', port: 443 } },
-        testTenantDetails
+        undefined,
+        { details: { agentId: 'test-agent', tenantId: 'test-tenant-456' }, endpoint: { host: 'agent.example.com', port: 443 } }
       );
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
       expect(calls).not.toEqual(expect.arrayContaining([
@@ -444,7 +451,7 @@ describe('Scopes', () => {
         finishReasons: ['stop']
       };
 
-      const scope = InferenceScope.start(inferenceDetails, testAgentDetails, testTenantDetails, undefined, undefined, undefined, undefined, undefined, callerDetails);
+      const scope = InferenceScope.start(undefined, inferenceDetails, testAgentDetails, callerDetails);
 
       expect(scope).toBeInstanceOf(InferenceScope);
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
@@ -467,8 +474,8 @@ describe('Scopes', () => {
         operationName: InferenceOperationType.TEXT_COMPLETION,
         model: 'gpt-3.5-turbo'
       };
-      
-      const scope = InferenceScope.start(inferenceDetails, testAgentDetails, testTenantDetails);
+
+      const scope = InferenceScope.start(undefined, inferenceDetails, testAgentDetails);
 
       expect(scope).toBeInstanceOf(InferenceScope);
       scope?.dispose();
@@ -479,8 +486,8 @@ describe('Scopes', () => {
         operationName: InferenceOperationType.CHAT,
         model: 'gpt-4'
       };
-      
-      const scope = InferenceScope.start(inferenceDetails, testAgentDetails, testTenantDetails);
+
+      const scope = InferenceScope.start(undefined, inferenceDetails, testAgentDetails);
 
       expect(() => scope?.recordInputMessages(['Input message'])).not.toThrow();
       expect(() => scope?.recordOutputMessages(['Generated response'])).not.toThrow();
@@ -497,7 +504,10 @@ describe('Scopes', () => {
         model: 'gpt-4'
       };
 
-      const scope = (InferenceScope as unknown as any).start(inferenceDetails, testAgentDetails, testTenantDetails, 'conv-inf-123', { name: 'ChannelInf', description: 'https://channel/inf' });
+      const scope = InferenceScope.start(
+        { conversationId: 'conv-inf-123', channel: { name: 'ChannelInf', description: 'https://channel/inf' } },
+        inferenceDetails, testAgentDetails
+      );
       expect(scope).toBeInstanceOf(InferenceScope);
 
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
@@ -514,8 +524,8 @@ describe('Scopes', () => {
 
   describe('Dispose pattern', () => {
     it('should support manual dispose', () => {
-      const invokeAgentDetails: InvokeAgentDetails = { details: { agentId: 'test-agent' } };
-      const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
+      const invokeAgentDetails: InvokeAgentDetails = { details: { agentId: 'test-agent', tenantId: 'test-tenant-456' } };
+      const scope = InvokeAgentScope.start(undefined, invokeAgentDetails);
       scope?.recordResponse('Manual dispose test');
 
       expect(() => scope?.dispose()).not.toThrow();
@@ -523,9 +533,9 @@ describe('Scopes', () => {
 
     it('should support automatic disposal pattern', () => {
       const toolDetails: ToolCallDetails = { toolName: 'test-tool' };
-      
+
       expect(() => {
-        const scope = ExecuteToolScope.start(toolDetails, testAgentDetails, testTenantDetails);
+        const scope = ExecuteToolScope.start(undefined, toolDetails, testAgentDetails);
         try {
           scope?.recordResponse('Automatic disposal test');
         } finally {
@@ -581,9 +591,8 @@ describe('Scopes', () => {
       const customEnd   = 1700000005000; // 5 seconds later
 
       const scope = ExecuteToolScope.start(
-        { toolName: 'my-tool' }, testAgentDetails, testTenantDetails,
-        undefined, undefined, undefined,
-        customStart, customEnd
+        undefined, { toolName: 'my-tool' }, testAgentDetails,
+        undefined, { startTime: customStart, endTime: customEnd }
       );
       scope.dispose();
 
@@ -597,9 +606,8 @@ describe('Scopes', () => {
       const laterEnd    = 1700000048000; // 8 seconds later
 
       const scope = ExecuteToolScope.start(
-        { toolName: 'my-tool' }, testAgentDetails, testTenantDetails,
-        undefined, undefined, undefined,
-        customStart
+        undefined, { toolName: 'my-tool' }, testAgentDetails,
+        undefined, { startTime: customStart }
       );
       scope.setEndTime(laterEnd);
       scope.dispose();
@@ -614,9 +622,8 @@ describe('Scopes', () => {
       const customEnd   = new Date('2023-11-14T22:13:25.000Z'); // 5 seconds later
 
       const scope = ExecuteToolScope.start(
-        { toolName: 'my-tool' }, testAgentDetails, testTenantDetails,
-        undefined, undefined, undefined,
-        customStart, customEnd
+        undefined, { toolName: 'my-tool' }, testAgentDetails,
+        undefined, { startTime: customStart, endTime: customEnd }
       );
       scope.dispose();
 
@@ -631,9 +638,8 @@ describe('Scopes', () => {
       const customEnd: [number, number]   = [1700000005, 500000000];   // 5.5 seconds later
 
       const scope = ExecuteToolScope.start(
-        { toolName: 'my-tool' }, testAgentDetails, testTenantDetails,
-        undefined, undefined, undefined,
-        customStart, customEnd
+        undefined, { toolName: 'my-tool' }, testAgentDetails,
+        undefined, { startTime: customStart, endTime: customEnd }
       );
       scope.dispose();
 
@@ -644,7 +650,7 @@ describe('Scopes', () => {
 
     it('should use wall-clock time when no custom times are provided', () => {
       const before = Date.now();
-      const scope = ExecuteToolScope.start({ toolName: 'my-tool' }, testAgentDetails, testTenantDetails);
+      const scope = ExecuteToolScope.start(undefined, { toolName: 'my-tool' }, testAgentDetails);
       scope.dispose();
       const after = Date.now();
 
@@ -661,8 +667,10 @@ describe('Scopes', () => {
       ['SERVER', SpanKind.SERVER, SpanKind.SERVER],
     ])('InvokeAgentScope spanKind: %s', (_label, input, expected) => {
       const scope = InvokeAgentScope.start(
-        { details: { agentId: 'test-agent' } }, testTenantDetails,
-        undefined, undefined, undefined, undefined, undefined, undefined, undefined, input
+        undefined,
+        { details: { agentId: 'test-agent', tenantId: 'test-tenant-456' } },
+        undefined,
+        input !== undefined ? { spanKind: input } : undefined
       );
       scope.dispose();
       expect(getFinishedSpan().kind).toBe(expected);
@@ -673,36 +681,16 @@ describe('Scopes', () => {
       ['CLIENT', SpanKind.CLIENT, SpanKind.CLIENT],
     ])('ExecuteToolScope spanKind: %s', (_label, input, expected) => {
       const scope = ExecuteToolScope.start(
-        { toolName: 'my-tool' }, testAgentDetails, testTenantDetails,
-        undefined, undefined, undefined, undefined, undefined, undefined, input
+        undefined, { toolName: 'my-tool' }, testAgentDetails,
+        undefined, input !== undefined ? { spanKind: input } : undefined
       );
       scope.dispose();
       expect(getFinishedSpan().kind).toBe(expected);
     });
 
-    it('setStartTime should adjust duration baseline when called after construction', () => {
-      const laterStart = 1700000002000; // 2 seconds after original start
-      const customEnd  = 1700000010000; // 10 seconds epoch
-
-      const scope = ExecuteToolScope.start(
-        { toolName: 'my-tool' }, testAgentDetails, testTenantDetails,
-        undefined, undefined, undefined,
-        1700000000000, customEnd
-      );
-      scope.setStartTime(laterStart);
-      // setStartTime adjusts the internal baseline, not the OTel span startTime
-      scope.dispose();
-
-      const span = getFinishedSpan();
-      // The OTel span startTime remains the constructor-provided value
-      expect(hrtimeToMs(span.startTime as [number, number])).toBeCloseTo(1700000000000, -1);
-      // The span endTime should reflect the custom end
-      expect(hrtimeToMs(span.endTime as [number, number])).toBeCloseTo(customEnd, -1);
-    });
-
     it('recordCancellation should set error status and error.type attribute with default reason', () => {
       const scope = ExecuteToolScope.start(
-        { toolName: 'my-tool' }, testAgentDetails, testTenantDetails
+        undefined, { toolName: 'my-tool' }, testAgentDetails
       );
       scope.recordCancellation();
       scope.dispose();
@@ -715,7 +703,7 @@ describe('Scopes', () => {
 
     it('recordCancellation should use custom reason', () => {
       const scope = ExecuteToolScope.start(
-        { toolName: 'my-tool' }, testAgentDetails, testTenantDetails
+        undefined, { toolName: 'my-tool' }, testAgentDetails
       );
       scope.recordCancellation('User aborted');
       scope.dispose();

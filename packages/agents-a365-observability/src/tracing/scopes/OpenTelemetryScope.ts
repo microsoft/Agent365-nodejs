@@ -31,7 +31,7 @@ export abstract class OpenTelemetryScope implements Disposable {
    * @param tenantDetails Optional tenant details
    * @param parentContext Optional parent context for cross-async-boundary tracing.
    *   Accepts a {@link ParentSpanRef} (manual traceId/spanId) or an OTel {@link Context}
-   *   (e.g. from {@link extractTraceContext} for W3C header propagation).
+   *   (e.g. from {@link extractContextFromHeaders} for W3C header propagation).
    * @param startTime Optional explicit start time (ms epoch, Date, or HrTime). When provided the span
    *        records this timestamp instead of "now", which is useful when recording an operation after it
    *        has already completed (e.g. a tool call whose start time was captured earlier).
@@ -58,7 +58,7 @@ export abstract class OpenTelemetryScope implements Disposable {
         currentContext = createContextWithParentSpanRef(currentContext, parentContext);
         logger.info(`[A365Observability] Using explicit parent span: traceId=${parentContext.traceId}, spanId=${parentContext.spanId}`);
       } else {
-        // OTel Context path (from extractTraceContext or propagation.extract)
+        // OTel Context path (from extractContextFromHeaders or propagation.extract)
         currentContext = parentContext;
       }
     }
@@ -181,11 +181,10 @@ export abstract class OpenTelemetryScope implements Disposable {
 
   /**
    * Sets a tag on the span if the value is not null or undefined.
-   * @internal Intended for use by scope subclasses and SDK internals only.
    * @param name The tag name
    * @param value The tag value
    */
-  public setTagMaybe<T extends string | number | boolean | string[] | number[]>(name: string, value: T | null | undefined): void {
+  protected setTagMaybe<T extends string | number | boolean | string[] | number[]>(name: string, value: T | null | undefined): void {
     if (value != null) {
       this.span.setAttributes({ [name]: value as string | number | boolean | string[] | number[] });
     }
@@ -212,17 +211,6 @@ export abstract class OpenTelemetryScope implements Disposable {
     if (Array.isArray(t) && t.length === 2) return t[0] * 1000 + t[1] / 1_000_000;
     logger.warn(`[A365Observability] timeInputToMs received unexpected TimeInput (type=${typeof t}, isArray=${Array.isArray(t)}); falling back to Date.now()`);
     return Date.now();
-  }
-
-  /**
-   * Sets a custom start time for the scope.
-   * Note: this does not change the span's recorded start time (which is fixed at creation),
-   * but it adjusts the start time used for internal duration calculation at end method to allow 
-   * for more accurate duration reporting when the actual operation start time is known.
-   * @param startTime The start time as milliseconds since epoch, a Date, or an HrTime tuple.
-   */
-  public setStartTime(startTime: TimeInput): void {
-    this.customStartTime = startTime;
   }
 
   /**

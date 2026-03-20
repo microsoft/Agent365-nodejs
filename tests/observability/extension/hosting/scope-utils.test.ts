@@ -110,7 +110,7 @@ describe('ScopeUtils.populateFromTurnContext', () => {
         const details: any = { operationName: 'inference', model: 'm', providerName: 'prov' };
         const ctx = makeCtx({ activity: { recipient: { agenticAppId: 'aid' }, isAgenticRequest: () => false, getAgenticInstanceId: () => 'aid', getAgenticUser: () => undefined, getAgenticTenantId: () => undefined } as any }); // agent ok, no tenantId
         expect(() => ScopeUtils.populateInferenceScopeFromTurnContext(details, ctx, testAuthToken))
-          .toThrow('populateInferenceScopeFromTurnContext: Missing tenant details on TurnContext (recipient)');
+          .toThrow('InferenceScope: tenantId is required on agentDetails');
       });
 
       test('populateExecuteToolScopeFromTurnContext throws when agent details are missing', () => {
@@ -124,14 +124,14 @@ describe('ScopeUtils.populateFromTurnContext', () => {
         const details: any = { toolName: 'tool' };
         const ctx = makeCtx({ activity: { recipient: { agenticAppId: 'aid' }, isAgenticRequest: () => false, getAgenticInstanceId: () => 'aid', getAgenticUser: () => undefined, getAgenticTenantId: () => undefined } as any }); // agent ok, no tenantId
         expect(() => ScopeUtils.populateExecuteToolScopeFromTurnContext(details, ctx, testAuthToken))
-          .toThrow('populateExecuteToolScopeFromTurnContext: Missing tenant details on TurnContext (recipient)');
+          .toThrow('ExecuteToolScope: tenantId is required on agentDetails');
       });
 
       test('populateInvokeAgentScopeFromTurnContext throws when tenant details are missing', () => {
         const details: InvokeAgentDetails = { details: { agentId: 'aid' } } as any;
         const ctx = makeCtx({ activity: { recipient: { agenticAppId: 'aid' }, isAgenticRequest: () => false, getAgenticInstanceId: () => 'aid', getAgenticUser: () => undefined, getAgenticTenantId: () => undefined } as any }); // no tenantId
         expect(() => ScopeUtils.populateInvokeAgentScopeFromTurnContext(details, ctx, testAuthToken))
-          .toThrow('populateInvokeAgentScopeFromTurnContext: Missing tenant details on TurnContext (recipient)');
+          .toThrow('InvokeAgentScope: tenantId is required on invokeAgentDetails.details');
       });
     });
 
@@ -313,8 +313,8 @@ describe('ScopeUtils spanKind forwarding', () => {
       undefined, undefined, SpanKind.SERVER
     );
     expect(spy).toHaveBeenCalledWith(
-      expect.anything(), expect.anything(), expect.anything(), expect.anything(),
-      expect.anything(), expect.anything(), undefined, undefined, undefined, SpanKind.SERVER
+      expect.anything(), expect.anything(), expect.anything(),
+      expect.objectContaining({ spanKind: SpanKind.SERVER })
     );
     scope?.dispose();
     spy.mockRestore();
@@ -329,7 +329,7 @@ describe('ScopeUtils spanKind forwarding', () => {
     );
     expect(spy).toHaveBeenCalledWith(
       expect.anything(), expect.anything(), expect.anything(), expect.anything(),
-      expect.anything(), undefined, undefined, undefined, undefined, SpanKind.CLIENT
+      expect.objectContaining({ spanKind: SpanKind.CLIENT })
     );
     scope?.dispose();
     spy.mockRestore();
