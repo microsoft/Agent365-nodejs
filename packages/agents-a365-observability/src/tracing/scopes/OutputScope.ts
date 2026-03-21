@@ -1,10 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { SpanKind, TimeInput } from '@opentelemetry/api';
+import { SpanKind } from '@opentelemetry/api';
 import { OpenTelemetryScope } from './OpenTelemetryScope';
-import { AgentDetails, TenantDetails, CallerDetails, OutputResponse, Channel } from '../contracts';
-import { ParentContext } from '../context/trace-context-propagation';
+import { AgentDetails, UserDetails, OutputResponse, Request, SpanDetails } from '../contracts';
 import { OpenTelemetryConstants } from '../constants';
 
 /**
@@ -16,43 +15,37 @@ export class OutputScope extends OpenTelemetryScope {
 
   /**
    * Creates and starts a new scope for output message tracing.
+   *
    * @param response The response containing initial output messages.
-   * @param agentDetails The details of the agent producing the output.
-   * @param tenantDetails The tenant details.
-   * @param callerDetails Optional caller identity details (id, upn, name, client ip).
-   * @param conversationId Optional conversation identifier.
-   * @param channel Optional channel metadata; only `name` and `description` are used for tagging.
-   * @param parentContext Optional parent context for cross-async-boundary tracing.
-   *   Accepts a ParentSpanRef (manual traceId/spanId) or an OTel Context (e.g. from extractTraceContext).
-   * @param startTime Optional explicit start time (ms epoch, Date, or HrTime).
-   * @param endTime Optional explicit end time (ms epoch, Date, or HrTime).
+   * @param agentDetails The agent producing the output. Tenant ID is derived from `agentDetails.tenantId`.
+   * @param request Optional request context (conversationId, channel).
+   * @param userDetails Optional human caller identity details.
+   * @param spanDetails Optional span configuration (parentContext, startTime, endTime).
    * @returns A new OutputScope instance.
    */
   public static start(
     response: OutputResponse,
     agentDetails: AgentDetails,
-    tenantDetails: TenantDetails,
-    callerDetails?: CallerDetails,
-    conversationId?: string,
-    channel?: Pick<Channel, "name" | "description">,
-    parentContext?: ParentContext,
-    startTime?: TimeInput,
-    endTime?: TimeInput
+    request?: Request,
+    userDetails?: UserDetails,
+    spanDetails?: SpanDetails
   ): OutputScope {
-    return new OutputScope(response, agentDetails, tenantDetails, callerDetails, conversationId, channel, parentContext, startTime, endTime);
+    return new OutputScope(response, agentDetails, request, userDetails, spanDetails);
   }
 
   private constructor(
     response: OutputResponse,
     agentDetails: AgentDetails,
-    tenantDetails: TenantDetails,
-    callerDetails?: CallerDetails,
-    conversationId?: string,
-    channel?: Pick<Channel, "name" | "description">,
-    parentContext?: ParentContext,
-    startTime?: TimeInput,
-    endTime?: TimeInput
+    request?: Request,
+    userDetails?: UserDetails,
+    spanDetails?: SpanDetails
   ) {
+    // Derive tenant details from agentDetails.tenantId (required for telemetry)
+    if (!agentDetails.tenantId) {
+      throw new Error('OutputScope: tenantId is required on agentDetails');
+    }
+    const tenantDetails = { tenantId: agentDetails.tenantId };
+
     super(
       SpanKind.CLIENT,
       OpenTelemetryConstants.OUTPUT_MESSAGES_OPERATION_NAME,
@@ -61,10 +54,10 @@ export class OutputScope extends OpenTelemetryScope {
         : `${OpenTelemetryConstants.OUTPUT_MESSAGES_OPERATION_NAME} ${agentDetails.agentId}`,
       agentDetails,
       tenantDetails,
-      parentContext,
-      startTime,
-      endTime,
-      callerDetails
+      spanDetails?.parentContext,
+      spanDetails?.startTime,
+      spanDetails?.endTime,
+      userDetails
     );
 
     // Initialize accumulated messages list from the response
@@ -77,9 +70,9 @@ export class OutputScope extends OpenTelemetryScope {
     );
 
     // Set conversation and channel
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, conversationId);
-    this.setTagMaybe(OpenTelemetryConstants.CHANNEL_NAME_KEY, channel?.name);
-    this.setTagMaybe(OpenTelemetryConstants.CHANNEL_LINK_KEY, channel?.description);
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, request?.conversationId);
+    this.setTagMaybe(OpenTelemetryConstants.CHANNEL_NAME_KEY, request?.channel?.name);
+    this.setTagMaybe(OpenTelemetryConstants.CHANNEL_LINK_KEY, request?.channel?.description);
 
   }
 

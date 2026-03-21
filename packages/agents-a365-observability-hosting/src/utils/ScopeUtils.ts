@@ -10,11 +10,13 @@ import {
   InferenceScope,
   ExecuteToolScope,
   AgentDetails,
-  TenantDetails,
+  UserDetails,
   CallerDetails,
   InferenceDetails,
   InvokeAgentDetails,
   ToolCallDetails,
+  Request,
+  SpanDetails,
 } from '@microsoft/agents-a365-observability';
 import { resolveEmbodiedAgentIds } from './TurnContextUtils';
 
@@ -34,7 +36,7 @@ export class ScopeUtils {
     }
     return scope;
   }
-  
+
   // ----------------------
   // Context-derived helpers
   // ----------------------
@@ -43,7 +45,7 @@ export class ScopeUtils {
    * @param turnContext Activity context
    * @returns Tenant details if a recipient tenant id is present; otherwise undefined.
    */
-  public static deriveTenantDetails(turnContext: TurnContext): TenantDetails | undefined {
+  public static deriveTenantDetails(turnContext: TurnContext): { tenantId: string } | undefined {
     const tenantId = turnContext?.activity?.getAgenticTenantId?.();
     return tenantId ? { tenantId } : undefined;
   }
@@ -71,7 +73,7 @@ export class ScopeUtils {
     } as AgentDetails;
   }
 
-  
+
   /**
    * Derive caller agent details from the activity from.
    * @param turnContext Activity context
@@ -93,11 +95,11 @@ export class ScopeUtils {
 
 
   /**
-   * Derive caller identity details (id, upn, name, tenant, client ip) from the activity from.
+   * Derive human caller identity details (id, upn, name, tenant) from the activity from.
    * @param turnContext Activity context
-   * @returns Caller details when available; otherwise undefined.
+   * @returns User details when available; otherwise undefined.
    */
-  public static deriveCallerDetails(turnContext: TurnContext): CallerDetails | undefined {
+  public static deriveCallerDetails(turnContext: TurnContext): UserDetails | undefined {
     const from = turnContext?.activity?.from;
     if (!from) return undefined;
     return {
@@ -105,7 +107,7 @@ export class ScopeUtils {
       callerUpn: from.agenticUserId,
       callerName: from.name,
       tenantId: from.tenantId,
-    } as CallerDetails;
+    } as UserDetails;
   }
 
   /**
@@ -131,7 +133,7 @@ export class ScopeUtils {
 
   /**
    * Create an `InferenceScope` using `details` and values derived from the provided `TurnContext`.
-   * Derives `agentDetails`, `tenantDetails`, `conversationId`, and `channel` (name/description) from context.
+   * Derives `conversationId` and `channel` (name/description) from context.
    * Also records input messages from the context if present.
    * @param details The inference call details (model, provider, tokens, etc.).
    * @param turnContext The current activity context to derive scope parameters from.
@@ -148,27 +150,35 @@ export class ScopeUtils {
     endTime?: TimeInput
   ): InferenceScope {
     const agent = ScopeUtils.deriveAgentDetails(turnContext, authToken);
-    const tenant = ScopeUtils.deriveTenantDetails(turnContext);
+    const caller = ScopeUtils.deriveCallerDetails(turnContext);
     const conversationId = ScopeUtils.deriveConversationId(turnContext);
     const channel = ScopeUtils.deriveChannelObject(turnContext);
 
     if (!agent) {
       throw new Error('populateInferenceScopeFromTurnContext: Missing agent details on TurnContext (recipient)');
     }
-    if (!tenant) {
-      throw new Error('populateInferenceScopeFromTurnContext: Missing tenant details on TurnContext (recipient)');
-    }
 
-    const scope = InferenceScope.start(details, agent, tenant, conversationId, channel, undefined, startTime, endTime);
+    const hasChannel = channel.name !== undefined || channel.description !== undefined;
+    const request: Request = {
+      conversationId,
+      ...(hasChannel ? { channel: { name: channel.name, description: channel.description } } : {}),
+    };
+
+    const spanDetails: SpanDetails | undefined = (startTime || endTime)
+      ? { startTime, endTime }
+      : undefined;
+
+    const scope = InferenceScope.start(details, agent, request, caller, spanDetails);
     this.setInputMessageTags(scope, turnContext);
     return scope;
   }
 
   /**
    * Create an `InvokeAgentScope` using `details` and values derived from the provided `TurnContext`.
-   * Populates `conversationId` and `request.channel` (name/link) in `details` from the `TurnContext`, overriding any existing values.
-   * Derives `tenantDetails`, `callerAgentDetails` (from caller), and `callerDetails` (from user).
-   * Also sets execution type and input messages from the context if present.
+   * Builds a separate `Request` with `conversationId` and `channel` from context.
+   * Merges agent identity from context into `invokeAgentDetails.details`.
+   * Derives `callerAgentDetails` (from caller) and `userDetails` (human caller).
+   * Also records input messages from the context if present.
    * @param details The invoke-agent call details to be augmented and used for the scope.
    * @param turnContext The current activity context to derive scope parameters from.
    * @param authToken Auth token for resolving agent identity from token claims.
@@ -185,26 +195,42 @@ export class ScopeUtils {
     endTime?: TimeInput,
     spanKind?: SpanKind
   ): InvokeAgentScope {
-    const tenant = ScopeUtils.deriveTenantDetails(turnContext);
     const callerAgent = ScopeUtils.deriveCallerAgent(turnContext);
     const caller = ScopeUtils.deriveCallerDetails(turnContext);
+    const conversationId = ScopeUtils.deriveConversationId(turnContext);
+    const channel = ScopeUtils.deriveChannelObject(turnContext);
+
+    // Merge agent identity from TurnContext into details.details
     const invokeAgentDetails = ScopeUtils.buildInvokeAgentDetailsCore(details, turnContext, authToken);
 
-    if (!tenant) {
-      throw new Error('populateInvokeAgentScopeFromTurnContext: Missing tenant details on TurnContext (recipient)');
-    }
+    // Build the request with channel and conversationId from context
+    const hasChannel = channel.name !== undefined || channel.description !== undefined;
+    const request: Request = {
+      conversationId,
+      ...(hasChannel ? { channel: { name: channel.name, description: channel.description } } : {}),
+    };
 
-    const scope = InvokeAgentScope.start(invokeAgentDetails, tenant, callerAgent, caller, undefined, startTime, endTime, spanKind);
+    // Build caller info with both human caller and caller agent details
+    const callerDetails: CallerDetails = {
+      userDetails: caller,
+      callerAgentDetails: callerAgent,
+    };
+
+    const spanDetailsObj: SpanDetails | undefined = (startTime || endTime || spanKind)
+      ? { startTime, endTime, spanKind }
+      : undefined;
+
+    const scope = InvokeAgentScope.start(request, invokeAgentDetails, callerDetails, spanDetailsObj);
     this.setInputMessageTags(scope, turnContext);
     return scope;
   }
 
   /**
-   * Build InvokeAgentDetails by merging provided details with agent info, conversation id and channel from the TurnContext.
+   * Build InvokeAgentDetails by merging provided details with agent info from the TurnContext.
    * @param details Base invoke-agent details to augment
    * @param turnContext Activity context
    * @param authToken Auth token for resolving agent identity from token claims.
-   * @returns New InvokeAgentDetails suitable for starting an InvokeAgentScope.
+   * @returns New InvokeAgentDetails with merged `details.details` (agent identity).
    */
   public static buildInvokeAgentDetails(details: InvokeAgentDetails, turnContext: TurnContext, authToken: string): InvokeAgentDetails {
     return ScopeUtils.buildInvokeAgentDetailsCore(details, turnContext, authToken);
@@ -212,28 +238,24 @@ export class ScopeUtils {
 
   private static buildInvokeAgentDetailsCore(details: InvokeAgentDetails, turnContext: TurnContext, authToken: string): InvokeAgentDetails {
     const agent = ScopeUtils.deriveAgentDetails(turnContext, authToken);
-    const channelFromContext = ScopeUtils.deriveChannelObject(turnContext);
-    const baseRequest = details.request ?? {};
-    const baseChannel = baseRequest.channel ?? {};
-    const mergedChannel = {
-      ...baseChannel,
-      ...(channelFromContext.name !== undefined ? { name: channelFromContext.name } : {}),
-      ...(channelFromContext.description !== undefined ? { description: channelFromContext.description } : {}),
+    const conversationId = ScopeUtils.deriveConversationId(turnContext);
+
+    // Merge derived agent identity into details.details
+    const mergedAgent: AgentDetails = {
+      ...details.details,
+      ...(agent ?? {}),
+      conversationId: conversationId ?? details.details?.conversationId,
     };
+
     return {
       ...details,
-      ...agent,
-      conversationId: ScopeUtils.deriveConversationId(turnContext),
-      request: {
-        ...baseRequest,
-        channel: mergedChannel
-      }
+      details: mergedAgent,
     };
   }
 
   /**
    * Create an `ExecuteToolScope` using `details` and values derived from the provided `TurnContext`.
-   * Derives `agentDetails`, `tenantDetails`, `conversationId`, and `channel` (name/link) from context.
+   * Derives `conversationId` and `channel` (name/link) from context.
    * @param details The tool call details (name, type, args, call id, etc.).
    * @param turnContext The current activity context to derive scope parameters from.
    * @param authToken Auth token for resolving agent identity from token claims.
@@ -252,16 +274,25 @@ export class ScopeUtils {
     spanKind?: SpanKind
   ): ExecuteToolScope {
     const agent = ScopeUtils.deriveAgentDetails(turnContext, authToken);
-    const tenant = ScopeUtils.deriveTenantDetails(turnContext);
+    const caller = ScopeUtils.deriveCallerDetails(turnContext);
     const conversationId = ScopeUtils.deriveConversationId(turnContext);
     const channel = ScopeUtils.deriveChannelObject(turnContext);
+
     if (!agent) {
       throw new Error('populateExecuteToolScopeFromTurnContext: Missing agent details on TurnContext (recipient)');
     }
-    if (!tenant) {
-      throw new Error('populateExecuteToolScopeFromTurnContext: Missing tenant details on TurnContext (recipient)');
-    }
-    const scope = ExecuteToolScope.start(details, agent, tenant, conversationId, channel, undefined, startTime, endTime, undefined, spanKind);
+
+    const hasChannel = channel.name !== undefined || channel.description !== undefined;
+    const request: Request = {
+      conversationId,
+      ...(hasChannel ? { channel: { name: channel.name, description: channel.description } } : {}),
+    };
+
+    const spanDetailsObj: SpanDetails | undefined = (startTime || endTime || spanKind)
+      ? { startTime, endTime, spanKind }
+      : undefined;
+
+    const scope = ExecuteToolScope.start(details, agent, request, caller, spanDetailsObj);
     return scope;
   }
 

@@ -9,7 +9,6 @@ import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-ho
 import {
   OutputScope,
   AgentDetails,
-  TenantDetails,
   OutputResponse,
   OpenTelemetryConstants,
   ParentSpanRef,
@@ -20,9 +19,6 @@ describe('OutputScope', () => {
     agentId: 'test-agent-123',
     agentName: 'Test Agent',
     agentDescription: 'A test agent for output scope testing',
-  };
-
-  const testTenantDetails: TenantDetails = {
     tenantId: '12345678-1234-5678-1234-567812345678',
   };
 
@@ -75,7 +71,7 @@ describe('OutputScope', () => {
   it('should create scope with correct span attributes and output messages', async () => {
     const response: OutputResponse = { messages: ['First message', 'Second message'] };
 
-    const scope = OutputScope.start(response, testAgentDetails, testTenantDetails);
+    const scope = OutputScope.start(response, testAgentDetails);
     expect(scope).toBeInstanceOf(OutputScope);
     scope.dispose();
 
@@ -93,7 +89,7 @@ describe('OutputScope', () => {
   it('should append messages with recordOutputMessages and flush on dispose', async () => {
     const response: OutputResponse = { messages: ['Initial'] };
 
-    const scope = OutputScope.start(response, testAgentDetails, testTenantDetails);
+    const scope = OutputScope.start(response, testAgentDetails);
     scope.recordOutputMessages(['Appended 1']);
     scope.recordOutputMessages(['Appended 2', 'Appended 3']);
     scope.dispose();
@@ -110,9 +106,8 @@ describe('OutputScope', () => {
     const parentSpanId = 'abcdefabcdef1234';
 
     const scope = OutputScope.start(
-      { messages: ['Test'] }, testAgentDetails, testTenantDetails,
-      undefined, undefined, undefined,
-      { traceId: parentTraceId, spanId: parentSpanId } as ParentSpanRef
+      { messages: ['Test'] }, testAgentDetails,
+      undefined, undefined, { parentContext: { traceId: parentTraceId, spanId: parentSpanId } as ParentSpanRef }
     );
     scope.dispose();
 

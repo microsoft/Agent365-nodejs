@@ -8,11 +8,10 @@ import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-ho
 import { W3CTraceContextPropagator } from '@opentelemetry/core';
 import {
   ParentSpanRef,
-  injectTraceContext,
-  extractTraceContext,
+  injectContextToHeaders,
+  extractContextFromHeaders,
   runWithExtractedTraceContext,
   InvokeAgentScope,
-  TenantDetails,
 } from '@microsoft/agents-a365-observability';
 
 describe('Trace Context Propagation', () => {
@@ -21,8 +20,6 @@ describe('Trace Context Propagation', () => {
   let flushProvider: any;
   let exporter: InMemorySpanExporter;
   let contextManager: AsyncLocalStorageContextManager;
-
-  const testTenantDetails: TenantDetails = { tenantId: 'test-tenant' };
 
   beforeAll(() => {
     contextManager = new AsyncLocalStorageContextManager();
@@ -54,7 +51,7 @@ describe('Trace Context Propagation', () => {
     otelContext.disable();
   });
 
-  describe('injectTraceContext', () => {
+  describe('injectContextToHeaders', () => {
     it('should inject traceparent header from active span', () => {
       const tracer = trace.getTracer('test');
       const span = tracer.startSpan('sender');
@@ -63,7 +60,7 @@ describe('Trace Context Propagation', () => {
 
       otelContext.with(ctx, () => {
         const headers: Record<string, string> = {};
-        const result = injectTraceContext(headers);
+        const result = injectContextToHeaders(headers);
         expect(result).toBe(headers);
 
         const traceparent = headers['traceparent'];
@@ -83,17 +80,17 @@ describe('Trace Context Propagation', () => {
 
     it('should be a no-op when no active span exists', () => {
       const headers: Record<string, string> = {};
-      injectTraceContext(headers);
+      injectContextToHeaders(headers);
       expect(headers['traceparent']).toBeUndefined();
     });
   });
 
-  describe('extractTraceContext', () => {
+  describe('extractContextFromHeaders', () => {
     it('should extract valid traceparent into Context with correct traceId/spanId', () => {
       const traceId = '0af7651916cd43dd8448eb211c80319c';
       const spanId = 'b7ad6b7169203331';
 
-      const extracted = extractTraceContext({ traceparent: `00-${traceId}-${spanId}-01` });
+      const extracted = extractContextFromHeaders({ traceparent: `00-${traceId}-${spanId}-01` });
       const span = trace.getSpan(extracted);
 
       expect(span).toBeDefined();
@@ -103,8 +100,8 @@ describe('Trace Context Propagation', () => {
     });
 
     it('should return base context for missing or malformed headers', () => {
-      expect(trace.getSpan(extractTraceContext({}))).toBeUndefined();
-      expect(trace.getSpan(extractTraceContext({ traceparent: 'invalid' }))).toBeUndefined();
+      expect(trace.getSpan(extractContextFromHeaders({}))).toBeUndefined();
+      expect(trace.getSpan(extractContextFromHeaders({ traceparent: 'invalid' }))).toBeUndefined();
     });
   });
 
@@ -115,7 +112,7 @@ describe('Trace Context Propagation', () => {
       const senderCtx = trace.setSpan(otelContext.active(), senderSpan);
 
       const headers: Record<string, string> = {};
-      otelContext.with(senderCtx, () => injectTraceContext(headers));
+      otelContext.with(senderCtx, () => injectContextToHeaders(headers));
 
       const result = runWithExtractedTraceContext(headers, () => {
         const child = tracer.startSpan('receiver');
@@ -139,9 +136,14 @@ describe('Trace Context Propagation', () => {
     it('should create scope as child of extracted trace context', async () => {
       const traceId = '0af7651916cd43dd8448eb211c80319c';
       const spanId = 'b7ad6b7169203331';
-      const extractedCtx = extractTraceContext({ traceparent: `00-${traceId}-${spanId}-01` });
+      const extractedCtx = extractContextFromHeaders({ traceparent: `00-${traceId}-${spanId}-01` });
 
-      const scope = InvokeAgentScope.start({ agentId: 'ctx-agent' }, testTenantDetails, undefined, undefined, extractedCtx);
+      const scope = InvokeAgentScope.start(
+        {},
+        { details: { agentId: 'ctx-agent', tenantId: 'test-tenant' } },
+        undefined,
+        { parentContext: extractedCtx }
+      );
       expect(scope.getSpanContext().traceId).toBe(traceId);
       scope.dispose();
 
@@ -161,7 +163,12 @@ describe('Trace Context Propagation', () => {
         isRemote: true,
       };
 
-      const scope = InvokeAgentScope.start({ agentId: 'remote-agent' }, testTenantDetails, undefined, undefined, parentRef);
+      const scope = InvokeAgentScope.start(
+        {},
+        { details: { agentId: 'remote-agent', tenantId: 'test-tenant' } },
+        undefined,
+        { parentContext: parentRef }
+      );
       scope.dispose();
 
       await flushProvider.forceFlush();

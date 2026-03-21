@@ -1,17 +1,16 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { SpanKind, TimeInput } from '@opentelemetry/api';
+import { SpanKind } from '@opentelemetry/api';
 import { OpenTelemetryScope } from './OpenTelemetryScope';
 import { OpenTelemetryConstants } from '../constants';
 import {
   InferenceDetails,
   AgentDetails,
-  TenantDetails,
-  Channel,
-  CallerDetails
+  UserDetails,
+  Request,
+  SpanDetails,
 } from '../contracts';
-import { ParentContext } from '../context/trace-context-propagation';
 
 /**
  * Provides OpenTelemetry tracing scope for generative AI inference operations.
@@ -19,56 +18,50 @@ import { ParentContext } from '../context/trace-context-propagation';
 export class InferenceScope extends OpenTelemetryScope {
   /**
    * Creates and starts a new scope for inference tracing.
-   * @param details The inference call details
-   * @param agentDetails The agent details
-   * @param tenantDetails The tenant details
-   * @param conversationId Optional conversation id to tag on the span (`gen_ai.conversation.id`).
-   * @param channel Optional channel; only `name` (channel name) and `description` (channel link/URL) are used for tagging.
-   * @param parentContext Optional parent context for cross-async-boundary tracing.
-   *   Accepts a ParentSpanRef (manual traceId/spanId) or an OTel Context (e.g. from extractTraceContext).
-   * @param startTime Optional explicit start time (ms epoch, Date, or HrTime).
-   * @param endTime Optional explicit end time (ms epoch, Date, or HrTime).
-   * @param callerDetails Optional caller details.
+   *
+   * @param details The inference call details (model, provider, tokens, etc.).
+   * @param agentDetails The agent performing the inference. Tenant ID is derived from `agentDetails.tenantId`.
+   * @param request Optional request context (conversationId, channel).
+   * @param userDetails Optional human caller identity.
+   * @param spanDetails Optional span configuration (parentContext, startTime, endTime).
    * @returns A new InferenceScope instance
    */
   public static start(
     details: InferenceDetails,
     agentDetails: AgentDetails,
-    tenantDetails: TenantDetails,
-    conversationId?: string,
-    channel?: Pick<Channel, "name" | "description">,
-    parentContext?: ParentContext,
-    startTime?: TimeInput,
-    endTime?: TimeInput,
-    callerDetails?: CallerDetails
+    request?: Request,
+    userDetails?: UserDetails,
+    spanDetails?: SpanDetails
   ): InferenceScope {
-    return new InferenceScope(details, agentDetails, tenantDetails, conversationId, channel, parentContext, startTime, endTime, callerDetails);
+    return new InferenceScope(details, agentDetails, request, userDetails, spanDetails);
   }
 
   private constructor(
     details: InferenceDetails,
     agentDetails: AgentDetails,
-    tenantDetails: TenantDetails,
-    conversationId?: string,
-    channel?: Pick<Channel, "name" | "description">,
-    parentContext?: ParentContext,
-    startTime?: TimeInput,
-    endTime?: TimeInput,
-    callerDetails?: CallerDetails
+    request?: Request,
+    userDetails?: UserDetails,
+    spanDetails?: SpanDetails
   ) {
+    // Derive tenant details from agentDetails.tenantId (required for telemetry)
+    if (!agentDetails.tenantId) {
+      throw new Error('InferenceScope: tenantId is required on agentDetails');
+    }
+    const tenantDetails = { tenantId: agentDetails.tenantId };
+
     super(
       SpanKind.CLIENT,
       details.operationName.toString(),
       `${details.operationName} ${details.model}`,
       agentDetails,
       tenantDetails,
-      parentContext,
-      startTime,
-      endTime,
-      callerDetails
+      spanDetails?.parentContext,
+      spanDetails?.startTime,
+      spanDetails?.endTime,
+      userDetails
     );
 
-    // Set core inference information matching C# implementation
+    // Set core inference information
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY, details.operationName.toString());
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_REQUEST_MODEL_KEY, details.model);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY, details.providerName);
@@ -76,9 +69,9 @@ export class InferenceScope extends OpenTelemetryScope {
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY, details.outputTokens);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_RESPONSE_FINISH_REASONS_KEY, details.finishReasons);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_THOUGHT_PROCESS_KEY, details.thoughtProcess);
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, conversationId);
-    this.setTagMaybe(OpenTelemetryConstants.CHANNEL_NAME_KEY, channel?.name);
-    this.setTagMaybe(OpenTelemetryConstants.CHANNEL_LINK_KEY, channel?.description);
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, request?.conversationId);
+    this.setTagMaybe(OpenTelemetryConstants.CHANNEL_NAME_KEY, request?.channel?.name);
+    this.setTagMaybe(OpenTelemetryConstants.CHANNEL_LINK_KEY, request?.channel?.description);
 
     // Set endpoint information if provided
     if (details.endpoint) {

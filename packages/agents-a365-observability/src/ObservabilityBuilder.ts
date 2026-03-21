@@ -11,7 +11,7 @@ import type { TokenResolver } from './tracing/exporter/Agent365ExporterOptions';
 import { Agent365ExporterOptions } from './tracing/exporter/Agent365ExporterOptions';
 import { PerRequestSpanProcessor } from './tracing/PerRequestSpanProcessor';
 import { resourceFromAttributes } from '@opentelemetry/resources';
-import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
+import { ATTR_SERVICE_NAME, ATTR_SERVICE_NAMESPACE } from '@opentelemetry/semantic-conventions';
 import { trace } from '@opentelemetry/api';
 import { ClusterCategory, IConfigurationProvider } from '@microsoft/agents-a365-runtime';
 import logger, { setLogger, DefaultLogger, type ILogger } from './utils/logging';
@@ -25,6 +25,9 @@ export interface BuilderOptions {
 
   /** Custom service version for telemetry */
   serviceVersion?: string;
+
+  /** Optional service namespace for the OTel resource (service.namespace attribute) */
+  serviceNamespace?: string;
 
   tokenResolver?: TokenResolver;
   /** Environment / cluster category (e.g., "preprod", "prod"). */
@@ -69,6 +72,16 @@ export class ObservabilityBuilder {
   public withService(serviceName: string, serviceVersion?: string): ObservabilityBuilder {
     this.options.serviceName = serviceName;
     this.options.serviceVersion = serviceVersion;
+    return this;
+  }
+
+  /**
+   * Configures the service namespace for telemetry (service.namespace resource attribute)
+   * @param serviceNamespace The service namespace
+   * @returns The builder instance for method chaining
+   */
+  public withServiceNamespace(serviceNamespace: string): ObservabilityBuilder {
+    this.options.serviceNamespace = serviceNamespace;
     return this;
   }
 
@@ -190,9 +203,15 @@ export class ObservabilityBuilder {
       ? `${this.options.serviceName}-${this.options.serviceVersion}`
       : this.options.serviceName ?? 'Agent365-TypeScript';
 
-    return resourceFromAttributes({
+    const attrs: Record<string, string> = {
       [ATTR_SERVICE_NAME]: serviceName,
-    });
+    };
+
+    if (this.options.serviceNamespace) {
+      attrs[ATTR_SERVICE_NAMESPACE] = this.options.serviceNamespace;
+    }
+
+    return resourceFromAttributes(attrs);
   }
 
   /**

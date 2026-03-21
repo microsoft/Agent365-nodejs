@@ -1,9 +1,9 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { trace, SpanKind, Span, SpanStatusCode, Attributes, context, AttributeValue, SpanContext, TimeInput } from '@opentelemetry/api';
+import { trace, SpanKind, Span, SpanStatusCode, context, AttributeValue, SpanContext, TimeInput } from '@opentelemetry/api';
 import { OpenTelemetryConstants } from '../constants';
-import { AgentDetails, TenantDetails, CallerDetails } from '../contracts';
+import { AgentDetails, TenantDetails, UserDetails } from '../contracts';
 import { createContextWithParentSpanRef } from '../context/parent-span-context';
 import { ParentContext, isParentSpanRef } from '../context/trace-context-propagation';
 import logger from '../../utils/logging';
@@ -31,13 +31,13 @@ export abstract class OpenTelemetryScope implements Disposable {
    * @param tenantDetails Optional tenant details
    * @param parentContext Optional parent context for cross-async-boundary tracing.
    *   Accepts a {@link ParentSpanRef} (manual traceId/spanId) or an OTel {@link Context}
-   *   (e.g. from {@link extractTraceContext} for W3C header propagation).
+   *   (e.g. from {@link extractContextFromHeaders} for W3C header propagation).
    * @param startTime Optional explicit start time (ms epoch, Date, or HrTime). When provided the span
    *        records this timestamp instead of "now", which is useful when recording an operation after it
    *        has already completed (e.g. a tool call whose start time was captured earlier).
    * @param endTime Optional explicit end time (ms epoch, Date, or HrTime). When provided the span will
    *        use this timestamp when {@link dispose} is called instead of the current wall-clock time.
-   * @param callerDetails Optional caller identity details (id, upn, name, client ip).
+   * @param userDetails Optional human caller identity details (id, upn, name, client ip).
    */
   protected constructor(
     kind: SpanKind,
@@ -48,7 +48,7 @@ export abstract class OpenTelemetryScope implements Disposable {
     parentContext?: ParentContext,
     startTime?: TimeInput,
     endTime?: TimeInput,
-    callerDetails?: CallerDetails
+    userDetails?: UserDetails
   ) {
     // Determine the context to use for span creation
     let currentContext = context.active();
@@ -58,7 +58,7 @@ export abstract class OpenTelemetryScope implements Disposable {
         currentContext = createContextWithParentSpanRef(currentContext, parentContext);
         logger.info(`[A365Observability] Using explicit parent span: traceId=${parentContext.traceId}, spanId=${parentContext.spanId}`);
       } else {
-        // OTel Context path (from extractTraceContext or propagation.extract)
+        // OTel Context path (from extractContextFromHeaders or propagation.extract)
         currentContext = parentContext;
       }
     }
@@ -101,11 +101,11 @@ export abstract class OpenTelemetryScope implements Disposable {
     }
 
     // Set caller details if provided
-    if (callerDetails) {
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY, callerDetails.callerId);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_UPN_KEY, callerDetails.callerUpn);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY, callerDetails.callerName);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY, callerDetails.callerClientIp);
+    if (userDetails) {
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY, userDetails.callerId);
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_UPN_KEY, userDetails.callerUpn);
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY, userDetails.callerName);
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY, userDetails.callerClientIp);
     }
   }
 
@@ -180,7 +180,7 @@ export abstract class OpenTelemetryScope implements Disposable {
   }
 
   /**
-   * Sets a tag on the span if telemetry is enabled
+   * Sets a tag on the span if the value is not null or undefined.
    * @param name The tag name
    * @param value The tag value
    */
@@ -224,6 +224,21 @@ export abstract class OpenTelemetryScope implements Disposable {
   }
 
   /**
+   * Records a cancellation event on the span.
+   * Sets the span status to ERROR with the cancellation reason and marks the error type as 'TaskCanceledException'.
+   * @param reason Optional cancellation reason. Defaults to 'Task was cancelled'.
+   */
+  public recordCancellation(reason?: string): void {
+    const message = reason ?? 'Task was cancelled';
+    logger.info(`[A365Observability] Recording cancellation on span[${this.span.spanContext().spanId}]: ${message}`);
+    this.span.setStatus({
+      code: SpanStatusCode.ERROR,
+      message
+    });
+    this.span.setAttributes({ [OpenTelemetryConstants.ERROR_TYPE_KEY]: OpenTelemetryConstants.ERROR_TYPE_CANCELLED });
+  }
+
+  /**
    * Finalizes the scope and records metrics
    */
   private end(): void {
@@ -240,16 +255,13 @@ export abstract class OpenTelemetryScope implements Disposable {
       ? OpenTelemetryScope.timeInputToMs(this.customEndTime)
       : Date.now();
     const durationMs = Math.max(0, endMs - startMs);
-    const duration = durationMs / 1000;
 
-    const finalTags:Attributes = {};
     if (this.errorType) {
-      finalTags[OpenTelemetryConstants.ERROR_TYPE_KEY] = this.errorType;
       this.span.setAttributes({ [OpenTelemetryConstants.ERROR_TYPE_KEY]: this.errorType });
     }
 
     this.hasEnded = true;
-    logger.info(`[A365Observability] Ending span[${this.span.spanContext().spanId}], duration: ${duration}s`);
+    logger.info(`[A365Observability] Ending span[${this.span.spanContext().spanId}], duration: ${(durationMs / 1000).toFixed(3)}s`);
   }
 
   /**
