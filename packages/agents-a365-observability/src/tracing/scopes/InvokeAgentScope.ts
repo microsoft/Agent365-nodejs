@@ -44,6 +44,9 @@ export class InvokeAgentScope extends OpenTelemetryScope {
     spanDetails?: SpanDetails
   ) {
     const agent = invokeAgentDetails.details;
+    if (!agent) {
+      throw new Error('InvokeAgentScope: details is required on invokeAgentDetails');
+    }
 
     // Derive tenant details from agent.tenantId (required for telemetry)
     if (!agent.tenantId) {

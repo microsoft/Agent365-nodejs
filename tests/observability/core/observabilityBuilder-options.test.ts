@@ -1,9 +1,10 @@
-// ------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// ------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 
 import { ObservabilityBuilder } from '@microsoft/agents-a365-observability/src/ObservabilityBuilder';
 import { ClusterCategory } from '@microsoft/agents-a365-runtime';
+import { ATTR_SERVICE_NAMESPACE } from '@opentelemetry/semantic-conventions';
+import * as resources from '@opentelemetry/resources';
 
 // Mock the Agent365Exporter so we can capture the constructed options without performing network calls.
 jest.mock('@microsoft/agents-a365-observability/src/tracing/exporter/Agent365Exporter', () => {
@@ -74,5 +75,23 @@ describe('ObservabilityBuilder exporterOptions merging', () => {
     expect(captured.clusterCategory).toBe('prod');
     expect(captured.maxQueueSize).toBe(15);
     expect(captured.scheduledDelayMilliseconds).toBe(5000); // default value
-  });  
+  });
+});
+
+describe('ObservabilityBuilder serviceNamespace', () => {
+  it('includes service.namespace only when withServiceNamespace is called', () => {
+    const resourceSpy = jest.spyOn(resources, 'resourceFromAttributes');
+    process.env.ENABLE_A365_OBSERVABILITY_EXPORTER = 'true';
+
+    // Without namespace
+    new ObservabilityBuilder().withService('svc').build();
+    expect(resourceSpy.mock.calls[0][0]).not.toHaveProperty(ATTR_SERVICE_NAMESPACE);
+
+    // With namespace
+    new ObservabilityBuilder().withService('svc').withServiceNamespace('ns').build();
+    expect(resourceSpy.mock.calls[1][0][ATTR_SERVICE_NAMESPACE]).toBe('ns');
+
+    delete process.env.ENABLE_A365_OBSERVABILITY_EXPORTER;
+    resourceSpy.mockRestore();
+  });
 });
