@@ -117,8 +117,8 @@ export interface AgentDetails {
   /** The agent user ID (AUID) */
   agentAUID?: string;
 
-  /** The agent user principal name (UPN) */
-  agentUPN?: string;
+  /** The agent email address */
+  agentEmail?: string;
 
   /** The agent blueprint/application ID */
   agentBlueprintId?: string;
@@ -158,13 +158,13 @@ export interface ToolCallDetails {
  */
 export interface CallerDetails {
   /** The unique identifier for the caller */
-  callerId?: string;
+  userId?: string;
 
-  /** The user principal name (UPN) of the caller */
-  callerUpn?: string;
+  /** The email address of the caller */
+  userEmail?: string;
 
   /** The display name of the caller */
-  callerName?: string;
+  userName?: string;
 
   /** The user ID of the caller */
   callerUserId?: string;

@@ -88,7 +88,7 @@ describe('ScopeUtils.populateFromTurnContext', () => {
         [OpenTelemetryConstants.GEN_AI_AGENT_AUID_KEY, 'agent-oid'],
         [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY, 'agent-1'],
         [OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY, 'test-blueprint-id'],
-        [OpenTelemetryConstants.GEN_AI_AGENT_UPN_KEY, 'agent-upn@contoso.com'],
+        [OpenTelemetryConstants.GEN_AI_AGENT_EMAIL_KEY, 'agent-upn@contoso.com'],
         [OpenTelemetryConstants.GEN_AI_AGENT_DESCRIPTION_KEY, 'assistant'],
         [OpenTelemetryConstants.TENANT_ID_KEY, 'tenant-123'],
         [OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, JSON.stringify(['input text'])]
@@ -146,13 +146,14 @@ describe('ScopeUtils.populateFromTurnContext', () => {
       [OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, 'conv-B'],
       [OpenTelemetryConstants.CHANNEL_NAME_KEY, 'teams'],
       [OpenTelemetryConstants.CHANNEL_LINK_KEY, 'https://teams'],
-      [OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY, 'user-oid'],
-      [OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY, 'Test User'],
-      [OpenTelemetryConstants.GEN_AI_CALLER_UPN_KEY, 'user@contoso.com'],
+      [OpenTelemetryConstants.USER_ID_KEY, 'user-oid'],
+      [OpenTelemetryConstants.USER_NAME_KEY, 'Test User'],
+      [OpenTelemetryConstants.USER_EMAIL_KEY, 'user@contoso.com'],
       [OpenTelemetryConstants.GEN_AI_CALLER_AGENT_USER_ID_KEY, 'user-oid'],
       [OpenTelemetryConstants.GEN_AI_CALLER_AGENT_NAME_KEY, 'Test User'],
       [OpenTelemetryConstants.GEN_AI_CALLER_AGENT_ID_KEY, 'callerAgent-1'],
       [OpenTelemetryConstants.GEN_AI_CALLER_AGENT_APPLICATION_ID_KEY, 'caller-agentBlueprintId'],
+      [OpenTelemetryConstants.GEN_AI_CALLER_AGENT_EMAIL_KEY, 'user@contoso.com'],
       [OpenTelemetryConstants.TENANT_ID_KEY, 'tenant-123'],
       [OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, JSON.stringify(['invoke message'])],
       [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY, 'agent-1'],
@@ -207,7 +208,7 @@ test('deriveAgentDetails maps recipient fields to AgentDetails', () => {
     agentName: 'A',
     agentAUID: 'auid',
     agentBlueprintId: undefined,
-    agentUPN: 'upn1',
+    agentEmail: 'upn1',
     agentDescription: 'bot',
     tenantId: 't1',
   });
@@ -224,7 +225,7 @@ test('deriveCallerAgent maps from fields to caller AgentDetails', () => {
     agentBlueprintId: 'bp',
     agentName: 'Caller',
     agentAUID: 'uid',
-    agentUPN: 'caller-upn',
+    agentEmail: 'caller-upn',
     agentDescription: 'agent',
     tenantId: 't2',
     agentId: 'agent-caller',
@@ -239,9 +240,9 @@ test('deriveCallerAgent returns undefined without from', () => {
 test('deriveCallerDetails maps from to CallerDetails', () => {
   const ctx = makeCtx({ activity: { from: { aadObjectId: 'uid', agenticUserId: 'upn', name: 'User', tenantId: 't3' } } as any });
   expect(ScopeUtils.deriveCallerDetails(ctx)).toEqual({
-    callerId: 'uid',
-    callerUpn: 'upn',
-    callerName: 'User',
+    userId: 'uid',
+    userEmail: 'upn',
+    userName: 'User',
     tenantId: 't3',
   });
 });
