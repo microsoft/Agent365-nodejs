@@ -166,9 +166,6 @@ export interface CallerDetails {
   /** The display name of the caller */
   userName?: string;
 
-  /** The user ID of the caller */
-  callerUserId?: string;
-
   /** The tenant ID of the caller */
   tenantId?: string;
 

@@ -93,7 +93,7 @@ export class ScopeUtils {
 
 
   /**
-   * Derive caller identity details (id, email, name, tenant, client ip) from the activity from.
+   * Derive caller identity details (id, email, name, tenant) from the activity from.
    * @param turnContext Activity context
    * @returns Caller details when available; otherwise undefined.
    */
