@@ -11,9 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`InvokeAgentDetails` — inheritance → composition.** No longer extends `AgentDetails`. Agent identity is accessed via `invokeAgentDetails.details.agentId`. Removed `request`, `providerName`, `agentBlueprintId` fields.
 - **`InvokeAgentScope.start()` — new signature.** `start(request, invokeAgentDetails, callerDetails?, spanDetails?)`. `request` is required. Tenant ID is derived from `invokeAgentDetails.details.tenantId` (required). `userDetails` and `callerAgentDetails` are wrapped in `CallerDetails`. Span options (`parentContext`, `startTime`, `endTime`, `spanKind`) are grouped in `SpanDetails`.
-- **`InferenceScope.start()` — new signature.** `start(details, agentDetails, request?, userDetails?, spanDetails?)`. Tenant ID derived from `agentDetails.tenantId` (required). `request` is optional.
-- **`ExecuteToolScope.start()` — new signature.** `start(details, agentDetails, request?, userDetails?, spanDetails?)`. Tenant ID derived from `agentDetails.tenantId` (required). `request` is optional.
-- **`OutputScope.start()` — new signature.** `start(response, agentDetails, request?, userDetails?, spanDetails?)`. Tenant ID derived from `agentDetails.tenantId` (required). `request` is optional.
+- **`InferenceScope.start()` — new signature.** `start(request, details, agentDetails, userDetails?, spanDetails?)`. `request` is required and first. Tenant ID derived from `agentDetails.tenantId` (required).
+- **`ExecuteToolScope.start()` — new signature.** `start(request, details, agentDetails, userDetails?, spanDetails?)`. `request` is required and first. Tenant ID derived from `agentDetails.tenantId` (required).
+- **`OutputScope.start()` — new signature.** `start(request, response, agentDetails, userDetails?, spanDetails?)`. `request` is required and first. Tenant ID derived from `agentDetails.tenantId` (required).
 - **`tenantDetails` parameter removed** from all scope `start()` methods. Tenant ID is now required on `AgentDetails.tenantId`; scopes throw if missing.
 - **`AgentRequest` renamed to `Request`** — Unified request interface used across all scopes. Removed `executionType` field. Removed separate `InferenceRequest`, `ToolRequest`, `OutputRequest`.
 - **`CallerDetails` renamed to `UserDetails`** — Represents the human caller identity.
