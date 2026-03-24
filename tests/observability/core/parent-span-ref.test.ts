@@ -67,7 +67,6 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
     agentId: 'test-agent',
     agentName: 'Test Agent',
     agentDescription: 'A test agent',
-    conversationId: 'test-conv-123',
     tenantId: 'test-tenant-456'
   };
 

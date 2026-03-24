@@ -76,7 +76,7 @@ export function injectContextToHeaders(
  * @example
  * ```typescript
  * const parentCtx = extractContextFromHeaders(req.headers);
- * const scope = InvokeAgentScope.start(request, invokeAgentDetails, undefined, { parentContext: parentCtx });
+ * const scope = InvokeAgentScope.start(request, scopeDetails, agentDetails, undefined, { parentContext: parentCtx });
  * ```
  */
 export function extractContextFromHeaders(
@@ -98,7 +98,7 @@ export function extractContextFromHeaders(
  * @example
  * ```typescript
  * runWithExtractedTraceContext(req.headers, () => {
- *   const scope = InvokeAgentScope.start({}, invokeAgentDetails);
+ *   const scope = InvokeAgentScope.start(request, scopeDetails, agentDetails);
  *   scope.dispose();
  * });
  * ```

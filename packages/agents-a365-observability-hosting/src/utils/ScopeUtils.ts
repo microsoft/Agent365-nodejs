@@ -13,10 +13,11 @@ import {
   UserDetails,
   CallerDetails,
   InferenceDetails,
-  InvokeAgentScopeDetails,
   ToolCallDetails,
   Request,
   SpanDetails,
+  InvokeAgentScopeDetails,
+  TenantDetails,
 } from '@microsoft/agents-a365-observability';
 import { resolveEmbodiedAgentIds } from './TurnContextUtils';
 
@@ -45,7 +46,7 @@ export class ScopeUtils {
    * @param turnContext Activity context
    * @returns Tenant details if a recipient tenant id is present; otherwise undefined.
    */
-  public static deriveTenantDetails(turnContext: TurnContext): { tenantId: string } | undefined {
+  public static deriveTenantDetails(turnContext: TurnContext): TenantDetails | undefined {
     const tenantId = turnContext?.activity?.getAgenticTenantId?.();
     return tenantId ? { tenantId } : undefined;
   }
@@ -176,9 +177,10 @@ export class ScopeUtils {
   /**
    * Create an `InvokeAgentScope` using `details` and values derived from the provided `TurnContext`.
    * Builds a separate `Request` with `conversationId` and `channel` from context.
-   * Derives agent identity from context, caller details (agent and human).
+   * Merges agent identity from context into `invokeAgentDetails.details`.
+   * Derives `callerAgentDetails` (from caller) and `userDetails` (human caller).
    * Also records input messages from the context if present.
-   * @param scopeDetails The invoke-agent scope details (endpoint).
+   * @param details The invoke agent call details to be augmented and used for the scope.
    * @param turnContext The current activity context to derive scope parameters from.
    * @param authToken Auth token for resolving agent identity from token claims.
    * @param startTime Optional explicit start time (ms epoch, Date, or HrTime).
@@ -187,6 +189,7 @@ export class ScopeUtils {
    * @returns A started `InvokeAgentScope` enriched with context-derived parameters.
    */
   static populateInvokeAgentScopeFromTurnContext(
+    details: AgentDetails,
     scopeDetails: InvokeAgentScopeDetails,
     turnContext: TurnContext,
     authToken: string,
@@ -199,13 +202,8 @@ export class ScopeUtils {
     const conversationId = ScopeUtils.deriveConversationId(turnContext);
     const channel = ScopeUtils.deriveChannelObject(turnContext);
 
-    // Derive agent identity from TurnContext
-    const agentDetails = ScopeUtils.deriveAgentDetails(turnContext, authToken);
-    if (!agentDetails) {
-      throw new Error('populateInvokeAgentScopeFromTurnContext: Missing agent details on TurnContext (recipient)');
-    }
-    // Merge conversationId from context
-    agentDetails.conversationId = conversationId ?? agentDetails.conversationId;
+    // Merge agent identity from TurnContext into details.details
+    const agentDetails = ScopeUtils.buildInvokeAgentDetailsCore(details, turnContext, authToken);
 
     // Build the request with channel and conversationId from context
     const hasChannel = channel.name !== undefined || channel.description !== undefined;
@@ -230,17 +228,26 @@ export class ScopeUtils {
   }
 
   /**
-   * Derive agent details from the TurnContext, merging with conversationId.
+   * Build agent details by merging provided details with agent info from the TurnContext.
+   * @param details Base agent details to augment
    * @param turnContext Activity context
    * @param authToken Auth token for resolving agent identity from token claims.
-   * @returns Merged AgentDetails.
+   * @returns Merged AgentDetails with context-derived identity.
    */
-  public static buildAgentDetailsFromContext(turnContext: TurnContext, authToken: string): AgentDetails | undefined {
-    const agent = ScopeUtils.deriveAgentDetails(turnContext, authToken);
-    if (!agent) return undefined;
-    const conversationId = ScopeUtils.deriveConversationId(turnContext);
-    agent.conversationId = conversationId ?? agent.conversationId;
-    return agent;
+  public static buildInvokeAgentDetails(details: AgentDetails, turnContext: TurnContext, authToken: string): AgentDetails {
+    return ScopeUtils.buildInvokeAgentDetailsCore(details, turnContext, authToken);
+  }
+
+  private static buildInvokeAgentDetailsCore(details: AgentDetails, turnContext: TurnContext, authToken: string): AgentDetails {
+    const derivedAgentDetails = ScopeUtils.deriveAgentDetails(turnContext, authToken);
+
+    // Merge derived agent identity into details
+    const mergedAgent: AgentDetails = {
+      ...details,
+      ...(derivedAgentDetails ?? {}),
+    };
+
+    return mergedAgent;
   }
 
   /**

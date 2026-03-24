@@ -75,9 +75,7 @@ export class InvokeAgentScope extends OpenTelemetryScope {
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY, agentDetails.providerName);
 
     // Set session ID from request
-    this.setTagMaybe(OpenTelemetryConstants.SESSION_ID_KEY, request?.sessionId);
-
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY, agentDetails.agentBlueprintId);
+    this.setTagMaybe(OpenTelemetryConstants.SESSION_ID_KEY, request.sessionId);
 
     if (invokeScopeDetails.endpoint) {
       this.setTagMaybe(OpenTelemetryConstants.SERVER_ADDRESS_KEY, invokeScopeDetails.endpoint.host);
@@ -89,13 +87,12 @@ export class InvokeAgentScope extends OpenTelemetryScope {
     }
 
     // Set channel tags from request
-    if (request?.channel) {
+    if (request.channel) {
       this.setTagMaybe(OpenTelemetryConstants.CHANNEL_NAME_KEY, request.channel.name);
       this.setTagMaybe(OpenTelemetryConstants.CHANNEL_LINK_KEY, request.channel.description);
     }
 
-    // Use explicit conversationId from request, falling back to agentDetails.conversationId
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, request?.conversationId ?? agentDetails.conversationId);
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, request.conversationId);
 
     // Set caller agent details tags for A2A scenarios
     const callerAgent = callerDetails?.callerAgentDetails;

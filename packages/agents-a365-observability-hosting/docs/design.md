@@ -192,12 +192,13 @@ async function onMessage(turnContext: TurnContext, turnState: TurnState) {
   return baggageScope.run(async () => {
     // Create agent invocation scope
     using scope = InvokeAgentScope.start(
+      { conversationId: turnContext.activity.conversation?.id, sessionId: turnContext.activity.conversation?.id },
+      {},  // InvokeAgentScopeDetails
       {
         agentId: turnContext.activity.recipient?.agenticAppId,
         agentName: turnContext.activity.recipient?.name,
-        sessionId: turnContext.activity.conversation?.id
-      },
-      { tenantId: turnContext.activity.recipient?.tenantId }
+        tenantId: turnContext.activity.recipient?.tenantId
+      }
     );
 
     // Agent processing...

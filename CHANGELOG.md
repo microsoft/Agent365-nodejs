@@ -42,7 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`ScopeUtils.populateInferenceScopeFromTurnContext(details, turnContext, authToken, ...)`** — New required `authToken: string` parameter.
 - **`ScopeUtils.populateInvokeAgentScopeFromTurnContext(details, turnContext, authToken, ...)`** — New required `authToken: string` parameter.
 - **`ScopeUtils.populateExecuteToolScopeFromTurnContext(details, turnContext, authToken, ...)`** — New required `authToken: string` parameter.
-- **`ScopeUtils.buildInvokeAgentDetails()` renamed to `ScopeUtils.buildAgentDetailsFromContext()`** — Returns `AgentDetails` directly instead of `InvokeAgentDetails`.
+- **`ScopeUtils.buildInvokeAgentDetails()`** — Now accepts `AgentDetails` (was `InvokeAgentDetails`) and returns flat `AgentDetails` instead of the old `InvokeAgentDetails` wrapper.
 
 ### Added
 

@@ -102,9 +102,6 @@ export interface AgentDetails {
   /** The unique identifier for the AI agent */
   agentId: string;
 
-  /** The identifier for the conversation or session */
-  conversationId?: string;
-
   /** The human-readable name of the AI agent */
   agentName?: string;
 
@@ -219,17 +216,11 @@ export interface ServiceEndpoint {
 }
 
 /**
- * Details for invoking another agent.
+ * Details for invoking agent scope.
  */
-export interface InvokeAgentDetails {
-  /** The agent identity details. */
-  details: AgentDetails;
-
+export interface InvokeAgentScopeDetails {
   /** The endpoint for the agent invocation */
   endpoint?: ServiceEndpoint;
-
-  /** Session ID for the invocation */
-  sessionId?: string;
 }
 
 /**

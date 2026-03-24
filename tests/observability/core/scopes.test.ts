@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 import { describe, it, expect, beforeAll, afterAll, afterEach, jest } from '@jest/globals';
 import { trace, SpanKind } from '@opentelemetry/api';
 
@@ -34,7 +37,6 @@ describe('Scopes', () => {
     agentId: 'test-agent',
     agentName: 'Test Agent',
     agentDescription: 'A test agent',
-    conversationId: 'test-conv-123',
     tenantId: 'test-tenant-456'
   };
 
@@ -117,6 +119,21 @@ describe('Scopes', () => {
       scope?.dispose();
     });
 
+    it('should set sessionId from request', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const scope = InvokeAgentScope.start(
+        { conversationId: 'conv-1', sessionId: 'session-abc-123' },
+        {},
+        { agentId: 'test-agent', tenantId: 'test-tenant-456' }
+      );
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.SESSION_ID_KEY, val: 'session-abc-123' })
+      ]));
+      scope?.dispose();
+      spy.mockRestore();
+    });
+
     it('should record response', () => {
       const scope = InvokeAgentScope.start(testRequest, {}, { agentId: 'test-agent', tenantId: 'test-tenant-456' });
 
@@ -140,31 +157,16 @@ describe('Scopes', () => {
       scope?.dispose();
     });
 
-    it('should set conversationId from explicit param', () => {
+    it('should set conversationId from request', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
       const scope = InvokeAgentScope.start(
         { conversationId: 'explicit-conv-id' },
         {},
-        { agentId: 'test-agent', conversationId: 'from-details', tenantId: 'test-tenant-456' }
+        { agentId: 'test-agent', tenantId: 'test-tenant-456' }
       );
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
       expect(calls).toEqual(expect.arrayContaining([
         expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, val: 'explicit-conv-id' })
-      ]));
-      scope?.dispose();
-      spy.mockRestore();
-    });
-
-    it('should fall back to agent.conversationId when conversationId param is omitted', () => {
-      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
-      const scope = InvokeAgentScope.start(
-        {},
-        {},
-        { agentId: 'test-agent', conversationId: 'from-details', tenantId: 'test-tenant-456' }
-      );
-      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
-      expect(calls).toEqual(expect.arrayContaining([
-        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, val: 'from-details' })
       ]));
       scope?.dispose();
       spy.mockRestore();
@@ -212,7 +214,6 @@ describe('Scopes', () => {
         agentId: 'caller-agent',
         agentName: 'Caller Agent',
         agentDescription: 'desc',
-        conversationId: 'conv',
         platformId: 'caller-platform-xyz'
       } as any;
 
@@ -248,7 +249,6 @@ describe('Scopes', () => {
         agentId: 'caller-agent',
         agentName: 'Caller Agent',
         agentDescription: 'desc',
-        conversationId: 'conv',
         agentClientIP: '192.168.1.100'
       } as any;
 
@@ -264,6 +264,60 @@ describe('Scopes', () => {
 
       scope1?.dispose();
       scope2?.dispose();
+      spy.mockRestore();
+    });
+
+    it('should throw when agentDetails is null', () => {
+      expect(() => InvokeAgentScope.start(testRequest, {}, null as any)).toThrow('InvokeAgentScope: agentDetails is required');
+    });
+
+    it('should throw when agentDetails.tenantId is missing', () => {
+      expect(() => InvokeAgentScope.start(testRequest, {}, { agentId: 'a' } as any)).toThrow('InvokeAgentScope: tenantId is required on agentDetails');
+    });
+
+    it('should set both userDetails and callerAgentDetails tags when both are provided', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const scope = InvokeAgentScope.start(testRequest, {}, {
+        agentId: 'test-agent',
+        agentName: 'Test Agent',
+        tenantId: 'test-tenant-456'
+      }, {
+        userDetails: { callerId: 'user-1', callerName: 'User One' },
+        callerAgentDetails: { agentId: 'caller-agent-1', agentName: 'Caller Agent' } as any
+      });
+
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY, val: 'user-1' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY, val: 'User One' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CALLER_AGENT_ID_KEY, val: 'caller-agent-1' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CALLER_AGENT_NAME_KEY, val: 'Caller Agent' }),
+      ]));
+
+      scope?.dispose();
+      spy.mockRestore();
+    });
+
+    it('should set endpoint tags from typed InvokeAgentScopeDetails', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const details: InvokeAgentScopeDetails = { endpoint: { host: 'agent-api.contoso.com', port: 8443 } };
+      const scope = InvokeAgentScope.start(testRequest, details, { agentId: 'typed-agent', tenantId: 'test-tenant-456' });
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.SERVER_ADDRESS_KEY, val: 'agent-api.contoso.com' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.SERVER_PORT_KEY, val: 8443 })
+      ]));
+      scope?.dispose();
+      spy.mockRestore();
+    });
+
+    it('should omit endpoint tags when InvokeAgentScopeDetails is empty', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const scope = InvokeAgentScope.start(testRequest, {}, { agentId: 'test-agent', tenantId: 'test-tenant-456' });
+      const keys = new Set(spy.mock.calls.map(args => args[0]));
+      expect(keys).not.toContain(OpenTelemetryConstants.SERVER_ADDRESS_KEY);
+      expect(keys).not.toContain(OpenTelemetryConstants.SERVER_PORT_KEY);
+      scope?.dispose();
       spy.mockRestore();
     });
   });
@@ -406,6 +460,7 @@ describe('Scopes', () => {
       );
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
       expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.SERVER_ADDRESS_KEY, val: 'agent.example.com' }),
         expect.objectContaining({ key: OpenTelemetryConstants.SERVER_PORT_KEY, val: 9090 })
       ]));
       scope?.dispose();
