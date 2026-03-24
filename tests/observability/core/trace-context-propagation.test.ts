@@ -140,7 +140,8 @@ describe('Trace Context Propagation', () => {
 
       const scope = InvokeAgentScope.start(
         {},
-        { details: { agentId: 'ctx-agent', tenantId: 'test-tenant' } },
+        {},
+        { agentId: 'ctx-agent', tenantId: 'test-tenant' },
         undefined,
         { parentContext: extractedCtx }
       );
@@ -165,7 +166,8 @@ describe('Trace Context Propagation', () => {
 
       const scope = InvokeAgentScope.start(
         {},
-        { details: { agentId: 'remote-agent', tenantId: 'test-tenant' } },
+        {},
+        { agentId: 'remote-agent', tenantId: 'test-tenant' },
         undefined,
         { parentContext: parentRef }
       );

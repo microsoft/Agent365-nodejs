@@ -4,10 +4,11 @@
 import { SpanKind } from '@opentelemetry/api';
 import { OpenTelemetryScope } from './OpenTelemetryScope';
 import {
-  InvokeAgentDetails,
+  InvokeAgentScopeDetails,
   CallerDetails,
   Request,
   SpanDetails,
+  AgentDetails,
 } from '../contracts';
 import { OpenTelemetryConstants } from '../constants';
 
@@ -19,8 +20,8 @@ export class InvokeAgentScope extends OpenTelemetryScope {
    * Creates and starts a new scope for agent invocation tracing.
    *
    * @param request Request payload (channel, conversationId, content, sessionId).
-   * @param invokeAgentDetails The details of the agent invocation (agent identity via `.details`, endpoint).
-   *   Tenant ID is derived from `invokeAgentDetails.details.tenantId`.
+   * @param invokeScopeDetails Scope-level details
+   * @param agentDetails The agent identity. Tenant ID is derived from `agentDetails.tenantId` (required).
    * @param callerDetails Optional caller information. Supports three scenarios:
    *   - Human caller only: `{ userDetails: { callerId, callerName, ... } }`
    *   - Agent caller only: `{ callerAgentDetails: { agentId, agentName, ... } }`
@@ -30,37 +31,39 @@ export class InvokeAgentScope extends OpenTelemetryScope {
    */
   public static start(
     request: Request,
-    invokeAgentDetails: InvokeAgentDetails,
+    invokeScopeDetails: InvokeAgentScopeDetails,
+    agentDetails: AgentDetails,
     callerDetails?: CallerDetails,
-    spanDetails?: SpanDetails
+    spanDetails?: SpanDetails,
   ): InvokeAgentScope {
-    return new InvokeAgentScope(request, invokeAgentDetails, callerDetails, spanDetails);
+    return new InvokeAgentScope(request, invokeScopeDetails, agentDetails, callerDetails, spanDetails);
   }
 
   private constructor(
     request: Request,
-    invokeAgentDetails: InvokeAgentDetails,
+    invokeScopeDetails: InvokeAgentScopeDetails,
+    agentDetails: AgentDetails,
     callerDetails?: CallerDetails,
     spanDetails?: SpanDetails
   ) {
-    const agent = invokeAgentDetails.details;
-    if (!agent) {
-      throw new Error('InvokeAgentScope: details is required on invokeAgentDetails');
+    // Validate agent details
+    if (!agentDetails) {
+      throw new Error('InvokeAgentScope: agentDetails is required');
     }
 
-    // Derive tenant details from agent.tenantId (required for telemetry)
-    if (!agent.tenantId) {
-      throw new Error('InvokeAgentScope: tenantId is required on invokeAgentDetails.details');
+    // Derive tenant details from agentDetails.tenantId (required for telemetry)
+    if (!agentDetails.tenantId) {
+      throw new Error('InvokeAgentScope: tenantId is required on agentDetails');
     }
-    const tenantDetails = { tenantId: agent.tenantId };
+    const tenantDetails = { tenantId: agentDetails.tenantId };
 
     super(
       spanDetails?.spanKind ?? SpanKind.CLIENT,
       OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME,
-      agent.agentName
-        ? `${OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME} ${agent.agentName}`
+      agentDetails.agentName
+        ? `${OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME} ${agentDetails.agentName}`
         : OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME,
-      agent,
+      agentDetails,
       tenantDetails,
       spanDetails?.parentContext,
       spanDetails?.startTime,
@@ -69,19 +72,19 @@ export class InvokeAgentScope extends OpenTelemetryScope {
     );
 
     // Set provider name from agent details
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY, agent.providerName);
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY, agentDetails.providerName);
 
-    // Set session ID
-    this.setTagMaybe(OpenTelemetryConstants.SESSION_ID_KEY, invokeAgentDetails.sessionId);
+    // Set session ID from request
+    this.setTagMaybe(OpenTelemetryConstants.SESSION_ID_KEY, request?.sessionId);
 
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY, agent.agentBlueprintId);
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY, agentDetails.agentBlueprintId);
 
-    if (invokeAgentDetails.endpoint) {
-      this.setTagMaybe(OpenTelemetryConstants.SERVER_ADDRESS_KEY, invokeAgentDetails.endpoint.host);
+    if (invokeScopeDetails.endpoint) {
+      this.setTagMaybe(OpenTelemetryConstants.SERVER_ADDRESS_KEY, invokeScopeDetails.endpoint.host);
 
       // Only record port if it is different from 443 (default HTTPS port)
-      if (invokeAgentDetails.endpoint.port && invokeAgentDetails.endpoint.port !== 443) {
-        this.setTagMaybe(OpenTelemetryConstants.SERVER_PORT_KEY, invokeAgentDetails.endpoint.port);
+      if (invokeScopeDetails.endpoint.port && invokeScopeDetails.endpoint.port !== 443) {
+        this.setTagMaybe(OpenTelemetryConstants.SERVER_PORT_KEY, invokeScopeDetails.endpoint.port);
       }
     }
 
@@ -91,8 +94,8 @@ export class InvokeAgentScope extends OpenTelemetryScope {
       this.setTagMaybe(OpenTelemetryConstants.CHANNEL_LINK_KEY, request.channel.description);
     }
 
-    // Use explicit conversationId from request, falling back to agent.conversationId
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, request?.conversationId ?? agent.conversationId);
+    // Use explicit conversationId from request, falling back to agentDetails.conversationId
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, request?.conversationId ?? agentDetails.conversationId);
 
     // Set caller agent details tags for A2A scenarios
     const callerAgent = callerDetails?.callerAgentDetails;

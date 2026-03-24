@@ -13,7 +13,7 @@ import {
   UserDetails,
   CallerDetails,
   InferenceDetails,
-  InvokeAgentDetails,
+  InvokeAgentScopeDetails,
   ToolCallDetails,
   Request,
   SpanDetails,
@@ -176,10 +176,9 @@ export class ScopeUtils {
   /**
    * Create an `InvokeAgentScope` using `details` and values derived from the provided `TurnContext`.
    * Builds a separate `Request` with `conversationId` and `channel` from context.
-   * Merges agent identity from context into `invokeAgentDetails.details`.
-   * Derives `callerAgentDetails` (from caller) and `userDetails` (human caller).
+   * Derives agent identity from context, caller details (agent and human).
    * Also records input messages from the context if present.
-   * @param details The invoke-agent call details to be augmented and used for the scope.
+   * @param scopeDetails The invoke-agent scope details (endpoint).
    * @param turnContext The current activity context to derive scope parameters from.
    * @param authToken Auth token for resolving agent identity from token claims.
    * @param startTime Optional explicit start time (ms epoch, Date, or HrTime).
@@ -188,7 +187,7 @@ export class ScopeUtils {
    * @returns A started `InvokeAgentScope` enriched with context-derived parameters.
    */
   static populateInvokeAgentScopeFromTurnContext(
-    details: InvokeAgentDetails,
+    scopeDetails: InvokeAgentScopeDetails,
     turnContext: TurnContext,
     authToken: string,
     startTime?: TimeInput,
@@ -200,8 +199,13 @@ export class ScopeUtils {
     const conversationId = ScopeUtils.deriveConversationId(turnContext);
     const channel = ScopeUtils.deriveChannelObject(turnContext);
 
-    // Merge agent identity from TurnContext into details.details
-    const invokeAgentDetails = ScopeUtils.buildInvokeAgentDetailsCore(details, turnContext, authToken);
+    // Derive agent identity from TurnContext
+    const agentDetails = ScopeUtils.deriveAgentDetails(turnContext, authToken);
+    if (!agentDetails) {
+      throw new Error('populateInvokeAgentScopeFromTurnContext: Missing agent details on TurnContext (recipient)');
+    }
+    // Merge conversationId from context
+    agentDetails.conversationId = conversationId ?? agentDetails.conversationId;
 
     // Build the request with channel and conversationId from context
     const hasChannel = channel.name !== undefined || channel.description !== undefined;
@@ -220,37 +224,23 @@ export class ScopeUtils {
       ? { startTime, endTime, spanKind }
       : undefined;
 
-    const scope = InvokeAgentScope.start(request, invokeAgentDetails, callerDetails, spanDetailsObj);
+    const scope = InvokeAgentScope.start(request, scopeDetails, agentDetails, callerDetails, spanDetailsObj);
     this.setInputMessageTags(scope, turnContext);
     return scope;
   }
 
   /**
-   * Build InvokeAgentDetails by merging provided details with agent info from the TurnContext.
-   * @param details Base invoke-agent details to augment
+   * Derive agent details from the TurnContext, merging with conversationId.
    * @param turnContext Activity context
    * @param authToken Auth token for resolving agent identity from token claims.
-   * @returns New InvokeAgentDetails with merged `details.details` (agent identity).
+   * @returns Merged AgentDetails.
    */
-  public static buildInvokeAgentDetails(details: InvokeAgentDetails, turnContext: TurnContext, authToken: string): InvokeAgentDetails {
-    return ScopeUtils.buildInvokeAgentDetailsCore(details, turnContext, authToken);
-  }
-
-  private static buildInvokeAgentDetailsCore(details: InvokeAgentDetails, turnContext: TurnContext, authToken: string): InvokeAgentDetails {
+  public static buildAgentDetailsFromContext(turnContext: TurnContext, authToken: string): AgentDetails | undefined {
     const agent = ScopeUtils.deriveAgentDetails(turnContext, authToken);
+    if (!agent) return undefined;
     const conversationId = ScopeUtils.deriveConversationId(turnContext);
-
-    // Merge derived agent identity into details.details
-    const mergedAgent: AgentDetails = {
-      ...details.details,
-      ...(agent ?? {}),
-      conversationId: conversationId ?? details.details?.conversationId,
-    };
-
-    return {
-      ...details,
-      details: mergedAgent,
-    };
+    agent.conversationId = conversationId ?? agent.conversationId;
+    return agent;
   }
 
   /**

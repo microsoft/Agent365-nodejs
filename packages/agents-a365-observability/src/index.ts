@@ -37,7 +37,7 @@ export {
   AgentDetails,
   TenantDetails,
   ToolCallDetails,
-  InvokeAgentDetails,
+  InvokeAgentScopeDetails,
   UserDetails,
   CallerDetails,
   EnhancedAgentDetails,

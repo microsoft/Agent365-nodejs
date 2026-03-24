@@ -9,8 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking Changes (`@microsoft/agents-a365-observability`)
 
-- **`InvokeAgentDetails` — inheritance → composition.** No longer extends `AgentDetails`. Agent identity is accessed via `invokeAgentDetails.details.agentId`. Removed `request`, `providerName`, `agentBlueprintId` fields.
-- **`InvokeAgentScope.start()` — new signature.** `start(request, invokeAgentDetails, callerDetails?, spanDetails?)`. Tenant ID is derived from `invokeAgentDetails.details.tenantId` (required). `userDetails` and `callerAgentDetails` are wrapped in `CallerDetails`. Span options (`parentContext`, `startTime`, `endTime`, `spanKind`) are grouped in `SpanDetails`.
+- **`InvokeAgentDetails` renamed to `InvokeAgentScopeDetails`** — Now contains only scope-level config (`endpoint`). Agent identity (`AgentDetails`) is a separate parameter. `sessionId` moved to `Request`.
+- **`InvokeAgentScope.start()` — new signature.** `start(request, invokeScopeDetails, agentDetails, callerDetails?, spanDetails?)`. Tenant ID is derived from `agentDetails.tenantId` (required). `userDetails` and `callerAgentDetails` are wrapped in `CallerDetails`. Span options grouped in `SpanDetails`.
 - **`InferenceScope.start()` — new signature.** `start(request, details, agentDetails, userDetails?, spanDetails?)`. Tenant ID derived from `agentDetails.tenantId` (required).
 - **`ExecuteToolScope.start()` — new signature.** `start(request, details, agentDetails, userDetails?, spanDetails?)`. Tenant ID derived from `agentDetails.tenantId` (required).
 - **`OutputScope.start()` — new signature.** `start(request, response, agentDetails, userDetails?, spanDetails?)`. Tenant ID derived from `agentDetails.tenantId` (required).
@@ -42,7 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`ScopeUtils.populateInferenceScopeFromTurnContext(details, turnContext, authToken, ...)`** — New required `authToken: string` parameter.
 - **`ScopeUtils.populateInvokeAgentScopeFromTurnContext(details, turnContext, authToken, ...)`** — New required `authToken: string` parameter.
 - **`ScopeUtils.populateExecuteToolScopeFromTurnContext(details, turnContext, authToken, ...)`** — New required `authToken: string` parameter.
-- **`ScopeUtils.buildInvokeAgentDetails(details, turnContext, authToken)`** — New required `authToken: string` parameter.
+- **`ScopeUtils.buildInvokeAgentDetails()` renamed to `ScopeUtils.buildAgentDetailsFromContext()`** — Returns `AgentDetails` directly instead of `InvokeAgentDetails`.
 
 ### Added
 

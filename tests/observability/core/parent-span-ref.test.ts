@@ -11,7 +11,7 @@ import {
   InvokeAgentScope,
   InferenceScope,
   ExecuteToolScope,
-  InvokeAgentDetails,
+  InvokeAgentScopeDetails,
   InferenceDetails,
   InferenceOperationType,
   ToolCallDetails,
@@ -96,14 +96,11 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
     [
       'InvokeAgentScope',
       (parentRef: ParentSpanRef) => {
-        const invokeAgentDetails: InvokeAgentDetails = {
-          details: {
+        return InvokeAgentScope.start(testRequest, {}, {
             agentId: 'test-agent',
             agentName: 'Test Agent',
             tenantId: 'test-tenant-456'
-          }
-        };
-        return InvokeAgentScope.start(testRequest, invokeAgentDetails, undefined, { parentContext: parentRef });
+          }, undefined, { parentContext: parentRef });
       },
       (name: string) => name.toLowerCase().includes('invokeagent') || name.toLowerCase().includes('invoke_agent'),
     ],
@@ -175,13 +172,10 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
         // Run a callback with parent context
         runWithParentSpanRef(parentRef, () => {
           // Create a scope inside - it should automatically inherit the parent
-          const invokeAgentDetails: InvokeAgentDetails = {
-            details: { agentId: 'nested-agent', tenantId: 'test-tenant-456' },
-          };
-
           const nestedScope = InvokeAgentScope.start(
             testRequest,
-            invokeAgentDetails
+            {},
+            { agentId: 'nested-agent', tenantId: 'test-tenant-456' }
           );
 
           const nestedSpanContext = nestedScope.getSpanContext();
@@ -205,11 +199,7 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
 
   describe('getSpanContext method', () => {
     it('should return the span context from a scope (and be usable as ParentSpanRef)', async () => {
-      const invokeAgentDetails: InvokeAgentDetails = {
-        details: { agentId: 'test-agent', tenantId: 'test-tenant-456' },
-      };
-
-      const scope = InvokeAgentScope.start(testRequest, invokeAgentDetails);
+      const scope = InvokeAgentScope.start(testRequest, {}, { agentId: 'test-agent', tenantId: 'test-tenant-456' });
       const spanContext = scope.getSpanContext();
 
       expect(spanContext).toBeDefined();
@@ -256,11 +246,7 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
       };
 
       runWithParentSpanRef(parentRef, () => {
-        const invokeAgentDetails: InvokeAgentDetails = {
-          details: { agentId: 'sampled-agent', tenantId: 'test-tenant-456' },
-        };
-
-        const scope = InvokeAgentScope.start(testRequest, invokeAgentDetails);
+        const scope = InvokeAgentScope.start(testRequest, {}, { agentId: 'sampled-agent', tenantId: 'test-tenant-456' });
         scope.dispose();
       });
 
@@ -285,11 +271,7 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
       };
 
       runWithParentSpanRef(parentRef, () => {
-        const invokeAgentDetails: InvokeAgentDetails = {
-          details: { agentId: 'unsampled-agent', tenantId: 'test-tenant-456' },
-        };
-
-        const scope = InvokeAgentScope.start(testRequest, invokeAgentDetails);
+        const scope = InvokeAgentScope.start(testRequest, {}, { agentId: 'unsampled-agent', tenantId: 'test-tenant-456' });
         scope.dispose();
       });
 
@@ -314,11 +296,7 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
       };
 
       runWithParentSpanRef(parentRef, () => {
-        const invokeAgentDetails: InvokeAgentDetails = {
-          details: { agentId: 'default-sampled-agent', tenantId: 'test-tenant-456' },
-        };
-
-        const scope = InvokeAgentScope.start(testRequest, invokeAgentDetails);
+        const scope = InvokeAgentScope.start(testRequest, {}, { agentId: 'default-sampled-agent', tenantId: 'test-tenant-456' });
         scope.dispose();
       });
 
@@ -349,11 +327,7 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
       const baseCtx = trace.setSpan(otelContext.active(), rootSpan);
       await otelContext.with(baseCtx, async () => {
         runWithParentSpanRef(parentRef, () => {
-          const invokeAgentDetails: InvokeAgentDetails = {
-            details: { agentId: 'inherited-flags-agent', tenantId: 'test-tenant-456' },
-          };
-
-          const scope = InvokeAgentScope.start(testRequest, invokeAgentDetails);
+          const scope = InvokeAgentScope.start(testRequest, {}, { agentId: 'inherited-flags-agent', tenantId: 'test-tenant-456' });
           scope.dispose();
         });
       });

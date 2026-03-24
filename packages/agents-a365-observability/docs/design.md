@@ -129,20 +129,19 @@ abstract class OpenTelemetryScope implements Disposable {
 Traces agent invocation operations:
 
 ```typescript
-import { InvokeAgentScope, InvokeAgentDetails, Request, CallerDetails } from '@microsoft/agents-a365-observability';
+import { InvokeAgentScope, InvokeAgentScopeDetails, AgentDetails, Request, CallerDetails } from '@microsoft/agents-a365-observability';
 
-const request: Request = { content: 'Hello', channel: { name: 'Teams' } };
-const invokeAgentDetails: InvokeAgentDetails = {
-  details: { agentId: 'agent-123', agentName: 'MyAgent', tenantId: 'tenant-789' },
-  endpoint: { host: 'api.example.com', port: 443 },
-  sessionId: 'session-456'
+const request: Request = { content: 'Hello', channel: { name: 'Teams' }, sessionId: 'session-456' };
+const scopeDetails: InvokeAgentScopeDetails = {
+  endpoint: { host: 'api.example.com', port: 443 }
 };
+const agentDetails: AgentDetails = { agentId: 'agent-123', agentName: 'MyAgent', tenantId: 'tenant-789' };
 const callerInfo: CallerDetails = {
   userDetails: { callerId: 'user-1', callerName: 'User' },
   callerAgentDetails: callerAgent  // Optional, for A2A scenarios
 };
 
-using scope = InvokeAgentScope.start(request, invokeAgentDetails, callerInfo);
+using scope = InvokeAgentScope.start(request, scopeDetails, agentDetails, callerInfo);
 
 scope.recordInputMessages(['Hello']);
 // ... agent processing ...
@@ -242,28 +241,26 @@ const scope2 = BaggageBuilder.setRequestContext(
 
 | Method | Baggage Key |
 |--------|-------------|
-| `tenantId(value)` | `microsoft.tenant.id` |
+| `tenantId(value)` | `tenant_id` |
 | `agentId(value)` | `gen_ai.agent.id` |
-| `agentAuid(value)` | `microsoft.agent.user.id` |
-| `agentUpn(value)` | `microsoft.agent.user.upn` |
+| `agentAuid(value)` | `gen_ai.agent.auid` |
+| `agentUpn(value)` | `gen_ai.agent.upn` |
 | `correlationId(value)` | `correlation_id` |
-| `callerId(value)` | `microsoft.caller.id` |
-| `sessionId(value)` | `microsoft.session.id` |
+| `callerId(value)` | `gen_ai.caller.id` |
+| `sessionId(value)` | `session_id` |
 | `conversationId(value)` | `gen_ai.conversation.id` |
-| `callerUpn(value)` | `microsoft.caller.upn` |
+| `callerUpn(value)` | `gen_ai.caller.upn` |
 | `operationSource(value)` | `service.name` |
-| `channelName(value)` | `microsoft.channel.name` |
-| `channelLink(value)` | `microsoft.channel.link` |
+| `channelName(value)` | `gen_ai.execution.source.name` |
+| `channelLink(value)` | `gen_ai.execution.source.description` |
 
 ## Data Interfaces
 
-### InvokeAgentDetails
+### InvokeAgentScopeDetails
 
 ```typescript
-interface InvokeAgentDetails {
-  details: AgentDetails;
+interface InvokeAgentScopeDetails {
   endpoint?: ServiceEndpoint;
-  sessionId?: string;
 }
 ```
 

@@ -16,7 +16,7 @@ jest.mock('@microsoft/agents-a365-runtime', () => {
 });
 
 import { ScopeUtils } from '../../../../packages/agents-a365-observability-hosting/src/utils/ScopeUtils';
-import { InferenceScope, InvokeAgentScope, ExecuteToolScope, OpenTelemetryConstants, ExecutionType, OpenTelemetryScope, InvokeAgentDetails } from '@microsoft/agents-a365-observability';
+import { InferenceScope, InvokeAgentScope, ExecuteToolScope, OpenTelemetryConstants, ExecutionType, OpenTelemetryScope, InvokeAgentScopeDetails } from '@microsoft/agents-a365-observability';
 import { SpanKind } from '@opentelemetry/api';
 import { RoleTypes } from '@microsoft/agents-activity';
 import type { TurnContext } from '@microsoft/agents-hosting';
@@ -128,15 +128,15 @@ describe('ScopeUtils.populateFromTurnContext', () => {
       });
 
       test('populateInvokeAgentScopeFromTurnContext throws when tenant details are missing', () => {
-        const details: InvokeAgentDetails = { details: { agentId: 'aid' } } as any;
+        const details: InvokeAgentScopeDetails = {};
         const ctx = makeCtx({ activity: { recipient: { agenticAppId: 'aid' }, isAgenticRequest: () => false, getAgenticInstanceId: () => 'aid', getAgenticUser: () => undefined, getAgenticTenantId: () => undefined } as any }); // no tenantId
         expect(() => ScopeUtils.populateInvokeAgentScopeFromTurnContext(details, ctx, testAuthToken))
-          .toThrow('InvokeAgentScope: tenantId is required on invokeAgentDetails.details');
+          .toThrow('InvokeAgentScope: tenantId is required on agentDetails');
       });
     });
 
   test('build InvokeAgentScope based on turn context', () => {
-    const details: InvokeAgentDetails = { details: { agentId: 'invoke-agent', providerName: 'internal' } };
+    const details: InvokeAgentScopeDetails = {};
     const ctx = makeTurnContext('invoke message', 'teams', 'https://teams', 'conv-B');
     ctx.activity.from!.role = RoleTypes.AgenticUser;
     const scope = ScopeUtils.populateInvokeAgentScopeFromTurnContext(details, ctx, testAuthToken) as InvokeAgentScope;
@@ -271,10 +271,7 @@ test('deriveChannelObject returns undefined fields when none', () => {
   expect(ScopeUtils.deriveChannelObject(ctx)).toEqual({ name: undefined, description: undefined });
 });
 
-test('buildInvokeAgentDetails merges agent (recipient) and conversationId into details', () => {
-  const invokeAgentDetails: InvokeAgentDetails = {
-    details: { agentId: 'provided' },
-  };
+test('buildAgentDetailsFromContext merges agent (recipient) and conversationId into details', () => {
   const ctx = makeCtx({
     activity: {
       recipient: { name: 'Rec', role: 'bot' },
@@ -288,20 +285,16 @@ test('buildInvokeAgentDetails merges agent (recipient) and conversationId into d
     } as any
   });
 
-  const result = ScopeUtils.buildInvokeAgentDetails(invokeAgentDetails, ctx, testAuthToken);
-  // Agent identity is merged into result.details
-  expect(result.details.agentName).toBe('Rec');
-  expect(result.details.conversationId).toBe('c-2');
+  const result = ScopeUtils.buildAgentDetailsFromContext(ctx, testAuthToken);
+  // Agent identity is merged into result
+  expect(result!.agentName).toBe('Rec');
+  expect(result!.conversationId).toBe('c-2');
 });
 
-test('buildInvokeAgentDetails keeps base details when TurnContext has no overrides', () => {
-  const invokeAgentDetails: InvokeAgentDetails = {
-    details: { agentId: 'base-agent' },
-  };
+test('buildAgentDetailsFromContext returns undefined when TurnContext has no recipient', () => {
   const ctx = makeCtx({ activity: {} as any });
-  const result = ScopeUtils.buildInvokeAgentDetails(invokeAgentDetails, ctx, testAuthToken);
-  expect(result.details.agentId).toBe('base-agent');
-  expect(result.details.conversationId).toBeUndefined();
+  const result = ScopeUtils.buildAgentDetailsFromContext(ctx, testAuthToken);
+  expect(result).toBeUndefined();
 });
 
 describe('ScopeUtils spanKind forwarding', () => {
@@ -309,11 +302,12 @@ describe('ScopeUtils spanKind forwarding', () => {
     const spy = jest.spyOn(InvokeAgentScope, 'start');
     const ctx = makeTurnContext('hello', 'web', 'https://web', 'conv-span');
     const scope = ScopeUtils.populateInvokeAgentScopeFromTurnContext(
-      { details: { agentId: 'test-agent' } }, ctx, testAuthToken,
+      {}, ctx, testAuthToken,
       undefined, undefined, SpanKind.SERVER
     );
     expect(spy).toHaveBeenCalledWith(
       expect.anything(), expect.anything(), expect.anything(),
+      expect.anything(),
       expect.objectContaining({ spanKind: SpanKind.SERVER })
     );
     scope?.dispose();
