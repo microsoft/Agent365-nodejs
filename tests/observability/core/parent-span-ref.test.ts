@@ -71,6 +71,8 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
     tenantId: 'test-tenant-456'
   };
 
+  const testRequest = { conversationId: 'test-conv-psr', channel: { name: 'PSRChannel', description: 'https://psr.channel' } };
+
 
   describe('runWithParentSpanRef', () => {
     it('should execute callback with parent span context', () => {
@@ -101,7 +103,7 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
             tenantId: 'test-tenant-456'
           }
         };
-        return InvokeAgentScope.start({}, invokeAgentDetails, undefined, { parentContext: parentRef });
+        return InvokeAgentScope.start(testRequest, invokeAgentDetails, undefined, { parentContext: parentRef });
       },
       (name: string) => name.toLowerCase().includes('invokeagent') || name.toLowerCase().includes('invoke_agent'),
     ],
@@ -113,7 +115,7 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
           model: 'gpt-4',
           providerName: 'openai',
         };
-        return InferenceScope.start(inferenceDetails, testAgentDetails, undefined, undefined, { parentContext: parentRef });
+        return InferenceScope.start(testRequest, inferenceDetails, testAgentDetails, undefined, { parentContext: parentRef });
       },
       (name: string) => name.toLowerCase().includes('chat'),
     ],
@@ -124,7 +126,7 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
           toolName: 'test-tool',
           arguments: '{"param": "value"}',
         };
-        return ExecuteToolScope.start(toolDetails, testAgentDetails, undefined, undefined, { parentContext: parentRef });
+        return ExecuteToolScope.start(testRequest, toolDetails, testAgentDetails, undefined, { parentContext: parentRef });
       },
       (name: string) => name.toLowerCase().includes('execute_tool'),
     ],
@@ -178,7 +180,7 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
           };
 
           const nestedScope = InvokeAgentScope.start(
-            {},
+            testRequest,
             invokeAgentDetails
           );
 
@@ -207,7 +209,7 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
         details: { agentId: 'test-agent', tenantId: 'test-tenant-456' },
       };
 
-      const scope = InvokeAgentScope.start({}, invokeAgentDetails);
+      const scope = InvokeAgentScope.start(testRequest, invokeAgentDetails);
       const spanContext = scope.getSpanContext();
 
       expect(spanContext).toBeDefined();
@@ -225,7 +227,7 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
       const activeParentSpan = trace.wrapSpanContext(spanContext);
       const baseCtx = trace.setSpan(otelContext.active(), activeParentSpan);
       const childScope = otelContext.with(baseCtx, () =>
-        InferenceScope.start(inferenceDetails, testAgentDetails, undefined, undefined, { parentContext: parentRef })
+        InferenceScope.start(testRequest, inferenceDetails, testAgentDetails, undefined, { parentContext: parentRef })
       );
       expect(childScope.getSpanContext().traceId).toBe(spanContext.traceId);
 
@@ -258,7 +260,7 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
           details: { agentId: 'sampled-agent', tenantId: 'test-tenant-456' },
         };
 
-        const scope = InvokeAgentScope.start({}, invokeAgentDetails);
+        const scope = InvokeAgentScope.start(testRequest, invokeAgentDetails);
         scope.dispose();
       });
 
@@ -287,7 +289,7 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
           details: { agentId: 'unsampled-agent', tenantId: 'test-tenant-456' },
         };
 
-        const scope = InvokeAgentScope.start({}, invokeAgentDetails);
+        const scope = InvokeAgentScope.start(testRequest, invokeAgentDetails);
         scope.dispose();
       });
 
@@ -316,7 +318,7 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
           details: { agentId: 'default-sampled-agent', tenantId: 'test-tenant-456' },
         };
 
-        const scope = InvokeAgentScope.start({}, invokeAgentDetails);
+        const scope = InvokeAgentScope.start(testRequest, invokeAgentDetails);
         scope.dispose();
       });
 
@@ -351,7 +353,7 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
             details: { agentId: 'inherited-flags-agent', tenantId: 'test-tenant-456' },
           };
 
-          const scope = InvokeAgentScope.start({}, invokeAgentDetails);
+          const scope = InvokeAgentScope.start(testRequest, invokeAgentDetails);
           scope.dispose();
         });
       });

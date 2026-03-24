@@ -22,6 +22,8 @@ describe('OutputScope', () => {
     tenantId: '12345678-1234-5678-1234-567812345678',
   };
 
+  const testRequest = { conversationId: 'test-conv-out', channel: { name: 'OutputChannel', description: 'https://output.channel' } };
+
   let exporter: InMemorySpanExporter;
   let provider: BasicTracerProvider;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -71,7 +73,10 @@ describe('OutputScope', () => {
   it('should create scope with correct span attributes and output messages', async () => {
     const response: OutputResponse = { messages: ['First message', 'Second message'] };
 
-    const scope = OutputScope.start({}, response, testAgentDetails);
+    const scope = OutputScope.start(
+      { conversationId: 'conv-out-1', channel: { name: 'Email', description: 'https://email.link' } },
+      response, testAgentDetails
+    );
     expect(scope).toBeInstanceOf(OutputScope);
     scope.dispose();
 
@@ -82,6 +87,9 @@ describe('OutputScope', () => {
     expect(attributes[OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY]).toBe('output_messages');
     expect(attributes[OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]).toBe(testAgentDetails.agentId);
     expect(attributes[OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY]).toBe(testAgentDetails.agentName);
+    expect(attributes[OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY]).toBe('conv-out-1');
+    expect(attributes[OpenTelemetryConstants.CHANNEL_NAME_KEY]).toBe('Email');
+    expect(attributes[OpenTelemetryConstants.CHANNEL_LINK_KEY]).toBe('https://email.link');
     const parsed = JSON.parse(attributes[OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY] as string);
     expect(parsed).toEqual(['First message', 'Second message']);
   });
@@ -89,7 +97,7 @@ describe('OutputScope', () => {
   it('should append messages with recordOutputMessages and flush on dispose', async () => {
     const response: OutputResponse = { messages: ['Initial'] };
 
-    const scope = OutputScope.start({}, response, testAgentDetails);
+    const scope = OutputScope.start(testRequest, response, testAgentDetails);
     scope.recordOutputMessages(['Appended 1']);
     scope.recordOutputMessages(['Appended 2', 'Appended 3']);
     scope.dispose();

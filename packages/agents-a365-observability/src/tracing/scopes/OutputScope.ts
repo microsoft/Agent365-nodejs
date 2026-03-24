@@ -40,6 +40,11 @@ export class OutputScope extends OpenTelemetryScope {
     userDetails?: UserDetails,
     spanDetails?: SpanDetails
   ) {
+    // Validate request (required for all scopes)
+    if (!request) {
+      throw new Error('OutputScope: request is required');
+    }
+
     // Derive tenant details from agentDetails.tenantId (required for telemetry)
     if (!agentDetails.tenantId) {
       throw new Error('OutputScope: tenantId is required on agentDetails');

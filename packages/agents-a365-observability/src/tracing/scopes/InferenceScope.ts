@@ -19,27 +19,27 @@ export class InferenceScope extends OpenTelemetryScope {
   /**
    * Creates and starts a new scope for inference tracing.
    *
+   * @param request Request payload (channel, conversationId, content, sessionId).
    * @param details The inference call details (model, provider, tokens, etc.).
    * @param agentDetails The agent performing the inference. Tenant ID is derived from `agentDetails.tenantId`.
-   * @param request Optional request context (conversationId, channel).
    * @param userDetails Optional human caller identity.
    * @param spanDetails Optional span configuration (parentContext, startTime, endTime).
    * @returns A new InferenceScope instance
    */
   public static start(
+    request: Request,
     details: InferenceDetails,
     agentDetails: AgentDetails,
-    request?: Request,
     userDetails?: UserDetails,
     spanDetails?: SpanDetails
   ): InferenceScope {
-    return new InferenceScope(details, agentDetails, request, userDetails, spanDetails);
+    return new InferenceScope(request, details, agentDetails, userDetails, spanDetails);
   }
 
   private constructor(
+    request: Request,
     details: InferenceDetails,
     agentDetails: AgentDetails,
-    request?: Request,
     userDetails?: UserDetails,
     spanDetails?: SpanDetails
   ) {

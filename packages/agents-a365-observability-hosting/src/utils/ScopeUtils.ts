@@ -168,7 +168,7 @@ export class ScopeUtils {
       ? { startTime, endTime }
       : undefined;
 
-    const scope = InferenceScope.start(details, agent, request, caller, spanDetails);
+    const scope = InferenceScope.start(request, details, agent, caller, spanDetails);
     this.setInputMessageTags(scope, turnContext);
     return scope;
   }
@@ -292,7 +292,7 @@ export class ScopeUtils {
       ? { startTime, endTime, spanKind }
       : undefined;
 
-    const scope = ExecuteToolScope.start(details, agent, request, caller, spanDetailsObj);
+    const scope = ExecuteToolScope.start(request, details, agent, caller, spanDetailsObj);
     return scope;
   }
 
