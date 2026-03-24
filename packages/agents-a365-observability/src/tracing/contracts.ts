@@ -182,6 +182,13 @@ export interface UserDetails {
 /**
  * Caller details for scope creation.
  * Supports human callers, agent callers, or both (A2A with a human in the chain).
+ *
+ * **Migration note:** In v1 the name `CallerDetails` referred to human caller
+ * identity (now {@link UserDetails}). In v2 it was repurposed as a wrapper that
+ * groups both human and agent caller information.
+ *
+ * @see {@link UserDetails} — human caller identity (previously `CallerDetails`)
+ * @see CHANGELOG.md — breaking changes section for migration guidance
  */
 export interface CallerDetails {
   /** Optional human caller identity */

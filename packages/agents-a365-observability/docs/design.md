@@ -166,13 +166,13 @@ Traces LLM/AI model inference calls:
 import { InferenceScope, InferenceDetails, InferenceOperationType } from '@microsoft/agents-a365-observability';
 
 using scope = InferenceScope.start(
+  { conversationId: 'conv-123' },  // Request (required)
   {
     operationName: InferenceOperationType.CHAT,
     model: 'gpt-4',
     providerName: 'openai'
   },
-  agentDetails,  // Must include tenantId
-  { conversationId: 'conv-123' }  // Request (optional)
+  agentDetails  // Must include tenantId
 );
 
 scope.recordInputMessages(['User message']);
@@ -192,6 +192,7 @@ Traces tool execution operations:
 import { ExecuteToolScope, ToolCallDetails } from '@microsoft/agents-a365-observability';
 
 using scope = ExecuteToolScope.start(
+  {},  // Request (required)
   {
     toolName: 'search',
     arguments: JSON.stringify({ query: 'weather' }),
@@ -241,18 +242,18 @@ const scope2 = BaggageBuilder.setRequestContext(
 
 | Method | Baggage Key |
 |--------|-------------|
-| `tenantId(value)` | `tenant_id` |
+| `tenantId(value)` | `microsoft.tenant.id` |
 | `agentId(value)` | `gen_ai.agent.id` |
-| `agentAuid(value)` | `gen_ai.agent.auid` |
-| `agentUpn(value)` | `gen_ai.agent.upn` |
+| `agentAuid(value)` | `microsoft.agent.user.id` |
+| `agentUpn(value)` | `microsoft.agent.user.upn` |
 | `correlationId(value)` | `correlation_id` |
-| `callerId(value)` | `gen_ai.caller.id` |
-| `sessionId(value)` | `session_id` |
+| `callerId(value)` | `microsoft.caller.id` |
+| `sessionId(value)` | `microsoft.session.id` |
 | `conversationId(value)` | `gen_ai.conversation.id` |
-| `callerUpn(value)` | `gen_ai.caller.upn` |
+| `callerUpn(value)` | `microsoft.caller.upn` |
 | `operationSource(value)` | `service.name` |
-| `channelName(value)` | `gen_ai.execution.source.name` |
-| `channelLink(value)` | `gen_ai.execution.source.description` |
+| `channelName(value)` | `microsoft.channel.name` |
+| `channelLink(value)` | `microsoft.channel.link` |
 
 ## Data Interfaces
 
