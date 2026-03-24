@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking Changes (`@microsoft/agents-a365-observability`)
 
+- **Caller dimension constants renamed to `user.*` namespace** — Aligns with OpenTelemetry semantic conventions and .NET SDK:
+  - `GEN_AI_CALLER_ID_KEY` (`microsoft.caller.id`) → `USER_ID_KEY` (`user.id`)
+  - `GEN_AI_CALLER_NAME_KEY` (`microsoft.caller.name`) → `USER_NAME_KEY` (`user.name`)
+  - `GEN_AI_CALLER_UPN_KEY` (`microsoft.caller.upn`) → `USER_EMAIL_KEY` (`user.email`)
+  - `GEN_AI_AGENT_UPN_KEY` (`microsoft.agent.user.upn`) → `GEN_AI_AGENT_EMAIL_KEY` (`microsoft.agent.user.email`)
+  - `GEN_AI_CALLER_AGENT_UPN_KEY` (`microsoft.a365.caller.agent.user.upn`) → `GEN_AI_CALLER_AGENT_EMAIL_KEY` (`microsoft.a365.caller.agent.user.email`)
+- **`CallerDetails` properties renamed** — `callerId` → `userId`, `callerUpn` → `userEmail`, `callerName` → `userName`.
+- **`AgentDetails.agentUPN` renamed to `AgentDetails.agentEmail`**.
+- **`BaggageBuilder` methods renamed** — `callerId()` → `userId()`, `callerName()` → `userName()`, `callerUpn()` → `userEmail()`, `agentUpn()` → `agentEmail()`.
 - **`SourceMetadata` renamed to `Channel`** — The exported interface representing invocation channel information is renamed from `SourceMetadata` to `Channel`.
 - **`AgentRequest.sourceMetadata` renamed to `AgentRequest.channel`** — The optional property on `AgentRequest` is renamed from `sourceMetadata` to `channel` (type changed from `SourceMetadata` to `Channel`).
 - **`BaggageBuilder.serviceName()` renamed to `BaggageBuilder.operationSource()`** — Fluent setter for the service name baggage value.
@@ -20,6 +29,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking Changes (`@microsoft/agents-a365-observability-hosting`)
 
+- **`ScopeUtils.deriveCallerDetails()` now returns renamed properties** — `callerId` → `userId`, `callerUpn` → `userEmail`, `callerName` → `userName` (matching `CallerDetails` rename).
+- **`ScopeUtils.deriveAgentDetails()` / `deriveCallerAgent()` now return `agentEmail` instead of `agentUPN`** (matching `AgentDetails` rename).
+- **`getCallerBaggagePairs()` now emits `user.id`, `user.name`, `user.email`** instead of `microsoft.caller.id`, `microsoft.caller.name`, `microsoft.caller.upn`.
 - **`ScopeUtils.deriveSourceMetadataObject()` renamed to `ScopeUtils.deriveChannelObject()`**.
 - **`BaggageBuilderUtils.setSourceMetadataBaggage()` renamed to `BaggageBuilderUtils.setChannelBaggage()`**.
 - **`getSourceMetadataBaggagePairs()` renamed to `getChannelBaggagePairs()`** in `TurnContextUtils`.
@@ -47,7 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **ObservabilityHostingManager**: `enableBaggage` option now defaults to `false` (was `true`). Callers must explicitly set `enableBaggage: true` to register the BaggageMiddleware.
 - `ScopeUtils.deriveAgentDetails` now resolves `agentId` via `activity.getAgenticInstanceId()` for embodied (agentic) agents only. For non-embodied agents, `agentId` is `undefined` since the token's app ID cannot reliably be attributed to the agent.
 - `ScopeUtils.deriveAgentDetails` now resolves `agentBlueprintId` from the JWT `xms_par_app_azp` claim via `RuntimeUtility.getAgentIdFromToken()` instead of reading `recipient.agenticAppBlueprintId`.
-- `ScopeUtils.deriveAgentDetails` now resolves `agentUPN` via `activity.getAgenticUser()` instead of `recipient.agenticUserId`.
+- `ScopeUtils.deriveAgentDetails` now resolves `agentEmail` via `activity.getAgenticUser()` instead of `recipient.agenticUserId`.
 - `ScopeUtils.deriveTenantDetails` now uses `activity.getAgenticTenantId()` instead of `recipient.tenantId`.
 - `getTargetAgentBaggagePairs` now uses `activity.getAgenticInstanceId()` instead of `recipient.agenticAppId`.
 - `getTenantIdPair` now uses `activity.getAgenticTenantId()` instead of manual `channelData` parsing.

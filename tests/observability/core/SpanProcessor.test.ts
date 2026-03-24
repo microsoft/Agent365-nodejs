@@ -85,7 +85,7 @@ describe('SpanProcessor', () => {
       const baggageEntries = {
         [OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY]: OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME,
         [OpenTelemetryConstants.TENANT_ID_KEY]: 'tenant-123',
-        [OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY]: 'caller-456'
+        [OpenTelemetryConstants.USER_ID_KEY]: 'caller-456'
       };
 
       let baggage = propagation.createBaggage();
@@ -163,10 +163,11 @@ describe('SpanProcessor', () => {
       expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.TENANT_ID_KEY);
       expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY);
       expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.SESSION_ID_KEY);
-      expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY);
-      expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY);
-      expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.GEN_AI_CALLER_UPN_KEY);
+      expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.USER_ID_KEY);
+      expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.USER_NAME_KEY);
+      expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.USER_EMAIL_KEY);
       expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY);
+      expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.GEN_AI_AGENT_EMAIL_KEY);
       expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.CHANNEL_NAME_KEY);
       expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.CHANNEL_LINK_KEY);
       expect(GENERIC_ATTRIBUTES).not.toContain('correlation.id');
@@ -174,6 +175,7 @@ describe('SpanProcessor', () => {
 
     it('should apply invoke agent specific attributes', () => {
       expect(INVOKE_AGENT_ATTRIBUTES).toContain(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_ID_KEY);
+      expect(INVOKE_AGENT_ATTRIBUTES).toContain(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_EMAIL_KEY);
     });
 
     it('should include blueprint ID in generic attributes', () => {

@@ -100,7 +100,7 @@ describe('BaggageMiddleware', () => {
       }
     });
 
-    expect(capturedBaggage[OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY]).toBe('user-oid');
+    expect(capturedBaggage[OpenTelemetryConstants.USER_ID_KEY]).toBe('user-oid');
     expect(capturedBaggage[OpenTelemetryConstants.TENANT_ID_KEY]).toBe('tenant-123');
     expect(capturedBaggage[OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]).toBeUndefined();
     expect(capturedBaggage[OpenTelemetryConstants.CHANNEL_NAME_KEY]).toBe('web');
