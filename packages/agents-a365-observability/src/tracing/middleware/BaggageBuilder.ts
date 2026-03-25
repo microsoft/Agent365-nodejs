@@ -70,12 +70,12 @@ export class BaggageBuilder {
   }
 
   /**
-   * Set the agent UPN baggage value.
-   * @param value The agent UPN
+   * Set the agent email baggage value.
+   * @param value The agent email
    * @returns Self for method chaining
    */
-  agentUpn(value: string | null | undefined): BaggageBuilder {
-    this.set(OpenTelemetryConstants.GEN_AI_AGENT_UPN_KEY, value);
+  agentEmail(value: string | null | undefined): BaggageBuilder {
+    this.set(OpenTelemetryConstants.GEN_AI_AGENT_EMAIL_KEY, value);
     return this;
   }
 
@@ -100,12 +100,12 @@ export class BaggageBuilder {
   }
 
   /**
-   * Set the caller ID baggage value.
-   * @param value The caller ID
+   * Set the user ID baggage value.
+   * @param value The user ID
    * @returns Self for method chaining
    */
-  callerId(value: string | null | undefined): BaggageBuilder {
-    this.set(OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY, value);
+  userId(value: string | null | undefined): BaggageBuilder {
+    this.set(OpenTelemetryConstants.USER_ID_KEY, value);
     return this;
   }
 
@@ -150,22 +150,22 @@ export class BaggageBuilder {
   }
 
   /**
-   * Set the caller name baggage value.
-   * @param value The caller name
+   * Set the user name baggage value.
+   * @param value The user name
    * @returns Self for method chaining
    */
-  callerName(value: string | null | undefined): BaggageBuilder {
-    this.set(OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY, value);
+  userName(value: string | null | undefined): BaggageBuilder {
+    this.set(OpenTelemetryConstants.USER_NAME_KEY, value);
     return this;
   }
 
   /**
-   * Set the caller UPN baggage value.
-   * @param value The caller UPN
+   * Set the user email baggage value.
+   * @param value The user email
    * @returns Self for method chaining
    */
-  callerUpn(value: string | null | undefined): BaggageBuilder {
-    this.set(OpenTelemetryConstants.GEN_AI_CALLER_UPN_KEY, value);
+  userEmail(value: string | null | undefined): BaggageBuilder {
+    this.set(OpenTelemetryConstants.USER_EMAIL_KEY, value);
     return this;
   }
 

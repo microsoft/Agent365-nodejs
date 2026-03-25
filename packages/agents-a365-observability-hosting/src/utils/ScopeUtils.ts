@@ -68,7 +68,7 @@ export class ScopeUtils {
       agentName: recipient.name,
       agentAUID: recipient.aadObjectId,
       agentBlueprintId,
-      agentUPN: turnContext?.activity?.getAgenticUser?.(),
+      agentEmail: turnContext?.activity?.getAgenticUser?.(),
       agentDescription: recipient.role,
       tenantId: turnContext?.activity?.getAgenticTenantId?.()
     } as AgentDetails;
@@ -90,13 +90,13 @@ export class ScopeUtils {
       agentDescription: from.role,
       tenantId: from.tenantId,
       agentId: from.agenticAppId,
-      agentUPN: from.agenticUserId
+      agentEmail: from.agenticUserId
     } as AgentDetails;
   }
 
 
   /**
-   * Derive human caller identity details (id, upn, name, tenant) from the activity from.
+   * Derive caller identity details (id, email, name, tenant) from the activity from.
    * @param turnContext Activity context
    * @returns User details when available; otherwise undefined.
    */
@@ -104,9 +104,9 @@ export class ScopeUtils {
     const from = turnContext?.activity?.from;
     if (!from) return undefined;
     return {
-      callerId: from.aadObjectId,
-      callerUpn: from.agenticUserId,
-      callerName: from.name,
+      userId: from.aadObjectId,
+      userEmail: from.agenticUserId,
+      userName: from.name,
       tenantId: from.tenantId,
     } as UserDetails;
   }

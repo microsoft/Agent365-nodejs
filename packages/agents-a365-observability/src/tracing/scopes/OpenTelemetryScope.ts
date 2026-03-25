@@ -90,7 +90,7 @@ export abstract class OpenTelemetryScope implements Disposable {
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_PLATFORM_ID_KEY, agentDetails.platformId);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_ICON_URI_KEY, agentDetails.iconUri);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_AUID_KEY, agentDetails.agentAUID);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_UPN_KEY, agentDetails.agentUPN);
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_EMAIL_KEY, agentDetails.agentEmail);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY, agentDetails.agentBlueprintId);
     }
 
@@ -101,9 +101,9 @@ export abstract class OpenTelemetryScope implements Disposable {
 
     // Set caller details if provided
     if (userDetails) {
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY, userDetails.callerId);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_UPN_KEY, userDetails.callerUpn);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY, userDetails.callerName);
+      this.setTagMaybe(OpenTelemetryConstants.USER_ID_KEY, userDetails.userId);
+      this.setTagMaybe(OpenTelemetryConstants.USER_EMAIL_KEY, userDetails.userEmail);
+      this.setTagMaybe(OpenTelemetryConstants.USER_NAME_KEY, userDetails.userName);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY, userDetails.callerClientIp);
     }
   }

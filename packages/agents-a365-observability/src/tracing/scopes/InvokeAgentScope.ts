@@ -101,7 +101,7 @@ export class InvokeAgentScope extends OpenTelemetryScope {
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_ID_KEY, callerAgent.agentId);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_APPLICATION_ID_KEY, callerAgent.agentBlueprintId);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_USER_ID_KEY, callerAgent.agentAUID);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_UPN_KEY, callerAgent.agentUPN);
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_EMAIL_KEY, callerAgent.agentEmail);
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_PLATFORM_ID_KEY, callerAgent.platformId);
     }
   }
