@@ -158,6 +158,18 @@ describe('BaggageBuilder', () => {
       expect(bag?.getEntry(OpenTelemetryConstants.SERVER_PORT_KEY)?.value).toBe(expectedPort);
     });
 
+    it('should clear previously set non-443 port when port is 443', () => {
+      const builder = new BaggageBuilder();
+      // First set a non-443 port
+      builder.invokeAgentServer('api.example.com', 8080);
+      // Then call again with port 443, which should clear the port baggage
+      builder.invokeAgentServer('api.example.com', 443);
+      const scope = builder.build();
+      const bag = propagation.getBaggage((scope as any).contextWithBaggage);
+      expect(bag?.getEntry(OpenTelemetryConstants.SERVER_ADDRESS_KEY)?.value).toBe('api.example.com');
+      expect(bag?.getEntry(OpenTelemetryConstants.SERVER_PORT_KEY)).toBeUndefined();
+    });
+
     it('should return self for method chaining', () => {
       const builder = new BaggageBuilder();
       expect(builder.invokeAgentServer('api.example.com', 8080)).toBe(builder);
