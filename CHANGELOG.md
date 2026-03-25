@@ -9,23 +9,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking Changes (`@microsoft/agents-a365-observability`)
 
+- **`InvokeAgentDetails` renamed to `InvokeAgentScopeDetails`** — Now contains only scope-level config (`endpoint`). Agent identity (`AgentDetails`) is a separate parameter. `sessionId` moved to `Request`.
+- **`InvokeAgentScope.start()` — new signature.** `start(request, invokeScopeDetails, agentDetails, callerDetails?, spanDetails?)`. Tenant ID is derived from `agentDetails.tenantId` (required). `userDetails` and `callerAgentDetails` are wrapped in `CallerDetails`. Span options grouped in `SpanDetails`.
+- **`InferenceScope.start()` — new signature.** `start(request, details, agentDetails, userDetails?, spanDetails?)`. Tenant ID derived from `agentDetails.tenantId` (required).
+- **`ExecuteToolScope.start()` — new signature.** `start(request, details, agentDetails, userDetails?, spanDetails?)`. Tenant ID derived from `agentDetails.tenantId` (required).
+- **`OutputScope.start()` — new signature.** `start(request, response, agentDetails, userDetails?, spanDetails?)`. Tenant ID derived from `agentDetails.tenantId` (required).
+- **`tenantDetails` parameter removed** from all scope `start()` methods. Tenant ID is now required on `AgentDetails.tenantId`; scopes throw if missing.
+- **`AgentRequest` renamed to `Request`** — Unified request interface used across all scopes. Removed `executionType` field. Removed separate `InferenceRequest`, `ToolRequest`, `OutputRequest`.
+- **`CallerDetails` renamed to `UserDetails`** — Represents the human caller identity.
+- **`injectTraceContext()` renamed to `injectContextToHeaders()`**.
+- **`extractTraceContext()` renamed to `extractContextFromHeaders()`**.
 - **Caller dimension constants renamed to `user.*` namespace** — Aligns with OpenTelemetry semantic conventions and .NET SDK:
   - `GEN_AI_CALLER_ID_KEY` (`microsoft.caller.id`) → `USER_ID_KEY` (`user.id`)
   - `GEN_AI_CALLER_NAME_KEY` (`microsoft.caller.name`) → `USER_NAME_KEY` (`user.name`)
   - `GEN_AI_CALLER_UPN_KEY` (`microsoft.caller.upn`) → `USER_EMAIL_KEY` (`user.email`)
   - `GEN_AI_AGENT_UPN_KEY` (`microsoft.agent.user.upn`) → `GEN_AI_AGENT_EMAIL_KEY` (`microsoft.agent.user.email`)
   - `GEN_AI_CALLER_AGENT_UPN_KEY` (`microsoft.a365.caller.agent.user.upn`) → `GEN_AI_CALLER_AGENT_EMAIL_KEY` (`microsoft.a365.caller.agent.user.email`)
-- **`CallerDetails` properties renamed** — `callerId` → `userId`, `callerUpn` → `userEmail`, `callerName` → `userName`.
+- **`UserDetails` properties renamed** — `callerId` → `userId`, `callerUpn` → `userEmail`, `callerName` → `userName`.
 - **`AgentDetails.agentUPN` renamed to `AgentDetails.agentEmail`**.
 - **`BaggageBuilder` methods renamed** — `callerId()` → `userId()`, `callerName()` → `userName()`, `callerUpn()` → `userEmail()`, `agentUpn()` → `agentEmail()`.
-- **`SourceMetadata` renamed to `Channel`** — The exported interface representing invocation channel information is renamed from `SourceMetadata` to `Channel`.
-- **`AgentRequest.sourceMetadata` renamed to `AgentRequest.channel`** — The optional property on `AgentRequest` is renamed from `sourceMetadata` to `channel` (type changed from `SourceMetadata` to `Channel`).
+- **`SourceMetadata` renamed to `Channel`** — The exported interface representing invocation channel information is renamed from `SourceMetadata` to `Channel`. The `AgentRequest.sourceMetadata` property is renamed to `channel`.
 - **`BaggageBuilder.serviceName()` renamed to `BaggageBuilder.operationSource()`** — Fluent setter for the service name baggage value.
 - **`BaggageBuilder.sourceMetadataName()` renamed to `BaggageBuilder.channelName()`** — Fluent setter for the channel name baggage value.
 - **`BaggageBuilder.sourceMetadataDescription()` renamed to `BaggageBuilder.channelLink()`** — Fluent setter for the channel link baggage value.
-- **`InferenceScope.start()` parameter `sourceMetadata` renamed to `channel`** — Type changed from `Pick<SourceMetadata, "name" | "description">` to `Pick<Channel, "name" | "description">`.
-- **`ExecuteToolScope.start()` parameter `sourceMetadata` renamed to `channel`** — Type changed from `Pick<SourceMetadata, "name" | "description">` to `Pick<Channel, "name" | "description">`.
-- **`InvokeAgentScope`** now reads `request.channel` instead of `request.sourceMetadata` for channel name/link tags.
+
+### Added (`@microsoft/agents-a365-observability`)
+
+- **`SpanDetails`** — New interface grouping `parentContext`, `startTime`, `endTime`, `spanKind` for scope construction.
+- **`CallerDetails`** — New interface wrapping `userDetails` and `callerAgentDetails` for `InvokeAgentScope`.
+- **`Request`** — Unified request context interface (`conversationId`, `channel`, `content`, `sessionId`) used across all scopes.
+- **`OpenTelemetryScope.recordCancellation()`** — Records a cancellation event on the span with `error.type = 'TaskCanceledException'`.
+- **`OpenTelemetryConstants.ERROR_TYPE_CANCELLED`** — Constant for the cancellation error type value.
+- **`ObservabilityBuilder.withServiceNamespace()`** — Configures the `service.namespace` resource attribute.
 
 ### Breaking Changes (`@microsoft/agents-a365-observability-hosting`)
 
@@ -39,7 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`ScopeUtils.populateInferenceScopeFromTurnContext(details, turnContext, authToken, ...)`** — New required `authToken: string` parameter.
 - **`ScopeUtils.populateInvokeAgentScopeFromTurnContext(details, turnContext, authToken, ...)`** — New required `authToken: string` parameter.
 - **`ScopeUtils.populateExecuteToolScopeFromTurnContext(details, turnContext, authToken, ...)`** — New required `authToken: string` parameter.
-- **`ScopeUtils.buildInvokeAgentDetails(details, turnContext, authToken)`** — New required `authToken: string` parameter.
+- **`ScopeUtils.buildInvokeAgentDetails()`** — Now accepts `AgentDetails` (was `InvokeAgentDetails`) and returns flat `AgentDetails` instead of the old `InvokeAgentDetails` wrapper.
 
 ### Added
 

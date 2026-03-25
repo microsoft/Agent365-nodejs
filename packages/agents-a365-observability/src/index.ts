@@ -1,6 +1,5 @@
-// ------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// ------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 
 // Main SDK classes
 export { ObservabilityManager } from './ObservabilityManager';
@@ -23,8 +22,8 @@ export { ParentSpanRef, runWithParentSpanRef, createContextWithParentSpanRef } f
 export {
   HeadersCarrier,
   ParentContext,
-  injectTraceContext,
-  extractTraceContext,
+  injectContextToHeaders,
+  extractContextFromHeaders,
   runWithExtractedTraceContext
 } from './tracing/context/trace-context-propagation';
 
@@ -33,11 +32,12 @@ export {
   ExecutionType,
   InvocationRole,
   Channel,
-  AgentRequest,
+  Request,
   AgentDetails,
   TenantDetails,
   ToolCallDetails,
-  InvokeAgentDetails,
+  InvokeAgentScopeDetails,
+  UserDetails,
   CallerDetails,
   EnhancedAgentDetails,
   ServiceEndpoint,
@@ -45,6 +45,7 @@ export {
   InferenceOperationType,
   InferenceResponse,
   OutputResponse,
+  SpanDetails,
 } from './tracing/contracts';
 
 // Scopes

@@ -15,6 +15,7 @@ export class OpenTelemetryConstants {
 
   // OpenTelemetry semantic conventions
   public static readonly ERROR_TYPE_KEY = 'error.type';
+  public static readonly ERROR_TYPE_CANCELLED = 'TaskCanceledException';
   public static readonly ERROR_MESSAGE_KEY = 'error.message';
   public static readonly AZ_NAMESPACE_KEY = 'az.namespace';
   public static readonly SERVER_ADDRESS_KEY = 'server.address';

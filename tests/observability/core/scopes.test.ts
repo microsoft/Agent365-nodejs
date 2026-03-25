@@ -1,3 +1,6 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
 import { describe, it, expect, beforeAll, afterAll, afterEach, jest } from '@jest/globals';
 import { trace, SpanKind } from '@opentelemetry/api';
 
@@ -6,12 +9,11 @@ import {
   InvokeAgentScope,
   InferenceScope,
   AgentDetails,
-  TenantDetails,
-  InvokeAgentDetails,
+  InvokeAgentScopeDetails,
   ToolCallDetails,
   InferenceDetails,
   InferenceOperationType,
-  CallerDetails,
+  UserDetails,
   OpenTelemetryConstants,
   OpenTelemetryScope,
 } from '@microsoft/agents-a365-observability';
@@ -35,96 +37,111 @@ describe('Scopes', () => {
     agentId: 'test-agent',
     agentName: 'Test Agent',
     agentDescription: 'A test agent',
-    conversationId: 'test-conv-123'
-  };
-
-  const testTenantDetails: TenantDetails = {
     tenantId: 'test-tenant-456'
   };
 
+  const testRequest = { conversationId: 'test-conv-req', channel: { name: 'TestChannel', description: 'https://test.channel' } };
+
   describe('InvokeAgentScope', () => {
     it('should create scope with agent details', () => {
-      const invokeAgentDetails: InvokeAgentDetails = {
-        agentId: 'test-agent',
-        agentName: 'Test Agent',
-        agentDescription: 'A test agent'
-      };
-      
-      const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+
+      const scope = InvokeAgentScope.start(
+        { conversationId: 'conv-req-1', channel: { name: 'Teams', description: 'https://teams.link' } },
+        {},
+        {
+          agentId: 'test-agent',
+          agentName: 'Test Agent',
+          agentDescription: 'A test agent',
+          tenantId: 'test-tenant-456'
+        }
+      );
 
       expect(scope).toBeInstanceOf(InvokeAgentScope);
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, val: 'conv-req-1' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.CHANNEL_NAME_KEY, val: 'Teams' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.CHANNEL_LINK_KEY, val: 'https://teams.link' })
+      ]));
       scope?.dispose();
+      spy.mockRestore();
     });
 
     it('should create scope with agent ID only', () => {
-      const invokeAgentDetails: InvokeAgentDetails = {
-        agentId: 'simple-agent'
-      };
-      
-      const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
+      const scope = InvokeAgentScope.start(testRequest, {}, { agentId: 'simple-agent', tenantId: 'test-tenant-456' });
 
       expect(scope).toBeInstanceOf(InvokeAgentScope);
       scope?.dispose();
     });
 
     it('should create scope with additional details', () => {
-      const invokeAgentDetails: InvokeAgentDetails = {
+      const scope = InvokeAgentScope.start(testRequest, {}, {
         agentId: 'test-agent',
         agentName: 'Test Agent',
         agentDescription: 'A test agent',
-        conversationId: 'conv-123',
-        iconUri: 'https://example.com/icon.png'
-      };
-      
-      const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
+        iconUri: 'https://example.com/icon.png',
+        tenantId: 'test-tenant-456'
+      });
 
       expect(scope).toBeInstanceOf(InvokeAgentScope);
       scope?.dispose();
     });
 
     it('should create scope with platformId', () => {
-      const invokeAgentDetails: InvokeAgentDetails = {
+      const scope = InvokeAgentScope.start(testRequest, {}, {
         agentId: 'test-agent',
         agentName: 'Test Agent',
-        platformId: 'platform-xyz-123'
-      };
-      
-      const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
+        platformId: 'platform-xyz-123',
+        tenantId: 'test-tenant-456'
+      });
 
       expect(scope).toBeInstanceOf(InvokeAgentScope);
       scope?.dispose();
     });
 
     it('should create scope with caller details', () => {
-      const invokeAgentDetails: InvokeAgentDetails = {
-        agentId: 'test-agent',
-        agentName: 'Test Agent'
-      };
-      
-      const callerDetails: CallerDetails = {
+      const callerDetails: UserDetails = {
         userId: 'user-123',
         userName: 'Test User',
         userEmail: 'test.user@contoso.com',
         tenantId: 'test-tenant'
       };
-      
-      const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails, undefined, callerDetails);
+
+      const scope = InvokeAgentScope.start(testRequest, {}, {
+        agentId: 'test-agent',
+        agentName: 'Test Agent',
+        tenantId: 'test-tenant-456'
+      }, { userDetails: callerDetails });
 
       expect(scope).toBeInstanceOf(InvokeAgentScope);
       scope?.dispose();
     });
 
+    it('should set sessionId from request', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const scope = InvokeAgentScope.start(
+        { conversationId: 'conv-1', sessionId: 'session-abc-123' },
+        {},
+        { agentId: 'test-agent', tenantId: 'test-tenant-456' }
+      );
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.SESSION_ID_KEY, val: 'session-abc-123' })
+      ]));
+      scope?.dispose();
+      spy.mockRestore();
+    });
+
     it('should record response', () => {
-      const invokeAgentDetails: InvokeAgentDetails = { agentId: 'test-agent' };
-      const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
+      const scope = InvokeAgentScope.start(testRequest, {}, { agentId: 'test-agent', tenantId: 'test-tenant-456' });
 
       expect(() => scope?.recordResponse('Test response')).not.toThrow();
       scope?.dispose();
     });
 
     it('should record input and output messages', () => {
-      const invokeAgentDetails: InvokeAgentDetails = { agentId: 'test-agent' };
-      const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
+      const scope = InvokeAgentScope.start(testRequest, {}, { agentId: 'test-agent', tenantId: 'test-tenant-456' });
 
       expect(() => scope?.recordInputMessages(['Input message 1', 'Input message 2'])).not.toThrow();
       expect(() => scope?.recordOutputMessages(['Output message 1', 'Output message 2'])).not.toThrow();
@@ -132,23 +149,53 @@ describe('Scopes', () => {
     });
 
     it('should record error', () => {
-      const invokeAgentDetails: InvokeAgentDetails = { agentId: 'test-agent' };
-      const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
+      const scope = InvokeAgentScope.start(testRequest, {}, { agentId: 'test-agent', tenantId: 'test-tenant-456' });
       const error = new Error('Test error');
 
       expect(() => scope?.recordError(error)).not.toThrow();
       scope?.dispose();
     });
 
+    it('should set conversationId from request', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const scope = InvokeAgentScope.start(
+        { conversationId: 'explicit-conv-id' },
+        {},
+        { agentId: 'test-agent', tenantId: 'test-tenant-456' }
+      );
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, val: 'explicit-conv-id' })
+      ]));
+      scope?.dispose();
+      spy.mockRestore();
+    });
+
+    it('should set channel tags from request.channel', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const scope = InvokeAgentScope.start(
+        { channel: { name: 'Teams', description: 'https://teams.link' } },
+        {},
+        { agentId: 'test-agent', tenantId: 'test-tenant-456' }
+      );
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.CHANNEL_NAME_KEY, val: 'Teams' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.CHANNEL_LINK_KEY, val: 'https://teams.link' })
+      ]));
+      scope?.dispose();
+      spy.mockRestore();
+    });
+
     it('should propagate platformId in span attributes', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
-      const invokeAgentDetails: InvokeAgentDetails = {
+
+      const scope = InvokeAgentScope.start(testRequest, {}, {
         agentId: 'test-agent',
         agentName: 'Test Agent',
-        platformId: 'test-platform-123'
-      };
-
-      const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
+        platformId: 'test-platform-123',
+        tenantId: 'test-tenant-456'
+      });
       expect(scope).toBeInstanceOf(InvokeAgentScope);
 
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
@@ -162,19 +209,18 @@ describe('Scopes', () => {
 
     it('should propagate caller agent platformId in span attributes', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
-      const invokeAgentDetails: InvokeAgentDetails = {
-        agentId: 'test-agent',
-        agentName: 'Test Agent'
-      };
       const callerAgentDetails: AgentDetails = {
         agentId: 'caller-agent',
         agentName: 'Caller Agent',
         agentDescription: 'desc',
-        conversationId: 'conv',
         platformId: 'caller-platform-xyz'
       } as any;
 
-      const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails, callerAgentDetails, undefined);
+      const scope = InvokeAgentScope.start(testRequest, {}, {
+        agentId: 'test-agent',
+        agentName: 'Test Agent',
+        tenantId: 'test-tenant-456'
+      }, { callerAgentDetails });
       expect(scope).toBeInstanceOf(InvokeAgentScope);
 
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
@@ -188,11 +234,12 @@ describe('Scopes', () => {
 
     it('should set caller and caller-agent IP tags', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
-      const invokeAgentDetails: InvokeAgentDetails = {
+      const agentDets = {
         agentId: 'test-agent',
-        agentName: 'Test Agent'
+        agentName: 'Test Agent',
+        tenantId: 'test-tenant-456'
       };
-      const callerDetails: CallerDetails = {
+      const callerDetails: UserDetails = {
         userId: 'user-123',
         tenantId: 'test-tenant',
         callerClientIp: '10.0.0.5'
@@ -201,13 +248,12 @@ describe('Scopes', () => {
         agentId: 'caller-agent',
         agentName: 'Caller Agent',
         agentDescription: 'desc',
-        conversationId: 'conv',
         agentClientIP: '192.168.1.100'
       } as any;
 
-      const scope1 = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails, undefined, callerDetails);
+      const scope1 = InvokeAgentScope.start(testRequest, {}, agentDets, { userDetails: callerDetails });
       expect(scope1).toBeInstanceOf(InvokeAgentScope);
-      const scope2 = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails, callerAgentDetails, undefined);
+      const scope2 = InvokeAgentScope.start(testRequest, {}, agentDets, { callerAgentDetails });
       expect(scope2).toBeInstanceOf(InvokeAgentScope);
 
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
@@ -219,25 +265,75 @@ describe('Scopes', () => {
       scope2?.dispose();
       spy.mockRestore();
     });
+
+    it('should throw when agentDetails.tenantId is missing', () => {
+      expect(() => InvokeAgentScope.start(testRequest, {}, { agentId: 'a' } as any)).toThrow('InvokeAgentScope: tenantId is required on agentDetails');
+    });
+
+    it('should set both userDetails and callerAgentDetails tags when both are provided', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const scope = InvokeAgentScope.start(testRequest, {}, {
+        agentId: 'test-agent',
+        agentName: 'Test Agent',
+        tenantId: 'test-tenant-456'
+      }, {
+        userDetails: { userId: 'user-1', userName: 'User One' },
+        callerAgentDetails: { agentId: 'caller-agent-1', agentName: 'Caller Agent' } as any
+      });
+
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.USER_ID_KEY, val: 'user-1' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.USER_NAME_KEY, val: 'User One' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CALLER_AGENT_ID_KEY, val: 'caller-agent-1' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CALLER_AGENT_NAME_KEY, val: 'Caller Agent' }),
+      ]));
+
+      scope?.dispose();
+      spy.mockRestore();
+    });
+
+    it('should set endpoint tags from typed InvokeAgentScopeDetails', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const details: InvokeAgentScopeDetails = { endpoint: { host: 'agent-api.contoso.com', port: 8443 } };
+      const scope = InvokeAgentScope.start(testRequest, details, { agentId: 'typed-agent', tenantId: 'test-tenant-456' });
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.SERVER_ADDRESS_KEY, val: 'agent-api.contoso.com' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.SERVER_PORT_KEY, val: 8443 })
+      ]));
+      scope?.dispose();
+      spy.mockRestore();
+    });
+
+    it('should omit endpoint tags when InvokeAgentScopeDetails is empty', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const scope = InvokeAgentScope.start(testRequest, {}, { agentId: 'test-agent', tenantId: 'test-tenant-456' });
+      const keys = new Set(spy.mock.calls.map(args => args[0]));
+      expect(keys).not.toContain(OpenTelemetryConstants.SERVER_ADDRESS_KEY);
+      expect(keys).not.toContain(OpenTelemetryConstants.SERVER_PORT_KEY);
+      scope?.dispose();
+      spy.mockRestore();
+    });
   });
 
   describe('ExecuteToolScope', () => {
     it('should create scope with tool details', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
-      const callerDetails: CallerDetails = {
+      const callerDetails: UserDetails = {
         userId: 'caller-tool-1',
         userEmail: 'tool.user@contoso.com',
         userName: 'Tool User',
         tenantId: 'tool-tenant',
         callerClientIp: '10.0.0.10'
       };
-      const scope = ExecuteToolScope.start({
+      const scope = ExecuteToolScope.start(testRequest, {
         toolName: 'test-tool',
         arguments: '{"param": "value"}',
         toolCallId: 'call-123',
         description: 'A test tool',
         toolType: 'test'
-      }, testAgentDetails, testTenantDetails, undefined, undefined, undefined, undefined, undefined, callerDetails);
+      }, testAgentDetails, callerDetails);
 
       expect(scope).toBeInstanceOf(ExecuteToolScope);
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
@@ -258,15 +354,29 @@ describe('Scopes', () => {
     });
 
     it('should record response', () => {
-      const scope = ExecuteToolScope.start({ toolName: 'test-tool' }, testAgentDetails, testTenantDetails);
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const scope = ExecuteToolScope.start(
+        { conversationId: 'conv-tool-resp', channel: { name: 'Web', description: 'https://web.link' } },
+        { toolName: 'test-tool' }, testAgentDetails
+      );
 
       expect(() => scope?.recordResponse('Tool result')).not.toThrow();
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, val: 'conv-tool-resp' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.CHANNEL_NAME_KEY, val: 'Web' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.CHANNEL_LINK_KEY, val: 'https://web.link' })
+      ]));
       scope?.dispose();
+      spy.mockRestore();
     });
-   
+
     it('should set conversationId and channel tags when provided', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
-      const scope = (ExecuteToolScope as unknown as any).start({ toolName: 'test-tool' }, testAgentDetails, testTenantDetails, 'conv-tool-123', { name: 'ChannelTool', description: 'https://channel/tool' });
+      const scope = ExecuteToolScope.start(
+        { conversationId: 'conv-tool-123', channel: { name: 'ChannelTool', description: 'https://channel/tool' } },
+        { toolName: 'test-tool' }, testAgentDetails
+      );
       expect(scope).toBeInstanceOf(ExecuteToolScope);
 
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
@@ -285,8 +395,8 @@ describe('Scopes', () => {
     it('should record non-443 port as a number on ExecuteToolScope', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
       const scope = ExecuteToolScope.start(
-        { toolName: 'test-tool', endpoint: { host: 'tools.example.com', port: 8080 } },
-        testAgentDetails, testTenantDetails
+        testRequest, { toolName: 'test-tool', endpoint: { host: 'tools.example.com', port: 8080 } },
+        testAgentDetails
       );
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
       expect(calls).toEqual(expect.arrayContaining([
@@ -299,8 +409,8 @@ describe('Scopes', () => {
     it('should omit port 443 on ExecuteToolScope', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
       const scope = ExecuteToolScope.start(
-        { toolName: 'test-tool', endpoint: { host: 'tools.example.com', port: 443 } },
-        testAgentDetails, testTenantDetails
+        testRequest, { toolName: 'test-tool', endpoint: { host: 'tools.example.com', port: 443 } },
+        testAgentDetails
       );
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
       expect(calls).not.toEqual(expect.arrayContaining([
@@ -313,8 +423,8 @@ describe('Scopes', () => {
     it('should record non-443 port as a number on InferenceScope', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
       const scope = InferenceScope.start(
-        { operationName: InferenceOperationType.CHAT, model: 'gpt-4', endpoint: { host: 'api.openai.com', port: 8443 } },
-        testAgentDetails, testTenantDetails
+        testRequest, { operationName: InferenceOperationType.CHAT, model: 'gpt-4', endpoint: { host: 'api.openai.com', port: 8443 } },
+        testAgentDetails
       );
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
       expect(calls).toEqual(expect.arrayContaining([
@@ -327,8 +437,8 @@ describe('Scopes', () => {
     it('should omit port 443 on InferenceScope', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
       const scope = InferenceScope.start(
-        { operationName: InferenceOperationType.CHAT, model: 'gpt-4', endpoint: { host: 'api.openai.com', port: 443 } },
-        testAgentDetails, testTenantDetails
+        testRequest, { operationName: InferenceOperationType.CHAT, model: 'gpt-4', endpoint: { host: 'api.openai.com', port: 443 } },
+        testAgentDetails
       );
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
       expect(calls).not.toEqual(expect.arrayContaining([
@@ -341,11 +451,13 @@ describe('Scopes', () => {
     it('should record non-443 port as a number on InvokeAgentScope', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
       const scope = InvokeAgentScope.start(
-        { agentId: 'test-agent', endpoint: { host: 'agent.example.com', port: 9090 } },
-        testTenantDetails
+        testRequest,
+        { endpoint: { host: 'agent.example.com', port: 9090 } },
+        { agentId: 'test-agent', tenantId: 'test-tenant-456' }
       );
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
       expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.SERVER_ADDRESS_KEY, val: 'agent.example.com' }),
         expect.objectContaining({ key: OpenTelemetryConstants.SERVER_PORT_KEY, val: 9090 })
       ]));
       scope?.dispose();
@@ -355,8 +467,9 @@ describe('Scopes', () => {
     it('should omit port 443 on InvokeAgentScope', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
       const scope = InvokeAgentScope.start(
-        { agentId: 'test-agent', endpoint: { host: 'agent.example.com', port: 443 } },
-        testTenantDetails
+        testRequest,
+        { endpoint: { host: 'agent.example.com', port: 443 } },
+        { agentId: 'test-agent', tenantId: 'test-tenant-456' }
       );
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
       expect(calls).not.toEqual(expect.arrayContaining([
@@ -370,7 +483,7 @@ describe('Scopes', () => {
   describe('InferenceScope', () => {
     it('should create scope with inference details', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
-      const callerDetails: CallerDetails = {
+      const callerDetails: UserDetails = {
         userId: 'caller-inf-1',
         userEmail: 'inf.user@contoso.com',
         userName: 'Inf User',
@@ -386,7 +499,7 @@ describe('Scopes', () => {
         finishReasons: ['stop']
       };
 
-      const scope = InferenceScope.start(inferenceDetails, testAgentDetails, testTenantDetails, undefined, undefined, undefined, undefined, undefined, callerDetails);
+      const scope = InferenceScope.start(testRequest, inferenceDetails, testAgentDetails, callerDetails);
 
       expect(scope).toBeInstanceOf(InferenceScope);
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
@@ -407,15 +520,26 @@ describe('Scopes', () => {
     });
 
     it('should create scope with minimal details', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
       const inferenceDetails: InferenceDetails = {
         operationName: InferenceOperationType.TEXT_COMPLETION,
         model: 'gpt-3.5-turbo'
       };
-      
-      const scope = InferenceScope.start(inferenceDetails, testAgentDetails, testTenantDetails);
+
+      const scope = InferenceScope.start(
+        { conversationId: 'conv-inf-min', channel: { name: 'Slack', description: 'https://slack.link' } },
+        inferenceDetails, testAgentDetails
+      );
 
       expect(scope).toBeInstanceOf(InferenceScope);
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, val: 'conv-inf-min' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.CHANNEL_NAME_KEY, val: 'Slack' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.CHANNEL_LINK_KEY, val: 'https://slack.link' })
+      ]));
       scope?.dispose();
+      spy.mockRestore();
     });
 
     it('should record granular telemetry', () => {
@@ -423,8 +547,8 @@ describe('Scopes', () => {
         operationName: InferenceOperationType.CHAT,
         model: 'gpt-4'
       };
-      
-      const scope = InferenceScope.start(inferenceDetails, testAgentDetails, testTenantDetails);
+
+      const scope = InferenceScope.start(testRequest, inferenceDetails, testAgentDetails);
 
       expect(() => scope?.recordInputMessages(['Input message'])).not.toThrow();
       expect(() => scope?.recordOutputMessages(['Generated response'])).not.toThrow();
@@ -441,7 +565,10 @@ describe('Scopes', () => {
         model: 'gpt-4'
       };
 
-      const scope = (InferenceScope as unknown as any).start(inferenceDetails, testAgentDetails, testTenantDetails, 'conv-inf-123', { name: 'ChannelInf', description: 'https://channel/inf' });
+      const scope = InferenceScope.start(
+        { conversationId: 'conv-inf-123', channel: { name: 'ChannelInf', description: 'https://channel/inf' } },
+        inferenceDetails, testAgentDetails
+      );
       expect(scope).toBeInstanceOf(InferenceScope);
 
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
@@ -458,8 +585,7 @@ describe('Scopes', () => {
 
   describe('Dispose pattern', () => {
     it('should support manual dispose', () => {
-      const invokeAgentDetails: InvokeAgentDetails = { agentId: 'test-agent' };
-      const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
+      const scope = InvokeAgentScope.start(testRequest, {}, { agentId: 'test-agent', tenantId: 'test-tenant-456' });
       scope?.recordResponse('Manual dispose test');
 
       expect(() => scope?.dispose()).not.toThrow();
@@ -467,9 +593,9 @@ describe('Scopes', () => {
 
     it('should support automatic disposal pattern', () => {
       const toolDetails: ToolCallDetails = { toolName: 'test-tool' };
-      
+
       expect(() => {
-        const scope = ExecuteToolScope.start(toolDetails, testAgentDetails, testTenantDetails);
+        const scope = ExecuteToolScope.start(testRequest, toolDetails, testAgentDetails);
         try {
           scope?.recordResponse('Automatic disposal test');
         } finally {
@@ -525,9 +651,8 @@ describe('Scopes', () => {
       const customEnd   = 1700000005000; // 5 seconds later
 
       const scope = ExecuteToolScope.start(
-        { toolName: 'my-tool' }, testAgentDetails, testTenantDetails,
-        undefined, undefined, undefined,
-        customStart, customEnd
+        testRequest, { toolName: 'my-tool' }, testAgentDetails,
+        undefined, { startTime: customStart, endTime: customEnd }
       );
       scope.dispose();
 
@@ -541,9 +666,8 @@ describe('Scopes', () => {
       const laterEnd    = 1700000048000; // 8 seconds later
 
       const scope = ExecuteToolScope.start(
-        { toolName: 'my-tool' }, testAgentDetails, testTenantDetails,
-        undefined, undefined, undefined,
-        customStart
+        testRequest, { toolName: 'my-tool' }, testAgentDetails,
+        undefined, { startTime: customStart }
       );
       scope.setEndTime(laterEnd);
       scope.dispose();
@@ -558,9 +682,8 @@ describe('Scopes', () => {
       const customEnd   = new Date('2023-11-14T22:13:25.000Z'); // 5 seconds later
 
       const scope = ExecuteToolScope.start(
-        { toolName: 'my-tool' }, testAgentDetails, testTenantDetails,
-        undefined, undefined, undefined,
-        customStart, customEnd
+        testRequest, { toolName: 'my-tool' }, testAgentDetails,
+        undefined, { startTime: customStart, endTime: customEnd }
       );
       scope.dispose();
 
@@ -575,9 +698,8 @@ describe('Scopes', () => {
       const customEnd: [number, number]   = [1700000005, 500000000];   // 5.5 seconds later
 
       const scope = ExecuteToolScope.start(
-        { toolName: 'my-tool' }, testAgentDetails, testTenantDetails,
-        undefined, undefined, undefined,
-        customStart, customEnd
+        testRequest, { toolName: 'my-tool' }, testAgentDetails,
+        undefined, { startTime: customStart, endTime: customEnd }
       );
       scope.dispose();
 
@@ -588,7 +710,7 @@ describe('Scopes', () => {
 
     it('should use wall-clock time when no custom times are provided', () => {
       const before = Date.now();
-      const scope = ExecuteToolScope.start({ toolName: 'my-tool' }, testAgentDetails, testTenantDetails);
+      const scope = ExecuteToolScope.start(testRequest, { toolName: 'my-tool' }, testAgentDetails);
       scope.dispose();
       const after = Date.now();
 
@@ -605,8 +727,11 @@ describe('Scopes', () => {
       ['SERVER', SpanKind.SERVER, SpanKind.SERVER],
     ])('InvokeAgentScope spanKind: %s', (_label, input, expected) => {
       const scope = InvokeAgentScope.start(
-        { agentId: 'test-agent' }, testTenantDetails,
-        undefined, undefined, undefined, undefined, undefined, input
+        testRequest,
+        {},
+        { agentId: 'test-agent', tenantId: 'test-tenant-456' },
+        undefined,
+        input !== undefined ? { spanKind: input } : undefined
       );
       scope.dispose();
       expect(getFinishedSpan().kind).toBe(expected);
@@ -617,11 +742,37 @@ describe('Scopes', () => {
       ['CLIENT', SpanKind.CLIENT, SpanKind.CLIENT],
     ])('ExecuteToolScope spanKind: %s', (_label, input, expected) => {
       const scope = ExecuteToolScope.start(
-        { toolName: 'my-tool' }, testAgentDetails, testTenantDetails,
-        undefined, undefined, undefined, undefined, undefined, undefined, input
+        testRequest, { toolName: 'my-tool' }, testAgentDetails,
+        undefined, input !== undefined ? { spanKind: input } : undefined
       );
       scope.dispose();
       expect(getFinishedSpan().kind).toBe(expected);
+    });
+
+    it('recordCancellation should set error status and error.type attribute with default reason', () => {
+      const scope = ExecuteToolScope.start(
+        testRequest, { toolName: 'my-tool' }, testAgentDetails
+      );
+      scope.recordCancellation();
+      scope.dispose();
+
+      const span = getFinishedSpan();
+      expect(span.status.code).toBe(2); // SpanStatusCode.ERROR
+      expect(span.status.message).toBe('Task was cancelled');
+      expect(span.attributes[OpenTelemetryConstants.ERROR_TYPE_KEY]).toBe('TaskCanceledException');
+    });
+
+    it('recordCancellation should use custom reason', () => {
+      const scope = ExecuteToolScope.start(
+        testRequest, { toolName: 'my-tool' }, testAgentDetails
+      );
+      scope.recordCancellation('User aborted');
+      scope.dispose();
+
+      const span = getFinishedSpan();
+      expect(span.status.code).toBe(2); // SpanStatusCode.ERROR
+      expect(span.status.message).toBe('User aborted');
+      expect(span.attributes[OpenTelemetryConstants.ERROR_TYPE_KEY]).toBe('TaskCanceledException');
     });
   });
 });

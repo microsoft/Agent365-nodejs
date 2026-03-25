@@ -16,7 +16,7 @@ jest.mock('@microsoft/agents-a365-runtime', () => {
 });
 
 import { ScopeUtils } from '../../../../packages/agents-a365-observability-hosting/src/utils/ScopeUtils';
-import { InferenceScope, InvokeAgentScope, ExecuteToolScope, OpenTelemetryConstants, ExecutionType, OpenTelemetryScope, InvokeAgentDetails } from '@microsoft/agents-a365-observability';
+import { InferenceScope, InvokeAgentScope, ExecuteToolScope, OpenTelemetryConstants, OpenTelemetryScope } from '@microsoft/agents-a365-observability';
 import { SpanKind } from '@opentelemetry/api';
 import { RoleTypes } from '@microsoft/agents-activity';
 import type { TurnContext } from '@microsoft/agents-hosting';
@@ -110,7 +110,7 @@ describe('ScopeUtils.populateFromTurnContext', () => {
         const details: any = { operationName: 'inference', model: 'm', providerName: 'prov' };
         const ctx = makeCtx({ activity: { recipient: { agenticAppId: 'aid' }, isAgenticRequest: () => false, getAgenticInstanceId: () => 'aid', getAgenticUser: () => undefined, getAgenticTenantId: () => undefined } as any }); // agent ok, no tenantId
         expect(() => ScopeUtils.populateInferenceScopeFromTurnContext(details, ctx, testAuthToken))
-          .toThrow('populateInferenceScopeFromTurnContext: Missing tenant details on TurnContext (recipient)');
+          .toThrow('InferenceScope: tenantId is required on agentDetails');
       });
 
       test('populateExecuteToolScopeFromTurnContext throws when agent details are missing', () => {
@@ -124,22 +124,20 @@ describe('ScopeUtils.populateFromTurnContext', () => {
         const details: any = { toolName: 'tool' };
         const ctx = makeCtx({ activity: { recipient: { agenticAppId: 'aid' }, isAgenticRequest: () => false, getAgenticInstanceId: () => 'aid', getAgenticUser: () => undefined, getAgenticTenantId: () => undefined } as any }); // agent ok, no tenantId
         expect(() => ScopeUtils.populateExecuteToolScopeFromTurnContext(details, ctx, testAuthToken))
-          .toThrow('populateExecuteToolScopeFromTurnContext: Missing tenant details on TurnContext (recipient)');
+          .toThrow('ExecuteToolScope: tenantId is required on agentDetails');
       });
 
       test('populateInvokeAgentScopeFromTurnContext throws when tenant details are missing', () => {
-        const details: InvokeAgentDetails = { agentId: 'aid' } as any;
         const ctx = makeCtx({ activity: { recipient: { agenticAppId: 'aid' }, isAgenticRequest: () => false, getAgenticInstanceId: () => 'aid', getAgenticUser: () => undefined, getAgenticTenantId: () => undefined } as any }); // no tenantId
-        expect(() => ScopeUtils.populateInvokeAgentScopeFromTurnContext(details, ctx, testAuthToken))
-          .toThrow('populateInvokeAgentScopeFromTurnContext: Missing tenant details on TurnContext (recipient)');
+        expect(() => ScopeUtils.populateInvokeAgentScopeFromTurnContext({ agentId: 'aid' } as any, {}, ctx, testAuthToken))
+          .toThrow('InvokeAgentScope: tenantId is required on agentDetails');
       });
     });
 
   test('build InvokeAgentScope based on turn context', () => {
-    const details = { operationName: 'invoke', model: 'n/a', providerName: 'internal' } as any;
     const ctx = makeTurnContext('invoke message', 'teams', 'https://teams', 'conv-B');
     ctx.activity.from!.role = RoleTypes.AgenticUser;
-    const scope = ScopeUtils.populateInvokeAgentScopeFromTurnContext(details, ctx, testAuthToken) as InvokeAgentScope;
+    const scope = ScopeUtils.populateInvokeAgentScopeFromTurnContext({ agentId: 'invoke-agent', providerName: 'internal' } as any, {}, ctx, testAuthToken) as InvokeAgentScope;
     expect(scope).toBeInstanceOf(InvokeAgentScope);
     const calls = spy.mock.calls.map(args => [args[0], args[1]]);
     const expected = [
@@ -237,7 +235,7 @@ test('deriveCallerAgent returns undefined without from', () => {
   expect(ScopeUtils.deriveCallerAgent(ctx)).toBeUndefined();
 });
 
-test('deriveCallerDetails maps from to CallerDetails', () => {
+test('deriveCallerDetails maps from to UserDetails', () => {
   const ctx = makeCtx({ activity: { from: { aadObjectId: 'uid', agenticUserId: 'upn', name: 'User', tenantId: 't3' } } as any });
   expect(ScopeUtils.deriveCallerDetails(ctx)).toEqual({
     userId: 'uid',
@@ -272,11 +270,7 @@ test('deriveChannelObject returns undefined fields when none', () => {
   expect(ScopeUtils.deriveChannelObject(ctx)).toEqual({ name: undefined, description: undefined });
 });
 
-test('buildInvokeAgentDetails merges agent (recipient), conversationId, channel', () => {
-  const invokeAgentDetails: InvokeAgentDetails = {
-    agentId: 'provided',
-    request: { content: 'hi', executionType: ExecutionType.HumanToAgent, channel: { id: 'orig-id' } },
-  };
+test('buildInvokeAgentDetails merges agent (recipient) into details', () => {
   const ctx = makeCtx({
     activity: {
       recipient: { name: 'Rec', role: 'bot' },
@@ -290,22 +284,15 @@ test('buildInvokeAgentDetails merges agent (recipient), conversationId, channel'
     } as any
   });
 
-  const result = ScopeUtils.buildInvokeAgentDetails(invokeAgentDetails, ctx, testAuthToken);
-  expect(result.agentId).toBeUndefined();
-  expect(result.conversationId).toBe('c-2');
-  expect(result.request?.channel).toEqual({ id: 'orig-id', name: 'web', description: 'inbox' });
+  const result = ScopeUtils.buildInvokeAgentDetails({ agentId: 'provided' } as any, ctx, testAuthToken);
+  // Agent identity is merged into result
+  expect(result.agentName).toBe('Rec');
 });
 
-test('buildInvokeAgentDetails keeps base request when TurnContext has no overrides', () => {
-  const invokeAgentDetails: InvokeAgentDetails = {
-    agentId: 'base-agent',
-    request: { content: 'hi', executionType: ExecutionType.HumanToAgent, channel: { description: 'keep', name: 'keep-name' }},
-  };
+test('buildInvokeAgentDetails keeps base details when TurnContext has no overrides', () => {
   const ctx = makeCtx({ activity: {} as any });
-  const result = ScopeUtils.buildInvokeAgentDetails(invokeAgentDetails, ctx, testAuthToken);
+  const result = ScopeUtils.buildInvokeAgentDetails({ agentId: 'base-agent' } as any, ctx, testAuthToken);
   expect(result.agentId).toBe('base-agent');
-  expect(result.conversationId).toBeUndefined();
-  expect(result.request?.channel).toEqual({ description: 'keep', name: 'keep-name' });
 });
 
 describe('ScopeUtils spanKind forwarding', () => {
@@ -313,12 +300,13 @@ describe('ScopeUtils spanKind forwarding', () => {
     const spy = jest.spyOn(InvokeAgentScope, 'start');
     const ctx = makeTurnContext('hello', 'web', 'https://web', 'conv-span');
     const scope = ScopeUtils.populateInvokeAgentScopeFromTurnContext(
-      { agentId: 'test-agent' }, ctx, testAuthToken,
+      { agentId: 'test-agent' } as any, {}, ctx, testAuthToken,
       undefined, undefined, SpanKind.SERVER
     );
     expect(spy).toHaveBeenCalledWith(
-      expect.anything(), expect.anything(), expect.anything(), expect.anything(),
-      undefined, undefined, undefined, SpanKind.SERVER
+      expect.anything(), expect.anything(), expect.anything(),
+      expect.anything(),
+      expect.objectContaining({ spanKind: SpanKind.SERVER })
     );
     scope?.dispose();
     spy.mockRestore();
@@ -333,7 +321,7 @@ describe('ScopeUtils spanKind forwarding', () => {
     );
     expect(spy).toHaveBeenCalledWith(
       expect.anything(), expect.anything(), expect.anything(), expect.anything(),
-      expect.anything(), undefined, undefined, undefined, undefined, SpanKind.CLIENT
+      expect.objectContaining({ spanKind: SpanKind.CLIENT })
     );
     scope?.dispose();
     spy.mockRestore();

@@ -129,23 +129,19 @@ abstract class OpenTelemetryScope implements Disposable {
 Traces agent invocation operations:
 
 ```typescript
-import { InvokeAgentScope, InvokeAgentDetails, TenantDetails } from '@microsoft/agents-a365-observability';
+import { InvokeAgentScope, InvokeAgentScopeDetails, AgentDetails, Request, CallerDetails } from '@microsoft/agents-a365-observability';
 
-using scope = InvokeAgentScope.start(
-  {
-    agentId: 'agent-123',
-    agentName: 'MyAgent',
-    endpoint: { host: 'api.example.com', port: 443 },
-    sessionId: 'session-456',
-    request: {
-      content: 'Hello',
-      executionType: ExecutionType.HumanToAgent
-    }
-  },
-  { tenantId: 'tenant-789' },
-  callerAgentDetails,  // Optional caller agent
-  callerDetails        // Optional caller user
-);
+const request: Request = { content: 'Hello', channel: { name: 'Teams' }, sessionId: 'session-456' };
+const scopeDetails: InvokeAgentScopeDetails = {
+  endpoint: { host: 'api.example.com', port: 443 }
+};
+const agentDetails: AgentDetails = { agentId: 'agent-123', agentName: 'MyAgent', tenantId: 'tenant-789' };
+const callerInfo: CallerDetails = {
+  userDetails: { userId: 'user-1', userName: 'User' },
+  callerAgentDetails: callerAgent  // Optional, for A2A scenarios
+};
+
+using scope = InvokeAgentScope.start(request, scopeDetails, agentDetails, callerInfo);
 
 scope.recordInputMessages(['Hello']);
 // ... agent processing ...
@@ -156,9 +152,9 @@ scope.recordOutputMessages(['Hi there!']);
 **Span attributes recorded:**
 - Server address and port
 - Session ID
-- Execution type and channel
+- Channel name and link
 - Input/output messages
-- Caller details (ID, UPN, name, tenant, client IP)
+- User details (ID, UPN, name, tenant, client IP)
 - Caller agent details (if agent-to-agent)
 
 #### InferenceScope ([InferenceScope.ts](../src/tracing/scopes/InferenceScope.ts))
@@ -169,15 +165,13 @@ Traces LLM/AI model inference calls:
 import { InferenceScope, InferenceDetails, InferenceOperationType } from '@microsoft/agents-a365-observability';
 
 using scope = InferenceScope.start(
+  { conversationId: 'conv-123' },  // Request (required)
   {
     operationName: InferenceOperationType.CHAT,
     model: 'gpt-4',
     providerName: 'openai'
   },
-  agentDetails,
-  tenantDetails,
-  conversationId,
-  channel
+  agentDetails  // Must include tenantId
 );
 
 scope.recordInputMessages(['User message']);
@@ -197,6 +191,7 @@ Traces tool execution operations:
 import { ExecuteToolScope, ToolCallDetails } from '@microsoft/agents-a365-observability';
 
 using scope = ExecuteToolScope.start(
+  {},  // Request (required)
   {
     toolName: 'search',
     arguments: JSON.stringify({ query: 'weather' }),
@@ -204,10 +199,7 @@ using scope = ExecuteToolScope.start(
     toolType: 'mcp',
     endpoint: { host: 'tools.example.com' }
   },
-  agentDetails,
-  tenantDetails,
-  conversationId,
-  channel
+  agentDetails  // Must include tenantId
 );
 
 // ... tool execution ...
@@ -226,9 +218,9 @@ const scope = new BaggageBuilder()
   .tenantId('tenant-123')
   .agentId('agent-456')
   .correlationId('corr-789')
-  .callerId('user-abc')
+  .userId('user-abc')
   .sessionId('session-xyz')
-  .callerUpn('user@example.com')
+  .userEmail('user@example.com')
   .conversationId('conv-123')
   .build();
 
@@ -252,25 +244,23 @@ const scope2 = BaggageBuilder.setRequestContext(
 | `tenantId(value)` | `tenant_id` |
 | `agentId(value)` | `gen_ai.agent.id` |
 | `agentAuid(value)` | `gen_ai.agent.auid` |
-| `agentUpn(value)` | `gen_ai.agent.upn` |
+| `agentEmail(value)` | `microsoft.agent.user.email` |
 | `correlationId(value)` | `correlation_id` |
-| `callerId(value)` | `gen_ai.caller.id` |
+| `userId(value)` | `user.id` |
 | `sessionId(value)` | `session_id` |
 | `conversationId(value)` | `gen_ai.conversation.id` |
-| `callerUpn(value)` | `gen_ai.caller.upn` |
+| `userEmail(value)` | `user.email` |
 | `operationSource(value)` | `service.name` |
 | `channelName(value)` | `gen_ai.execution.source.name` |
 | `channelLink(value)` | `gen_ai.execution.source.description` |
 
 ## Data Interfaces
 
-### InvokeAgentDetails
+### InvokeAgentScopeDetails
 
 ```typescript
-interface InvokeAgentDetails extends AgentDetails {
-  request?: AgentRequest;
+interface InvokeAgentScopeDetails {
   endpoint?: ServiceEndpoint;
-  sessionId?: string;
 }
 ```
 
