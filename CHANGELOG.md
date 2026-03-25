@@ -58,6 +58,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Span links support** — All scope classes (`InvokeAgentScope`, `InferenceScope`, `ExecuteToolScope`, `OutputScope`) now accept an optional `spanLinks?: Link[]` parameter to establish causal relationships to other spans (e.g. linking a batch operation to individual trigger spans).
+- **`BaggageBuilder.invokeAgentServer(address, port?)`** — Fluent setter for server address and port baggage values. Port is only recorded when different from 443 (default HTTPS). Clears stale port entries when port is omitted or 443.
 - **`OpenAIAgentsInstrumentationConfig.isContentRecordingEnabled`** — Optional `boolean` to enable content recording in OpenAI trace processor.
 - **`LangChainTraceInstrumentor.instrument(module, options?)`** — New optional `{ isContentRecordingEnabled?: boolean }` parameter to enable content recording in LangChain tracer.
 - **`truncateValue`** / **`MAX_ATTRIBUTE_LENGTH`** — Exported utilities for attribute value truncation (8192 char limit).

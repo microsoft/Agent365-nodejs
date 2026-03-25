@@ -144,6 +144,26 @@ describe('BaggageBuilder', () => {
     });
   });
 
+  describe('invokeAgentServer', () => {
+    it.each([
+      ['api.example.com', 8080, 'api.example.com', '8080'],
+      ['api.example.com', 443, 'api.example.com', undefined],
+      ['api.example.com', undefined, 'api.example.com', undefined],
+    ] as const)('address=%s port=%s should set address=%s portBaggage=%s', (address, port, expectedAddress, expectedPort) => {
+      const builder = new BaggageBuilder();
+      builder.invokeAgentServer(address, port as number | undefined);
+      const scope = builder.build();
+      const bag = propagation.getBaggage((scope as any).contextWithBaggage);
+      expect(bag?.getEntry(OpenTelemetryConstants.SERVER_ADDRESS_KEY)?.value).toBe(expectedAddress);
+      expect(bag?.getEntry(OpenTelemetryConstants.SERVER_PORT_KEY)?.value).toBe(expectedPort);
+    });
+
+    it('should return self for method chaining', () => {
+      const builder = new BaggageBuilder();
+      expect(builder.invokeAgentServer('api.example.com', 8080)).toBe(builder);
+    });
+  });
+
   describe('setRequestContext static method', () => {
     it('should create scope with common fields', () => {
       const scope = BaggageBuilder.setRequestContext(

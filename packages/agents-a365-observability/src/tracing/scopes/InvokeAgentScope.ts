@@ -26,7 +26,7 @@ export class InvokeAgentScope extends OpenTelemetryScope {
    *   - Human caller only: `{ userDetails: { userId, userName, ... } }`
    *   - Agent caller only: `{ callerAgentDetails: { agentId, agentName, ... } }`
    *   - Both (A2A with human in chain): `{ userDetails: { ... }, callerAgentDetails: { ... } }`
-   * @param spanDetails Optional span configuration (parentContext, startTime, endTime, spanKind).
+   * @param spanDetails Optional span configuration (parentContext, startTime, endTime, spanKind, spanLinks).
    * @returns A new InvokeAgentScope instance.
    */
   public static start(
@@ -61,7 +61,8 @@ export class InvokeAgentScope extends OpenTelemetryScope {
       spanDetails?.parentContext,
       spanDetails?.startTime,
       spanDetails?.endTime,
-      callerDetails?.userDetails
+      callerDetails?.userDetails,
+      spanDetails?.spanLinks
     );
 
     // Set provider name from agent details

@@ -102,12 +102,17 @@ builder.start();
 
 #### OpenTelemetryScope (Base Class) ([OpenTelemetryScope.ts](../src/tracing/scopes/OpenTelemetryScope.ts))
 
-Base class for all tracing scopes, implementing `Disposable`:
+Base class for all tracing scopes, implementing `Disposable`.
+
+All scope constructors accept an optional `spanLinks?: Link[]` parameter to establish causal relationships to other spans (e.g. linking a batch operation to individual trigger spans):
 
 ```typescript
 abstract class OpenTelemetryScope implements Disposable {
   // Make span active for async callback
   withActiveSpanAsync<T>(callback: () => Promise<T>): Promise<T>;
+
+  // Get span context for parent-child linking
+  getSpanContext(): SpanContext;
 
   // Record an error
   recordError(error: Error): void;
@@ -253,6 +258,7 @@ const scope2 = BaggageBuilder.setRequestContext(
 | `operationSource(value)` | `service.name` |
 | `channelName(value)` | `gen_ai.execution.source.name` |
 | `channelLink(value)` | `gen_ai.execution.source.description` |
+| `invokeAgentServer(address, port?)` | `server.address` / `server.port` |
 
 ## Data Interfaces
 

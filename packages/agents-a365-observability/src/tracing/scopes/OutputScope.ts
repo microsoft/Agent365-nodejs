@@ -20,7 +20,7 @@ export class OutputScope extends OpenTelemetryScope {
    * @param response The response containing initial output messages.
    * @param agentDetails The agent producing the output. Tenant ID is derived from `agentDetails.tenantId`.
    * @param userDetails Optional human caller identity details.
-   * @param spanDetails Optional span configuration (parentContext, startTime, endTime).
+   * @param spanDetails Optional span configuration (parentContext, startTime, endTime, spanLinks).
    * @returns A new OutputScope instance.
    */
   public static start(
@@ -55,7 +55,8 @@ export class OutputScope extends OpenTelemetryScope {
       spanDetails?.parentContext,
       spanDetails?.startTime,
       spanDetails?.endTime,
-      userDetails
+      userDetails,
+      spanDetails?.spanLinks
     );
 
     // Initialize accumulated messages list from the response

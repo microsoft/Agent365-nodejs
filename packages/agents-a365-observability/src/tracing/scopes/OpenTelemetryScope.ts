@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { trace, SpanKind, Span, SpanStatusCode, context, AttributeValue, SpanContext, TimeInput } from '@opentelemetry/api';
+import { trace, SpanKind, Span, SpanStatusCode, context, AttributeValue, SpanContext, TimeInput, Link } from '@opentelemetry/api';
 import { OpenTelemetryConstants } from '../constants';
 import { AgentDetails, UserDetails } from '../contracts';
 import { createContextWithParentSpanRef } from '../context/parent-span-context';
@@ -37,6 +37,9 @@ export abstract class OpenTelemetryScope implements Disposable {
    * @param endTime Optional explicit end time (ms epoch, Date, or HrTime). When provided the span will
    *        use this timestamp when {@link dispose} is called instead of the current wall-clock time.
    * @param userDetails Optional human caller identity details (id, upn, name, client ip).
+   * @param spanLinks Optional span links to associate with this span. Links establish a causal relationship
+   *        to other spans (e.g. a batch operation linking to individual trigger spans). Each link contains
+   *        a {@link SpanContext} and optional attributes.
    */
   protected constructor(
     kind: SpanKind,
@@ -46,7 +49,8 @@ export abstract class OpenTelemetryScope implements Disposable {
     parentContext?: ParentContext,
     startTime?: TimeInput,
     endTime?: TimeInput,
-    userDetails?: UserDetails
+    userDetails?: UserDetails,
+    spanLinks?: Link[]
   ) {
     // Determine the context to use for span creation
     let currentContext = context.active();
@@ -67,6 +71,7 @@ export abstract class OpenTelemetryScope implements Disposable {
     this.span = OpenTelemetryScope.tracer.startSpan(spanName, {
       kind,
       startTime,
+      links: spanLinks,
       attributes: {
         [OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY]: operationName,
       },

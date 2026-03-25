@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import type { SpanKind, TimeInput } from '@opentelemetry/api';
+import type { SpanKind, TimeInput, Link } from '@opentelemetry/api';
 import type { ParentContext } from './context/trace-context-propagation';
 
 /**
@@ -298,5 +298,10 @@ export interface SpanDetails {
 
   /** Optional span kind override. */
   spanKind?: SpanKind;
+
+  /** Optional span links to associate with this span. Links establish a causal relationship
+   *  to other spans (e.g. a batch operation linking to individual trigger spans). Each link
+   *  contains a SpanContext and optional attributes. */
+  spanLinks?: Link[];
 }
 
