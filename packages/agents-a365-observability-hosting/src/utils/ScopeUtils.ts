@@ -177,10 +177,10 @@ export class ScopeUtils {
   /**
    * Create an `InvokeAgentScope` using `details` and values derived from the provided `TurnContext`.
    * Builds a separate `Request` with `conversationId` and `channel` from context.
-   * Merges agent identity from context into `invokeAgentDetails.details`.
+   * Merges agent identity from context into `details` via `buildInvokeAgentDetailsCore`.
    * Derives `callerAgentDetails` (from caller) and `userDetails` (human caller).
    * Also records input messages from the context if present.
-   * @param details The invoke agent call details to be augmented and used for the scope.
+   * @param details The agent details to be augmented with context-derived identity.
    * @param turnContext The current activity context to derive scope parameters from.
    * @param authToken Auth token for resolving agent identity from token claims.
    * @param startTime Optional explicit start time (ms epoch, Date, or HrTime).

@@ -16,7 +16,7 @@ jest.mock('@microsoft/agents-a365-runtime', () => {
 });
 
 import { ScopeUtils } from '../../../../packages/agents-a365-observability-hosting/src/utils/ScopeUtils';
-import { InferenceScope, InvokeAgentScope, ExecuteToolScope, OpenTelemetryConstants, ExecutionType, OpenTelemetryScope, InvokeAgentScopeDetails } from '@microsoft/agents-a365-observability';
+import { InferenceScope, InvokeAgentScope, ExecuteToolScope, OpenTelemetryConstants, OpenTelemetryScope } from '@microsoft/agents-a365-observability';
 import { SpanKind } from '@opentelemetry/api';
 import { RoleTypes } from '@microsoft/agents-activity';
 import type { TurnContext } from '@microsoft/agents-hosting';

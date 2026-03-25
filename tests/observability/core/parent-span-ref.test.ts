@@ -11,7 +11,6 @@ import {
   InvokeAgentScope,
   InferenceScope,
   ExecuteToolScope,
-  InvokeAgentScopeDetails,
   InferenceDetails,
   InferenceOperationType,
   ToolCallDetails,

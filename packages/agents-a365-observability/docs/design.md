@@ -137,7 +137,7 @@ const scopeDetails: InvokeAgentScopeDetails = {
 };
 const agentDetails: AgentDetails = { agentId: 'agent-123', agentName: 'MyAgent', tenantId: 'tenant-789' };
 const callerInfo: CallerDetails = {
-  userDetails: { callerId: 'user-1', callerName: 'User' },
+  userDetails: { userId: 'user-1', userName: 'User' },
   callerAgentDetails: callerAgent  // Optional, for A2A scenarios
 };
 
@@ -218,9 +218,9 @@ const scope = new BaggageBuilder()
   .tenantId('tenant-123')
   .agentId('agent-456')
   .correlationId('corr-789')
-  .callerId('user-abc')
+  .userId('user-abc')
   .sessionId('session-xyz')
-  .callerUpn('user@example.com')
+  .userEmail('user@example.com')
   .conversationId('conv-123')
   .build();
 
@@ -244,12 +244,12 @@ const scope2 = BaggageBuilder.setRequestContext(
 | `tenantId(value)` | `tenant_id` |
 | `agentId(value)` | `gen_ai.agent.id` |
 | `agentAuid(value)` | `gen_ai.agent.auid` |
-| `agentUpn(value)` | `gen_ai.agent.upn` |
+| `agentEmail(value)` | `microsoft.agent.user.email` |
 | `correlationId(value)` | `correlation_id` |
-| `callerId(value)` | `gen_ai.caller.id` |
+| `userId(value)` | `user.id` |
 | `sessionId(value)` | `session_id` |
 | `conversationId(value)` | `gen_ai.conversation.id` |
-| `callerUpn(value)` | `gen_ai.caller.upn` |
+| `userEmail(value)` | `user.email` |
 | `operationSource(value)` | `service.name` |
 | `channelName(value)` | `gen_ai.execution.source.name` |
 | `channelLink(value)` | `gen_ai.execution.source.description` |

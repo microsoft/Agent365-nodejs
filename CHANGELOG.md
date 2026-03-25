@@ -28,8 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`UserDetails` properties renamed** — `callerId` → `userId`, `callerUpn` → `userEmail`, `callerName` → `userName`.
 - **`AgentDetails.agentUPN` renamed to `AgentDetails.agentEmail`**.
 - **`BaggageBuilder` methods renamed** — `callerId()` → `userId()`, `callerName()` → `userName()`, `callerUpn()` → `userEmail()`, `agentUpn()` → `agentEmail()`.
-- **`SourceMetadata` renamed to `Channel`** — The exported interface representing invocation channel information is renamed from `SourceMetadata` to `Channel`.
-- **`AgentRequest.sourceMetadata` renamed to `AgentRequest.channel`** — The optional property on `AgentRequest` is renamed from `sourceMetadata` to `channel` (type changed from `SourceMetadata` to `Channel`).
+- **`SourceMetadata` renamed to `Channel`** — The exported interface representing invocation channel information is renamed from `SourceMetadata` to `Channel`. The `AgentRequest.sourceMetadata` property is renamed to `channel`.
 - **`BaggageBuilder.serviceName()` renamed to `BaggageBuilder.operationSource()`** — Fluent setter for the service name baggage value.
 - **`BaggageBuilder.sourceMetadataName()` renamed to `BaggageBuilder.channelName()`** — Fluent setter for the channel name baggage value.
 - **`BaggageBuilder.sourceMetadataDescription()` renamed to `BaggageBuilder.channelLink()`** — Fluent setter for the channel link baggage value.

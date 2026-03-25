@@ -43,18 +43,16 @@ export class InferenceScope extends OpenTelemetryScope {
     userDetails?: UserDetails,
     spanDetails?: SpanDetails
   ) {
-    // Derive tenant details from agentDetails.tenantId (required for telemetry)
+    // Validate tenantId is present (required for telemetry)
     if (!agentDetails.tenantId) {
       throw new Error('InferenceScope: tenantId is required on agentDetails');
     }
-    const tenantDetails = { tenantId: agentDetails.tenantId };
 
     super(
       SpanKind.CLIENT,
       details.operationName.toString(),
       `${details.operationName} ${details.model}`,
       agentDetails,
-      tenantDetails,
       spanDetails?.parentContext,
       spanDetails?.startTime,
       spanDetails?.endTime,
@@ -62,7 +60,6 @@ export class InferenceScope extends OpenTelemetryScope {
     );
 
     // Set core inference information
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY, details.operationName.toString());
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_REQUEST_MODEL_KEY, details.model);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY, details.providerName);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_INPUT_TOKENS_KEY, details.inputTokens);

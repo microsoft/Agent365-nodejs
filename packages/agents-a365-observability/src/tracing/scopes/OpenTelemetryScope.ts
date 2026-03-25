@@ -3,7 +3,7 @@
 
 import { trace, SpanKind, Span, SpanStatusCode, context, AttributeValue, SpanContext, TimeInput } from '@opentelemetry/api';
 import { OpenTelemetryConstants } from '../constants';
-import { AgentDetails, TenantDetails, UserDetails } from '../contracts';
+import { AgentDetails, UserDetails } from '../contracts';
 import { createContextWithParentSpanRef } from '../context/parent-span-context';
 import { ParentContext, isParentSpanRef } from '../context/trace-context-propagation';
 import logger from '../../utils/logging';
@@ -27,8 +27,7 @@ export abstract class OpenTelemetryScope implements Disposable {
    * @param kind The kind of span (CLIENT, SERVER, INTERNAL, etc.)
    * @param operationName The name of the operation being traced
    * @param spanName The name of the span for display purposes
-   * @param agentDetails Optional agent details
-   * @param tenantDetails Optional tenant details
+   * @param agentDetails Optional agent details. Tenant ID is read from `agentDetails.tenantId`.
    * @param parentContext Optional parent context for cross-async-boundary tracing.
    *   Accepts a {@link ParentSpanRef} (manual traceId/spanId) or an OTel {@link Context}
    *   (e.g. from {@link extractContextFromHeaders} for W3C header propagation).
@@ -44,7 +43,6 @@ export abstract class OpenTelemetryScope implements Disposable {
     operationName: string,
     spanName: string,
     agentDetails?: AgentDetails,
-    tenantDetails?: TenantDetails,
     parentContext?: ParentContext,
     startTime?: TimeInput,
     endTime?: TimeInput,
@@ -63,7 +61,7 @@ export abstract class OpenTelemetryScope implements Disposable {
       }
     }
 
-    logger.info(`[A365Observability] Starting span: ${spanName}, operation: ${operationName} for tenantId: ${tenantDetails?.tenantId || 'unknown'}, agentId: ${agentDetails?.agentId || 'unknown'}`);
+    logger.info(`[A365Observability] Starting span: ${spanName}, operation: ${operationName} for tenantId: ${agentDetails?.tenantId || 'unknown'}, agentId: ${agentDetails?.agentId || 'unknown'}`);
 
     // Start span with current context to establish parent-child relationship
     this.span = OpenTelemetryScope.tracer.startSpan(spanName, {
@@ -94,10 +92,8 @@ export abstract class OpenTelemetryScope implements Disposable {
       this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY, agentDetails.agentBlueprintId);
     }
 
-    // Set tenant details if provided
-    if (tenantDetails) {
-      this.setTagMaybe(OpenTelemetryConstants.TENANT_ID_KEY, tenantDetails.tenantId);
-    }
+    // Set tenant ID from agent details
+    this.setTagMaybe(OpenTelemetryConstants.TENANT_ID_KEY, agentDetails?.tenantId);
 
     // Set caller details if provided
     if (userDetails) {

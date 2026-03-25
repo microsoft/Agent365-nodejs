@@ -80,7 +80,6 @@ describe('Scopes', () => {
         agentId: 'test-agent',
         agentName: 'Test Agent',
         agentDescription: 'A test agent',
-        conversationId: 'conv-123',
         iconUri: 'https://example.com/icon.png',
         tenantId: 'test-tenant-456'
       });
@@ -267,10 +266,6 @@ describe('Scopes', () => {
       spy.mockRestore();
     });
 
-    it('should throw when agentDetails is null', () => {
-      expect(() => InvokeAgentScope.start(testRequest, {}, null as any)).toThrow('InvokeAgentScope: agentDetails is required');
-    });
-
     it('should throw when agentDetails.tenantId is missing', () => {
       expect(() => InvokeAgentScope.start(testRequest, {}, { agentId: 'a' } as any)).toThrow('InvokeAgentScope: tenantId is required on agentDetails');
     });
@@ -282,14 +277,14 @@ describe('Scopes', () => {
         agentName: 'Test Agent',
         tenantId: 'test-tenant-456'
       }, {
-        userDetails: { callerId: 'user-1', callerName: 'User One' },
+        userDetails: { userId: 'user-1', userName: 'User One' },
         callerAgentDetails: { agentId: 'caller-agent-1', agentName: 'Caller Agent' } as any
       });
 
       const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
       expect(calls).toEqual(expect.arrayContaining([
-        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY, val: 'user-1' }),
-        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY, val: 'User One' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.USER_ID_KEY, val: 'user-1' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.USER_NAME_KEY, val: 'User One' }),
         expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CALLER_AGENT_ID_KEY, val: 'caller-agent-1' }),
         expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CALLER_AGENT_NAME_KEY, val: 'Caller Agent' }),
       ]));

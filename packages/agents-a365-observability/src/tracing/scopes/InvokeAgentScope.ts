@@ -23,7 +23,7 @@ export class InvokeAgentScope extends OpenTelemetryScope {
    * @param invokeScopeDetails Scope-level details
    * @param agentDetails The agent identity. Tenant ID is derived from `agentDetails.tenantId` (required).
    * @param callerDetails Optional caller information. Supports three scenarios:
-   *   - Human caller only: `{ userDetails: { callerId, callerName, ... } }`
+   *   - Human caller only: `{ userDetails: { userId, userName, ... } }`
    *   - Agent caller only: `{ callerAgentDetails: { agentId, agentName, ... } }`
    *   - Both (A2A with human in chain): `{ userDetails: { ... }, callerAgentDetails: { ... } }`
    * @param spanDetails Optional span configuration (parentContext, startTime, endTime, spanKind).
@@ -46,16 +46,10 @@ export class InvokeAgentScope extends OpenTelemetryScope {
     callerDetails?: CallerDetails,
     spanDetails?: SpanDetails
   ) {
-    // Validate agent details
-    if (!agentDetails) {
-      throw new Error('InvokeAgentScope: agentDetails is required');
-    }
-
-    // Derive tenant details from agentDetails.tenantId (required for telemetry)
+    // Validate tenantId is present (required for telemetry)
     if (!agentDetails.tenantId) {
       throw new Error('InvokeAgentScope: tenantId is required on agentDetails');
     }
-    const tenantDetails = { tenantId: agentDetails.tenantId };
 
     super(
       spanDetails?.spanKind ?? SpanKind.CLIENT,
@@ -64,7 +58,6 @@ export class InvokeAgentScope extends OpenTelemetryScope {
         ? `${OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME} ${agentDetails.agentName}`
         : OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME,
       agentDetails,
-      tenantDetails,
       spanDetails?.parentContext,
       spanDetails?.startTime,
       spanDetails?.endTime,

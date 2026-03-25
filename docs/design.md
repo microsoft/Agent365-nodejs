@@ -131,7 +131,7 @@ The foundation for distributed tracing in agent applications. Built on OpenTelem
 | `InferenceDetails` | Model name, tokens, provider information |
 | `ToolCallDetails` | Tool name, arguments, endpoint |
 | `CallerDetails` | Wrapper for caller identity: `userDetails` (human) and/or `callerAgentDetails` (A2A) |
-| `UserDetails` | Human caller identification (callerId, callerUpn, callerName, callerClientIp) |
+| `UserDetails` | Human caller identification (userId, userEmail, userName, callerClientIp) |
 | `SpanDetails` | Optional span configuration (parentContext, startTime, endTime, spanKind) |
 
 **Usage Example:**
@@ -164,7 +164,7 @@ scope.run(() => {
     { conversationId, channel: { name: 'Teams' } },  // Request
     { endpoint: { host: 'api.example.com' } },        // InvokeAgentScopeDetails
     { agentId, agentName, tenantId },                  // AgentDetails
-    { userDetails: { callerId, callerName } }          // CallerDetails (optional)
+    { userDetails: { userId, userName } }                // CallerDetails (optional)
   );
 
   // Agent logic here

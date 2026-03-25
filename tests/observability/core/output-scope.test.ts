@@ -125,10 +125,6 @@ describe('OutputScope', () => {
     expect(span.parentSpanContext?.spanId).toBe(parentSpanId);
   });
 
-  it('should throw when request is null', () => {
-    expect(() => OutputScope.start(null as any, { messages: ['m'] }, testAgentDetails)).toThrow('OutputScope: request is required');
-  });
-
   it('should throw when agentDetails.tenantId is missing', () => {
     expect(() => OutputScope.start({}, { messages: ['m'] }, { agentId: 'a' } as any)).toThrow('OutputScope: tenantId is required on agentDetails');
   });

@@ -43,18 +43,16 @@ export class ExecuteToolScope extends OpenTelemetryScope {
     userDetails?: UserDetails,
     spanDetails?: SpanDetails
   ) {
-    // Derive tenant details from agentDetails.tenantId (required for telemetry)
+    // Validate tenantId is present (required for telemetry)
     if (!agentDetails.tenantId) {
       throw new Error('ExecuteToolScope: tenantId is required on agentDetails');
     }
-    const tenantDetails = { tenantId: agentDetails.tenantId };
 
     super(
       spanDetails?.spanKind ?? SpanKind.INTERNAL,
       OpenTelemetryConstants.EXECUTE_TOOL_OPERATION_NAME,
       `${OpenTelemetryConstants.EXECUTE_TOOL_OPERATION_NAME} ${details.toolName}`,
       agentDetails,
-      tenantDetails,
       spanDetails?.parentContext,
       spanDetails?.startTime,
       spanDetails?.endTime,
