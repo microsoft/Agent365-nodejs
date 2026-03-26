@@ -23,7 +23,7 @@ export class ExecuteToolScope extends OpenTelemetryScope {
    * @param details The tool call details (name, type, args, call id, etc.).
    * @param agentDetails The agent executing the tool. Tenant ID is derived from `agentDetails.tenantId`.
    * @param userDetails Optional human caller identity.
-   * @param spanDetails Optional span configuration (parentContext, startTime, endTime, spanKind, spanLinks).
+   * @param spanDetails Optional span configuration (parentContext, startTime, endTime, spanLinks). Any provided spanKind is ignored; ExecuteToolScope always uses SpanKind.INTERNAL.
    * @returns A new ExecuteToolScope instance.
    */
   public static start(

@@ -104,7 +104,7 @@ builder.start();
 
 Base class for all tracing scopes, implementing `Disposable`.
 
-All scope constructors accept an optional `spanLinks?: Link[]` parameter to establish causal relationships to other spans (e.g. linking a batch operation to individual trigger spans):
+All scope constructors accept an optional `spanDetails?: SpanDetails` parameter, where span links can be provided via `spanDetails.spanLinks` to establish causal relationships to other spans (e.g. linking a batch operation to individual trigger spans):
 
 ```typescript
 abstract class OpenTelemetryScope implements Disposable {
