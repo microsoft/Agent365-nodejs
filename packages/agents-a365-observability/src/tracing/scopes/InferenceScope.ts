@@ -48,12 +48,14 @@ export class InferenceScope extends OpenTelemetryScope {
       throw new Error('InferenceScope: tenantId is required on agentDetails');
     }
 
+    // spanKind for InferenceScope is always CLIENT
+    const resolvedSpanDetails: SpanDetails = { ...spanDetails, spanKind: SpanKind.CLIENT };
+
     super(
-      SpanKind.CLIENT,
       details.operationName.toString(),
       `${details.operationName} ${details.model}`,
       agentDetails,
-      spanDetails,
+      resolvedSpanDetails,
       userDetails,
     );
 

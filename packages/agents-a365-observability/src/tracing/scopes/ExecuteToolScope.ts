@@ -48,12 +48,14 @@ export class ExecuteToolScope extends OpenTelemetryScope {
       throw new Error('ExecuteToolScope: tenantId is required on agentDetails');
     }
 
+    // spanKind for ExecuteToolScope is always INTERNAL
+    const resolvedSpanDetails: SpanDetails = { ...spanDetails, spanKind: SpanKind.INTERNAL };
+
     super(
-      spanDetails?.spanKind ?? SpanKind.INTERNAL,
       OpenTelemetryConstants.EXECUTE_TOOL_OPERATION_NAME,
       `${OpenTelemetryConstants.EXECUTE_TOOL_OPERATION_NAME} ${details.toolName}`,
       agentDetails,
-      spanDetails,
+      resolvedSpanDetails,
       userDetails,
     );
 

@@ -24,16 +24,15 @@ export abstract class OpenTelemetryScope implements Disposable {
 
   /**
    * Initializes a new instance of the OpenTelemetryScope class
-   * @param kind The kind of span (CLIENT, SERVER, INTERNAL, etc.)
    * @param operationName The name of the operation being traced
    * @param spanName The name of the span for display purposes
    * @param agentDetails Optional agent details. Tenant ID is read from `agentDetails.tenantId`.
    * @param spanDetails Optional span configuration including parent context, start/end times,
-   *        span kind override, and span links.
+   *        span kind, and span links. Subclasses may override `spanDetails.spanKind` before
+   *        calling this constructor; defaults to `SpanKind.CLIENT`.
    * @param userDetails Optional human caller identity details (id, upn, name, client ip).
    */
   protected constructor(
-    kind: SpanKind,
     operationName: string,
     spanName: string,
     agentDetails?: AgentDetails,
@@ -44,6 +43,7 @@ export abstract class OpenTelemetryScope implements Disposable {
     const startTime = spanDetails?.startTime;
     const endTime = spanDetails?.endTime;
     const spanLinks = spanDetails?.spanLinks;
+    const kind = spanDetails?.spanKind ?? SpanKind.CLIENT;
 
     // Determine the context to use for span creation
     let currentContext = context.active();

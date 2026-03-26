@@ -51,14 +51,15 @@ export class InvokeAgentScope extends OpenTelemetryScope {
       throw new Error('InvokeAgentScope: tenantId is required on agentDetails');
     }
 
+    const resolvedSpanDetails: SpanDetails = { ...spanDetails, spanKind: spanDetails?.spanKind ?? SpanKind.CLIENT };
+
     super(
-      spanDetails?.spanKind ?? SpanKind.CLIENT,
       OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME,
       agentDetails.agentName
         ? `${OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME} ${agentDetails.agentName}`
         : OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME,
       agentDetails,
-      spanDetails,
+      resolvedSpanDetails,
       callerDetails?.userDetails,
     );
 

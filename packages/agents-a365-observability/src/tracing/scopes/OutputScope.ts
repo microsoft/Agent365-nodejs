@@ -45,14 +45,16 @@ export class OutputScope extends OpenTelemetryScope {
       throw new Error('OutputScope: tenantId is required on agentDetails');
     }
 
+    // spanKind for OutputScope is always CLIENT
+    const resolvedSpanDetails: SpanDetails = { ...spanDetails, spanKind: SpanKind.CLIENT };
+
     super(
-      SpanKind.CLIENT,
       OpenTelemetryConstants.OUTPUT_MESSAGES_OPERATION_NAME,
       agentDetails.agentName
         ? `${OpenTelemetryConstants.OUTPUT_MESSAGES_OPERATION_NAME} ${agentDetails.agentName}`
         : `${OpenTelemetryConstants.OUTPUT_MESSAGES_OPERATION_NAME} ${agentDetails.agentId}`,
       agentDetails,
-      spanDetails,
+      resolvedSpanDetails,
       userDetails,
     );
 
