@@ -23,7 +23,7 @@ export class ExecuteToolScope extends OpenTelemetryScope {
    * @param details The tool call details (name, type, args, call id, etc.).
    * @param agentDetails The agent executing the tool. Tenant ID is derived from `agentDetails.tenantId`.
    * @param userDetails Optional human caller identity.
-   * @param spanDetails Optional span configuration (parentContext, startTime, endTime, spanKind).
+   * @param spanDetails Optional span configuration (parentContext, startTime, endTime, spanLinks). Any provided spanKind is ignored; ExecuteToolScope always uses SpanKind.INTERNAL.
    * @returns A new ExecuteToolScope instance.
    */
   public static start(
@@ -48,15 +48,15 @@ export class ExecuteToolScope extends OpenTelemetryScope {
       throw new Error('ExecuteToolScope: tenantId is required on agentDetails');
     }
 
+    // spanKind for ExecuteToolScope is always INTERNAL
+    const resolvedSpanDetails: SpanDetails = { ...spanDetails, spanKind: SpanKind.INTERNAL };
+
     super(
-      spanDetails?.spanKind ?? SpanKind.INTERNAL,
       OpenTelemetryConstants.EXECUTE_TOOL_OPERATION_NAME,
       `${OpenTelemetryConstants.EXECUTE_TOOL_OPERATION_NAME} ${details.toolName}`,
       agentDetails,
-      spanDetails?.parentContext,
-      spanDetails?.startTime,
-      spanDetails?.endTime,
-      userDetails
+      resolvedSpanDetails,
+      userDetails,
     );
 
     // Destructure the details object

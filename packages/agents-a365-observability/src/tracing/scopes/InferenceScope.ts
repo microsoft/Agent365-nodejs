@@ -23,7 +23,7 @@ export class InferenceScope extends OpenTelemetryScope {
    * @param details The inference call details (model, provider, tokens, etc.).
    * @param agentDetails The agent performing the inference. Tenant ID is derived from `agentDetails.tenantId`.
    * @param userDetails Optional human caller identity.
-   * @param spanDetails Optional span configuration (parentContext, startTime, endTime). Note: `spanKind` is ignored; InferenceScope always uses `SpanKind.CLIENT`.
+   * @param spanDetails Optional span configuration (parentContext, startTime, endTime, spanLinks). Note: `spanKind` is ignored; InferenceScope always uses `SpanKind.CLIENT`.
    * @returns A new InferenceScope instance
    */
   public static start(
@@ -48,15 +48,15 @@ export class InferenceScope extends OpenTelemetryScope {
       throw new Error('InferenceScope: tenantId is required on agentDetails');
     }
 
+    // spanKind for InferenceScope is always CLIENT
+    const resolvedSpanDetails: SpanDetails = { ...spanDetails, spanKind: SpanKind.CLIENT };
+
     super(
-      SpanKind.CLIENT,
       details.operationName.toString(),
       `${details.operationName} ${details.model}`,
       agentDetails,
-      spanDetails?.parentContext,
-      spanDetails?.startTime,
-      spanDetails?.endTime,
-      userDetails
+      resolvedSpanDetails,
+      userDetails,
     );
 
     // Set core inference information

@@ -26,7 +26,7 @@ export class InvokeAgentScope extends OpenTelemetryScope {
    *   - Human caller only: `{ userDetails: { userId, userName, ... } }`
    *   - Agent caller only: `{ callerAgentDetails: { agentId, agentName, ... } }`
    *   - Both (A2A with human in chain): `{ userDetails: { ... }, callerAgentDetails: { ... } }`
-   * @param spanDetails Optional span configuration (parentContext, startTime, endTime, spanKind).
+   * @param spanDetails Optional span configuration (parentContext, startTime, endTime, spanKind, spanLinks).
    * @returns A new InvokeAgentScope instance.
    */
   public static start(
@@ -51,17 +51,16 @@ export class InvokeAgentScope extends OpenTelemetryScope {
       throw new Error('InvokeAgentScope: tenantId is required on agentDetails');
     }
 
+    const resolvedSpanDetails: SpanDetails = { ...spanDetails, spanKind: spanDetails?.spanKind ?? SpanKind.CLIENT };
+
     super(
-      spanDetails?.spanKind ?? SpanKind.CLIENT,
       OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME,
       agentDetails.agentName
         ? `${OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME} ${agentDetails.agentName}`
         : OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME,
       agentDetails,
-      spanDetails?.parentContext,
-      spanDetails?.startTime,
-      spanDetails?.endTime,
-      callerDetails?.userDetails
+      resolvedSpanDetails,
+      callerDetails?.userDetails,
     );
 
     // Set provider name from agent details

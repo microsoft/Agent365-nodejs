@@ -232,6 +232,22 @@ export class BaggageBuilder {
   }
 
   /**
+   * Sets the invoke agent server address and port baggage values.
+   * @param address The server address (hostname) of the target agent service.
+   * @param port Optional server port. Only recorded when different from 443.
+   * @returns The current builder instance for method chaining.
+   */
+  invokeAgentServer(address: string | null | undefined, port?: number): BaggageBuilder {
+    this.set(OpenTelemetryConstants.SERVER_ADDRESS_KEY, address);
+    if (port !== undefined && port !== 443) {
+      this.set(OpenTelemetryConstants.SERVER_PORT_KEY, port.toString());
+    } else {
+      this.pairs.delete(OpenTelemetryConstants.SERVER_PORT_KEY);
+    }
+    return this;
+  }
+
+  /**
    * Set multiple baggage pairs from a dictionary or iterable.
    * @param pairs Dictionary or iterable of key-value pairs
    * @returns Self for method chaining

@@ -20,7 +20,7 @@ export class OutputScope extends OpenTelemetryScope {
    * @param response The response containing initial output messages.
    * @param agentDetails The agent producing the output. Tenant ID is derived from `agentDetails.tenantId`.
    * @param userDetails Optional human caller identity details.
-   * @param spanDetails Optional span configuration (parentContext, startTime, endTime).
+   * @param spanDetails Optional span configuration (parentContext, startTime, endTime, spanLinks).
    * @returns A new OutputScope instance.
    */
   public static start(
@@ -45,17 +45,17 @@ export class OutputScope extends OpenTelemetryScope {
       throw new Error('OutputScope: tenantId is required on agentDetails');
     }
 
+    // spanKind for OutputScope is always CLIENT
+    const resolvedSpanDetails: SpanDetails = { ...spanDetails, spanKind: SpanKind.CLIENT };
+
     super(
-      SpanKind.CLIENT,
       OpenTelemetryConstants.OUTPUT_MESSAGES_OPERATION_NAME,
       agentDetails.agentName
         ? `${OpenTelemetryConstants.OUTPUT_MESSAGES_OPERATION_NAME} ${agentDetails.agentName}`
         : `${OpenTelemetryConstants.OUTPUT_MESSAGES_OPERATION_NAME} ${agentDetails.agentId}`,
       agentDetails,
-      spanDetails?.parentContext,
-      spanDetails?.startTime,
-      spanDetails?.endTime,
-      userDetails
+      resolvedSpanDetails,
+      userDetails,
     );
 
     // Initialize accumulated messages list from the response

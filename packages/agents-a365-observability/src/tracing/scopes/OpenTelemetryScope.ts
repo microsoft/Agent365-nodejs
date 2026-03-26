@@ -3,9 +3,9 @@
 
 import { trace, SpanKind, Span, SpanStatusCode, context, AttributeValue, SpanContext, TimeInput } from '@opentelemetry/api';
 import { OpenTelemetryConstants } from '../constants';
-import { AgentDetails, UserDetails } from '../contracts';
+import { AgentDetails, UserDetails, SpanDetails } from '../contracts';
 import { createContextWithParentSpanRef } from '../context/parent-span-context';
-import { ParentContext, isParentSpanRef } from '../context/trace-context-propagation';
+import { isParentSpanRef } from '../context/trace-context-propagation';
 import logger from '../../utils/logging';
 
 /**
@@ -24,30 +24,27 @@ export abstract class OpenTelemetryScope implements Disposable {
 
   /**
    * Initializes a new instance of the OpenTelemetryScope class
-   * @param kind The kind of span (CLIENT, SERVER, INTERNAL, etc.)
    * @param operationName The name of the operation being traced
    * @param spanName The name of the span for display purposes
    * @param agentDetails Optional agent details. Tenant ID is read from `agentDetails.tenantId`.
-   * @param parentContext Optional parent context for cross-async-boundary tracing.
-   *   Accepts a {@link ParentSpanRef} (manual traceId/spanId) or an OTel {@link Context}
-   *   (e.g. from {@link extractContextFromHeaders} for W3C header propagation).
-   * @param startTime Optional explicit start time (ms epoch, Date, or HrTime). When provided the span
-   *        records this timestamp instead of "now", which is useful when recording an operation after it
-   *        has already completed (e.g. a tool call whose start time was captured earlier).
-   * @param endTime Optional explicit end time (ms epoch, Date, or HrTime). When provided the span will
-   *        use this timestamp when {@link dispose} is called instead of the current wall-clock time.
+   * @param spanDetails Optional span configuration including parent context, start/end times,
+   *        span kind, and span links. Subclasses may override `spanDetails.spanKind` before
+   *        calling this constructor; defaults to `SpanKind.CLIENT`.
    * @param userDetails Optional human caller identity details (id, upn, name, client ip).
    */
   protected constructor(
-    kind: SpanKind,
     operationName: string,
     spanName: string,
     agentDetails?: AgentDetails,
-    parentContext?: ParentContext,
-    startTime?: TimeInput,
-    endTime?: TimeInput,
-    userDetails?: UserDetails
+    spanDetails?: SpanDetails,
+    userDetails?: UserDetails,
   ) {
+    const parentContext = spanDetails?.parentContext;
+    const startTime = spanDetails?.startTime;
+    const endTime = spanDetails?.endTime;
+    const spanLinks = spanDetails?.spanLinks;
+    const kind = spanDetails?.spanKind ?? SpanKind.CLIENT;
+
     // Determine the context to use for span creation
     let currentContext = context.active();
     if (parentContext) {
@@ -67,6 +64,7 @@ export abstract class OpenTelemetryScope implements Disposable {
     this.span = OpenTelemetryScope.tracer.startSpan(spanName, {
       kind,
       startTime,
+      links: spanLinks,
       attributes: {
         [OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY]: operationName,
       },
