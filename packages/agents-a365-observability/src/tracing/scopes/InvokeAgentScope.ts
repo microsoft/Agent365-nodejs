@@ -58,11 +58,8 @@ export class InvokeAgentScope extends OpenTelemetryScope {
         ? `${OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME} ${agentDetails.agentName}`
         : OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME,
       agentDetails,
-      spanDetails?.parentContext,
-      spanDetails?.startTime,
-      spanDetails?.endTime,
+      spanDetails,
       callerDetails?.userDetails,
-      spanDetails?.spanLinks
     );
 
     // Set provider name from agent details

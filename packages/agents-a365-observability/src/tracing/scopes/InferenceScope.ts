@@ -53,11 +53,8 @@ export class InferenceScope extends OpenTelemetryScope {
       details.operationName.toString(),
       `${details.operationName} ${details.model}`,
       agentDetails,
-      spanDetails?.parentContext,
-      spanDetails?.startTime,
-      spanDetails?.endTime,
+      spanDetails,
       userDetails,
-      spanDetails?.spanLinks
     );
 
     // Set core inference information

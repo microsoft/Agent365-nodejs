@@ -1,11 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { trace, SpanKind, Span, SpanStatusCode, context, AttributeValue, SpanContext, TimeInput, Link } from '@opentelemetry/api';
+import { trace, SpanKind, Span, SpanStatusCode, context, AttributeValue, SpanContext, TimeInput } from '@opentelemetry/api';
 import { OpenTelemetryConstants } from '../constants';
-import { AgentDetails, UserDetails } from '../contracts';
+import { AgentDetails, UserDetails, SpanDetails } from '../contracts';
 import { createContextWithParentSpanRef } from '../context/parent-span-context';
-import { ParentContext, isParentSpanRef } from '../context/trace-context-propagation';
+import { isParentSpanRef } from '../context/trace-context-propagation';
 import logger from '../../utils/logging';
 
 /**
@@ -28,30 +28,23 @@ export abstract class OpenTelemetryScope implements Disposable {
    * @param operationName The name of the operation being traced
    * @param spanName The name of the span for display purposes
    * @param agentDetails Optional agent details. Tenant ID is read from `agentDetails.tenantId`.
-   * @param parentContext Optional parent context for cross-async-boundary tracing.
-   *   Accepts a {@link ParentSpanRef} (manual traceId/spanId) or an OTel {@link Context}
-   *   (e.g. from {@link extractContextFromHeaders} for W3C header propagation).
-   * @param startTime Optional explicit start time (ms epoch, Date, or HrTime). When provided the span
-   *        records this timestamp instead of "now", which is useful when recording an operation after it
-   *        has already completed (e.g. a tool call whose start time was captured earlier).
-   * @param endTime Optional explicit end time (ms epoch, Date, or HrTime). When provided the span will
-   *        use this timestamp when {@link dispose} is called instead of the current wall-clock time.
+   * @param spanDetails Optional span configuration including parent context, start/end times,
+   *        span kind override, and span links.
    * @param userDetails Optional human caller identity details (id, upn, name, client ip).
-   * @param spanLinks Optional span links to associate with this span. Links establish a causal relationship
-   *        to other spans (e.g. a batch operation linking to individual trigger spans). Each link contains
-   *        a {@link SpanContext} and optional attributes.
    */
   protected constructor(
     kind: SpanKind,
     operationName: string,
     spanName: string,
     agentDetails?: AgentDetails,
-    parentContext?: ParentContext,
-    startTime?: TimeInput,
-    endTime?: TimeInput,
+    spanDetails?: SpanDetails,
     userDetails?: UserDetails,
-    spanLinks?: Link[]
   ) {
+    const parentContext = spanDetails?.parentContext;
+    const startTime = spanDetails?.startTime;
+    const endTime = spanDetails?.endTime;
+    const spanLinks = spanDetails?.spanLinks;
+
     // Determine the context to use for span creation
     let currentContext = context.active();
     if (parentContext) {

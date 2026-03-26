@@ -52,11 +52,8 @@ export class OutputScope extends OpenTelemetryScope {
         ? `${OpenTelemetryConstants.OUTPUT_MESSAGES_OPERATION_NAME} ${agentDetails.agentName}`
         : `${OpenTelemetryConstants.OUTPUT_MESSAGES_OPERATION_NAME} ${agentDetails.agentId}`,
       agentDetails,
-      spanDetails?.parentContext,
-      spanDetails?.startTime,
-      spanDetails?.endTime,
+      spanDetails,
       userDetails,
-      spanDetails?.spanLinks
     );
 
     // Initialize accumulated messages list from the response

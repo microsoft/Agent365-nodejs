@@ -53,11 +53,8 @@ export class ExecuteToolScope extends OpenTelemetryScope {
       OpenTelemetryConstants.EXECUTE_TOOL_OPERATION_NAME,
       `${OpenTelemetryConstants.EXECUTE_TOOL_OPERATION_NAME} ${details.toolName}`,
       agentDetails,
-      spanDetails?.parentContext,
-      spanDetails?.startTime,
-      spanDetails?.endTime,
+      spanDetails,
       userDetails,
-      spanDetails?.spanLinks
     );
 
     // Destructure the details object
