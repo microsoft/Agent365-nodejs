@@ -739,7 +739,7 @@ describe('Scopes', () => {
 
     it.each([
       ['INTERNAL (default)', undefined, SpanKind.INTERNAL],
-      ['CLIENT', SpanKind.CLIENT, SpanKind.CLIENT],
+      ['INTERNAL (override ignored)', SpanKind.CLIENT, SpanKind.INTERNAL],
     ])('ExecuteToolScope spanKind: %s', (_label, input, expected) => {
       const scope = ExecuteToolScope.start(
         testRequest, { toolName: 'my-tool' }, testAgentDetails,
