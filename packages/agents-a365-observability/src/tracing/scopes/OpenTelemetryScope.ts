@@ -3,9 +3,10 @@
 
 import { trace, SpanKind, Span, SpanStatusCode, context, AttributeValue, SpanContext, TimeInput } from '@opentelemetry/api';
 import { OpenTelemetryConstants } from '../constants';
-import { AgentDetails, UserDetails, SpanDetails } from '../contracts';
+import { AgentDetails, UserDetails, SpanDetails, InputMessages, OutputMessages } from '../contracts';
 import { createContextWithParentSpanRef } from '../context/parent-span-context';
 import { isParentSpanRef } from '../context/trace-context-propagation';
+import { isStringArray, toInputMessages, toOutputMessages, serializeMessages } from '../message-utils';
 import logger from '../../utils/logging';
 
 /**
@@ -19,7 +20,6 @@ export abstract class OpenTelemetryScope implements Disposable {
   private customStartTime?: TimeInput;
   private customEndTime?: TimeInput;
   private errorType?: string;
-  private exception?: Error;
   private hasEnded = false;
 
   /**
@@ -132,7 +132,6 @@ export abstract class OpenTelemetryScope implements Disposable {
       this.errorType = error.constructor.name;
     }
 
-    this.exception = error;
     this.span.setStatus({
       code: SpanStatusCode.ERROR,
       message: error.message
@@ -170,6 +169,26 @@ export abstract class OpenTelemetryScope implements Disposable {
         this.span.setAttribute(key, (attributes as Record<string, AttributeValue>)[key]);
       }
     }
+  }
+
+  /**
+   * Records the input messages for telemetry tracking.
+   * Accepts plain strings (auto-wrapped as OTEL ChatMessage) or structured ChatMessage objects.
+   * @param messages Array of input message strings or ChatMessage objects
+   */
+  protected recordInputMessages(messages: InputMessages): void {
+    const otelMessages = isStringArray(messages) ? toInputMessages(messages) : messages;
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, serializeMessages(otelMessages));
+  }
+
+  /**
+   * Records the output messages for telemetry tracking.
+   * Accepts plain strings (auto-wrapped as OTEL OutputMessage) or structured OutputMessage objects.
+   * @param messages Array of output message strings or OutputMessage objects
+   */
+  protected recordOutputMessages(messages: OutputMessages): void {
+    const otelMessages = isStringArray(messages) ? toOutputMessages(messages) : messages;
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY, serializeMessages(otelMessages));
   }
 
   /**

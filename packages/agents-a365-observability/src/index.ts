@@ -46,6 +46,25 @@ export {
   InferenceResponse,
   OutputResponse,
   SpanDetails,
+  // OTEL gen-ai message format types
+  MessageRole,
+  FinishReason,
+  Modality,
+  TextPart,
+  ToolCallRequestPart,
+  ToolCallResponsePart,
+  ReasoningPart,
+  BlobPart,
+  FilePart,
+  UriPart,
+  ServerToolCallPart,
+  ServerToolCallResponsePart,
+  GenericPart,
+  MessagePart,
+  ChatMessage,
+  OutputMessage,
+  InputMessages,
+  OutputMessages,
 } from './tracing/contracts';
 
 // Scopes

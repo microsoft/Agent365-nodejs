@@ -3,14 +3,15 @@
 
 import { SpanKind } from '@opentelemetry/api';
 import { OpenTelemetryScope } from './OpenTelemetryScope';
-import { AgentDetails, UserDetails, OutputResponse, Request, SpanDetails } from '../contracts';
+import { AgentDetails, UserDetails, OutputResponse, Request, SpanDetails, OutputMessage, OutputMessages } from '../contracts';
 import { OpenTelemetryConstants } from '../constants';
+import { isStringArray, toOutputMessages, serializeMessages } from '../message-utils';
 
 /**
  * Provides OpenTelemetry tracing scope for output message tracing with parent span linking.
  */
 export class OutputScope extends OpenTelemetryScope {
-  private _outputMessages: string[];
+  private _outputMessages: OutputMessage[];
   private _outputMessagesDirty = false;
 
   /**
@@ -58,30 +59,31 @@ export class OutputScope extends OpenTelemetryScope {
       userDetails,
     );
 
-    // Initialize accumulated messages list from the response
-    this._outputMessages = [...response.messages];
+    // Initialize accumulated messages list from the response (convert plain strings to OTEL format if needed)
+    this._outputMessages = isStringArray(response.messages) ? toOutputMessages(response.messages) : [...response.messages];
 
     // Set initial output messages attribute
     this.setTagMaybe(
       OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY,
-      JSON.stringify(this._outputMessages)
+      serializeMessages(this._outputMessages)
     );
 
     // Set conversation and channel
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, request.conversationId);
     this.setTagMaybe(OpenTelemetryConstants.CHANNEL_NAME_KEY, request.channel?.name);
     this.setTagMaybe(OpenTelemetryConstants.CHANNEL_LINK_KEY, request.channel?.description);
-
   }
 
   /**
    * Records the output messages for telemetry tracking.
    * Appends the provided messages to the accumulated output messages list.
+   * Accepts plain strings (auto-wrapped as OTEL OutputMessage) or structured OutputMessage objects.
    * The updated attribute is flushed when the scope is disposed.
-   * @param messages Array of output messages to append.
+   * @param messages Array of output message strings or OutputMessage objects to append.
    */
-  public recordOutputMessages(messages: string[]): void {
-    this._outputMessages.push(...messages);
+  public recordOutputMessages(messages: OutputMessages): void {
+    const otelMessages = isStringArray(messages) ? toOutputMessages(messages) : messages;
+    this._outputMessages.push(...otelMessages);
     this._outputMessagesDirty = true;
   }
 
@@ -89,7 +91,7 @@ export class OutputScope extends OpenTelemetryScope {
     if (this._outputMessagesDirty) {
       this.setTagMaybe(
         OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY,
-        JSON.stringify(this._outputMessages)
+        serializeMessages(this._outputMessages)
       );
     }
     super[Symbol.dispose]();
