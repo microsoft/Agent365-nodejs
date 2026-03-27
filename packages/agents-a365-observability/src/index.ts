@@ -39,6 +39,7 @@ export {
   InvokeAgentScopeDetails,
   UserDetails,
   CallerDetails,
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- intentional re-export for backward compatibility
   EnhancedAgentDetails,
   ServiceEndpoint,
   InferenceDetails,
