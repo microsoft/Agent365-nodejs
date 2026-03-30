@@ -4,7 +4,8 @@
 import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import {
   ToolingConfiguration,
-  defaultToolingConfigurationProvider
+  defaultToolingConfigurationProvider,
+  resolveTokenScopeForServer
 } from '../../../packages/agents-a365-tooling/src';
 import { RuntimeConfiguration, DefaultConfigurationProvider, ClusterCategory } from '../../../packages/agents-a365-runtime/src';
 
@@ -250,6 +251,38 @@ describe('ToolingConfiguration', () => {
       currentTenant = 'tenant-b';
       expect(config.mcpPlatformEndpoint).toBe('https://tenant-b.endpoint');
     });
+  });
+});
+
+describe('resolveTokenScopeForServer', () => {
+  const ATG_SCOPE = 'ea9ffc3e-8a23-4a7d-836d-234d7c7565c1/.default';
+  const ATG_APP_ID = 'ea9ffc3e-8a23-4a7d-836d-234d7c7565c1';
+
+  it('should return ATG scope when audience is undefined (V1 server)', () => {
+    expect(resolveTokenScopeForServer({ mcpServerName: 'mail', url: 'https://mail.example.com' })).toBe(ATG_SCOPE);
+  });
+
+  it('should return ATG scope when audience equals the shared ATG AppId', () => {
+    expect(resolveTokenScopeForServer({ mcpServerName: 'mail', url: 'https://mail.example.com', audience: ATG_APP_ID })).toBe(ATG_SCOPE);
+  });
+
+  it('should return ATG scope when audience starts with api:// (not a plain GUID)', () => {
+    expect(resolveTokenScopeForServer({ mcpServerName: 'mail', url: 'https://mail.example.com', audience: 'api://custom-app-id' })).toBe(ATG_SCOPE);
+  });
+
+  it('should return per-server scope for a V2 GUID audience', () => {
+    const v2AppId = 'aaaabbbb-1234-5678-abcd-111122223333';
+    expect(resolveTokenScopeForServer({ mcpServerName: 'tools', url: 'https://tools.example.com', audience: v2AppId })).toBe(`${v2AppId}/.default`);
+  });
+
+  it('should return per-server scope regardless of the scope field', () => {
+    const v2AppId = 'aaaabbbb-1234-5678-abcd-111122223333';
+    expect(resolveTokenScopeForServer({
+      mcpServerName: 'tools',
+      url: 'https://tools.example.com',
+      audience: v2AppId,
+      scope: 'Tools.ListInvoke.All'
+    })).toBe(`${v2AppId}/.default`);
   });
 });
 

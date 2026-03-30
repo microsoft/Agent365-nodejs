@@ -9,7 +9,7 @@ import { OperationResult, OperationError, IConfigurationProvider, AgenticAuthent
 import { MCPServerConfig, MCPServerManifestEntry, McpClientTool, ToolOptions } from './contracts';
 import { ChatHistoryMessage, ChatMessageRequest } from './models/index';
 import { Utility } from './Utility';
-import { ToolingConfiguration, defaultToolingConfigurationProvider } from './configuration';
+import { ToolingConfiguration, defaultToolingConfigurationProvider, resolveTokenScopeForServer } from './configuration';
 
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -118,10 +118,48 @@ export class McpToolServerConfigurationService {
       // Resolve agenticAppId from TurnContext
       const agenticAppId = RuntimeUtility.ResolveAgentIdentity(turnContext, authToken);
 
-      return await (this.isDevScenario()
+      // Discover servers (gateway uses authToken for the discovery call)
+      const servers = await (this.isDevScenario()
         ? this.getMCPServerConfigsFromManifest()
         : this.getMCPServerConfigsFromToolingGateway(agenticAppId, authToken, turnContext, toolOptions));
+
+      // Acquire per-audience tokens and attach the correct Authorization header to each server
+      return await this.attachPerAudienceTokens(servers, authorization, authHandlerName, turnContext);
     }
+  }
+
+  /**
+   * Acquire one OAuth token per unique audience across the provided server list and attach
+   * the correct `Authorization: Bearer` header to each server's headers.
+   * V1 servers (no `audience` field, or ATG AppId) all share the same ATG token (one exchange).
+   * V2 servers each get a token scoped to their own audience GUID.
+   */
+  private async attachPerAudienceTokens(
+    servers: MCPServerConfig[],
+    authorization: Authorization,
+    authHandlerName: string,
+    turnContext: TurnContext
+  ): Promise<MCPServerConfig[]> {
+    const tokenCache = new Map<string, string>(); // scope → token
+
+    const result: MCPServerConfig[] = [];
+    for (const server of servers) {
+      const scope = resolveTokenScopeForServer(server);
+      if (!tokenCache.has(scope)) {
+        const token = await AgenticAuthenticationService.GetAgenticUserToken(
+          authorization, authHandlerName, turnContext, [scope]
+        );
+        if (!token) {
+          throw new Error(`Failed to obtain token for MCP server '${server.mcpServerName}' (scope: ${scope})`);
+        }
+        tokenCache.set(scope, token);
+      }
+      result.push({
+        ...server,
+        headers: { ...server.headers, Authorization: `Bearer ${tokenCache.get(scope)!}` }
+      });
+    }
+    return result;
   }
 
   /**
@@ -285,7 +323,14 @@ export class McpToolServerConfigurationService {
         }
       );
 
-      return (response.data) || [];
+      const rawServers: MCPServerConfig[] = response.data || [];
+      return rawServers.map(s => ({
+        mcpServerName: s.mcpServerName,
+        url: s.url,
+        headers: s.headers,
+        audience: s.audience,
+        scope: s.scope,
+      }));
     } catch (err: unknown) {
       const error = err as Error & { code?: string };
       throw new Error(`Failed to read MCP servers from endpoint: ${error.code || 'UNKNOWN'} ${error.message || 'Unknown error'}`);
@@ -343,7 +388,9 @@ export class McpToolServerConfigurationService {
         return {
           mcpServerName: serverName,
           url: s.url || this.buildMcpServerUrl(serverName),
-          headers: s.headers
+          headers: s.headers,
+          audience: s.audience,
+          scope: s.scope,
         };
       });
     } catch (err: unknown) {
