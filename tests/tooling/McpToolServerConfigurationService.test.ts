@@ -448,13 +448,17 @@ describe('McpToolServerConfigurationService', () => {
       jest.spyOn(fs, 'existsSync').mockReturnValue(true);
       jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(manifestContent));
       resolveAgentIdentitySpy.mockReturnValue('resolved-agent-id');
+      // attachPerAudienceTokens acquires a per-server token even when the discovery token was pre-provided
+      getAgenticUserTokenSpy.mockResolvedValue(mockToken);
 
       // Act - new signature with explicit authToken
       const servers = await service.listToolServers(mockContext, mockAuthorization, 'graph', mockToken);
 
       // Assert
       expect(servers).toHaveLength(1);
-      expect(getAgenticUserTokenSpy).not.toHaveBeenCalled();
+      // Discovery did not need a token exchange (pre-provided); per-server (V1 = ATG scope) did
+      expect(getAgenticUserTokenSpy).toHaveBeenCalledTimes(1);
+      expect(getAgenticUserTokenSpy).toHaveBeenCalledWith(mockAuthorization, 'graph', mockContext, ['ea9ffc3e-8a23-4a7d-836d-234d7c7565c1/.default']);
       expect(resolveAgentIdentitySpy).toHaveBeenCalledWith(mockContext, mockToken);
     });
 
@@ -468,6 +472,7 @@ describe('McpToolServerConfigurationService', () => {
       jest.spyOn(fs, 'existsSync').mockReturnValue(true);
       jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(manifestContent));
       resolveAgentIdentitySpy.mockReturnValue('resolved-agent-id');
+      getAgenticUserTokenSpy.mockResolvedValue(mockToken);
 
       // Act - new signature with all parameters
       const servers = await service.listToolServers(
@@ -609,6 +614,7 @@ describe('McpToolServerConfigurationService', () => {
       jest.spyOn(fs, 'existsSync').mockReturnValue(true);
       const readFileSpy = jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(manifestContent));
       resolveAgentIdentitySpy.mockReturnValue('resolved-agent-id');
+      getAgenticUserTokenSpy.mockResolvedValue(mockToken);
 
       // Act - use new signature in development mode
       const servers = await service.listToolServers(mockContext, mockAuthorization, 'graph', mockToken);
@@ -644,6 +650,7 @@ describe('McpToolServerConfigurationService', () => {
   describe('listToolServers new signature (production mode)', () => {
     let mockContext: TurnContext;
     let mockAuthorization: Authorization;
+    let getAgenticUserTokenSpy: jest.SpiedFunction<typeof AgenticAuthenticationService.GetAgenticUserToken>;
     let resolveAgentIdentitySpy: jest.SpiedFunction<typeof RuntimeUtility.ResolveAgentIdentity>;
     let validateAuthTokenSpy: jest.SpiedFunction<typeof Utility.ValidateAuthToken>;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -674,6 +681,9 @@ describe('McpToolServerConfigurationService', () => {
 
       mockAuthorization = {} as Authorization;
 
+      // Mock per-server token acquisition (attachPerAudienceTokens is called after gateway discovery)
+      getAgenticUserTokenSpy = jest.spyOn(AgenticAuthenticationService, 'GetAgenticUserToken')
+        .mockResolvedValue(createMockJwt());
       resolveAgentIdentitySpy = jest.spyOn(RuntimeUtility, 'ResolveAgentIdentity');
       validateAuthTokenSpy = jest.spyOn(Utility, 'ValidateAuthToken').mockImplementation(() => {});
 
@@ -685,6 +695,7 @@ describe('McpToolServerConfigurationService', () => {
 
     afterEach(() => {
       process.env.NODE_ENV = originalEnv;
+      getAgenticUserTokenSpy.mockRestore();
       resolveAgentIdentitySpy.mockRestore();
       validateAuthTokenSpy.mockRestore();
       axiosGetSpy.mockRestore();
@@ -1044,7 +1055,9 @@ describe('McpToolServerConfigurationService', () => {
         await service1.listToolServers(mockContext, mockAuthorization, 'graph');
         await service2.listToolServers(mockContext, mockAuthorization, 'graph');
 
-        // Assert - each service uses its own scope
+        // Assert - each service uses its own scope for gateway discovery.
+        // attachPerAudienceTokens adds an extra call per service (ATG scope for V1 servers),
+        // so tenant2 discovery is call 3 (1=tenant1 discovery, 2=ATG per-server, 3=tenant2 discovery).
         expect(getAgenticUserTokenSpy).toHaveBeenNthCalledWith(
           1,
           mockAuthorization,
@@ -1053,7 +1066,7 @@ describe('McpToolServerConfigurationService', () => {
           [tenant1Scope]
         );
         expect(getAgenticUserTokenSpy).toHaveBeenNthCalledWith(
-          2,
+          3,
           mockAuthorization,
           'graph',
           mockContext,
@@ -1119,5 +1132,159 @@ describe('McpToolServerConfigurationService', () => {
       const signature = 'mock-signature';
       return `${header}.${payload}.${signature}`;
     }
+  });
+
+  describe('V1/V2 per-audience token acquisition (TurnContext path)', () => {
+    let mockContext: TurnContext;
+    let mockAuthorization: Authorization;
+    let getAgenticUserTokenSpy: jest.SpiedFunction<typeof AgenticAuthenticationService.GetAgenticUserToken>;
+    let resolveAgentIdentitySpy: jest.SpiedFunction<typeof RuntimeUtility.ResolveAgentIdentity>;
+
+    const createMockJwt = (seed = 'default') => {
+      const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
+      const payload = Buffer.from(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 3600, sub: seed })).toString('base64url');
+      return `${header}.${payload}.mock-sig`;
+    };
+
+    beforeEach(() => {
+      process.env.NODE_ENV = 'Development';
+      mockContext = {
+        activity: {
+          from: { agenticAppBlueprintId: 'blueprint-v2' },
+          channelId: 'msteams',
+          recipient: { id: 'recipient-id' },
+          conversation: { id: 'conv-id' },
+          isAgenticRequest: jest.fn().mockReturnValue(false),
+          getAgenticInstanceId: jest.fn().mockReturnValue(undefined)
+        },
+        sendActivity: jest.fn()
+      } as unknown as TurnContext;
+      mockAuthorization = {} as Authorization;
+      getAgenticUserTokenSpy = jest.spyOn(AgenticAuthenticationService, 'GetAgenticUserToken');
+      resolveAgentIdentitySpy = jest.spyOn(RuntimeUtility, 'ResolveAgentIdentity').mockReturnValue('agent-id');
+    });
+
+    afterEach(() => {
+      getAgenticUserTokenSpy.mockRestore();
+      resolveAgentIdentitySpy.mockRestore();
+    });
+
+    it('should attach Authorization header using ATG scope for a V1 server (no audience field)', async () => {
+      const mockToken = createMockJwt('atg');
+      const manifestContent = { mcpServers: [{ mcpServerName: 'mailServer', url: 'http://localhost:3001' }] };
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(manifestContent));
+      getAgenticUserTokenSpy.mockResolvedValue(mockToken);
+
+      const servers = await service.listToolServers(mockContext, mockAuthorization, 'graph', mockToken);
+
+      expect(servers[0].headers?.Authorization).toBe(`Bearer ${mockToken}`);
+      expect(getAgenticUserTokenSpy).toHaveBeenCalledWith(
+        mockAuthorization, 'graph', mockContext, ['ea9ffc3e-8a23-4a7d-836d-234d7c7565c1/.default']
+      );
+    });
+
+    it('should acquire a per-server token using V2 server audience GUID as scope', async () => {
+      const v2Audience = 'aaaabbbb-1234-5678-abcd-111122223333';
+      const v2Token = createMockJwt('v2');
+      const manifestContent = {
+        mcpServers: [{
+          mcpServerName: 'v2ToolsServer',
+          url: 'https://v2.example.com/mcp',
+          audience: v2Audience,
+          scope: 'Tools.ListInvoke.All'
+        }]
+      };
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(manifestContent));
+      getAgenticUserTokenSpy.mockResolvedValue(v2Token);
+
+      const servers = await service.listToolServers(mockContext, mockAuthorization, 'graph', v2Token);
+
+      expect(getAgenticUserTokenSpy).toHaveBeenCalledWith(
+        mockAuthorization, 'graph', mockContext, [`${v2Audience}/.default`]
+      );
+      expect(servers[0].headers?.Authorization).toBe(`Bearer ${v2Token}`);
+    });
+
+    it('should perform one token exchange for multiple servers sharing the same V2 audience', async () => {
+      const sharedAudience = 'aaaabbbb-1234-5678-abcd-111122223333';
+      const sharedToken = createMockJwt('shared');
+      const manifestContent = {
+        mcpServers: [
+          { mcpServerName: 'v2Server1', url: 'http://v2-1.example.com', audience: sharedAudience },
+          { mcpServerName: 'v2Server2', url: 'http://v2-2.example.com', audience: sharedAudience },
+        ]
+      };
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(manifestContent));
+      getAgenticUserTokenSpy.mockResolvedValue(sharedToken);
+
+      const servers = await service.listToolServers(mockContext, mockAuthorization, 'graph', sharedToken);
+
+      expect(getAgenticUserTokenSpy).toHaveBeenCalledTimes(1);
+      expect(servers[0].headers?.Authorization).toBe(`Bearer ${sharedToken}`);
+      expect(servers[1].headers?.Authorization).toBe(`Bearer ${sharedToken}`);
+    });
+
+    it('should use different tokens for V1 and V2 servers in the same list', async () => {
+      const v2Audience = 'ccccdddd-5678-9012-efab-444455556666';
+      const atgToken = createMockJwt('atg');
+      const v2Token = createMockJwt('v2');
+      const manifestContent = {
+        mcpServers: [
+          { mcpServerName: 'v1MailServer', url: 'http://v1.example.com' },
+          { mcpServerName: 'v2ToolsServer', url: 'http://v2.example.com', audience: v2Audience }
+        ]
+      };
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(manifestContent));
+      getAgenticUserTokenSpy
+        .mockResolvedValueOnce(atgToken)  // V1 ATG scope
+        .mockResolvedValueOnce(v2Token);  // V2 per-audience scope
+
+      const servers = await service.listToolServers(mockContext, mockAuthorization, 'graph', atgToken);
+
+      expect(getAgenticUserTokenSpy).toHaveBeenCalledTimes(2);
+      expect(getAgenticUserTokenSpy).toHaveBeenNthCalledWith(1, mockAuthorization, 'graph', mockContext, ['ea9ffc3e-8a23-4a7d-836d-234d7c7565c1/.default']);
+      expect(getAgenticUserTokenSpy).toHaveBeenNthCalledWith(2, mockAuthorization, 'graph', mockContext, [`${v2Audience}/.default`]);
+      expect(servers[0].headers?.Authorization).toBe(`Bearer ${atgToken}`);
+      expect(servers[1].headers?.Authorization).toBe(`Bearer ${v2Token}`);
+    });
+
+    it('should throw when per-server token exchange fails', async () => {
+      const manifestContent = { mcpServers: [{ mcpServerName: 'mailServer', url: 'http://localhost:3001' }] };
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(manifestContent));
+      const mockToken = createMockJwt();
+      // Discovery token OK; per-server exchange returns null
+      getAgenticUserTokenSpy
+        .mockResolvedValueOnce(mockToken)
+        .mockResolvedValueOnce(null as unknown as string);
+
+      await expect(
+        service.listToolServers(mockContext, mockAuthorization, 'graph')
+      ).rejects.toThrow("Failed to obtain token for MCP server 'mailServer'");
+    });
+
+    it('should pass audience and scope through from manifest into MCPServerConfig (legacy path)', async () => {
+      // Uses legacy path so attachPerAudienceTokens is not called — pure field passthrough check
+      const v2Audience = 'eeeeffff-0000-1111-2222-333344445555';
+      const manifestContent = {
+        mcpServers: [{
+          mcpServerName: 'v2Server',
+          url: 'https://v2.example.com/mcp',
+          audience: v2Audience,
+          scope: 'Tools.ListInvoke.All'
+        }]
+      };
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(manifestContent));
+
+      const servers = await service.listToolServers('agent-id', 'mock-auth-token');
+
+      expect(servers[0].audience).toBe(v2Audience);
+      expect(servers[0].scope).toBe('Tools.ListInvoke.All');
+    });
   });
 });
