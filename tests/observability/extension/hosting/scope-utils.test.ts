@@ -91,7 +91,7 @@ describe('ScopeUtils.populateFromTurnContext', () => {
         [OpenTelemetryConstants.GEN_AI_AGENT_EMAIL_KEY, 'agent-upn@contoso.com'],
         [OpenTelemetryConstants.GEN_AI_AGENT_DESCRIPTION_KEY, 'assistant'],
         [OpenTelemetryConstants.TENANT_ID_KEY, 'tenant-123'],
-        [OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, JSON.stringify(['input text'])]
+        [OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, JSON.stringify([{ role: 'user', parts: [{ type: 'text', content: 'input text' }] }])]
       ])
     );
     scope?.dispose();
@@ -153,7 +153,7 @@ describe('ScopeUtils.populateFromTurnContext', () => {
       [OpenTelemetryConstants.GEN_AI_CALLER_AGENT_APPLICATION_ID_KEY, 'caller-agentBlueprintId'],
       [OpenTelemetryConstants.GEN_AI_CALLER_AGENT_EMAIL_KEY, 'user@contoso.com'],
       [OpenTelemetryConstants.TENANT_ID_KEY, 'tenant-123'],
-      [OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, JSON.stringify(['invoke message'])],
+      [OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, JSON.stringify([{ role: 'user', parts: [{ type: 'text', content: 'invoke message' }] }])],
       [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY, 'agent-1'],
       [OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY, 'Agent One'],
       [OpenTelemetryConstants.GEN_AI_AGENT_DESCRIPTION_KEY, 'assistant']

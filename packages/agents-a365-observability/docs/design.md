@@ -184,7 +184,6 @@ scope.recordInputMessages(['User message']);
 scope.recordOutputMessages(['Assistant response']);
 scope.recordInputTokens(100);
 scope.recordOutputTokens(50);
-scope.recordResponseId('resp-123');
 scope.recordFinishReasons(['stop']);
 ```
 
@@ -210,6 +209,110 @@ using scope = ExecuteToolScope.start(
 // ... tool execution ...
 scope.recordResponse('Tool result');
 ```
+
+#### OutputScope ([OutputScope.ts](../src/tracing/scopes/OutputScope.ts))
+
+Traces outgoing agent output messages:
+
+```typescript
+import { OutputScope, OutputResponse } from '@microsoft/agents-a365-observability';
+
+const response: OutputResponse = { messages: ['Hello!', 'How can I help?'] };
+
+using scope = OutputScope.start(
+  { conversationId: 'conv-123', channel: { name: 'Teams' } },
+  response,
+  agentDetails  // Must include tenantId
+);
+
+scope.recordOutputMessages(['Additional response']);
+// Messages are flushed to the span attribute on dispose
+```
+
+### Message Format (OTEL Gen-AI Semantic Conventions)
+
+The SDK uses [OpenTelemetry Gen-AI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/) for message tracing. All `recordInputMessages`/`recordOutputMessages` methods accept both plain strings and structured OTEL message objects.
+
+#### Message Types ([contracts.ts](../src/tracing/contracts.ts))
+
+| Type | Description |
+|------|-------------|
+| `ChatMessage` | Input message with `role`, `parts[]`, and optional `name` |
+| `OutputMessage` | Output message extending `ChatMessage` with `finish_reason` |
+| `InputMessages` | Union: `string[] \| ChatMessage[]` |
+| `OutputMessages` | Union: `string[] \| OutputMessage[]` |
+| `MessageRole` | Enum: `system`, `user`, `assistant`, `tool` |
+| `FinishReason` | Enum: `stop`, `length`, `content_filter`, `tool_call`, `error` |
+| `MessagePart` | Discriminated union of all content part types |
+
+#### Message Part Types
+
+| Part Type | `type` Discriminator | Purpose |
+|-----------|---------------------|---------|
+| `TextPart` | `text` | Plain text content |
+| `ToolCallRequestPart` | `tool_call` | Tool invocation by the model |
+| `ToolCallResponsePart` | `tool_call_response` | Tool execution result |
+| `ReasoningPart` | `reasoning` | Chain-of-thought / reasoning content |
+| `BlobPart` | `blob` | Inline base64 binary data (image, audio, video) |
+| `FilePart` | `file` | Reference to a pre-uploaded file |
+| `UriPart` | `uri` | External URI reference |
+| `ServerToolCallPart` | `server_tool_call` | Server-side tool invocation |
+| `ServerToolCallResponsePart` | `server_tool_call_response` | Server-side tool response |
+| `GenericPart` | *(custom)* | Extensible part for future types |
+
+#### Auto-Wrapping Behavior
+
+Plain `string[]` input is automatically wrapped to OTEL format:
+- Input strings become `ChatMessage` with `role: 'user'` and a single `TextPart`
+- Output strings become `OutputMessage` with `role: 'assistant'` and a single `TextPart`
+
+#### Structured Message Example
+
+```typescript
+import { ChatMessage, OutputMessage, MessageRole, FinishReason } from '@microsoft/agents-a365-observability';
+
+// Structured input with system prompt and user message
+const input: ChatMessage[] = [
+  { role: MessageRole.SYSTEM, parts: [{ type: 'text', content: 'You are a helpful assistant.' }] },
+  { role: MessageRole.USER, parts: [{ type: 'text', content: 'What is the weather?' }] }
+];
+scope.recordInputMessages(input);
+
+// Structured output with tool call and finish reason
+const output: OutputMessage[] = [{
+  role: MessageRole.ASSISTANT,
+  parts: [
+    { type: 'text', content: 'Let me check that for you.' },
+    { type: 'tool_call', name: 'get_weather', id: 'call_1', arguments: { city: 'Seattle' } }
+  ],
+  finish_reason: FinishReason.TOOL_CALL
+}];
+scope.recordOutputMessages(output);
+```
+
+#### Message Serialization and Truncation ([message-utils.ts](../src/tracing/message-utils.ts))
+
+Messages are serialized to JSON and stored as span attributes. When the serialized output exceeds `MAX_ATTRIBUTE_LENGTH` (8192 chars), a priority-based shrink algorithm progressively reduces field sizes while preserving all messages:
+
+1. **Blob content** (priority 0) -- replaced with `[blob omitted]` sentinel
+2. **Tool/server JSON payloads** (priority 1) -- replaced with `[truncated]` sentinel
+3. **Reasoning content** (priority 2) -- text trimmed with `...[truncated]` suffix
+4. **Text content** (priority 3, most valuable) -- text trimmed with `...[truncated]` suffix
+
+Within each priority level, the largest fields are shrunk first. No messages are dropped. If nothing can be shrunk sufficiently, an overflow sentinel array is returned.
+
+#### Scope Visibility
+
+`recordInputMessages`/`recordOutputMessages` are `protected` on the base `OpenTelemetryScope` class and exposed as `public` only on scopes where they are semantically appropriate:
+
+| Scope | `recordInputMessages` | `recordOutputMessages` |
+|-------|----------------------|----------------------|
+| `InvokeAgentScope` | public | public |
+| `InferenceScope` | public | public |
+| `OutputScope` | — | public (accumulating) |
+| `ExecuteToolScope` | — | — |
+
+`ExecuteToolScope` records tool input/output via `ToolCallDetails.arguments` and `recordResponse()` instead.
 
 ### BaggageBuilder ([BaggageBuilder.ts](../src/tracing/middleware/BaggageBuilder.ts))
 
@@ -387,12 +490,14 @@ src/
 ├── ObservabilityBuilder.ts               # Configuration builder
 ├── tracing/
 │   ├── constants.ts                      # OpenTelemetry attribute keys
-│   ├── contracts.ts                      # Data interfaces and enums
+│   ├── contracts.ts                      # Data interfaces, enums, OTEL message types
+│   ├── message-utils.ts                  # Message conversion and serialization
 │   ├── scopes/
 │   │   ├── OpenTelemetryScope.ts         # Base scope class
 │   │   ├── InvokeAgentScope.ts           # Agent invocation tracing
 │   │   ├── InferenceScope.ts             # LLM inference tracing
-│   │   └── ExecuteToolScope.ts           # Tool execution tracing
+│   │   ├── ExecuteToolScope.ts           # Tool execution tracing
+│   │   └── OutputScope.ts               # Output message tracing
 │   ├── middleware/
 │   │   └── BaggageBuilder.ts             # Baggage context builder
 │   ├── processors/
