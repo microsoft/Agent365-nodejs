@@ -389,19 +389,31 @@ export interface UriPart {
   uri: string;
 }
 
+/** Extensible server tool call details with a type discriminator. */
+export interface GenericServerToolCall {
+  type: string;
+  [key: string]: unknown;
+}
+
+/** Extensible server tool call response with a type discriminator. */
+export interface GenericServerToolCallResponse {
+  type: string;
+  [key: string]: unknown;
+}
+
 /** Server-side tool invocation. */
 export interface ServerToolCallPart {
   type: 'server_tool_call';
   name: string;
   id?: string;
-  server_tool_call: Record<string, unknown>;
+  server_tool_call: GenericServerToolCall;
 }
 
 /** Server-side tool response. */
 export interface ServerToolCallResponsePart {
   type: 'server_tool_call_response';
   id?: string;
-  server_tool_call_response: Record<string, unknown>;
+  server_tool_call_response: GenericServerToolCallResponse;
 }
 
 /** Extensible part for custom / future types. */

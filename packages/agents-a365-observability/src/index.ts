@@ -60,6 +60,8 @@ export {
   UriPart,
   ServerToolCallPart,
   ServerToolCallResponsePart,
+  GenericServerToolCall,
+  GenericServerToolCallResponse,
   GenericPart,
   MessagePart,
   ChatMessage,

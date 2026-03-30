@@ -184,7 +184,6 @@ scope.recordInputMessages(['User message']);
 scope.recordOutputMessages(['Assistant response']);
 scope.recordInputTokens(100);
 scope.recordOutputTokens(50);
-scope.recordResponseId('resp-123');
 scope.recordFinishReasons(['stop']);
 ```
 
@@ -293,7 +292,14 @@ scope.recordOutputMessages(output);
 
 #### Message Serialization and Truncation ([message-utils.ts](../src/tracing/message-utils.ts))
 
-Messages are serialized to JSON and stored as span attributes. When the serialized output exceeds `MAX_ATTRIBUTE_LENGTH` (8192 chars), a binary-search algorithm finds the maximum number of leading messages that fit, appending a sentinel message indicating how many were dropped. Single messages exceeding the limit fall back to string truncation.
+Messages are serialized to JSON and stored as span attributes. When the serialized output exceeds `MAX_ATTRIBUTE_LENGTH` (8192 chars), a priority-based shrink algorithm progressively reduces field sizes while preserving all messages:
+
+1. **Blob content** (priority 0) -- replaced with `[blob omitted]` sentinel
+2. **Tool/server JSON payloads** (priority 1) -- replaced with `[truncated]` sentinel
+3. **Reasoning content** (priority 2) -- text trimmed with `...[truncated]` suffix
+4. **Text content** (priority 3, most valuable) -- text trimmed with `...[truncated]` suffix
+
+Within each priority level, the largest fields are shrunk first. No messages are dropped. If nothing can be shrunk sufficiently, an overflow sentinel array is returned.
 
 #### Scope Visibility
 
