@@ -7,6 +7,7 @@ export interface MCPServerConfig {
   headers?: Record<string, string>;
   audience?: string;   // per-server AppId (V2) or ATG AppId (V1) — undefined = treat as V1
   scope?: string;      // e.g. "Tools.ListInvoke.All" (V2) or "McpServers.Mail.All" (V1)
+  publisher?: string;
 }
 
 export type MCPServerManifestEntry = {
@@ -14,6 +15,7 @@ export type MCPServerManifestEntry = {
   headers?: Record<string, string>;
   audience?: string;
   scope?: string;
+  publisher?: string;
 } & (
   | { mcpServerName: string; mcpServerUniqueName?: string }
   | { mcpServerUniqueName: string; mcpServerName?: string }
