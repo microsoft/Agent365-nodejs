@@ -290,16 +290,15 @@ const output: OutputMessage[] = [{
 scope.recordOutputMessages(output);
 ```
 
-#### Message Serialization and Truncation ([message-utils.ts](../src/tracing/message-utils.ts))
+#### Message Serialization ([message-utils.ts](../src/tracing/message-utils.ts))
 
-Messages are serialized to JSON and stored as span attributes. When the serialized output exceeds `MAX_ATTRIBUTE_LENGTH` (8192 chars), a priority-based shrink algorithm progressively reduces field sizes while preserving all messages:
+Messages are serialized to JSON via `JSON.stringify` and stored as span attributes (`gen_ai.input.messages`, `gen_ai.output.messages`). No per-attribute size limit is enforced at the SDK level. If serialization fails (e.g., non-JSON-serializable values such as `BigInt` or circular references), a fallback sentinel is returned so that telemetry recording never throws.
 
-1. **Blob content** (priority 0) -- replaced with `[blob omitted]` sentinel
-2. **Tool/server JSON payloads** (priority 1) -- replaced with `[truncated]` sentinel
-3. **Reasoning content** (priority 2) -- text trimmed with `...[truncated]` suffix
-4. **Text content** (priority 3, most valuable) -- text trimmed with `...[truncated]` suffix
+A schema version attribute (`microsoft.a365.messages.schema_version`) is set alongside every message attribute to enable cross-SDK schema evolution. The current version is `0.1.0` (`A365_MESSAGE_SCHEMA_VERSION`).
 
-Within each priority level, the largest fields are shrunk first. No messages are dropped. If nothing can be shrunk sufficiently, an overflow sentinel array is returned.
+#### Span-Level Size Enforcement
+
+Span size is enforced at export time in the `Agent365Exporter`. When a serialized OTLP span exceeds `MAX_SPAN_SIZE_BYTES` (250 KB), the exporter's `truncateSpan()` method iteratively replaces the largest attribute values with `"TRUNCATED"` until the span fits. This matches the Python SDK's `truncate_span()` approach. The truncation operates on the mapped OTLP span dict and does not mutate the original `ReadableSpan`.
 
 #### Scope Visibility
 

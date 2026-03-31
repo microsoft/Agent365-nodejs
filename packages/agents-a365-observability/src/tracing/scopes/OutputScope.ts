@@ -67,6 +67,7 @@ export class OutputScope extends OpenTelemetryScope {
       OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY,
       serializeMessages(this._outputMessages)
     );
+    this.setTagMaybe(OpenTelemetryConstants.A365_MESSAGES_SCHEMA_VERSION_KEY, OpenTelemetryConstants.A365_MESSAGE_SCHEMA_VERSION);
 
     // Set conversation and channel
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, request.conversationId);

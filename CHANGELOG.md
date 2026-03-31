@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`OutputResponse.messages` type changed from `string[]` to `OutputMessages`** — The `OutputMessages` union type (`string[] | OutputMessage[]`) allows passing structured OTEL gen-ai `OutputMessage` objects with `finish_reason`, multi-modal parts, etc. Existing code passing `string[]` continues to work (auto-converted to OTEL format internally).
 - **`recordInputMessages()` / `recordOutputMessages()` parameter type widened** — Methods now accept `InputMessages` (`string[] | ChatMessage[]`) and `OutputMessages` (`string[] | OutputMessage[]`). Plain `string[]` input is auto-wrapped to OTEL gen-ai format.
+
 ### Added (`@microsoft/agents-a365-observability`)
 
 - **OTEL Gen-AI Message Format types** — New types aligned with [OpenTelemetry Gen-AI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/): `MessageRole`, `FinishReason`, `Modality`, `ChatMessage`, `OutputMessage`, `InputMessages`, `OutputMessages`, and discriminated `MessagePart` union (`TextPart`, `ToolCallRequestPart`, `ToolCallResponsePart`, `ReasoningPart`, `BlobPart`, `FilePart`, `UriPart`, `ServerToolCallPart`, `ServerToolCallResponsePart`, `GenericPart`).

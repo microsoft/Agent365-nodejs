@@ -133,6 +133,26 @@ describe('Scope message recording', () => {
       ]);
     });
 
+    it('should set schema version attribute when recording input messages', async () => {
+      const scope = InferenceScope.start(testRequest, testInferenceDetails, testAgentDetails);
+      scope.recordInputMessages(['Hello']);
+      scope.dispose();
+
+      await flushProvider.forceFlush();
+      const { attributes } = getLastSpan();
+      expect(attributes[OpenTelemetryConstants.A365_MESSAGES_SCHEMA_VERSION_KEY]).toBe(OpenTelemetryConstants.A365_MESSAGE_SCHEMA_VERSION);
+    });
+
+    it('should set schema version attribute when recording output messages', async () => {
+      const scope = InferenceScope.start(testRequest, testInferenceDetails, testAgentDetails);
+      scope.recordOutputMessages(['Response']);
+      scope.dispose();
+
+      await flushProvider.forceFlush();
+      const { attributes } = getLastSpan();
+      expect(attributes[OpenTelemetryConstants.A365_MESSAGES_SCHEMA_VERSION_KEY]).toBe(OpenTelemetryConstants.A365_MESSAGE_SCHEMA_VERSION);
+    });
+
     it('should preserve finish_reason on OutputMessage[]', async () => {
       const structured: OutputMessage[] = [
         { role: MessageRole.ASSISTANT, parts: [{ type: 'text', content: 'Done.' }], finish_reason: FinishReason.STOP },

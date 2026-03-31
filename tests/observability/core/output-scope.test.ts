@@ -98,6 +98,7 @@ describe('OutputScope', () => {
       { role: 'assistant', parts: [{ type: 'text', content: 'First message' }] },
       { role: 'assistant', parts: [{ type: 'text', content: 'Second message' }] },
     ]);
+    expect(attributes[OpenTelemetryConstants.A365_MESSAGES_SCHEMA_VERSION_KEY]).toBe(OpenTelemetryConstants.A365_MESSAGE_SCHEMA_VERSION);
   });
 
   it('should append messages with recordOutputMessages and flush on dispose', async () => {

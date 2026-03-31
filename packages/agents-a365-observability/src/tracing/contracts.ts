@@ -424,6 +424,11 @@ export interface GenericPart {
 
 /**
  * Union of all message part types per OTEL gen-ai semantic conventions.
+ *
+ * Note: {@link GenericPart} acts as a catch-all for forward compatibility with
+ * custom or future part types. Because its `type` is `string` (not a literal),
+ * exhaustive `switch`/`case` on `part.type` will not produce compile-time errors
+ * for unhandled cases.
  */
 export type MessagePart =
   | TextPart

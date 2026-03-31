@@ -26,6 +26,9 @@ import { ExporterEventNames } from './ExporterEventNames';
 
 const DEFAULT_MAX_RETRIES = 3;
 
+/** Maximum allowed span size in bytes (250KB). */
+const MAX_SPAN_SIZE_BYTES = 250 * 1024;
+
 interface OTLPExportRequest {
   resourceSpans: ResourceSpan[];
 }
@@ -301,7 +304,7 @@ export class Agent365Exporter implements SpanExporter {
       const scopeKey = `${scope?.name || 'unknown'}:${scope?.version || ''}`;
 
       const existing = scopeMap.get(scopeKey) || [];
-      existing.push(this.mapSpan(sp));
+      existing.push(this.truncateSpan(this.mapSpan(sp)));
       scopeMap.set(scopeKey, existing);
     }
 
@@ -334,6 +337,67 @@ export class Agent365Exporter implements SpanExporter {
         }
       ]
     };
+  }
+
+  /**
+   * Truncate span attributes if the serialized span exceeds MAX_SPAN_SIZE_BYTES.
+   * Replaces the largest attribute values with "TRUNCATED" until the span fits.
+   * Matches the Python SDK's truncate_span() approach.
+   */
+  private truncateSpan(spanDict: OTLPSpan): OTLPSpan {
+    try {
+      const serialized = JSON.stringify(spanDict);
+      const currentSize = Buffer.byteLength(serialized, 'utf8');
+
+      if (currentSize <= MAX_SPAN_SIZE_BYTES) {
+        return spanDict;
+      }
+
+      logger.warn(
+        `[Agent365Exporter] Span size (${currentSize} bytes) exceeds limit (${MAX_SPAN_SIZE_BYTES} bytes). Truncating large payload attributes.`
+      );
+
+      const truncated: OTLPSpan = { ...spanDict };
+      if (truncated.attributes) {
+        truncated.attributes = { ...truncated.attributes };
+      }
+      const attributes = truncated.attributes;
+      if (!attributes) {
+        return truncated;
+      }
+
+      // Calculate size of each attribute value when serialized, sort largest first
+      const attrSizes: Array<[string, number]> = [];
+      for (const key of Object.keys(attributes)) {
+        try {
+          const valueSize = Buffer.byteLength(JSON.stringify(attributes[key]), 'utf8');
+          attrSizes.push([key, valueSize]);
+        } catch {
+          attrSizes.push([key, 0]);
+        }
+      }
+      attrSizes.sort((a, b) => b[1] - a[1]);
+
+      const truncatedKeys: string[] = [];
+      for (const [key] of attrSizes) {
+        attributes[key] = 'TRUNCATED';
+        truncatedKeys.push(key);
+
+        const newSize = Buffer.byteLength(JSON.stringify(truncated), 'utf8');
+        if (newSize <= MAX_SPAN_SIZE_BYTES) {
+          break;
+        }
+      }
+
+      if (truncatedKeys.length > 0) {
+        logger.info(`[Agent365Exporter] Truncated attributes: ${truncatedKeys.join(', ')}`);
+      }
+
+      return truncated;
+    } catch (e) {
+      logger.error(`[Agent365Exporter] Error during span truncation: ${e}`);
+      return spanDict;
+    }
   }
 
   /**

@@ -179,6 +179,7 @@ export abstract class OpenTelemetryScope implements Disposable {
   protected recordInputMessages(messages: InputMessages): void {
     const otelMessages = isStringArray(messages) ? toInputMessages(messages) : messages;
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, serializeMessages(otelMessages));
+    this.setTagMaybe(OpenTelemetryConstants.A365_MESSAGES_SCHEMA_VERSION_KEY, OpenTelemetryConstants.A365_MESSAGE_SCHEMA_VERSION);
   }
 
   /**
@@ -189,6 +190,7 @@ export abstract class OpenTelemetryScope implements Disposable {
   protected recordOutputMessages(messages: OutputMessages): void {
     const otelMessages = isStringArray(messages) ? toOutputMessages(messages) : messages;
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY, serializeMessages(otelMessages));
+    this.setTagMaybe(OpenTelemetryConstants.A365_MESSAGES_SCHEMA_VERSION_KEY, OpenTelemetryConstants.A365_MESSAGE_SCHEMA_VERSION);
   }
 
   /**
