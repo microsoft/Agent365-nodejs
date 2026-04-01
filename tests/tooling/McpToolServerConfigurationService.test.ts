@@ -733,7 +733,7 @@ describe('McpToolServerConfigurationService', () => {
 
       // Assert
       expect(axiosGetSpy).toHaveBeenCalledWith(
-        expect.stringContaining('/agents/my-agent-id/mcpServers'),
+        expect.stringContaining('/agents/v2/my-agent-id/mcpServers'),
         expect.any(Object)
       );
     });
@@ -778,7 +778,7 @@ describe('McpToolServerConfigurationService', () => {
 
         // Assert - verify the custom endpoint is used in the gateway URL
         expect(axiosGetSpy).toHaveBeenCalledWith(
-          `${customEndpoint}/agents/my-agent-id/mcpServers`,
+          `${customEndpoint}/agents/v2/my-agent-id/mcpServers`,
           expect.any(Object)
         );
       });
@@ -818,12 +818,12 @@ describe('McpToolServerConfigurationService', () => {
         // Assert - each service uses its own endpoint
         expect(axiosGetSpy).toHaveBeenNthCalledWith(
           1,
-          `${tenant1Endpoint}/agents/agent-1/mcpServers`,
+          `${tenant1Endpoint}/agents/v2/agent-1/mcpServers`,
           expect.any(Object)
         );
         expect(axiosGetSpy).toHaveBeenNthCalledWith(
           2,
-          `${tenant2Endpoint}/agents/agent-2/mcpServers`,
+          `${tenant2Endpoint}/agents/v2/agent-2/mcpServers`,
           expect.any(Object)
         );
       });
@@ -852,7 +852,7 @@ describe('McpToolServerConfigurationService', () => {
 
         // Assert - URL should not have double slashes
         expect(axiosGetSpy).toHaveBeenCalledWith(
-          'https://custom.endpoint.com/agents/my-agent-id/mcpServers',
+          'https://custom.endpoint.com/agents/v2/my-agent-id/mcpServers',
           expect.any(Object)
         );
       });
@@ -1119,7 +1119,7 @@ describe('McpToolServerConfigurationService', () => {
 
         // Assert - should use the environment-based endpoint
         expect(axiosGetSpy).toHaveBeenCalledWith(
-          `${customEndpoint}/agents/my-agent-id/mcpServers`,
+          `${customEndpoint}/agents/v2/my-agent-id/mcpServers`,
           expect.any(Object)
         );
       });

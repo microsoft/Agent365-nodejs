@@ -164,7 +164,7 @@ export class Utility {
     agenticAppId: string,
     configProvider?: IConfigurationProvider<ToolingConfiguration>
   ): string {
-    return `${this.getMcpPlatformBaseUrl(configProvider)}/agents/${agenticAppId}/mcpServers`;
+    return `${this.getMcpPlatformBaseUrl(configProvider)}/agents/v2/${agenticAppId}/mcpServers`;
   }
 
   /**

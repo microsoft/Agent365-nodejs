@@ -420,7 +420,7 @@ export class McpToolServerConfigurationService {
    * Construct the tooling gateway URL for a given agent identity.
    */
   private getToolingGatewayUrl(agenticAppId: string): string {
-    return `${this.getMcpPlatformBaseUrl()}/agents/${agenticAppId}/mcpServers`;
+    return `${this.getMcpPlatformBaseUrl()}/agents/v2/${agenticAppId}/mcpServers`;
   }
 
   /**
