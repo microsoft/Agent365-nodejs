@@ -239,8 +239,10 @@ The SDK uses [OpenTelemetry Gen-AI semantic conventions](https://opentelemetry.i
 |------|-------------|
 | `ChatMessage` | Input message with `role`, `parts[]`, and optional `name` |
 | `OutputMessage` | Output message extending `ChatMessage` with `finish_reason` |
-| `InputMessages` | Union: `string[] \| ChatMessage[]` |
-| `OutputMessages` | Union: `string[] \| OutputMessage[]` |
+| `InputMessages` | Versioned wrapper: `{ version, messages: ChatMessage[] }` |
+| `OutputMessages` | Versioned wrapper: `{ version, messages: OutputMessage[] }` |
+| `InputMessagesParam` | Union: `string[] \| InputMessages` |
+| `OutputMessagesParam` | Union: `string[] \| OutputMessages` |
 | `MessageRole` | Enum: `system`, `user`, `assistant`, `tool` |
 | `FinishReason` | Enum: `stop`, `length`, `content_filter`, `tool_call`, `error` |
 | `MessagePart` | Discriminated union of all content part types |
@@ -260,6 +262,8 @@ The SDK uses [OpenTelemetry Gen-AI semantic conventions](https://opentelemetry.i
 | `ServerToolCallResponsePart` | `server_tool_call_response` | Server-side tool response |
 | `GenericPart` | *(custom)* | Extensible part for future types |
 
+> **Forward compatibility note:** `GenericPart` uses `type: string` rather than a fixed literal, which means it acts as a catch-all for any part type not covered by the other discriminated union members. As a consequence, an exhaustive `switch`/`case` on `part.type` will **not** produce compile-time errors for unhandled cases. Consumers should always include a `default` case in their switch statements to handle unknown or future part types gracefully.
+
 #### Auto-Wrapping Behavior
 
 Plain `string[]` input is automatically wrapped to OTEL format:
@@ -269,24 +273,33 @@ Plain `string[]` input is automatically wrapped to OTEL format:
 #### Structured Message Example
 
 ```typescript
-import { ChatMessage, OutputMessage, MessageRole, FinishReason } from '@microsoft/agents-a365-observability';
+import { InputMessages, OutputMessages, MessageRole, FinishReason, A365_MESSAGE_SCHEMA_VERSION } from '@microsoft/agents-a365-observability';
 
-// Structured input with system prompt and user message
-const input: ChatMessage[] = [
-  { role: MessageRole.SYSTEM, parts: [{ type: 'text', content: 'You are a helpful assistant.' }] },
-  { role: MessageRole.USER, parts: [{ type: 'text', content: 'What is the weather?' }] }
-];
+// Option 1: Plain string array (auto-wrapped to OTEL format)
+scope.recordInputMessages(['What is the weather?']);
+
+// Option 2: Versioned wrapper with structured messages
+const input: InputMessages = {
+  version: A365_MESSAGE_SCHEMA_VERSION,
+  messages: [
+    { role: MessageRole.SYSTEM, parts: [{ type: 'text', content: 'You are a helpful assistant.' }] },
+    { role: MessageRole.USER, parts: [{ type: 'text', content: 'What is the weather?' }] }
+  ]
+};
 scope.recordInputMessages(input);
 
-// Structured output with tool call and finish reason
-const output: OutputMessage[] = [{
-  role: MessageRole.ASSISTANT,
-  parts: [
-    { type: 'text', content: 'Let me check that for you.' },
-    { type: 'tool_call', name: 'get_weather', id: 'call_1', arguments: { city: 'Seattle' } }
-  ],
-  finish_reason: FinishReason.TOOL_CALL
-}];
+// Structured output with tool call and finish reason (versioned wrapper)
+const output: OutputMessages = {
+  version: A365_MESSAGE_SCHEMA_VERSION,
+  messages: [{
+    role: MessageRole.ASSISTANT,
+    parts: [
+      { type: 'text', content: 'Let me check that for you.' },
+      { type: 'tool_call', name: 'get_weather', id: 'call_1', arguments: { city: 'Seattle' } }
+    ],
+    finish_reason: FinishReason.TOOL_CALL
+  }]
+};
 scope.recordOutputMessages(output);
 ```
 
@@ -294,7 +307,7 @@ scope.recordOutputMessages(output);
 
 Messages are serialized to JSON via `JSON.stringify` and stored as span attributes (`gen_ai.input.messages`, `gen_ai.output.messages`). No per-attribute size limit is enforced at the SDK level. If serialization fails (e.g., non-JSON-serializable values such as `BigInt` or circular references), a fallback sentinel is returned so that telemetry recording never throws.
 
-A schema version attribute (`microsoft.a365.messages.schema_version`) is set alongside every message attribute to enable cross-SDK schema evolution. The current version is `0.1.0` (`A365_MESSAGE_SCHEMA_VERSION`).
+The schema version is embedded inside the serialized wrapper JSON (e.g., `{"version":"0.1.0","messages":[...]}`) rather than set as a separate span attribute. This enables cross-SDK schema evolution while keeping message data self-contained. The current version is `0.1.0` (`A365_MESSAGE_SCHEMA_VERSION`).
 
 #### Span-Level Size Enforcement
 

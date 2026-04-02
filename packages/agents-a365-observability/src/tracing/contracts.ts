@@ -273,7 +273,7 @@ export interface InferenceResponse {
  */
 export interface OutputResponse {
   /** The output messages from the agent */
-  messages: OutputMessages;
+  messages: OutputMessagesParam;
 }
 
 /**
@@ -349,7 +349,7 @@ export interface ToolCallRequestPart {
   type: 'tool_call';
   name: string;
   id?: string;
-  arguments?: unknown;
+  arguments?: Record<string, unknown> | unknown[];
 }
 
 /** Result of a tool call. */
@@ -451,6 +451,10 @@ export interface ChatMessage {
   name?: string;
 }
 
+export interface InputMessages {
+  version: typeof A365_MESSAGE_SCHEMA_VERSION;
+  messages: ChatMessage[];
+}
 /**
  * An output message produced by a model (OTEL gen-ai semantic conventions).
  */
@@ -458,8 +462,15 @@ export interface OutputMessage extends ChatMessage {
   finish_reason?: FinishReason | string;
 }
 
-/** Accepted input for `recordInputMessages`. */
-export type InputMessages = string[] | ChatMessage[];
+export interface OutputMessages {
+  version: typeof A365_MESSAGE_SCHEMA_VERSION;
+  messages: OutputMessage[];
+}
 
-/** Accepted input for `recordOutputMessages`. */
-export type OutputMessages = string[] | OutputMessage[];
+export const A365_MESSAGE_SCHEMA_VERSION = '0.1.0' as const;
+
+/** Accepted input for `recordInputMessages`. Supports plain strings (backward compat) or the versioned wrapper. */
+export type InputMessagesParam = string[] | InputMessages;
+
+/** Accepted input for `recordOutputMessages`. Supports plain strings (backward compat) or the versioned wrapper. */
+export type OutputMessagesParam = string[] | OutputMessages;

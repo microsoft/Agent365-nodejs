@@ -10,6 +10,7 @@ import { Agent365ExporterOptions } from '@microsoft/agents-a365-observability/sr
 import { ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import { ExportResultCode } from '@opentelemetry/core';
 import { OpenTelemetryConstants } from '@microsoft/agents-a365-observability/src/tracing/constants';
+import { truncateSpan } from '@microsoft/agents-a365-observability/src/tracing/exporter/utils';
 import { runWithExportToken } from '@microsoft/agents-a365-observability/src/tracing/context/token-context';
 import { context as otelContext } from '@opentelemetry/api';
 import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
@@ -353,7 +354,7 @@ describe('Agent365Exporter', () => {
       expect(exportedSpan.attributes['number_array_attr']).toEqual([1, 2, 3]);
     });
 
-    it('should replace oversized string with TRUNCATED and preserve all smaller attribute types', async () => {
+    it('should trim oversized string attribute and preserve all smaller attribute types', async () => {
       const { exportedSpan } = await exportAndGetAttributes({
         'small_string': 'keep me',
         'small_number': 123,
@@ -362,33 +363,24 @@ describe('Agent365Exporter', () => {
         'large_string': 'x'.repeat(MAX_SPAN_SIZE_BYTES),
       });
 
-      expect(exportedSpan.attributes['large_string']).toBe('TRUNCATED');
+      expect(exportedSpan.attributes['large_string']).toContain('… [truncated]');
+      expect(exportedSpan.attributes['large_string'].length).toBeLessThan(MAX_SPAN_SIZE_BYTES);
       expect(exportedSpan.attributes['small_string']).toBe('keep me');
       expect(exportedSpan.attributes['small_number']).toBe(123);
       expect(exportedSpan.attributes['small_boolean']).toBe(false);
       expect(exportedSpan.attributes['small_array']).toEqual(['x', 'y']);
     });
 
-    it('should replace oversized string array with TRUNCATED', async () => {
-      const largeArray = Array.from({ length: 5000 }, (_, i) => `item-${i}-${'p'.repeat(50)}`);
-      const { exportedSpan } = await exportAndGetAttributes({
-        'large_array': largeArray,
-        'small_string': 'keep me',
-      });
-
-      expect(exportedSpan.attributes['large_array']).toBe('TRUNCATED');
-      expect(exportedSpan.attributes['small_string']).toBe('keep me');
-    });
-
-    it('should replace both large attributes with TRUNCATED when each alone exceeds limit', async () => {
+    it('should trim both large string attributes when each alone exceeds limit', async () => {
       const { exportedSpan } = await exportAndGetAttributes({
         'gen_ai.input.messages': 'a'.repeat(MAX_SPAN_SIZE_BYTES),
         'gen_ai.output.messages': 'b'.repeat(MAX_SPAN_SIZE_BYTES),
         'small_attr': 'keep me',
       });
 
-      expect(exportedSpan.attributes['gen_ai.input.messages']).toBe('TRUNCATED');
-      expect(exportedSpan.attributes['gen_ai.output.messages']).toBe('TRUNCATED');
+      // Both are plain strings (not valid JSON messages), so they get trimmed as regular strings
+      expect(exportedSpan.attributes['gen_ai.input.messages']).toContain('… [truncated]');
+      expect(exportedSpan.attributes['gen_ai.output.messages']).toContain('… [truncated]');
       expect(exportedSpan.attributes['small_attr']).toBe('keep me');
     });
 
@@ -410,17 +402,109 @@ describe('Agent365Exporter', () => {
 
       const spanSize = Buffer.byteLength(JSON.stringify(exportedSpan), 'utf8');
       expect(spanSize).toBeLessThanOrEqual(MAX_SPAN_SIZE_BYTES);
-      expect(exportedSpan.attributes['gen_ai.input.messages']).toBe('TRUNCATED');
-      expect(exportedSpan.attributes['gen_ai.output.messages']).toBe('TRUNCATED');
+    });
+
+    it('should shrink blob content in message attributes with sentinel', async () => {
+      const largeBlobContent = 'x'.repeat(MAX_SPAN_SIZE_BYTES); // >50KB blob, span will exceed limit
+      const messageWrapper = JSON.stringify({
+        version: '0.1.0',
+        messages: [{
+          role: 'user',
+          parts: [
+            { type: 'blob', modality: 'image', mime_type: 'image/png', content: largeBlobContent },
+            { type: 'text', content: 'Keep this text' },
+          ]
+        }]
+      });
+      const { exportedSpan } = await exportAndGetAttributes({
+        'gen_ai.input.messages': messageWrapper,
+        'small_attr': 'keep me',
+      });
+
+      const parsed = JSON.parse(exportedSpan.attributes['gen_ai.input.messages'] as string);
+      expect(parsed.version).toBe('0.1.0');
+      expect(parsed.messages[0].parts[0].content).toBe('[blob truncated]');
+      expect(parsed.messages[0].parts[1].content).toBe('Keep this text');
+      expect(exportedSpan.attributes['small_attr']).toBe('keep me');
+    });
+
+    it('should shrink tool_call arguments with sentinel in message attributes', async () => {
+      const largeArgs = { data: 'x'.repeat(MAX_SPAN_SIZE_BYTES) };
+      const messageWrapper = JSON.stringify({
+        version: '0.1.0',
+        messages: [{
+          role: 'assistant',
+          parts: [
+            { type: 'tool_call', name: 'search', id: 'call_1', arguments: largeArgs },
+            { type: 'text', content: 'short text' },
+          ]
+        }]
+      });
+      const { exportedSpan } = await exportAndGetAttributes({
+        'gen_ai.input.messages': messageWrapper,
+      });
+
+      const parsed = JSON.parse(exportedSpan.attributes['gen_ai.input.messages'] as string);
+      expect(parsed.messages[0].parts[0].arguments).toBe('[truncated]');
+      expect(parsed.messages[0].parts[0].name).toBe('search');
+      expect(parsed.messages[0].parts[1].content).toBe('short text');
+    });
+
+    it('should trim text content in message attributes when oversized', async () => {
+      const largeText = 'y'.repeat(MAX_SPAN_SIZE_BYTES);
+      const messageWrapper = JSON.stringify({
+        version: '0.1.0',
+        messages: [{
+          role: 'user',
+          parts: [{ type: 'text', content: largeText }]
+        }]
+      });
+      const { exportedSpan } = await exportAndGetAttributes({
+        'gen_ai.input.messages': messageWrapper,
+      });
+
+      const parsed = JSON.parse(exportedSpan.attributes['gen_ai.input.messages'] as string);
+      expect(parsed.messages[0].parts[0].content).toContain('… [truncated]');
+      expect(parsed.messages[0].parts[0].content.length).toBeLessThan(largeText.length);
+      const spanSize = Buffer.byteLength(JSON.stringify(exportedSpan), 'utf8');
+      expect(spanSize).toBeLessThanOrEqual(MAX_SPAN_SIZE_BYTES);
+    });
+
+    it('should trim utf8 text content without splitting code points', () => {
+      const largeEmojiText = '🙂'.repeat(90 * 1024);
+      const messageWrapper = JSON.stringify({
+        version: '0.1.0',
+        messages: [{
+          role: 'user',
+          parts: [{ type: 'text', content: largeEmojiText }]
+        }]
+      });
+
+      const span = {
+        traceId: '00000000000000000000000000000001',
+        spanId: '0000000000000002',
+        name: 'test',
+        kind: 'INTERNAL',
+        startTimeUnixNano: 0,
+        endTimeUnixNano: 1,
+        attributes: {
+          'gen_ai.input.messages': messageWrapper,
+          'other_large_text': 'x'.repeat(MAX_SPAN_SIZE_BYTES),
+        } as Record<string, unknown>,
+        status: { code: 'UNSET' },
+      };
+
+      const result = truncateSpan(span);
+      const parsed = JSON.parse(result.attributes!['gen_ai.input.messages'] as string);
+      const trimmedContent = parsed.messages[0].parts[0].content as string;
+      expect(trimmedContent).toContain('… [truncated]');
+
+      const prefix = trimmedContent.slice(0, -'… [truncated]'.length);
+      expect(Array.from(prefix).every((codePoint) => codePoint === '🙂')).toBe(true);
+      expect(Buffer.byteLength(JSON.stringify(result), 'utf8')).toBeLessThanOrEqual(MAX_SPAN_SIZE_BYTES);
     });
 
     it('should handle span with null attributes without error', async () => {
-      mockFetchSequence([200]);
-      const opts = new Agent365ExporterOptions();
-      opts.clusterCategory = 'local';
-      opts.tokenResolver = () => 'tok';
-      const exporter = new Agent365Exporter(opts);
-
       const span = {
         traceId: '00000000000000000000000000000001',
         spanId: '0000000000000002',
@@ -432,18 +516,11 @@ describe('Agent365Exporter', () => {
         status: { code: 'UNSET' },
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = (exporter as any).truncateSpan(span);
+      const result = truncateSpan(span);
       expect(result.attributes).toBeNull();
     });
 
     it('should handle non-serializable attribute values gracefully', async () => {
-      mockFetchSequence([200]);
-      const opts = new Agent365ExporterOptions();
-      opts.clusterCategory = 'local';
-      opts.tokenResolver = () => 'tok';
-      const exporter = new Agent365Exporter(opts);
-
       // Build an OTLPSpan directly with a non-serializable value (BigInt)
       const span = {
         traceId: '00000000000000000000000000000001',
@@ -454,17 +531,190 @@ describe('Agent365Exporter', () => {
         endTimeUnixNano: 1,
         attributes: {
           'normal_attr': 'hello',
-          // eslint-disable-next-line @typescript-eslint/no-loss-of-precision
           'bigint_attr': BigInt(999),
         } as Record<string, unknown>,
         status: { code: 'UNSET' },
       };
 
       // truncateSpan should catch the JSON.stringify failure and return span unchanged
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = (exporter as any).truncateSpan(span);
+      const result = truncateSpan(span);
       expect(result.attributes['normal_attr']).toBe('hello');
       expect(result.attributes['bigint_attr']).toBe(BigInt(999));
+    });
+
+    it('should shrink tool_call_response response with sentinel in message attributes', async () => {
+      const largeResponse = { data: 'x'.repeat(MAX_SPAN_SIZE_BYTES) };
+      const messageWrapper = JSON.stringify({
+        version: '0.1.0',
+        messages: [{
+          role: 'tool',
+          parts: [
+            { type: 'tool_call_response', id: 'call_1', response: largeResponse },
+            { type: 'text', content: 'short text' },
+          ]
+        }]
+      });
+      const { exportedSpan } = await exportAndGetAttributes({
+        'gen_ai.input.messages': messageWrapper,
+      });
+
+      const parsed = JSON.parse(exportedSpan.attributes['gen_ai.input.messages'] as string);
+      expect(parsed.messages[0].parts[0].response).toBe('[truncated]');
+      expect(parsed.messages[0].parts[0].id).toBe('call_1');
+      expect(parsed.messages[0].parts[1].content).toBe('short text');
+    });
+
+    it('should shrink server_tool_call payload with sentinel in message attributes', async () => {
+      const largePayload = { type: 'web_search', query: 'x'.repeat(MAX_SPAN_SIZE_BYTES) };
+      const messageWrapper = JSON.stringify({
+        version: '0.1.0',
+        messages: [{
+          role: 'assistant',
+          parts: [
+            { type: 'server_tool_call', name: 'web_search', id: 'stc_1', server_tool_call: largePayload },
+            { type: 'text', content: 'keep me' },
+          ]
+        }]
+      });
+      const { exportedSpan } = await exportAndGetAttributes({
+        'gen_ai.input.messages': messageWrapper,
+      });
+
+      const parsed = JSON.parse(exportedSpan.attributes['gen_ai.input.messages'] as string);
+      expect(parsed.messages[0].parts[0].server_tool_call).toBe('[truncated]');
+      expect(parsed.messages[0].parts[0].name).toBe('web_search');
+      expect(parsed.messages[0].parts[1].content).toBe('keep me');
+    });
+
+    it('should shrink server_tool_call_response payload with sentinel in message attributes', async () => {
+      const largePayload = { type: 'web_search_result', results: 'x'.repeat(MAX_SPAN_SIZE_BYTES) };
+      const messageWrapper = JSON.stringify({
+        version: '0.1.0',
+        messages: [{
+          role: 'tool',
+          parts: [
+            { type: 'server_tool_call_response', id: 'stc_1', server_tool_call_response: largePayload },
+            { type: 'text', content: 'keep me' },
+          ]
+        }]
+      });
+      const { exportedSpan } = await exportAndGetAttributes({
+        'gen_ai.input.messages': messageWrapper,
+      });
+
+      const parsed = JSON.parse(exportedSpan.attributes['gen_ai.input.messages'] as string);
+      expect(parsed.messages[0].parts[0].server_tool_call_response).toBe('[truncated]');
+      expect(parsed.messages[0].parts[0].id).toBe('stc_1');
+      expect(parsed.messages[0].parts[1].content).toBe('keep me');
+    });
+
+    it('should fallback to shrinking smaller blobs after regular shrink actions are exhausted', () => {
+      const blobSize = 40 * 1024; // 40KB each, under the 50KB first-pass threshold
+      const numBlobs = 8; // 8 * 40KB = 320KB > 250KB limit
+      const blobParts = Array.from({ length: numBlobs }, (_, _i) => ({
+        type: 'blob' as const,
+        modality: 'image',
+        mime_type: 'image/png',
+        content: 'x'.repeat(blobSize),
+      }));
+      // Add a text part that generates a trim action on the first pass
+      const textPart = { type: 'text' as const, content: 'y'.repeat(1024) };
+      const messageWrapper = JSON.stringify({
+        version: '0.1.0',
+        messages: [{ role: 'user', parts: [...blobParts, textPart] }],
+      });
+
+      const span = {
+        traceId: '00000000000000000000000000000001',
+        spanId: '0000000000000002',
+        name: 'test',
+        kind: 'INTERNAL',
+        startTimeUnixNano: 0,
+        endTimeUnixNano: 1,
+        attributes: {
+          'gen_ai.input.messages': messageWrapper,
+        } as Record<string, unknown>,
+        status: { code: 'UNSET' },
+      };
+
+      const result = truncateSpan(span);
+      const resultSize = Buffer.byteLength(JSON.stringify(result), 'utf8');
+      expect(resultSize).toBeLessThanOrEqual(MAX_SPAN_SIZE_BYTES);
+
+      const parsed = JSON.parse(result.attributes!['gen_ai.input.messages'] as string);
+      const sentinelCount = parsed.messages[0].parts
+        .filter((p: Record<string, unknown>) => p.type === 'blob' && p.content === '[blob truncated]')
+        .length;
+      expect(sentinelCount).toBeGreaterThan(0);
+      expect(sentinelCount).toBeLessThanOrEqual(numBlobs);
+    });
+
+    it('should repeatedly shrink regular candidates by size priority until the span fits', () => {
+      const regularParts = [
+        { type: 'text', content: 'a'.repeat(100 * 1024) },
+        { type: 'reasoning', content: 'b'.repeat(100 * 1024) },
+        { type: 'text', content: 'c'.repeat(100 * 1024) },
+        { type: 'reasoning', content: 'd'.repeat(100 * 1024) },
+      ];
+      const messageWrapper = JSON.stringify({
+        version: '0.1.0',
+        messages: [{
+          role: 'user',
+          parts: regularParts,
+        }],
+      });
+
+      const span = {
+        traceId: '00000000000000000000000000000001',
+        spanId: '0000000000000002',
+        name: 'test',
+        kind: 'INTERNAL',
+        startTimeUnixNano: 0,
+        endTimeUnixNano: 1,
+        attributes: {
+          'gen_ai.input.messages': messageWrapper,
+        } as Record<string, unknown>,
+        status: { code: 'UNSET' },
+      };
+
+      const result = truncateSpan(span);
+      const resultSize = Buffer.byteLength(JSON.stringify(result), 'utf8');
+      expect(resultSize).toBeLessThanOrEqual(MAX_SPAN_SIZE_BYTES);
+
+      const parsed = JSON.parse(result.attributes!['gen_ai.input.messages'] as string);
+      const truncatedCount = parsed.messages[0].parts
+        .filter((part: Record<string, unknown>) => typeof part.content === 'string' && (part.content as string).includes('… [truncated]'))
+        .length;
+      expect(truncatedCount).toBeGreaterThan(1);
+    });
+
+    it('should not throw when shrink actions are exhausted and span still exceeds limit', () => {
+      // Create a span where non-string/non-message attributes make it huge and unshrinkable.
+      // Use number arrays which are not shrinkable by the shrinker.
+      const hugeArray = new Array(100000).fill(42);
+      const span = {
+        traceId: '00000000000000000000000000000001',
+        spanId: '0000000000000002',
+        name: 'test',
+        kind: 'INTERNAL',
+        startTimeUnixNano: 0,
+        endTimeUnixNano: 1,
+        attributes: {
+          'non_shrinkable_1': hugeArray,
+          'non_shrinkable_2': hugeArray,
+          'small_string': 'hello',
+        } as Record<string, unknown>,
+        status: { code: 'UNSET' },
+      };
+
+      // Should not throw
+      const result = truncateSpan(span);
+      // The span is still returned even though it exceeds the limit
+      expect(result.attributes).toBeDefined();
+      expect(result.attributes!['small_string']).toBe('hello');
+      // The result may still exceed MAX_SPAN_SIZE_BYTES since there are no shrinkable attributes
+      const resultSize = Buffer.byteLength(JSON.stringify(result), 'utf8');
+      expect(resultSize).toBeGreaterThan(MAX_SPAN_SIZE_BYTES);
     });
   });
 

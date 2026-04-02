@@ -18,6 +18,9 @@ import {
   MessageRole,
   FinishReason,
   Modality,
+  InputMessages,
+  OutputMessages,
+  A365_MESSAGE_SCHEMA_VERSION,
 } from '@microsoft/agents-a365-observability';
 import {
   serializeMessages,
@@ -87,7 +90,7 @@ describe('Scope message recording', () => {
   // InvokeAgentScope overrides are trivial super calls sharing the same path)
   // ---------------------------------------------------------------------------
   describe('recordInputMessages / recordOutputMessages', () => {
-    it('should convert string[] input to OTEL ChatMessage format', async () => {
+    it('should convert string[] input to versioned wrapper with OTEL ChatMessage format', async () => {
       const scope = InferenceScope.start(testRequest, testInferenceDetails, testAgentDetails);
       scope.recordInputMessages(['What is the weather?', 'And traffic?']);
       scope.dispose();
@@ -96,17 +99,21 @@ describe('Scope message recording', () => {
       const { attributes } = getLastSpan();
       const parsed = JSON.parse(attributes[OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY] as string);
 
-      expect(parsed).toEqual([
+      expect(parsed.version).toBe(A365_MESSAGE_SCHEMA_VERSION);
+      expect(parsed.messages).toEqual([
         { role: 'user', parts: [{ type: 'text', content: 'What is the weather?' }] },
         { role: 'user', parts: [{ type: 'text', content: 'And traffic?' }] },
       ]);
     });
 
-    it('should pass through ChatMessage[] input without re-wrapping', async () => {
-      const structured: ChatMessage[] = [
-        { role: MessageRole.SYSTEM, parts: [{ type: 'text', content: 'You are a helpful assistant.' }] },
-        { role: MessageRole.USER, parts: [{ type: 'text', content: 'Hello!' }] },
-      ];
+    it('should pass through InputMessages wrapper without re-wrapping', async () => {
+      const structured: InputMessages = {
+        version: A365_MESSAGE_SCHEMA_VERSION,
+        messages: [
+          { role: MessageRole.SYSTEM, parts: [{ type: 'text', content: 'You are a helpful assistant.' }] },
+          { role: MessageRole.USER, parts: [{ type: 'text', content: 'Hello!' }] },
+        ],
+      };
 
       const scope = InferenceScope.start(testRequest, testInferenceDetails, testAgentDetails);
       scope.recordInputMessages(structured);
@@ -116,10 +123,11 @@ describe('Scope message recording', () => {
       const { attributes } = getLastSpan();
       const parsed = JSON.parse(attributes[OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY] as string);
 
-      expect(parsed).toEqual(structured);
+      expect(parsed.version).toBe(A365_MESSAGE_SCHEMA_VERSION);
+      expect(parsed.messages).toEqual(structured.messages);
     });
 
-    it('should convert string[] output to OTEL OutputMessage format', async () => {
+    it('should convert string[] output to versioned wrapper with OTEL OutputMessage format', async () => {
       const scope = InferenceScope.start(testRequest, testInferenceDetails, testAgentDetails);
       scope.recordOutputMessages(['The weather is sunny.']);
       scope.dispose();
@@ -128,36 +136,33 @@ describe('Scope message recording', () => {
       const { attributes } = getLastSpan();
       const parsed = JSON.parse(attributes[OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY] as string);
 
-      expect(parsed).toEqual([
+      expect(parsed.version).toBe(A365_MESSAGE_SCHEMA_VERSION);
+      expect(parsed.messages).toEqual([
         { role: 'assistant', parts: [{ type: 'text', content: 'The weather is sunny.' }] },
       ]);
     });
 
-    it('should set schema version attribute when recording input messages', async () => {
+    it('should embed version in the serialized wrapper (no separate version attribute)', async () => {
       const scope = InferenceScope.start(testRequest, testInferenceDetails, testAgentDetails);
       scope.recordInputMessages(['Hello']);
       scope.dispose();
 
       await flushProvider.forceFlush();
       const { attributes } = getLastSpan();
-      expect(attributes[OpenTelemetryConstants.A365_MESSAGES_SCHEMA_VERSION_KEY]).toBe(OpenTelemetryConstants.A365_MESSAGE_SCHEMA_VERSION);
+      const parsed = JSON.parse(attributes[OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY] as string);
+      expect(parsed.version).toBe(A365_MESSAGE_SCHEMA_VERSION);
+      // Separate version attribute should no longer be set
+      expect(attributes[OpenTelemetryConstants.A365_MESSAGES_SCHEMA_VERSION_KEY]).toBeUndefined();
     });
 
-    it('should set schema version attribute when recording output messages', async () => {
-      const scope = InferenceScope.start(testRequest, testInferenceDetails, testAgentDetails);
-      scope.recordOutputMessages(['Response']);
-      scope.dispose();
-
-      await flushProvider.forceFlush();
-      const { attributes } = getLastSpan();
-      expect(attributes[OpenTelemetryConstants.A365_MESSAGES_SCHEMA_VERSION_KEY]).toBe(OpenTelemetryConstants.A365_MESSAGE_SCHEMA_VERSION);
-    });
-
-    it('should preserve finish_reason on OutputMessage[]', async () => {
-      const structured: OutputMessage[] = [
-        { role: MessageRole.ASSISTANT, parts: [{ type: 'text', content: 'Done.' }], finish_reason: FinishReason.STOP },
-        { role: MessageRole.ASSISTANT, parts: [{ type: 'text', content: 'Partial...' }], finish_reason: FinishReason.LENGTH },
-      ];
+    it('should preserve finish_reason on OutputMessages wrapper', async () => {
+      const structured: OutputMessages = {
+        version: A365_MESSAGE_SCHEMA_VERSION,
+        messages: [
+          { role: MessageRole.ASSISTANT, parts: [{ type: 'text', content: 'Done.' }], finish_reason: FinishReason.STOP },
+          { role: MessageRole.ASSISTANT, parts: [{ type: 'text', content: 'Partial...' }], finish_reason: FinishReason.LENGTH },
+        ],
+      };
 
       const scope = InferenceScope.start(testRequest, testInferenceDetails, testAgentDetails);
       scope.recordOutputMessages(structured);
@@ -167,8 +172,8 @@ describe('Scope message recording', () => {
       const { attributes } = getLastSpan();
       const parsed = JSON.parse(attributes[OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY] as string);
 
-      expect(parsed[0].finish_reason).toBe('stop');
-      expect(parsed[1].finish_reason).toBe('length');
+      expect(parsed.messages[0].finish_reason).toBe('stop');
+      expect(parsed.messages[1].finish_reason).toBe('length');
     });
   });
 
@@ -176,7 +181,7 @@ describe('Scope message recording', () => {
   // InvokeAgentScope-specific: recordResponse() delegates to recordOutputMessages
   // ---------------------------------------------------------------------------
   describe('InvokeAgentScope.recordResponse', () => {
-    it('should convert response string to OTEL OutputMessage format', async () => {
+    it('should convert response string to versioned wrapper with OTEL OutputMessage format', async () => {
       const scope = InvokeAgentScope.start(testRequest, {}, testAgentDetails);
       scope.recordResponse('Test response');
       scope.dispose();
@@ -185,9 +190,10 @@ describe('Scope message recording', () => {
       const { attributes } = getLastSpan();
       const parsed = JSON.parse(attributes[OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY] as string);
 
-      expect(parsed).toHaveLength(1);
-      expect(parsed[0].role).toBe('assistant');
-      expect(parsed[0].parts[0].content).toBe('Test response');
+      expect(parsed.version).toBe(A365_MESSAGE_SCHEMA_VERSION);
+      expect(parsed.messages).toHaveLength(1);
+      expect(parsed.messages[0].role).toBe('assistant');
+      expect(parsed.messages[0].parts[0].content).toBe('Test response');
     });
   });
 
@@ -195,22 +201,25 @@ describe('Scope message recording', () => {
   // Complex OTEL message part types (serialization round-trips)
   // ---------------------------------------------------------------------------
   describe('Complex message part types', () => {
-    it('should serialize tool call request and response parts', async () => {
-      const messages: ChatMessage[] = [
-        {
-          role: MessageRole.ASSISTANT,
-          parts: [
-            { type: 'text', content: 'Let me search for that.' },
-            { type: 'tool_call', name: 'search', id: 'call_123', arguments: { query: 'test' } },
-          ],
-        },
-        {
-          role: MessageRole.TOOL,
-          parts: [
-            { type: 'tool_call_response', id: 'call_123', response: { results: ['item1'] } },
-          ],
-        },
-      ];
+    it('should serialize tool call request and response parts in wrapper', async () => {
+      const messages: InputMessages = {
+        version: A365_MESSAGE_SCHEMA_VERSION,
+        messages: [
+          {
+            role: MessageRole.ASSISTANT,
+            parts: [
+              { type: 'text', content: 'Let me search for that.' },
+              { type: 'tool_call', name: 'search', id: 'call_123', arguments: { query: 'test' } },
+            ],
+          },
+          {
+            role: MessageRole.TOOL,
+            parts: [
+              { type: 'tool_call_response', id: 'call_123', response: { results: ['item1'] } },
+            ],
+          },
+        ],
+      };
 
       const scope = InferenceScope.start(testRequest, testInferenceDetails, testAgentDetails);
       scope.recordInputMessages(messages);
@@ -220,21 +229,25 @@ describe('Scope message recording', () => {
       const { attributes } = getLastSpan();
       const parsed = JSON.parse(attributes[OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY] as string);
 
-      expect(parsed[0].parts[1].type).toBe('tool_call');
-      expect(parsed[0].parts[1].arguments).toEqual({ query: 'test' });
-      expect(parsed[1].parts[0].type).toBe('tool_call_response');
-      expect(parsed[1].parts[0].response).toEqual({ results: ['item1'] });
+      expect(parsed.version).toBe(A365_MESSAGE_SCHEMA_VERSION);
+      expect(parsed.messages[0].parts[1].type).toBe('tool_call');
+      expect(parsed.messages[0].parts[1].arguments).toEqual({ query: 'test' });
+      expect(parsed.messages[1].parts[0].type).toBe('tool_call_response');
+      expect(parsed.messages[1].parts[0].response).toEqual({ results: ['item1'] });
     });
 
-    it('should serialize reasoning parts with finish_reason', async () => {
-      const messages: OutputMessage[] = [{
-        role: MessageRole.ASSISTANT,
-        parts: [
-          { type: 'reasoning', content: 'The user is asking about weather...' },
-          { type: 'text', content: 'The weather is sunny.' },
-        ],
-        finish_reason: FinishReason.STOP,
-      }];
+    it('should serialize reasoning parts with finish_reason in wrapper', async () => {
+      const messages: OutputMessages = {
+        version: A365_MESSAGE_SCHEMA_VERSION,
+        messages: [{
+          role: MessageRole.ASSISTANT,
+          parts: [
+            { type: 'reasoning', content: 'The user is asking about weather...' },
+            { type: 'text', content: 'The weather is sunny.' },
+          ],
+          finish_reason: FinishReason.STOP,
+        }],
+      };
 
       const scope = InferenceScope.start(testRequest, testInferenceDetails, testAgentDetails);
       scope.recordOutputMessages(messages);
@@ -244,40 +257,49 @@ describe('Scope message recording', () => {
       const { attributes } = getLastSpan();
       const parsed = JSON.parse(attributes[OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY] as string);
 
-      expect(parsed[0].parts[0].type).toBe('reasoning');
-      expect(parsed[0].parts[1].type).toBe('text');
-      expect(parsed[0].finish_reason).toBe('stop');
+      expect(parsed.version).toBe(A365_MESSAGE_SCHEMA_VERSION);
+      expect(parsed.messages[0].parts[0].type).toBe('reasoning');
+      expect(parsed.messages[0].parts[1].type).toBe('text');
+      expect(parsed.messages[0].finish_reason).toBe('stop');
     });
 
     it('should serialize blob, file, and URI parts', () => {
-      const messages: ChatMessage[] = [{
-        role: MessageRole.USER,
-        parts: [
-          { type: 'blob', modality: Modality.IMAGE, mime_type: 'image/png', content: 'iVBORw0KGgo=' },
-          { type: 'file', modality: Modality.VIDEO, mime_type: 'video/mp4', file_id: 'file-123' },
-          { type: 'uri', modality: Modality.AUDIO, mime_type: 'audio/mp3', uri: 'https://example.com/audio.mp3' },
-        ],
-      }];
+      const wrapper: InputMessages = {
+        version: A365_MESSAGE_SCHEMA_VERSION,
+        messages: [{
+          role: MessageRole.USER,
+          parts: [
+            { type: 'blob', modality: Modality.IMAGE, mime_type: 'image/png', content: 'iVBORw0KGgo=' },
+            { type: 'file', modality: Modality.VIDEO, mime_type: 'video/mp4', file_id: 'file-123' },
+            { type: 'uri', modality: Modality.AUDIO, mime_type: 'audio/mp3', uri: 'https://example.com/audio.mp3' },
+          ],
+        }],
+      };
 
-      const parsed = JSON.parse(serializeMessages(messages));
+      const parsed = JSON.parse(serializeMessages(wrapper));
 
-      expect(parsed[0].parts[0].modality).toBe('image');
-      expect(parsed[0].parts[1].file_id).toBe('file-123');
-      expect(parsed[0].parts[2].uri).toBe('https://example.com/audio.mp3');
+      expect(parsed.version).toBe(A365_MESSAGE_SCHEMA_VERSION);
+      expect(parsed.messages[0].parts[0].modality).toBe('image');
+      expect(parsed.messages[0].parts[1].file_id).toBe('file-123');
+      expect(parsed.messages[0].parts[2].uri).toBe('https://example.com/audio.mp3');
     });
 
     it('should serialize server tool call and generic parts', () => {
-      const messages: ChatMessage[] = [
-        { role: MessageRole.ASSISTANT, parts: [{ type: 'server_tool_call', name: 'mcp_tool', id: 'stc_1', server_tool_call: { endpoint: '/api' } }] },
-        { role: MessageRole.TOOL, parts: [{ type: 'server_tool_call_response', id: 'stc_1', server_tool_call_response: { status: 'ok' } }] },
-        { role: MessageRole.USER, parts: [{ type: 'custom_annotation', timestamp: '00:01:23', note: 'Important' }] },
-      ];
+      const wrapper: InputMessages = {
+        version: A365_MESSAGE_SCHEMA_VERSION,
+        messages: [
+          { role: MessageRole.ASSISTANT, parts: [{ type: 'server_tool_call', name: 'mcp_tool', id: 'stc_1', server_tool_call: { endpoint: '/api' } }] },
+          { role: MessageRole.TOOL, parts: [{ type: 'server_tool_call_response', id: 'stc_1', server_tool_call_response: { status: 'ok' } }] },
+          { role: MessageRole.USER, parts: [{ type: 'custom_annotation', timestamp: '00:01:23', note: 'Important' }] },
+        ],
+      };
 
-      const parsed = JSON.parse(serializeMessages(messages));
+      const parsed = JSON.parse(serializeMessages(wrapper));
 
-      expect(parsed[0].parts[0].server_tool_call.endpoint).toBe('/api');
-      expect(parsed[1].parts[0].server_tool_call_response.status).toBe('ok');
-      expect(parsed[2].parts[0].type).toBe('custom_annotation');
+      expect(parsed.version).toBe(A365_MESSAGE_SCHEMA_VERSION);
+      expect(parsed.messages[0].parts[0].server_tool_call.endpoint).toBe('/api');
+      expect(parsed.messages[1].parts[0].server_tool_call_response.status).toBe('ok');
+      expect(parsed.messages[2].parts[0].type).toBe('custom_annotation');
     });
   });
 });

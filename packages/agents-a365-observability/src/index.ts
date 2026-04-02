@@ -68,6 +68,9 @@ export {
   OutputMessage,
   InputMessages,
   OutputMessages,
+  InputMessagesParam,
+  OutputMessagesParam,
+  A365_MESSAGE_SCHEMA_VERSION,
 } from './tracing/contracts';
 
 // Scopes

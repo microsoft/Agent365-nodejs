@@ -149,7 +149,7 @@ describe('OutputLoggingMiddleware', () => {
 
     expect(outputSpan).toBeDefined();
     expect(outputSpan!.attributes[OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY]).toBe(
-      JSON.stringify([{ role: 'assistant', parts: [{ type: 'text', content: 'Hi there!' }] }])
+      JSON.stringify({ version: '0.1.0', messages: [{ role: 'assistant', parts: [{ type: 'text', content: 'Hi there!' }] }] })
     );
   });
 
@@ -244,7 +244,7 @@ describe('OutputLoggingMiddleware', () => {
     const outputSpan = exporter.getFinishedSpans().find(s => s.name.includes('output_messages'));
     expect(outputSpan).toBeDefined();
     expect(outputSpan!.attributes[OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY]).toBe(
-      JSON.stringify([{ role: 'assistant', parts: [{ type: 'text', content: 'Async reply' }] }])
+      JSON.stringify({ version: '0.1.0', messages: [{ role: 'assistant', parts: [{ type: 'text', content: 'Async reply' }] }] })
     );
   });
 

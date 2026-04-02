@@ -6,18 +6,26 @@ import {
   OutputMessage,
   MessageRole,
   InputMessages,
-  OutputMessages
+  OutputMessages,
+  InputMessagesParam,
+  OutputMessagesParam,
+  A365_MESSAGE_SCHEMA_VERSION
 } from './contracts';
 
 /**
- * Type guard that returns `true` when the array contains plain strings
- * rather than structured OTEL message objects.
- *
- * Empty arrays are treated as `string[]`. This is safe because both conversion
- * paths (`toInputMessages([])` and passthrough `[]`) produce an empty array.
+ * Type guard that returns `true` when the input is a plain `string[]`
+ * rather than a versioned wrapper object.
  */
-export function isStringArray(arr: InputMessages | OutputMessages): arr is string[] {
-  return arr.length === 0 || typeof arr[0] === 'string';
+export function isStringArray(input: InputMessagesParam | OutputMessagesParam): input is string[] {
+  return Array.isArray(input);
+}
+
+/**
+ * Type guard that returns `true` when the input is a versioned wrapper
+ * object (`InputMessages` or `OutputMessages`).
+ */
+export function isWrappedMessages(input: InputMessagesParam | OutputMessagesParam): input is InputMessages | OutputMessages {
+  return !Array.isArray(input) && typeof input === 'object' && input !== null && 'version' in input && 'messages' in input;
 }
 
 /**
@@ -41,29 +49,54 @@ export function toOutputMessages(messages: string[]): OutputMessage[] {
 }
 
 /**
- * Serializes a message array to JSON.
+ * Normalizes an `InputMessagesParam` to a versioned `InputMessages` wrapper.
+ * - `string[]` → converted to `ChatMessage[]` and wrapped
+ * - `InputMessages` → returned as-is
+ */
+export function normalizeInputMessages(param: InputMessagesParam): InputMessages {
+  if (isStringArray(param)) {
+    return { version: A365_MESSAGE_SCHEMA_VERSION, messages: toInputMessages(param) };
+  }
+  return param;
+}
+
+/**
+ * Normalizes an `OutputMessagesParam` to a versioned `OutputMessages` wrapper.
+ * - `string[]` → converted to `OutputMessage[]` and wrapped
+ * - `OutputMessages` → returned as-is
+ */
+export function normalizeOutputMessages(param: OutputMessagesParam): OutputMessages {
+  if (isStringArray(param)) {
+    return { version: A365_MESSAGE_SCHEMA_VERSION, messages: toOutputMessages(param) };
+  }
+  return param;
+}
+
+/**
+ * Serializes a versioned message wrapper to JSON.
  *
- * Attribute-level truncation is intentionally not performed here.
- * Span-level size enforcement (MAX_SPAN_SIZE_BYTES) is handled at export
- * time by the Agent365 exporter, matching the Python SDK approach.
+ * The output is the full wrapper object: `{"version":"0.1.0","messages":[...]}`.
  *
  * The try/catch ensures telemetry recording is non-throwing even when
  * message parts contain non-JSON-serializable values (e.g. BigInt, circular refs).
  */
-export function serializeMessages<T extends ChatMessage | OutputMessage>(messages: T[]): string {
+export function serializeMessages(wrapper: InputMessages | OutputMessages): string {
   try {
-    return JSON.stringify(messages);
+    return JSON.stringify(wrapper);
   } catch {
-    return JSON.stringify([
-      {
-        role: MessageRole.SYSTEM,
-        parts: [
-          {
-            type: 'text',
-            content: `[serialization failed: ${messages.length} ${messages.length === 1 ? 'message' : 'messages'}]`
-          }
-        ]
-      }
-    ]);
+    return JSON.stringify({
+      version: A365_MESSAGE_SCHEMA_VERSION,
+      messages: [
+        {
+          role: MessageRole.SYSTEM,
+          parts: [
+            {
+              type: 'text',
+              content: `[serialization failed: ${wrapper.messages.length} ${wrapper.messages.length === 1 ? 'message' : 'messages'}]`
+            }
+          ]
+        }
+      ]
+    });
   }
 }

@@ -2,6 +2,8 @@
 // Licensed under the MIT License.
 
 import { LIB_VERSION } from '../version';
+// Note: one-way dependency (constants → contracts). Do not add reverse imports from contracts → constants.
+import { A365_MESSAGE_SCHEMA_VERSION } from './contracts';
 
 /**
  * OpenTelemetry constants for Agent 365
@@ -115,8 +117,7 @@ export class OpenTelemetryConstants {
   public static readonly TELEMETRY_SDK_VERSION_VALUE = LIB_VERSION;
 
   /**
-   * A365 message schema version. Hard-coded and aligned across SDKs.
-   * Corresponds to the `A365_MESSAGES_SCHEMA_VERSION_KEY` span attribute.
+   * A365 message schema version. Sourced from contracts.ts to stay in sync.
    */
-  public static readonly A365_MESSAGE_SCHEMA_VERSION = '0.1.0';
+  public static readonly A365_MESSAGE_SCHEMA_VERSION = A365_MESSAGE_SCHEMA_VERSION;
 }
