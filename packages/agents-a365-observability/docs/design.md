@@ -311,7 +311,16 @@ The schema version is embedded inside the serialized wrapper JSON (e.g., `{"vers
 
 #### Span-Level Size Enforcement
 
-Span size is enforced at export time in the `Agent365Exporter`. When a serialized OTLP span exceeds `MAX_SPAN_SIZE_BYTES` (250 KB), the exporter's `truncateSpan()` method iteratively replaces the largest attribute values with `"TRUNCATED"` until the span fits. This matches the Python SDK's `truncate_span()` approach. The truncation operates on the mapped OTLP span dict and does not mutate the original `ReadableSpan`.
+Span size is enforced at export time in the `Agent365Exporter`. When a serialized OTLP span exceeds `MAX_SPAN_SIZE_BYTES` (250 KB), the exporter's `truncateSpan()` method reduces the payload until the span fits, operating on the mapped OTLP span object without mutating the original `ReadableSpan`.
+
+Truncation is not implemented as a single `"TRUNCATED"` replacement for every oversized value. Depending on the attribute type and content, the exporter may:
+
+- replace oversized text values with a truncated form ending in `"… [truncated]"`;
+- replace structured message payload fields with sentinel markers such as `"[truncated]"`;
+- replace oversized inline blob content with `"[blob truncated]"`;
+- iteratively remeasure the serialized OTLP span after each shrink step until the span fits or no additional shrink actions remain.
+
+Consumers of exported spans should therefore treat these sentinel strings as part of the documented export format for oversized spans rather than expecting a single uniform replacement value.
 
 #### Scope Visibility
 

@@ -467,12 +467,49 @@ function getBestShrinkAction(
   return bestExactSavedBytes > 0 ? bestAction : undefined;
 }
 
+function runShrinkPhase(
+  span: OTLPSpanLike,
+  attributes: Record<string, unknown>,
+  parsedMessages: Map<string, { version: string; messages: Array<{ parts: Array<Record<string, unknown>> }> }>,
+  currentSize: number,
+  options: {
+    includeRegular: boolean;
+    includeBinary: boolean;
+  },
+): number {
+  let nextSize = currentSize;
+
+  while (nextSize > MAX_SPAN_SIZE_BYTES) {
+    const nextAction = getBestShrinkAction(
+      collectShrinkActions(attributes, parsedMessages, options),
+      span,
+      attributes,
+      parsedMessages,
+    );
+
+    if (!nextAction) {
+      break;
+    }
+
+    const previousSize = nextSize;
+    nextAction.apply();
+    flushParsedMessages(attributes, parsedMessages);
+    nextSize = getSerializedSize(span);
+
+    if (nextSize >= previousSize) {
+      break;
+    }
+  }
+
+  return nextSize;
+}
+
 /**
  * Truncate span attributes if the serialized span exceeds MAX_SPAN_SIZE_BYTES.
  *
- * Phase 1: shrink all blob/file payloads larger than 50 KB.
+ * Phase 1: shrink all blob payloads larger than 50 KB.
  * Phase 2: iteratively shrink regular fields by size priority, remeasuring after each step.
- * Phase 3: if still oversized, iteratively shrink any remaining blob/file payloads to fit.
+ * Phase 3: if still oversized, iteratively shrink any remaining blob payloads to fit.
  */
 export function truncateSpan<T extends OTLPSpanLike>(spanDict: T): T {
   try {
@@ -508,45 +545,15 @@ export function truncateSpan<T extends OTLPSpanLike>(spanDict: T): T {
       }
     }
 
-    while (currentSize > MAX_SPAN_SIZE_BYTES) {
-      const nextRegularAction = getBestShrinkAction(collectShrinkActions(attributes, parsedMessages, {
+    currentSize = runShrinkPhase(truncated, attributes, parsedMessages, currentSize, {
         includeRegular: true,
         includeBinary: false,
-      }), truncated, attributes, parsedMessages);
+    });
 
-      if (!nextRegularAction) {
-        break;
-      }
-
-      const previousSize = currentSize;
-      nextRegularAction.apply();
-      flushParsedMessages(attributes, parsedMessages);
-      currentSize = getSerializedSize(truncated);
-
-      if (currentSize >= previousSize) {
-        break;
-      }
-    }
-
-    while (currentSize > MAX_SPAN_SIZE_BYTES) {
-      const nextBinaryAction = getBestShrinkAction(collectShrinkActions(attributes, parsedMessages, {
+    currentSize = runShrinkPhase(truncated, attributes, parsedMessages, currentSize, {
         includeRegular: false,
         includeBinary: true,
-      }), truncated, attributes, parsedMessages);
-
-      if (!nextBinaryAction) {
-        break;
-      }
-
-      const previousSize = currentSize;
-      nextBinaryAction.apply();
-      flushParsedMessages(attributes, parsedMessages);
-      currentSize = getSerializedSize(truncated);
-
-      if (currentSize >= previousSize) {
-        break;
-      }
-    }
+    });
 
     if (currentSize > MAX_SPAN_SIZE_BYTES) {
       logger.warn(
