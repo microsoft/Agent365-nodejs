@@ -89,5 +89,4 @@ export class ExecuteToolScope extends OpenTelemetryScope {
   public recordResponse(response: string): void {
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_TOOL_CALL_RESULT_KEY, response);
   }
-
 }

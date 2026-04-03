@@ -423,50 +423,6 @@ function flushParsedMessages(
   }
 }
 
-function getExactSavedBytes(
-  action: ShrinkAction,
-  span: OTLPSpanLike,
-  attributes: Record<string, unknown>,
-  parsedMessages: Map<string, { version: string; messages: Array<{ parts: Array<Record<string, unknown>> }> }>,
-): number {
-  const previousSize = getSerializedSize(span);
-  action.apply();
-  flushParsedMessages(attributes, parsedMessages);
-  const newSize = getSerializedSize(span);
-  action.revert();
-  flushParsedMessages(attributes, parsedMessages);
-  return Math.max(0, previousSize - newSize);
-}
-
-/**
- * Find the action that yields the largest real byte savings.
- * This is O(N * serialization) per call. Acceptable because truncation only
- * triggers for oversized spans (>250 KB) which is an infrequent edge case.
- */
-function getBestShrinkAction(
-  actions: ShrinkAction[],
-  span: OTLPSpanLike,
-  attributes: Record<string, unknown>,
-  parsedMessages: Map<string, { version: string; messages: Array<{ parts: Array<Record<string, unknown>> }> }>,
-): ShrinkAction | undefined {
-  let bestAction: ShrinkAction | undefined;
-  let bestExactSavedBytes = -1;
-
-  for (const action of actions) {
-    const exactSavedBytes = getExactSavedBytes(action, span, attributes, parsedMessages);
-    if (
-      exactSavedBytes > bestExactSavedBytes
-      || (exactSavedBytes === bestExactSavedBytes && bestAction && action.estimatedSavedBytes > bestAction.estimatedSavedBytes)
-      || (exactSavedBytes === bestExactSavedBytes && !bestAction)
-    ) {
-      bestAction = action;
-      bestExactSavedBytes = exactSavedBytes;
-    }
-  }
-
-  return bestExactSavedBytes > 0 ? bestAction : undefined;
-}
-
 function runShrinkPhase(
   span: OTLPSpanLike,
   attributes: Record<string, unknown>,
@@ -480,12 +436,8 @@ function runShrinkPhase(
   let nextSize = currentSize;
 
   while (nextSize > MAX_SPAN_SIZE_BYTES) {
-    const nextAction = getBestShrinkAction(
-      collectShrinkActions(attributes, parsedMessages, options),
-      span,
-      attributes,
-      parsedMessages,
-    );
+    const nextAction = collectShrinkActions(attributes, parsedMessages, options)
+      .sort((left, right) => right.estimatedSavedBytes - left.estimatedSavedBytes)[0];
 
     if (!nextAction) {
       break;
