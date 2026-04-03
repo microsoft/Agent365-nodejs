@@ -43,6 +43,7 @@ export class OpenTelemetryConstants {
   public static readonly GEN_AI_AGENT_ID_KEY = 'gen_ai.agent.id';
   public static readonly GEN_AI_AGENT_NAME_KEY = 'gen_ai.agent.name';
   public static readonly GEN_AI_AGENT_DESCRIPTION_KEY = 'gen_ai.agent.description';
+  public static readonly GEN_AI_AGENT_VERSION_KEY = 'gen_ai.agent.version';
   public static readonly GEN_AI_AGENT_PLATFORM_ID_KEY = 'microsoft.a365.agent.platform.id';
   public static readonly GEN_AI_AGENT_THOUGHT_PROCESS_KEY = 'microsoft.a365.agent.thought.process';
   public static readonly GEN_AI_CONVERSATION_ID_KEY = 'gen_ai.conversation.id';
@@ -77,6 +78,7 @@ export class OpenTelemetryConstants {
   public static readonly GEN_AI_CALLER_AGENT_ID_KEY = 'microsoft.a365.caller.agent.id';
   public static readonly GEN_AI_CALLER_AGENT_APPLICATION_ID_KEY = 'microsoft.a365.caller.agent.blueprint.id';
   public static readonly GEN_AI_CALLER_AGENT_PLATFORM_ID_KEY = 'microsoft.a365.caller.agent.platform.id';
+  public static readonly GEN_AI_CALLER_AGENT_VERSION_KEY = 'microsoft.a365.caller.agent.version';
   // Agent-specific dimensions
   public static readonly AGENT_ID_KEY = 'gen_ai.agent.id';
   public static readonly GEN_AI_TASK_ID_KEY = 'gen_ai.task.id';
