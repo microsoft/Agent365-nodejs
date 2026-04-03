@@ -5,6 +5,7 @@ import { ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import { SpanKind, SpanStatusCode } from '@opentelemetry/api';
 import { ClusterCategory, IConfigurationProvider } from '@microsoft/agents-a365-runtime';
 import { OpenTelemetryConstants } from '../constants';
+import { A365_MESSAGE_SCHEMA_VERSION, MessageRole } from '../contracts';
 import logger from '../../utils/logging';
 import { ExporterEventNames } from './ExporterEventNames';
 import {
@@ -197,13 +198,35 @@ export function parseIdentityKey(key: string): { tenantId: string; agentId: stri
 /** Maximum allowed span size in bytes (250KB). @internal */
 export const MAX_SPAN_SIZE_BYTES = 250 * 1024;
 
-/** Blob content over this threshold is replaced with a sentinel. */
-const BLOB_SHRINK_THRESHOLD = 50 * 1024;
-
 const BLOB_SENTINEL = '[blob truncated]';
 const JSON_SENTINEL = '[truncated]';
 const TRUNCATED_SUFFIX = '… [truncated]';
 const TRUNCATED_SUFFIX_BYTES = Buffer.byteLength(TRUNCATED_SUFFIX, 'utf8');
+const OVERLIMIT_SENTINEL = '[overlimit]';
+
+/**
+ * Build a versioned message wrapper indicating the original messages were dropped
+ * because the span exceeded the size limit.
+ */
+function serializeOverflowSentinel(totalMessages: number): string {
+  return JSON.stringify({
+    version: A365_MESSAGE_SCHEMA_VERSION,
+    messages: [
+      {
+        role: MessageRole.SYSTEM,
+        parts: [
+          {
+            type: 'text',
+            content: `[truncated: ${totalMessages} ${totalMessages === 1 ? 'message' : 'messages'} exceeded limit]`
+          }
+        ]
+      }
+    ]
+  });
+}
+
+/** Strings shorter than this (in UTF-8 bytes) are not worth truncating. */
+const MIN_SHRINKABLE_STRING_BYTES = 50;
 
 const MESSAGE_ATTR_KEYS = new Set([
   OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY,
@@ -215,10 +238,16 @@ interface OTLPSpanLike {
 }
 
 interface ShrinkAction {
-  estimatedSavedBytes: number;
-  apply(): void;
-  revert(): void;
-  category: 'binary' | 'regular';
+  /** Approximate byte size of the shrinkable content. Updated after apply for re-shrinkable actions. */
+  contentBytes: number;
+  /**
+   * Apply shrinking.
+   * @param bytesToShed Target bytes to shed. Trimmable actions trim this amount;
+   *                    one-shot actions perform full replacement regardless.
+   */
+  apply(bytesToShed: number): void;
+  /** For message-sourced actions, the attribute key to flush after apply. */
+  sourceKey?: string;
 }
 
 /**
@@ -232,27 +261,26 @@ function trimString(value: string, bytesToShed: number): string {
     return TRUNCATED_SUFFIX;
   }
 
-  const codePoints = Array.from(value);
   let consumedBytes = 0;
-  let keepCount = 0;
+  let endIndex = 0;
 
-  for (const codePoint of codePoints) {
+  for (const codePoint of value) {
     const codePointBytes = Buffer.byteLength(codePoint, 'utf8');
     if (consumedBytes + codePointBytes > targetContentBytes) {
       break;
     }
     consumedBytes += codePointBytes;
-    keepCount++;
+    endIndex += codePoint.length; // length in UTF-16 code units (handles surrogates)
   }
 
-  return codePoints.slice(0, keepCount).join('') + TRUNCATED_SUFFIX;
+  return value.slice(0, endIndex) + TRUNCATED_SUFFIX;
 }
 
 function getSerializedSize(value: unknown): number {
   return Buffer.byteLength(JSON.stringify(value), 'utf8');
 }
 
-function createBinaryShrinkAction(part: Record<string, unknown>): ShrinkAction | undefined {
+function createBlobShrinkAction(part: Record<string, unknown>, sourceKey?: string): ShrinkAction | undefined {
   const partType = part.type as string;
 
   if (partType === 'blob' && typeof part.content === 'string') {
@@ -261,18 +289,15 @@ function createBinaryShrinkAction(part: Record<string, unknown>): ShrinkAction |
       return undefined;
     }
 
-    const originalContent = part.content;
-
-    return {
-      estimatedSavedBytes: contentSize - Buffer.byteLength(BLOB_SENTINEL, 'utf8'),
-      category: 'binary',
-      revert() {
-        part.content = originalContent;
-      },
+    const action: ShrinkAction = {
+      contentBytes: contentSize,
+      sourceKey,
       apply() {
         part.content = BLOB_SENTINEL;
+        action.contentBytes = 0;
       }
     };
+    return action;
   }
 
   return undefined;
@@ -280,17 +305,13 @@ function createBinaryShrinkAction(part: Record<string, unknown>): ShrinkAction |
 
 /**
  * Collect all shrink candidates from message parts and direct string attributes.
- * When a message attribute contains non-JSON content it falls through to regular
- * string trimming.
+ * Blobs, text, reasoning, json-field, and plain-string actions are all collected
+ * uniformly. When a message attribute contains non-JSON content it falls through
+ * to regular string trimming.
  */
 function collectShrinkActions(
   attributes: Record<string, unknown>,
   parsedMessages: Map<string, { version: string; messages: Array<{ parts: Array<Record<string, unknown>> }> }>,
-  options: {
-    includeRegular: boolean;
-    includeBinary: boolean;
-    minBinaryPayloadBytes?: number;
-  },
 ): ShrinkAction[] {
   const actions: ShrinkAction[] = [];
 
@@ -318,19 +339,10 @@ function collectShrinkActions(
           for (const part of message.parts) {
             const partType = part.type as string;
 
-            if (options.includeBinary) {
-              const binaryAction = createBinaryShrinkAction(part);
-              if (binaryAction && binaryAction.estimatedSavedBytes > 0) {
-                const originalPayloadSize = binaryAction.estimatedSavedBytes
-                  + Buffer.byteLength(BLOB_SENTINEL, 'utf8');
-                if (options.minBinaryPayloadBytes === undefined || originalPayloadSize > options.minBinaryPayloadBytes) {
-                  actions.push(binaryAction);
-                }
-              }
-            }
-
-            if (!options.includeRegular) {
-              continue;
+            // Blob content → sentinel (one-shot)
+            const blobAction = createBlobShrinkAction(part, key);
+            if (blobAction) {
+              actions.push(blobAction);
             }
 
             // Tool/server JSON payload fields → sentinel (one-shot)
@@ -346,13 +358,15 @@ function collectShrinkActions(
               try { fieldSize = Buffer.byteLength(JSON.stringify(part[jsonField]), 'utf8'); }
               catch { fieldSize = 0; }
               if (fieldSize > 0) {
-                const originalValue = part[jsonField];
-                actions.push({
-                  estimatedSavedBytes: fieldSize - Buffer.byteLength(JSON.stringify(JSON_SENTINEL), 'utf8'),
-                  category: 'regular',
-                  revert() { part[jsonField!] = originalValue; },
-                  apply() { part[jsonField!] = JSON_SENTINEL; }
-                });
+                const action: ShrinkAction = {
+                  contentBytes: fieldSize,
+                  sourceKey: key,
+                  apply() {
+                    part[jsonField!] = JSON_SENTINEL;
+                    action.contentBytes = 0;
+                  }
+                };
+                actions.push(action);
               }
               continue;
             }
@@ -360,20 +374,19 @@ function collectShrinkActions(
             // Text/reasoning content → trim (re-shrinkable)
             if ((partType === 'text' || partType === 'reasoning') && typeof part.content === 'string') {
               const contentSize = Buffer.byteLength(part.content, 'utf8');
-              const minSize = TRUNCATED_SUFFIX_BYTES;
-              if (contentSize > minSize) {
-                const originalContent = part.content;
-                actions.push({
-                  estimatedSavedBytes: contentSize - minSize,
-                  category: 'regular',
-                  revert() {
-                    part.content = originalContent;
-                  },
-                  apply() {
+              if (contentSize > MIN_SHRINKABLE_STRING_BYTES) {
+                const action: ShrinkAction = {
+                  contentBytes: contentSize,
+                  sourceKey: key,
+                  apply(bytesToShed: number) {
                     const cur = Buffer.byteLength(part.content as string, 'utf8');
-                    if (cur > minSize) part.content = trimString(part.content as string, cur - minSize);
+                    if (cur > TRUNCATED_SUFFIX_BYTES) {
+                      part.content = trimString(part.content as string, bytesToShed);
+                      action.contentBytes = Buffer.byteLength(part.content as string, 'utf8');
+                    }
                   }
-                });
+                };
+                actions.push(action);
               }
             }
           }
@@ -383,26 +396,20 @@ function collectShrinkActions(
 
     // Non-message string attribute, OR message key with non-JSON content → trim
     if (!handledAsMessage && typeof attributes[key] === 'string') {
-      if (!options.includeRegular) {
-        continue;
-      }
-
       const value = attributes[key] as string;
       const valueSize = Buffer.byteLength(value, 'utf8');
-      const minSize = TRUNCATED_SUFFIX_BYTES;
-      if (valueSize > minSize) {
-        const originalValue = value;
-        actions.push({
-          estimatedSavedBytes: valueSize - minSize,
-          category: 'regular',
-          revert() {
-            attributes[key] = originalValue;
-          },
-          apply() {
+      if (valueSize > MIN_SHRINKABLE_STRING_BYTES) {
+        const action: ShrinkAction = {
+          contentBytes: valueSize,
+          apply(bytesToShed: number) {
             const cur = Buffer.byteLength(attributes[key] as string, 'utf8');
-            if (cur > minSize) attributes[key] = trimString(attributes[key] as string, cur - minSize);
+            if (cur > TRUNCATED_SUFFIX_BYTES) {
+              attributes[key] = trimString(attributes[key] as string, bytesToShed);
+              action.contentBytes = Buffer.byteLength(attributes[key] as string, 'utf8');
+            }
           }
-        });
+        };
+        actions.push(action);
       }
     }
   }
@@ -423,35 +430,60 @@ function flushParsedMessages(
   }
 }
 
+function flushParsedMessage(
+  attributes: Record<string, unknown>,
+  parsedMessages: Map<string, { version: string; messages: Array<{ parts: Array<Record<string, unknown>> }> }>,
+  key: string,
+): void {
+  const wrapper = parsedMessages.get(key);
+  if (wrapper) {
+    try {
+      attributes[key] = JSON.stringify(wrapper);
+    } catch {
+      // Leave the previous string value intact if serialization fails.
+    }
+  }
+}
+
 function runShrinkPhase(
   span: OTLPSpanLike,
   attributes: Record<string, unknown>,
   parsedMessages: Map<string, { version: string; messages: Array<{ parts: Array<Record<string, unknown>> }> }>,
   currentSize: number,
-  options: {
-    includeRegular: boolean;
-    includeBinary: boolean;
-  },
 ): number {
   let nextSize = currentSize;
 
-  while (nextSize > MAX_SPAN_SIZE_BYTES) {
-    const nextAction = collectShrinkActions(attributes, parsedMessages, options)
-      .sort((left, right) => right.estimatedSavedBytes - left.estimatedSavedBytes)[0];
+  const actions = collectShrinkActions(attributes, parsedMessages);
 
-    if (!nextAction) {
-      break;
+  while (actions.length > 0 && nextSize > MAX_SPAN_SIZE_BYTES) {
+    // Pick the action with the largest contentBytes (accounts for updated sizes)
+    let maxIdx = 0;
+    for (let j = 1; j < actions.length; j++) {
+      if (actions[j].contentBytes > actions[maxIdx].contentBytes) maxIdx = j;
     }
 
+    const excess = nextSize - MAX_SPAN_SIZE_BYTES;
     const previousSize = nextSize;
-    nextAction.apply();
-    flushParsedMessages(attributes, parsedMessages);
+    const action = actions[maxIdx];
+    action.apply(excess);
+
+    // Flush only the modified message attribute instead of all parsed messages
+    if (action.sourceKey) {
+      flushParsedMessage(attributes, parsedMessages, action.sourceKey);
+    }
     nextSize = getSerializedSize(span);
 
     if (nextSize >= previousSize) {
-      break;
+      // Action had no effect — remove it
+      actions.splice(maxIdx, 1);
+    } else if (action.contentBytes <= MIN_SHRINKABLE_STRING_BYTES) {
+      // Exhausted (one-shot or fully trimmed) — remove it
+      actions.splice(maxIdx, 1);
     }
   }
+
+  // Final flush to ensure all modified message attributes are written back
+  flushParsedMessages(attributes, parsedMessages);
 
   return nextSize;
 }
@@ -459,9 +491,9 @@ function runShrinkPhase(
 /**
  * Truncate span attributes if the serialized span exceeds MAX_SPAN_SIZE_BYTES.
  *
- * Phase 1: shrink all blob payloads larger than 50 KB.
- * Phase 2: iteratively shrink regular fields by size priority, remeasuring after each step.
- * Phase 3: if still oversized, iteratively shrink any remaining blob payloads to fit.
+ * Phase 1: iteratively shrink all fields (blobs, text, json, strings) by size
+ *          priority, remeasuring after each step.
+ * Phase 2 (fallback): replace remaining string attributes with overlimit sentinel.
  */
 export function truncateSpan<T extends OTLPSpanLike>(spanDict: T): T {
   try {
@@ -479,33 +511,40 @@ export function truncateSpan<T extends OTLPSpanLike>(spanDict: T): T {
 
     const parsedMessages = new Map<string, { version: string; messages: Array<{ parts: Array<Record<string, unknown>> }> }>();
 
-    const mandatoryBinaryActions = collectShrinkActions(attributes, parsedMessages, {
-      includeRegular: false,
-      includeBinary: true,
-      minBinaryPayloadBytes: BLOB_SHRINK_THRESHOLD,
-    }).sort((a, b) => b.estimatedSavedBytes - a.estimatedSavedBytes);
+    // Phase 1: iteratively shrink all fields by size priority
+    currentSize = runShrinkPhase(truncated, attributes, parsedMessages, currentSize);
 
-    for (const action of mandatoryBinaryActions) {
-      action.apply();
-    }
+    if (currentSize > MAX_SPAN_SIZE_BYTES) {
+      // Phase 2 (fallback): replace all string attributes with overlimit sentinel, largest first.
+      // Message attributes get a structured sentinel preserving the original message count.
+      const stringKeys = Object.keys(attributes)
+        .filter(k => typeof attributes[k] === 'string' && attributes[k] !== OVERLIMIT_SENTINEL)
+        .sort((a, b) => Buffer.byteLength(attributes[b] as string, 'utf8') - Buffer.byteLength(attributes[a] as string, 'utf8'));
 
-    if (mandatoryBinaryActions.length > 0) {
-      flushParsedMessages(attributes, parsedMessages);
-      currentSize = getSerializedSize(truncated);
-      if (currentSize <= MAX_SPAN_SIZE_BYTES) {
-        return truncated;
+      for (const key of stringKeys) {
+        if (currentSize <= MAX_SPAN_SIZE_BYTES) break;
+        if (MESSAGE_ATTR_KEYS.has(key)) {
+          let messageCount = 0;
+          const cached = parsedMessages.get(key);
+          if (cached) {
+            messageCount = cached.messages.length;
+          } else if (typeof attributes[key] === 'string') {
+            // Attempt to derive count from current attribute value
+            try {
+              const parsed = JSON.parse(attributes[key] as string);
+              if (parsed && Array.isArray(parsed.messages)) {
+                messageCount = parsed.messages.length;
+              }
+            } catch { /* not valid JSON — count stays 0 */ }
+          }
+          attributes[key] = serializeOverflowSentinel(messageCount);
+          parsedMessages.delete(key);
+        } else {
+          attributes[key] = OVERLIMIT_SENTINEL;
+        }
+        currentSize = getSerializedSize(truncated);
       }
     }
-
-    currentSize = runShrinkPhase(truncated, attributes, parsedMessages, currentSize, {
-        includeRegular: true,
-        includeBinary: false,
-    });
-
-    currentSize = runShrinkPhase(truncated, attributes, parsedMessages, currentSize, {
-        includeRegular: false,
-        includeBinary: true,
-    });
 
     if (currentSize > MAX_SPAN_SIZE_BYTES) {
       logger.warn(

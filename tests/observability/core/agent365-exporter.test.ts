@@ -608,8 +608,8 @@ describe('Agent365Exporter', () => {
       expect(parsed.messages[0].parts[1].content).toBe('keep me');
     });
 
-    it('should fallback to shrinking smaller blobs after regular shrink actions are exhausted', () => {
-      const blobSize = 40 * 1024; // 40KB each, under the 50KB first-pass threshold
+    it('should shrink blobs alongside other fields by size priority', () => {
+      const blobSize = 40 * 1024; // 40KB each
       const numBlobs = 8; // 8 * 40KB = 320KB > 250KB limit
       const blobParts = Array.from({ length: numBlobs }, (_, _i) => ({
         type: 'blob' as const,
@@ -617,7 +617,7 @@ describe('Agent365Exporter', () => {
         mime_type: 'image/png',
         content: 'x'.repeat(blobSize),
       }));
-      // Add a text part that generates a trim action on the first pass
+      // Add a text part — blobs are larger so they should be shrunk first
       const textPart = { type: 'text' as const, content: 'y'.repeat(1024) };
       const messageWrapper = JSON.stringify({
         version: '0.1.0',
@@ -711,10 +711,195 @@ describe('Agent365Exporter', () => {
       const result = truncateSpan(span);
       // The span is still returned even though it exceeds the limit
       expect(result.attributes).toBeDefined();
-      expect(result.attributes!['small_string']).toBe('hello');
+      // Phase 2 fallback replaces string attributes with overlimit sentinel
+      expect(result.attributes!['small_string']).toBe('[overlimit]');
       // The result may still exceed MAX_SPAN_SIZE_BYTES since there are no shrinkable attributes
       const resultSize = Buffer.byteLength(JSON.stringify(result), 'utf8');
       expect(resultSize).toBeGreaterThan(MAX_SPAN_SIZE_BYTES);
+    });
+
+    it('should only trim the excess bytes, preserving as much content as possible', () => {
+      // A single large text part that slightly exceeds the limit.
+      // After trimming, most of the content should be preserved.
+
+      const textSize = MAX_SPAN_SIZE_BYTES + 5000; // only ~5KB over
+      const messageWrapper = JSON.stringify({
+        version: '0.1.0',
+        messages: [{
+          role: 'user',
+          parts: [{ type: 'text', content: 'x'.repeat(textSize) }]
+        }]
+      });
+
+      const span = {
+        traceId: '00000000000000000000000000000001',
+        spanId: '0000000000000002',
+        name: 'test',
+        kind: 'INTERNAL',
+        startTimeUnixNano: 0,
+        endTimeUnixNano: 1,
+        attributes: {
+          'gen_ai.input.messages': messageWrapper,
+        } as Record<string, unknown>,
+        status: { code: 'UNSET' },
+      };
+
+      const result = truncateSpan(span);
+      const parsed = JSON.parse(result.attributes!['gen_ai.input.messages'] as string);
+      const trimmedContent = parsed.messages[0].parts[0].content as string;
+
+      expect(trimmedContent).toContain('… [truncated]');
+      // The trimmed content should retain most of the original — at least 90%
+      const trimmedLength = Buffer.byteLength(trimmedContent, 'utf8');
+      expect(trimmedLength).toBeGreaterThan(textSize * 0.9);
+      expect(Buffer.byteLength(JSON.stringify(result), 'utf8')).toBeLessThanOrEqual(MAX_SPAN_SIZE_BYTES);
+    });
+
+    it('should leave other fields untouched when trimming the largest field is sufficient', () => {
+      // Two text fields: one very large (~300KB), one medium (~50KB).
+      // Only the largest should be trimmed; the medium one should be preserved intact.
+      const largeContent = 'L'.repeat(300 * 1024);
+      const mediumContent = 'M'.repeat(50 * 1024);
+      const messageWrapper = JSON.stringify({
+        version: '0.1.0',
+        messages: [{
+          role: 'user',
+          parts: [
+            { type: 'text', content: largeContent },
+            { type: 'text', content: mediumContent },
+          ]
+        }]
+      });
+
+      const span = {
+        traceId: '00000000000000000000000000000001',
+        spanId: '0000000000000002',
+        name: 'test',
+        kind: 'INTERNAL',
+        startTimeUnixNano: 0,
+        endTimeUnixNano: 1,
+        attributes: {
+          'gen_ai.input.messages': messageWrapper,
+        } as Record<string, unknown>,
+        status: { code: 'UNSET' },
+      };
+
+      const result = truncateSpan(span);
+      const parsed = JSON.parse(result.attributes!['gen_ai.input.messages'] as string);
+
+      // The large field was trimmed
+      expect((parsed.messages[0].parts[0].content as string)).toContain('… [truncated]');
+      // The medium field should be fully preserved
+      expect(parsed.messages[0].parts[1].content).toBe(mediumContent);
+      expect(Buffer.byteLength(JSON.stringify(result), 'utf8')).toBeLessThanOrEqual(MAX_SPAN_SIZE_BYTES);
+    });
+
+    it('should skip strings shorter than 50 bytes during truncation', () => {
+      // Many small strings (under 50 bytes each) plus one huge non-shrinkable array.
+      // The small strings should not be trimmed (only replaced in phase 4 fallback).
+      const span = {
+        traceId: '00000000000000000000000000000001',
+        spanId: '0000000000000002',
+        name: 'test',
+        kind: 'INTERNAL',
+        startTimeUnixNano: 0,
+        endTimeUnixNano: 1,
+        attributes: {
+          'short_a': 'a'.repeat(49), // 49 bytes — under threshold
+          'short_b': 'b'.repeat(30),
+          'large_string': 'x'.repeat(MAX_SPAN_SIZE_BYTES),
+        } as Record<string, unknown>,
+        status: { code: 'UNSET' },
+      };
+
+      const result = truncateSpan(span);
+      // short strings should be preserved (not truncated via phase 1)
+      expect(result.attributes!['short_a']).toBe('a'.repeat(49));
+      expect(result.attributes!['short_b']).toBe('b'.repeat(30));
+      // large string gets trimmed
+      expect((result.attributes!['large_string'] as string)).toContain('… [truncated]');
+      expect(Buffer.byteLength(JSON.stringify(result), 'utf8')).toBeLessThanOrEqual(MAX_SPAN_SIZE_BYTES);
+    });
+
+    it('should only remove enough blobs to fit under the limit', () => {
+      // 6 blobs of 45KB each = 270KB > 250KB limit.
+      // Shrink phase should replace blobs one at a time until under limit.
+      const blobSize = 45 * 1024;
+      const numBlobs = 6;
+      const blobParts = Array.from({ length: numBlobs }, () => ({
+        type: 'blob' as const,
+        modality: 'image',
+        mime_type: 'image/png',
+        content: 'x'.repeat(blobSize),
+      }));
+      const messageWrapper = JSON.stringify({
+        version: '0.1.0',
+        messages: [{ role: 'user', parts: blobParts }],
+      });
+
+      const span = {
+        traceId: '00000000000000000000000000000001',
+        spanId: '0000000000000002',
+        name: 'test',
+        kind: 'INTERNAL',
+        startTimeUnixNano: 0,
+        endTimeUnixNano: 1,
+        attributes: {
+          'gen_ai.input.messages': messageWrapper,
+        } as Record<string, unknown>,
+        status: { code: 'UNSET' },
+      };
+
+      const result = truncateSpan(span);
+      const resultSize = Buffer.byteLength(JSON.stringify(result), 'utf8');
+      expect(resultSize).toBeLessThanOrEqual(MAX_SPAN_SIZE_BYTES);
+
+      const parsed = JSON.parse(result.attributes!['gen_ai.input.messages'] as string);
+      const sentinelCount = parsed.messages[0].parts
+        .filter((p: Record<string, unknown>) => p.content === '[blob truncated]').length;
+      const preservedCount = parsed.messages[0].parts
+        .filter((p: Record<string, unknown>) => p.content !== '[blob truncated]').length;
+      // Some blobs should be preserved — not all replaced
+      expect(sentinelCount).toBeGreaterThan(0);
+      expect(preservedCount).toBeGreaterThan(0);
+    });
+
+    it('should use structured overflow sentinel for message attributes in phase 4 fallback', () => {
+      // Make the span exceed the limit with non-shrinkable arrays, plus a message attribute
+      // that phase 1 cannot shrink enough. Phase 2 should replace it with the overflow sentinel.
+      const hugeArray = new Array(100000).fill(42);
+      const messageWrapper = JSON.stringify({
+        version: '0.1.0',
+        messages: [
+          { role: 'user', parts: [{ type: 'text', content: 'hello user' }] },
+          { role: 'assistant', parts: [{ type: 'text', content: 'hello back' }] },
+          { role: 'user', parts: [{ type: 'text', content: 'another msg' }] },
+        ],
+      });
+
+      const span = {
+        traceId: '00000000000000000000000000000001',
+        spanId: '0000000000000002',
+        name: 'test',
+        kind: 'INTERNAL',
+        startTimeUnixNano: 0,
+        endTimeUnixNano: 1,
+        attributes: {
+          'non_shrinkable': hugeArray,
+          'gen_ai.input.messages': messageWrapper,
+        } as Record<string, unknown>,
+        status: { code: 'UNSET' },
+      };
+
+      const result = truncateSpan(span);
+      // The message attribute should be replaced with the overflow sentinel
+      const sentinelValue = result.attributes!['gen_ai.input.messages'] as string;
+      const parsed = JSON.parse(sentinelValue);
+      expect(parsed.version).toBe('0.1.0');
+      expect(parsed.messages).toHaveLength(1);
+      expect(parsed.messages[0].role).toBe('system');
+      expect(parsed.messages[0].parts[0].type).toBe('text');
+      expect(parsed.messages[0].parts[0].content).toBe('[truncated: 3 messages exceeded limit]');
     });
   });
 
