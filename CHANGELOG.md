@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (`@microsoft/agents-a365-tooling`)
+
+- **V1/V2 per-audience token acquisition** — `resolveTokenScopeForServer` now supports explicit `scope` field for V2 MCP servers. When a V2 server provides a `scope` value, the token is requested as `{audience}/{scope}`; otherwise falls back to `{audience}/.default` (pre-consented permissions cover both cases).
+
+### Fixed (`@microsoft/agents-a365-tooling-extensions-openai`, `@microsoft/agents-a365-tooling-extensions-langchain`)
+
+- **Per-audience Authorization headers now correctly applied** — OpenAI and LangChain extensions now merge the per-server `Authorization: Bearer` token from `server.headers` (set by `attachPerAudienceTokens`) with base request headers, instead of applying a single shared discovery token to all MCP servers. This ensures V2 servers receive their own correctly-scoped token.
+
 ### Breaking Changes (`@microsoft/agents-a365-observability`)
 
 - **`InvokeAgentDetails` renamed to `InvokeAgentScopeDetails`** — Now contains only scope-level config (`endpoint`). Agent identity (`AgentDetails`) is a separate parameter. `sessionId` moved to `Request`.
