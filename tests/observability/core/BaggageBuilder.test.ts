@@ -58,6 +58,27 @@ describe('BaggageBuilder', () => {
       const bag = propagation.getBaggage((scope as any).contextWithBaggage);
       expect(bag?.getEntry(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_PLATFORM_ID_KEY)?.value).toBe('caller-platform-xyz');
     });
+
+    it.each([
+      ['agentVersion', '1.0.0', OpenTelemetryConstants.GEN_AI_AGENT_VERSION_KEY],
+    ] as const)('%s should set the correct baggage key', (method, value, expectedKey) => {
+      const builder = new BaggageBuilder();
+      (builder as any)[method](value);
+      const scope = builder.build();
+      const bag = propagation.getBaggage((scope as any).contextWithBaggage);
+      expect(bag?.getEntry(expectedKey)?.value).toBe(value);
+    });
+
+    it.each([
+      ['agentVersion', null],
+      ['agentVersion', '   '],
+    ] as const)('%s should ignore %s', (method, value) => {
+      const builder = new BaggageBuilder();
+      (builder as any)[method](value);
+      const scope = builder.build();
+      const bag = propagation.getBaggage((scope as any).contextWithBaggage);
+      expect(bag?.getEntry(OpenTelemetryConstants.GEN_AI_AGENT_VERSION_KEY)).toBeUndefined();
+    });
   });
 
   describe('setPairs', () => {

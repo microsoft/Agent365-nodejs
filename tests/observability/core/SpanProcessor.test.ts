@@ -176,10 +176,12 @@ describe('SpanProcessor', () => {
     it('should apply invoke agent specific attributes', () => {
       expect(INVOKE_AGENT_ATTRIBUTES).toContain(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_ID_KEY);
       expect(INVOKE_AGENT_ATTRIBUTES).toContain(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_EMAIL_KEY);
+      expect(INVOKE_AGENT_ATTRIBUTES).toContain(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_VERSION_KEY);
     });
 
-    it('should include blueprint ID in generic attributes', () => {
+    it('should include blueprint ID and agent version in generic attributes', () => {
       expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY);
+      expect(GENERIC_ATTRIBUTES).toContain(OpenTelemetryConstants.GEN_AI_AGENT_VERSION_KEY);
     });
   });
 

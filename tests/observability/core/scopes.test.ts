@@ -232,6 +232,32 @@ describe('Scopes', () => {
       spy.mockRestore();
     });
 
+    it('should propagate agent version and caller agent version in span attributes', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const callerAgentDetails: AgentDetails = {
+        agentId: 'caller-agent',
+        agentName: 'Caller Agent',
+        agentVersion: '2025-05-01'
+      } as any;
+
+      const scope = InvokeAgentScope.start(testRequest, {}, {
+        agentId: 'test-agent',
+        agentName: 'Test Agent',
+        tenantId: 'test-tenant-456',
+        agentVersion: '1.2.3'
+      }, { callerAgentDetails });
+      expect(scope).toBeInstanceOf(InvokeAgentScope);
+
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_AGENT_VERSION_KEY, val: '1.2.3' }),
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_CALLER_AGENT_VERSION_KEY, val: '2025-05-01' })
+      ]));
+
+      scope?.dispose();
+      spy.mockRestore();
+    });
+
     it('should set caller and caller-agent IP tags', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
       const agentDets = {
