@@ -6,7 +6,7 @@ import { ToolingConfigurationOptions } from './ToolingConfigurationOptions';
 import { MCPServerConfig } from '../contracts';
 
 // Constants for tooling-specific settings
-const MCP_PLATFORM_PROD_BASE_URL = 'https://agent365.svc.cloud.microsoft';
+const MCP_PLATFORM_PROD_BASE_URL = 'https://test.agent365.svc.cloud.dev.microsoft';
 const PROD_MCP_PLATFORM_AUTHENTICATION_SCOPE = 'ea9ffc3e-8a23-4a7d-836d-234d7c7565c1/.default';
 const ATG_APP_ID = 'ea9ffc3e-8a23-4a7d-836d-234d7c7565c1';
 
