@@ -6,7 +6,7 @@ import { ToolingConfigurationOptions } from './ToolingConfigurationOptions';
 import { MCPServerConfig } from '../contracts';
 
 // Constants for tooling-specific settings
-const MCP_PLATFORM_PROD_BASE_URL = 'https://test.agent365.svc.cloud.dev.microsoft';
+const MCP_PLATFORM_PROD_BASE_URL = 'https://agent365.svc.cloud.microsoft';
 const PROD_MCP_PLATFORM_AUTHENTICATION_SCOPE = 'ea9ffc3e-8a23-4a7d-836d-234d7c7565c1/.default';
 const ATG_APP_ID = 'ea9ffc3e-8a23-4a7d-836d-234d7c7565c1';
 
@@ -19,6 +19,10 @@ export function resolveTokenScopeForServer(server: MCPServerConfig): string {
   if (server.audience &&
       server.audience !== ATG_APP_ID &&
       !server.audience.startsWith('api://')) {
+    // V2 server: use explicit scope if provided, otherwise fall back to /.default
+    if (server.scope) {
+      return `${server.audience}/${server.scope}`;
+    }
     return `${server.audience}/.default`;
   }
   return `${ATG_APP_ID}/.default`;

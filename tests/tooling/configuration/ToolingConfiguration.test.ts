@@ -275,14 +275,14 @@ describe('resolveTokenScopeForServer', () => {
     expect(resolveTokenScopeForServer({ mcpServerName: 'tools', url: 'https://tools.example.com', audience: v2AppId })).toBe(`${v2AppId}/.default`);
   });
 
-  it('should return per-server scope regardless of the scope field', () => {
+  it('should return per-server scope using explicit scope field when provided (V2)', () => {
     const v2AppId = 'aaaabbbb-1234-5678-abcd-111122223333';
     expect(resolveTokenScopeForServer({
       mcpServerName: 'tools',
       url: 'https://tools.example.com',
       audience: v2AppId,
       scope: 'Tools.ListInvoke.All'
-    })).toBe(`${v2AppId}/.default`);
+    })).toBe(`${v2AppId}/Tools.ListInvoke.All`);
   });
 });
 

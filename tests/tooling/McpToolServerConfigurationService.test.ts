@@ -1202,7 +1202,7 @@ describe('McpToolServerConfigurationService', () => {
       const servers = await service.listToolServers(mockContext, mockAuthorization, 'graph', v2Token);
 
       expect(getAgenticUserTokenSpy).toHaveBeenCalledWith(
-        mockAuthorization, 'graph', mockContext, [`${v2Audience}/.default`]
+        mockAuthorization, 'graph', mockContext, [`${v2Audience}/Tools.ListInvoke.All`]
       );
       expect(servers[0].headers?.Authorization).toBe(`Bearer ${v2Token}`);
     });
