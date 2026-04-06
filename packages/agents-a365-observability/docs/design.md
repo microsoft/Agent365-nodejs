@@ -184,7 +184,6 @@ scope.recordInputMessages(['User message']);
 scope.recordOutputMessages(['Assistant response']);
 scope.recordInputTokens(100);
 scope.recordOutputTokens(50);
-scope.recordResponseId('resp-123');
 scope.recordFinishReasons(['stop']);
 ```
 
@@ -210,6 +209,131 @@ using scope = ExecuteToolScope.start(
 // ... tool execution ...
 scope.recordResponse('Tool result');
 ```
+
+#### OutputScope ([OutputScope.ts](../src/tracing/scopes/OutputScope.ts))
+
+Traces outgoing agent output messages:
+
+```typescript
+import { OutputScope, OutputResponse } from '@microsoft/agents-a365-observability';
+
+const response: OutputResponse = { messages: ['Hello!', 'How can I help?'] };
+
+using scope = OutputScope.start(
+  { conversationId: 'conv-123', channel: { name: 'Teams' } },
+  response,
+  agentDetails  // Must include tenantId
+);
+
+scope.recordOutputMessages(['Additional response']);
+// Messages are flushed to the span attribute on dispose
+```
+
+### Message Format (OTEL Gen-AI Semantic Conventions)
+
+The SDK uses [OpenTelemetry Gen-AI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/) for message tracing. All `recordInputMessages`/`recordOutputMessages` methods accept both plain strings and structured OTEL message objects.
+
+#### Message Types ([contracts.ts](../src/tracing/contracts.ts))
+
+| Type | Description |
+|------|-------------|
+| `ChatMessage` | Input message with `role`, `parts[]`, and optional `name` |
+| `OutputMessage` | Output message extending `ChatMessage` with `finish_reason` |
+| `InputMessages` | Versioned wrapper: `{ version, messages: ChatMessage[] }` |
+| `OutputMessages` | Versioned wrapper: `{ version, messages: OutputMessage[] }` |
+| `InputMessagesParam` | Union: `string[] \| InputMessages` |
+| `OutputMessagesParam` | Union: `string[] \| OutputMessages` |
+| `MessageRole` | Enum: `system`, `user`, `assistant`, `tool` |
+| `FinishReason` | Enum: `stop`, `length`, `content_filter`, `tool_call`, `error` |
+| `MessagePart` | Discriminated union of all content part types |
+
+#### Message Part Types
+
+| Part Type | `type` Discriminator | Purpose |
+|-----------|---------------------|---------|
+| `TextPart` | `text` | Plain text content |
+| `ToolCallRequestPart` | `tool_call` | Tool invocation by the model |
+| `ToolCallResponsePart` | `tool_call_response` | Tool execution result |
+| `ReasoningPart` | `reasoning` | Chain-of-thought / reasoning content |
+| `BlobPart` | `blob` | Inline base64 binary data (image, audio, video) |
+| `FilePart` | `file` | Reference to a pre-uploaded file |
+| `UriPart` | `uri` | External URI reference |
+| `ServerToolCallPart` | `server_tool_call` | Server-side tool invocation |
+| `ServerToolCallResponsePart` | `server_tool_call_response` | Server-side tool response |
+| `GenericPart` | *(custom)* | Extensible part for future types |
+
+> **Forward compatibility note:** `GenericPart` uses `type: string` rather than a fixed literal, which means it acts as a catch-all for any part type not covered by the other discriminated union members. As a consequence, an exhaustive `switch`/`case` on `part.type` will **not** produce compile-time errors for unhandled cases. Consumers should always include a `default` case in their switch statements to handle unknown or future part types gracefully.
+
+#### Auto-Wrapping Behavior
+
+Plain `string[]` input is automatically wrapped to OTEL format:
+- Input strings become `ChatMessage` with `role: 'user'` and a single `TextPart`
+- Output strings become `OutputMessage` with `role: 'assistant'` and a single `TextPart`
+
+#### Structured Message Example
+
+```typescript
+import { InputMessages, OutputMessages, MessageRole, FinishReason, A365_MESSAGE_SCHEMA_VERSION } from '@microsoft/agents-a365-observability';
+
+// Option 1: Plain string array (auto-wrapped to OTEL format)
+scope.recordInputMessages(['What is the weather?']);
+
+// Option 2: Versioned wrapper with structured messages
+const input: InputMessages = {
+  version: A365_MESSAGE_SCHEMA_VERSION,
+  messages: [
+    { role: MessageRole.SYSTEM, parts: [{ type: 'text', content: 'You are a helpful assistant.' }] },
+    { role: MessageRole.USER, parts: [{ type: 'text', content: 'What is the weather?' }] }
+  ]
+};
+scope.recordInputMessages(input);
+
+// Structured output with tool call and finish reason (versioned wrapper)
+const output: OutputMessages = {
+  version: A365_MESSAGE_SCHEMA_VERSION,
+  messages: [{
+    role: MessageRole.ASSISTANT,
+    parts: [
+      { type: 'text', content: 'Let me check that for you.' },
+      { type: 'tool_call', name: 'get_weather', id: 'call_1', arguments: { city: 'Seattle' } }
+    ],
+    finish_reason: FinishReason.TOOL_CALL
+  }]
+};
+scope.recordOutputMessages(output);
+```
+
+#### Message Serialization ([message-utils.ts](../src/tracing/message-utils.ts))
+
+Messages are serialized to JSON via `JSON.stringify` and stored as span attributes (`gen_ai.input.messages`, `gen_ai.output.messages`). No per-attribute size limit is enforced at the SDK level. If serialization fails (e.g., non-JSON-serializable values such as `BigInt` or circular references), a fallback sentinel is returned so that telemetry recording never throws.
+
+The schema version is embedded inside the serialized wrapper JSON (e.g., `{"version":"0.1.0","messages":[...]}`) rather than set as a separate span attribute. This enables cross-SDK schema evolution while keeping message data self-contained. The current version is `0.1.0` (`A365_MESSAGE_SCHEMA_VERSION`).
+
+#### Span-Level Size Enforcement
+
+Span size is enforced at export time in the `Agent365Exporter`. When a serialized OTLP span exceeds `MAX_SPAN_SIZE_BYTES` (250 KB), the exporter's `truncateSpan()` method reduces the payload until the span fits, operating on the mapped OTLP span object without mutating the original `ReadableSpan`.
+
+Truncation is not implemented as a single `"TRUNCATED"` replacement for every oversized value. Depending on the attribute type and content, the exporter may:
+
+- replace oversized text values with a truncated form ending in `"… [truncated]"`;
+- replace structured message payload fields with sentinel markers such as `"[truncated]"`;
+- replace oversized inline blob content with `"[blob truncated]"`;
+- iteratively remeasure the serialized OTLP span after each shrink step until the span fits or no additional shrink actions remain.
+
+Consumers of exported spans should therefore treat these sentinel strings as part of the documented export format for oversized spans rather than expecting a single uniform replacement value.
+
+#### Scope Visibility
+
+`recordInputMessages`/`recordOutputMessages` are `protected` on the base `OpenTelemetryScope` class and exposed as `public` only on scopes where they are semantically appropriate:
+
+| Scope | `recordInputMessages` | `recordOutputMessages` |
+|-------|----------------------|----------------------|
+| `InvokeAgentScope` | public | public |
+| `InferenceScope` | public | public |
+| `OutputScope` | — | public (accumulating) |
+| `ExecuteToolScope` | — | — |
+
+`ExecuteToolScope` records tool input/output via `ToolCallDetails.arguments` and `recordResponse()` instead.
 
 ### BaggageBuilder ([BaggageBuilder.ts](../src/tracing/middleware/BaggageBuilder.ts))
 
@@ -387,12 +511,14 @@ src/
 ├── ObservabilityBuilder.ts               # Configuration builder
 ├── tracing/
 │   ├── constants.ts                      # OpenTelemetry attribute keys
-│   ├── contracts.ts                      # Data interfaces and enums
+│   ├── contracts.ts                      # Data interfaces, enums, OTEL message types
+│   ├── message-utils.ts                  # Message conversion and serialization
 │   ├── scopes/
 │   │   ├── OpenTelemetryScope.ts         # Base scope class
 │   │   ├── InvokeAgentScope.ts           # Agent invocation tracing
 │   │   ├── InferenceScope.ts             # LLM inference tracing
-│   │   └── ExecuteToolScope.ts           # Tool execution tracing
+│   │   ├── ExecuteToolScope.ts           # Tool execution tracing
+│   │   └── OutputScope.ts               # Output message tracing
 │   ├── middleware/
 │   │   └── BaggageBuilder.ts             # Baggage context builder
 │   ├── processors/

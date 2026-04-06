@@ -21,7 +21,6 @@ export enum ExecutionType {
   Unknown = 'Unknown'
 }
 
-
 /**
  * Represents different roles that can invoke an agent
  */
@@ -43,11 +42,10 @@ export enum InvocationRole {
  * Represents different operation for types for model inference
  */
 export enum InferenceOperationType {
-    CHAT = 'Chat',
-    TEXT_COMPLETION  = 'TextCompletion',
-    GENERATE_CONTENT  = 'GenerateContent'
+  CHAT = 'Chat',
+  TEXT_COMPLETION = 'TextCompletion',
+  GENERATE_CONTENT = 'GenerateContent'
 }
-
 
 /**
  * Represents channel for an invocation
@@ -195,7 +193,7 @@ export interface CallerDetails {
   callerAgentDetails?: AgentDetails;
 }
 
-/*
+/**
  * @deprecated Use AgentDetails. EnhancedAgentDetails is now an alias of AgentDetails.
  */
 export type EnhancedAgentDetails = AgentDetails;
@@ -212,7 +210,6 @@ export interface ServiceEndpoint {
 
   /** The protocol (e.g., http, https) */
   protocol?: string;
-
 }
 
 /**
@@ -270,16 +267,16 @@ export interface InferenceResponse {
 
   /** Number of output tokens generated */
   outputTokens?: number;
-
 }
 
 /**
  * Represents a response containing output messages from an agent.
  * Used with OutputScope for output message tracing.
+ * Accepts plain strings or structured OTEL OutputMessage objects.
  */
 export interface OutputResponse {
   /** The output messages from the agent */
-  messages: string[];
+  messages: OutputMessagesParam;
 }
 
 /**
@@ -306,3 +303,177 @@ export interface SpanDetails {
   spanLinks?: Link[];
 }
 
+// ---------------------------------------------------------------------------
+// OpenTelemetry Semantic Convention – Gen-AI Message Format
+// https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-input-messages.json
+// https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-output-messages.json
+// ---------------------------------------------------------------------------
+
+/**
+ * Role of a message participant per OTEL gen-ai semantic conventions.
+ */
+export enum MessageRole {
+  SYSTEM = 'system',
+  USER = 'user',
+  ASSISTANT = 'assistant',
+  TOOL = 'tool'
+}
+
+/**
+ * Reason a model stopped generating per OTEL gen-ai semantic conventions.
+ */
+export enum FinishReason {
+  STOP = 'stop',
+  LENGTH = 'length',
+  CONTENT_FILTER = 'content_filter',
+  TOOL_CALL = 'tool_call',
+  ERROR = 'error'
+}
+
+/**
+ * Media modality for blob, file, and URI parts.
+ */
+export enum Modality {
+  IMAGE = 'image',
+  VIDEO = 'video',
+  AUDIO = 'audio'
+}
+
+// ---- Message part types (discriminated union on `type`) --------------------
+
+/** Plain text content. */
+export interface TextPart {
+  type: 'text';
+  content: string;
+}
+
+/** A tool call requested by the model. */
+export interface ToolCallRequestPart {
+  type: 'tool_call';
+  name: string;
+  id?: string;
+  arguments?: Record<string, unknown> | unknown[];
+}
+
+/** Result of a tool call. */
+export interface ToolCallResponsePart {
+  type: 'tool_call_response';
+  id?: string;
+  response?: unknown;
+}
+
+/** Model reasoning / chain-of-thought content. */
+export interface ReasoningPart {
+  type: 'reasoning';
+  content: string;
+}
+
+/** Inline binary data (base64-encoded). */
+export interface BlobPart {
+  type: 'blob';
+  modality: Modality | string;
+  mime_type?: string;
+  content: string;
+}
+
+/** Reference to a pre-uploaded file. */
+export interface FilePart {
+  type: 'file';
+  modality: Modality | string;
+  mime_type?: string;
+  file_id: string;
+}
+
+/** External URI reference. */
+export interface UriPart {
+  type: 'uri';
+  modality: Modality | string;
+  mime_type?: string;
+  uri: string;
+}
+
+/** Extensible server tool call details with a type discriminator. */
+export interface GenericServerToolCall {
+  type: string;
+  [key: string]: unknown;
+}
+
+/** Extensible server tool call response with a type discriminator. */
+export interface GenericServerToolCallResponse {
+  type: string;
+  [key: string]: unknown;
+}
+
+/** Server-side tool invocation. */
+export interface ServerToolCallPart {
+  type: 'server_tool_call';
+  name: string;
+  id?: string;
+  server_tool_call: GenericServerToolCall;
+}
+
+/** Server-side tool response. */
+export interface ServerToolCallResponsePart {
+  type: 'server_tool_call_response';
+  id?: string;
+  server_tool_call_response: GenericServerToolCallResponse;
+}
+
+/** Extensible part for custom / future types. */
+export interface GenericPart {
+  type: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Union of all message part types per OTEL gen-ai semantic conventions.
+ *
+ * Note: {@link GenericPart} acts as a catch-all for forward compatibility with
+ * custom or future part types. Because its `type` is `string` (not a literal),
+ * exhaustive `switch`/`case` on `part.type` will not produce compile-time errors
+ * for unhandled cases.
+ */
+export type MessagePart =
+  | TextPart
+  | ToolCallRequestPart
+  | ToolCallResponsePart
+  | ReasoningPart
+  | BlobPart
+  | FilePart
+  | UriPart
+  | ServerToolCallPart
+  | ServerToolCallResponsePart
+  | GenericPart;
+
+/**
+ * An input message sent to a model (OTEL gen-ai semantic conventions).
+ */
+export interface ChatMessage {
+  role: MessageRole | string;
+  parts: MessagePart[];
+  name?: string;
+}
+
+export interface InputMessages {
+  version: typeof A365_MESSAGE_SCHEMA_VERSION;
+  messages: ChatMessage[];
+}
+/**
+ * An output message produced by a model (OTEL gen-ai semantic conventions).
+ */
+export interface OutputMessage extends ChatMessage {
+  finish_reason?: FinishReason | string;
+}
+
+export interface OutputMessages {
+  version: typeof A365_MESSAGE_SCHEMA_VERSION;
+  messages: OutputMessage[];
+}
+
+export const A365_MESSAGE_SCHEMA_VERSION = '0.1.0' as const;
+
+/** Accepted input for `recordInputMessages`. Supports plain strings (backward compat) or the versioned wrapper. */
+export type InputMessagesParam = string[] | InputMessages;
+
+/** Accepted input for `recordOutputMessages`. Supports plain strings (backward compat) or the versioned wrapper. */
+export type OutputMessagesParam = string[] | OutputMessages;

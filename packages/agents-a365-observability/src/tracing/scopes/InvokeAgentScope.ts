@@ -9,6 +9,8 @@ import {
   Request,
   SpanDetails,
   AgentDetails,
+  InputMessagesParam,
+  OutputMessagesParam,
 } from '../contracts';
 import { OpenTelemetryConstants } from '../constants';
 
@@ -109,17 +111,19 @@ export class InvokeAgentScope extends OpenTelemetryScope {
 
   /**
    * Records the input messages for telemetry tracking.
-   * @param messages Array of input messages
+   * Accepts plain strings (auto-wrapped as OTEL ChatMessage with role `user`) or a versioned InputMessages wrapper.
+   * @param messages Array of input message strings or an InputMessages wrapper
    */
-  public recordInputMessages(messages: string[]): void {
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, JSON.stringify(messages));
+  public override recordInputMessages(messages: InputMessagesParam): void {
+    super.recordInputMessages(messages);
   }
 
   /**
    * Records the output messages for telemetry tracking.
-   * @param messages Array of output messages
+   * Accepts plain strings (auto-wrapped as OTEL OutputMessage with role `assistant`) or a versioned OutputMessages wrapper.
+   * @param messages Array of output message strings or an OutputMessages wrapper
    */
-  public recordOutputMessages(messages: string[]): void {
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY, JSON.stringify(messages));
+  public override recordOutputMessages(messages: OutputMessagesParam): void {
+    super.recordOutputMessages(messages);
   }
 }

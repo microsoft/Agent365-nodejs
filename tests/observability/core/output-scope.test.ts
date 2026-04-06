@@ -12,6 +12,11 @@ import {
   OutputResponse,
   OpenTelemetryConstants,
   ParentSpanRef,
+  OutputMessage,
+  OutputMessages,
+  MessageRole,
+  FinishReason,
+  A365_MESSAGE_SCHEMA_VERSION,
 } from '@microsoft/agents-a365-observability';
 
 describe('OutputScope', () => {
@@ -70,7 +75,7 @@ describe('OutputScope', () => {
     return { span, attributes: span.attributes };
   }
 
-  it('should create scope with correct span attributes and output messages', async () => {
+  it('should create scope with correct span attributes and output messages (string[])', async () => {
     const response: OutputResponse = { messages: ['First message', 'Second message'] };
 
     const scope = OutputScope.start(
@@ -91,7 +96,13 @@ describe('OutputScope', () => {
     expect(attributes[OpenTelemetryConstants.CHANNEL_NAME_KEY]).toBe('Email');
     expect(attributes[OpenTelemetryConstants.CHANNEL_LINK_KEY]).toBe('https://email.link');
     const parsed = JSON.parse(attributes[OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY] as string);
-    expect(parsed).toEqual(['First message', 'Second message']);
+    expect(parsed.version).toBe(A365_MESSAGE_SCHEMA_VERSION);
+    expect(parsed.messages).toEqual([
+      { role: 'assistant', parts: [{ type: 'text', content: 'First message' }] },
+      { role: 'assistant', parts: [{ type: 'text', content: 'Second message' }] },
+    ]);
+    // Separate version attribute should not be set
+    expect(attributes[OpenTelemetryConstants.A365_MESSAGES_SCHEMA_VERSION_KEY]).toBeUndefined();
   });
 
   it('should append messages with recordOutputMessages and flush on dispose', async () => {
@@ -106,7 +117,13 @@ describe('OutputScope', () => {
     const { attributes } = getLastSpan();
 
     const parsed = JSON.parse(attributes[OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY] as string);
-    expect(parsed).toEqual(['Initial', 'Appended 1', 'Appended 2', 'Appended 3']);
+    expect(parsed.version).toBe(A365_MESSAGE_SCHEMA_VERSION);
+    expect(parsed.messages).toEqual([
+      { role: 'assistant', parts: [{ type: 'text', content: 'Initial' }] },
+      { role: 'assistant', parts: [{ type: 'text', content: 'Appended 1' }] },
+      { role: 'assistant', parts: [{ type: 'text', content: 'Appended 2' }] },
+      { role: 'assistant', parts: [{ type: 'text', content: 'Appended 3' }] },
+    ]);
   });
 
   it('should use parent span reference for linking', async () => {
@@ -126,6 +143,73 @@ describe('OutputScope', () => {
   });
 
   it('should throw when agentDetails.tenantId is missing', () => {
-    expect(() => OutputScope.start({}, { messages: ['m'] }, { agentId: 'a' } as any)).toThrow('OutputScope: tenantId is required on agentDetails');
+    expect(() => OutputScope.start({}, { messages: ['m'] }, { agentId: 'a' } as AgentDetails)).toThrow('OutputScope: tenantId is required on agentDetails');
+  });
+
+  it('should accept structured OutputMessages wrapper without re-wrapping', async () => {
+    const structured: OutputMessages = {
+      version: A365_MESSAGE_SCHEMA_VERSION,
+      messages: [
+        { role: MessageRole.ASSISTANT, parts: [{ type: 'text', content: 'Hello structured' }], finish_reason: FinishReason.STOP },
+        { role: MessageRole.ASSISTANT, parts: [{ type: 'text', content: 'Second structured' }] },
+      ],
+    };
+    const response: OutputResponse = { messages: structured };
+
+    const scope = OutputScope.start(testRequest, response, testAgentDetails);
+    scope.dispose();
+
+    await flushProvider.forceFlush();
+    const { attributes } = getLastSpan();
+    const parsed = JSON.parse(attributes[OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY] as string);
+    expect(parsed.version).toBe(A365_MESSAGE_SCHEMA_VERSION);
+    // Should pass through as-is, preserving finish_reason and not double-wrapping
+    expect(parsed.messages).toEqual(structured.messages);
+  });
+
+  it('should accept structured OutputMessages wrapper in recordOutputMessages', async () => {
+    const initial: OutputMessages = {
+      version: A365_MESSAGE_SCHEMA_VERSION,
+      messages: [
+        { role: MessageRole.ASSISTANT, parts: [{ type: 'text', content: 'Initial structured' }] },
+      ],
+    };
+    const appended: OutputMessages = {
+      version: A365_MESSAGE_SCHEMA_VERSION,
+      messages: [
+        { role: MessageRole.ASSISTANT, parts: [{ type: 'text', content: 'Appended structured' }], finish_reason: FinishReason.STOP },
+      ],
+    };
+
+    const scope = OutputScope.start(testRequest, { messages: initial }, testAgentDetails);
+    scope.recordOutputMessages(appended);
+    scope.dispose();
+
+    await flushProvider.forceFlush();
+    const { attributes } = getLastSpan();
+    const parsed = JSON.parse(attributes[OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY] as string);
+    expect(parsed.version).toBe(A365_MESSAGE_SCHEMA_VERSION);
+    expect(parsed.messages).toEqual([...initial.messages, ...appended.messages]);
+  });
+
+  it('should handle mixed structured OutputMessages and plain string[] accumulation', async () => {
+    const initial: OutputMessages = {
+      version: A365_MESSAGE_SCHEMA_VERSION,
+      messages: [
+        { role: MessageRole.ASSISTANT, parts: [{ type: 'text', content: 'Structured initial' }], finish_reason: FinishReason.STOP },
+      ],
+    };
+
+    const scope = OutputScope.start(testRequest, { messages: initial }, testAgentDetails);
+    scope.recordOutputMessages(['Plain string appended']);
+    scope.dispose();
+
+    await flushProvider.forceFlush();
+    const { attributes } = getLastSpan();
+    const parsed = JSON.parse(attributes[OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY] as string);
+    expect(parsed.version).toBe(A365_MESSAGE_SCHEMA_VERSION);
+    expect(parsed.messages).toHaveLength(2);
+    expect(parsed.messages[0]).toEqual({ role: 'assistant', parts: [{ type: 'text', content: 'Structured initial' }], finish_reason: 'stop' });
+    expect(parsed.messages[1]).toEqual({ role: 'assistant', parts: [{ type: 'text', content: 'Plain string appended' }] });
   });
 });

@@ -33,8 +33,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`BaggageBuilder.sourceMetadataName()` renamed to `BaggageBuilder.channelName()`** — Fluent setter for the channel name baggage value.
 - **`BaggageBuilder.sourceMetadataDescription()` renamed to `BaggageBuilder.channelLink()`** — Fluent setter for the channel link baggage value.
 
+- **`OutputResponse.messages` type changed from `string[]` to `OutputMessagesParam`** — The `OutputMessagesParam` union type (`string[] | OutputMessages`) allows passing either plain strings or a versioned `OutputMessages` wrapper (`{ version, messages: OutputMessage[] }`) with `finish_reason`, multi-modal parts, etc. Existing code passing `string[]` continues to work (auto-converted to OTEL format internally), preserving backward compatibility.
+- **`recordInputMessages()` / `recordOutputMessages()` parameter type widened** — Methods now accept `InputMessagesParam` (`string[] | InputMessages`) and `OutputMessagesParam` (`string[] | OutputMessages`). `InputMessages` is a versioned wrapper `{ version, messages: ChatMessage[] }` and `OutputMessages` is a versioned wrapper `{ version, messages: OutputMessage[] }`. Plain `string[]` input is auto-wrapped to OTEL gen-ai format.
+
 ### Added (`@microsoft/agents-a365-observability`)
 
+- **OTEL Gen-AI Message Format types** — New types aligned with [OpenTelemetry Gen-AI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/): `MessageRole`, `FinishReason`, `Modality`, `ChatMessage`, `OutputMessage`, `InputMessages`, `OutputMessages`, and discriminated `MessagePart` union (`TextPart`, `ToolCallRequestPart`, `ToolCallResponsePart`, `ReasoningPart`, `BlobPart`, `FilePart`, `UriPart`, `ServerToolCallPart`, `ServerToolCallResponsePart`, `GenericPart`).
 - **`SpanDetails`** — New interface grouping `parentContext`, `startTime`, `endTime`, `spanKind` for scope construction.
 - **`CallerDetails`** — New interface wrapping `userDetails` and `callerAgentDetails` for `InvokeAgentScope`.
 - **`Request`** — Unified request context interface (`conversationId`, `channel`, `content`, `sessionId`) used across all scopes.

@@ -17,7 +17,8 @@ import {
   statusName,
   resolveAgent365Endpoint,
   getAgent365ObservabilityDomainOverride,
-  isPerRequestExportEnabled
+  isPerRequestExportEnabled,
+  truncateSpan,
 } from './utils';
 import { getExportToken } from '../context/token-context';
 import logger, { formatError } from '../../utils/logging';
@@ -301,7 +302,7 @@ export class Agent365Exporter implements SpanExporter {
       const scopeKey = `${scope?.name || 'unknown'}:${scope?.version || ''}`;
 
       const existing = scopeMap.get(scopeKey) || [];
-      existing.push(this.mapSpan(sp));
+      existing.push(truncateSpan(this.mapSpan(sp)));
       scopeMap.set(scopeKey, existing);
     }
 

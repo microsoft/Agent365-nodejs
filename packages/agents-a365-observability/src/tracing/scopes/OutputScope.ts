@@ -3,14 +3,15 @@
 
 import { SpanKind } from '@opentelemetry/api';
 import { OpenTelemetryScope } from './OpenTelemetryScope';
-import { AgentDetails, UserDetails, OutputResponse, Request, SpanDetails } from '../contracts';
+import { AgentDetails, UserDetails, OutputResponse, Request, SpanDetails, OutputMessage, OutputMessagesParam, A365_MESSAGE_SCHEMA_VERSION } from '../contracts';
 import { OpenTelemetryConstants } from '../constants';
+import { normalizeOutputMessages, serializeMessages } from '../message-utils';
 
 /**
  * Provides OpenTelemetry tracing scope for output message tracing with parent span linking.
  */
 export class OutputScope extends OpenTelemetryScope {
-  private _outputMessages: string[];
+  private _outputMessages: OutputMessage[];
   private _outputMessagesDirty = false;
 
   /**
@@ -58,38 +59,42 @@ export class OutputScope extends OpenTelemetryScope {
       userDetails,
     );
 
-    // Initialize accumulated messages list from the response
-    this._outputMessages = [...response.messages];
+    // Normalize response messages and extract inner messages for accumulation
+    const normalized = normalizeOutputMessages(response.messages);
+    this._outputMessages = [...normalized.messages];
 
-    // Set initial output messages attribute
+    // Set initial output messages attribute as the full versioned wrapper
+    const wrapper = { version: A365_MESSAGE_SCHEMA_VERSION, messages: this._outputMessages };
     this.setTagMaybe(
       OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY,
-      JSON.stringify(this._outputMessages)
+      serializeMessages(wrapper)
     );
 
     // Set conversation and channel
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, request.conversationId);
     this.setTagMaybe(OpenTelemetryConstants.CHANNEL_NAME_KEY, request.channel?.name);
     this.setTagMaybe(OpenTelemetryConstants.CHANNEL_LINK_KEY, request.channel?.description);
-
   }
 
   /**
    * Records the output messages for telemetry tracking.
    * Appends the provided messages to the accumulated output messages list.
+   * Accepts plain strings (auto-wrapped as OTEL OutputMessage) or a versioned OutputMessages wrapper.
    * The updated attribute is flushed when the scope is disposed.
-   * @param messages Array of output messages to append.
+   * @param messages Array of output message strings or an OutputMessages wrapper to append.
    */
-  public recordOutputMessages(messages: string[]): void {
-    this._outputMessages.push(...messages);
+  public recordOutputMessages(messages: OutputMessagesParam): void {
+    const normalized = normalizeOutputMessages(messages);
+    this._outputMessages.push(...normalized.messages);
     this._outputMessagesDirty = true;
   }
 
   public override [Symbol.dispose](): void {
     if (this._outputMessagesDirty) {
+      const wrapper = { version: A365_MESSAGE_SCHEMA_VERSION, messages: this._outputMessages };
       this.setTagMaybe(
         OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY,
-        JSON.stringify(this._outputMessages)
+        serializeMessages(wrapper)
       );
     }
     super[Symbol.dispose]();

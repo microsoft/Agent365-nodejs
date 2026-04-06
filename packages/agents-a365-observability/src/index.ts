@@ -39,6 +39,7 @@ export {
   InvokeAgentScopeDetails,
   UserDetails,
   CallerDetails,
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- intentional re-export for backward compatibility
   EnhancedAgentDetails,
   ServiceEndpoint,
   InferenceDetails,
@@ -46,6 +47,30 @@ export {
   InferenceResponse,
   OutputResponse,
   SpanDetails,
+  // OTEL gen-ai message format types
+  MessageRole,
+  FinishReason,
+  Modality,
+  TextPart,
+  ToolCallRequestPart,
+  ToolCallResponsePart,
+  ReasoningPart,
+  BlobPart,
+  FilePart,
+  UriPart,
+  ServerToolCallPart,
+  ServerToolCallResponsePart,
+  GenericServerToolCall,
+  GenericServerToolCallResponse,
+  GenericPart,
+  MessagePart,
+  ChatMessage,
+  OutputMessage,
+  InputMessages,
+  OutputMessages,
+  InputMessagesParam,
+  OutputMessagesParam,
+  A365_MESSAGE_SCHEMA_VERSION,
 } from './tracing/contracts';
 
 // Scopes

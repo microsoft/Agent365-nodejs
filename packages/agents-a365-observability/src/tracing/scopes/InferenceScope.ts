@@ -10,6 +10,8 @@ import {
   UserDetails,
   Request,
   SpanDetails,
+  InputMessagesParam,
+  OutputMessagesParam,
 } from '../contracts';
 
 /**
@@ -82,22 +84,6 @@ export class InferenceScope extends OpenTelemetryScope {
   }
 
   /**
-   * Records the input messages for telemetry tracking.
-   * @param messages Array of input messages
-   */
-  public recordInputMessages(messages: string[]): void {
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, JSON.stringify(messages));
-  }
-
-  /**
-   * Records the output messages for telemetry tracking.
-   * @param messages Array of output messages
-   */
-  public recordOutputMessages(messages: string[]): void {
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY, JSON.stringify(messages));
-  }
-
-  /**
    * Records the number of input tokens for telemetry tracking.
    * @param inputTokens Number of input tokens
    */
@@ -123,4 +109,21 @@ export class InferenceScope extends OpenTelemetryScope {
     }
   }
 
+  /**
+   * Records the input messages for telemetry tracking.
+   * Accepts plain strings (auto-wrapped as OTEL ChatMessage with role `user`) or a versioned InputMessages wrapper.
+   * @param messages Array of input message strings or an InputMessages wrapper
+   */
+  public override recordInputMessages(messages: InputMessagesParam): void {
+    super.recordInputMessages(messages);
+  }
+
+  /**
+   * Records the output messages for telemetry tracking.
+   * Accepts plain strings (auto-wrapped as OTEL OutputMessage with role `assistant`) or a versioned OutputMessages wrapper.
+   * @param messages Array of output message strings or an OutputMessages wrapper
+   */
+  public override recordOutputMessages(messages: OutputMessagesParam): void {
+    super.recordOutputMessages(messages);
+  }
 }
