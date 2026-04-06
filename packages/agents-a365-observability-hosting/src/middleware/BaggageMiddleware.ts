@@ -5,7 +5,6 @@ import { TurnContext, Middleware } from '@microsoft/agents-hosting';
 import { ActivityTypes, ActivityEventNames } from '@microsoft/agents-activity';
 import { BaggageBuilder } from '@microsoft/agents-a365-observability';
 import {
-  getExecutionTypePair,
   getCallerBaggagePairs,
   getTargetAgentBaggagePairs,
   getTenantIdPair,
@@ -35,7 +34,6 @@ export class BaggageMiddleware implements Middleware {
       .setPairs(getTenantIdPair(context))
       .setPairs(getChannelBaggagePairs(context))
       .setPairs(getConversationIdAndItemLinkPairs(context))
-      .setPairs(getExecutionTypePair(context))
       .build();
 
     await baggageScope.run(async () => {

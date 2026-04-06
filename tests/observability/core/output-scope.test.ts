@@ -105,12 +105,12 @@ describe('OutputScope', () => {
     expect(attributes[OpenTelemetryConstants.A365_MESSAGES_SCHEMA_VERSION_KEY]).toBeUndefined();
   });
 
-  it('should append messages with recordOutputMessages and flush on dispose', async () => {
+  it('should overwrite messages with recordOutputMessages', async () => {
     const response: OutputResponse = { messages: ['Initial'] };
 
     const scope = OutputScope.start(testRequest, response, testAgentDetails);
-    scope.recordOutputMessages(['Appended 1']);
-    scope.recordOutputMessages(['Appended 2', 'Appended 3']);
+    scope.recordOutputMessages(['Overwritten 1']);
+    scope.recordOutputMessages(['Overwritten 2', 'Overwritten 3']);
     scope.dispose();
 
     await flushProvider.forceFlush();
@@ -118,11 +118,10 @@ describe('OutputScope', () => {
 
     const parsed = JSON.parse(attributes[OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY] as string);
     expect(parsed.version).toBe(A365_MESSAGE_SCHEMA_VERSION);
+    // Only the last recordOutputMessages call should be present (overwrite semantics)
     expect(parsed.messages).toEqual([
-      { role: 'assistant', parts: [{ type: 'text', content: 'Initial' }] },
-      { role: 'assistant', parts: [{ type: 'text', content: 'Appended 1' }] },
-      { role: 'assistant', parts: [{ type: 'text', content: 'Appended 2' }] },
-      { role: 'assistant', parts: [{ type: 'text', content: 'Appended 3' }] },
+      { role: 'assistant', parts: [{ type: 'text', content: 'Overwritten 2' }] },
+      { role: 'assistant', parts: [{ type: 'text', content: 'Overwritten 3' }] },
     ]);
   });
 
@@ -167,32 +166,33 @@ describe('OutputScope', () => {
     expect(parsed.messages).toEqual(structured.messages);
   });
 
-  it('should accept structured OutputMessages wrapper in recordOutputMessages', async () => {
+  it('should accept structured OutputMessages wrapper in recordOutputMessages (overwrite)', async () => {
     const initial: OutputMessages = {
       version: A365_MESSAGE_SCHEMA_VERSION,
       messages: [
         { role: MessageRole.ASSISTANT, parts: [{ type: 'text', content: 'Initial structured' }] },
       ],
     };
-    const appended: OutputMessages = {
+    const overwrite: OutputMessages = {
       version: A365_MESSAGE_SCHEMA_VERSION,
       messages: [
-        { role: MessageRole.ASSISTANT, parts: [{ type: 'text', content: 'Appended structured' }], finish_reason: FinishReason.STOP },
+        { role: MessageRole.ASSISTANT, parts: [{ type: 'text', content: 'Overwritten structured' }], finish_reason: FinishReason.STOP },
       ],
     };
 
     const scope = OutputScope.start(testRequest, { messages: initial }, testAgentDetails);
-    scope.recordOutputMessages(appended);
+    scope.recordOutputMessages(overwrite);
     scope.dispose();
 
     await flushProvider.forceFlush();
     const { attributes } = getLastSpan();
     const parsed = JSON.parse(attributes[OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY] as string);
     expect(parsed.version).toBe(A365_MESSAGE_SCHEMA_VERSION);
-    expect(parsed.messages).toEqual([...initial.messages, ...appended.messages]);
+    // Overwrite: only the last call's messages should be present
+    expect(parsed.messages).toEqual(overwrite.messages);
   });
 
-  it('should handle mixed structured OutputMessages and plain string[] accumulation', async () => {
+  it('should overwrite structured OutputMessages with plain string[]', async () => {
     const initial: OutputMessages = {
       version: A365_MESSAGE_SCHEMA_VERSION,
       messages: [
@@ -201,15 +201,15 @@ describe('OutputScope', () => {
     };
 
     const scope = OutputScope.start(testRequest, { messages: initial }, testAgentDetails);
-    scope.recordOutputMessages(['Plain string appended']);
+    scope.recordOutputMessages(['Plain string overwrite']);
     scope.dispose();
 
     await flushProvider.forceFlush();
     const { attributes } = getLastSpan();
     const parsed = JSON.parse(attributes[OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY] as string);
     expect(parsed.version).toBe(A365_MESSAGE_SCHEMA_VERSION);
-    expect(parsed.messages).toHaveLength(2);
-    expect(parsed.messages[0]).toEqual({ role: 'assistant', parts: [{ type: 'text', content: 'Structured initial' }], finish_reason: 'stop' });
-    expect(parsed.messages[1]).toEqual({ role: 'assistant', parts: [{ type: 'text', content: 'Plain string appended' }] });
+    // Overwrite: only the plain string call should be present
+    expect(parsed.messages).toHaveLength(1);
+    expect(parsed.messages[0]).toEqual({ role: 'assistant', parts: [{ type: 'text', content: 'Plain string overwrite' }] });
   });
 });

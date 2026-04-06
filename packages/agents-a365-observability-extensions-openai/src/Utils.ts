@@ -89,7 +89,6 @@ export function getAttributesFromGenerationSpanData(data: SpanData): Record<stri
 
   if (genData.input) {
     attributes[Constants.GEN_AI_REQUEST_CONTENT_KEY] = safeJsonDumps(genData.input);
-    attributes[OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY] = 'application/json';
   }
 
   if (genData.output) {
@@ -124,7 +123,6 @@ export function getAttributesFromFunctionSpanData(data: SpanData): Record<string
   if (funcData.input) {
     attributes[Constants.GEN_AI_REQUEST_CONTENT_KEY] =
       typeof funcData.input === 'string' ? truncateValue(funcData.input) : safeJsonDumps(funcData.input);
-    attributes[OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY] = 'application/json';
   }
 
   if (funcData.output !== undefined && funcData.output !== null) {
@@ -145,7 +143,6 @@ export function getAttributesFromMCPListToolsSpanData(data: SpanData): Record<st
 
   if (mcpData.result) {
     attributes[Constants.GEN_AI_RESPONSE_CONTENT_KEY] = safeJsonDumps(mcpData.result);
-    attributes[OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY] = 'application/json';
   }
   return attributes;
 }

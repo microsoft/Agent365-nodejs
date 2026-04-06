@@ -63,7 +63,10 @@ export class ExecuteToolScope extends OpenTelemetryScope {
     const { toolName, arguments: args, toolCallId, description, toolType, endpoint } = details;
 
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_TOOL_NAME_KEY, toolName);
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_TOOL_ARGS_KEY, args);
+    this.setTagMaybe(
+      OpenTelemetryConstants.GEN_AI_TOOL_ARGS_KEY,
+      typeof args === 'object' ? JSON.stringify(args) : args
+    );
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_TOOL_TYPE_KEY, toolType);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_TOOL_CALL_ID_KEY, toolCallId);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_TOOL_DESCRIPTION_KEY, description);
@@ -84,9 +87,12 @@ export class ExecuteToolScope extends OpenTelemetryScope {
 
   /**
    * Records response information for telemetry tracking.
-   * @param response The tool execution response
+   * @param response The tool execution response. Objects are serialized to JSON automatically.
    */
-  public recordResponse(response: string): void {
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_TOOL_CALL_RESULT_KEY, response);
+  public recordResponse(response: Record<string, unknown> | string): void {
+    this.setTagMaybe(
+      OpenTelemetryConstants.GEN_AI_TOOL_CALL_RESULT_KEY,
+      typeof response === 'object' ? JSON.stringify(response) : response
+    );
   }
 }

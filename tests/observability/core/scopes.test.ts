@@ -415,6 +415,76 @@ describe('Scopes', () => {
       scope?.dispose();
       spy.mockRestore();
     });
+
+    it('should serialize object arguments to JSON string', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const objArgs = { query: 'GDPR data retention', maxResults: 5 };
+      const scope = ExecuteToolScope.start(
+        testRequest,
+        { toolName: 'search-tool', arguments: objArgs },
+        testAgentDetails
+      );
+
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_TOOL_ARGS_KEY, val: JSON.stringify(objArgs) })
+      ]));
+      scope?.dispose();
+      spy.mockRestore();
+    });
+
+    it('should pass string arguments as-is', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const scope = ExecuteToolScope.start(
+        testRequest,
+        { toolName: 'search-tool', arguments: '{"query":"test"}' },
+        testAgentDetails
+      );
+
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_TOOL_ARGS_KEY, val: '{"query":"test"}' })
+      ]));
+      scope?.dispose();
+      spy.mockRestore();
+    });
+
+    it('should serialize object response to JSON string', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const scope = ExecuteToolScope.start(
+        testRequest,
+        { toolName: 'test-tool' },
+        testAgentDetails
+      );
+
+      const objResponse = { results: [{ title: 'Doc A', relevance: 0.95 }] };
+      scope.recordResponse(objResponse);
+
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_TOOL_CALL_RESULT_KEY, val: JSON.stringify(objResponse) })
+      ]));
+      scope?.dispose();
+      spy.mockRestore();
+    });
+
+    it('should pass string response as-is', () => {
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
+      const scope = ExecuteToolScope.start(
+        testRequest,
+        { toolName: 'test-tool' },
+        testAgentDetails
+      );
+
+      scope.recordResponse('plain string result');
+
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_TOOL_CALL_RESULT_KEY, val: 'plain string result' })
+      ]));
+      scope?.dispose();
+      spy.mockRestore();
+    });
   });
 
   describe('endpoint.port serialization', () => {
