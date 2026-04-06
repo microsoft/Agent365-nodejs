@@ -126,6 +126,9 @@ export interface AgentDetails {
 
   /** The provider name (e.g., az.ai.agent365, openai, anthropic) */
   providerName?: string;
+
+  /** The version of the agent (e.g., '1.0.0', '2025-05-01') */
+  agentVersion?: string;
 }
 
 /**

@@ -140,6 +140,16 @@ export class BaggageBuilder {
   }
 
   /**
+   * Set the agent version baggage value.
+   * @param value The agent version (e.g., '1.0.0', '2025-05-01')
+   * @returns Self for method chaining
+   */
+  agentVersion(value: string | null | undefined): BaggageBuilder {
+    this.set(OpenTelemetryConstants.GEN_AI_AGENT_VERSION_KEY, value);
+    return this;
+  }
+
+  /**
    * Set the session description baggage value.
    * @param value The session description
    * @returns Self for method chaining
