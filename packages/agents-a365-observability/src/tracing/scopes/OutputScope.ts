@@ -98,6 +98,6 @@ export class OutputScope extends OpenTelemetryScope {
    * Check if the value is a raw dict (plain object, not string[] or OutputMessages wrapper).
    */
   private _isRawDict(messages: ResponseMessagesParam): messages is Record<string, unknown> {
-    return typeof messages === 'object' && !Array.isArray(messages) && !('version' in messages && 'messages' in messages);
+    return typeof messages === 'object' && !Array.isArray(messages) && !('version' in messages);
   }
 }

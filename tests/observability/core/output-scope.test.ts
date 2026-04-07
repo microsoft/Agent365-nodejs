@@ -212,4 +212,26 @@ describe('OutputScope', () => {
     expect(parsed.messages).toHaveLength(1);
     expect(parsed.messages[0]).toEqual({ role: 'assistant', parts: [{ type: 'text', content: 'Plain string overwrite' }] });
   });
+
+  it('should serialize raw dict (tool call result) directly via constructor', async () => {
+    const dict = { result: 'ok', count: 42 };
+    const scope = OutputScope.start(testRequest, { messages: dict as any }, testAgentDetails);
+    scope.dispose();
+
+    await flushProvider.forceFlush();
+    const { attributes } = getLastSpan();
+    expect(attributes[OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY]).toBe(JSON.stringify(dict));
+  });
+
+  it('should serialize raw dict (tool call result) directly via recordOutputMessages', async () => {
+    const scope = OutputScope.start(testRequest, { messages: ['initial'] }, testAgentDetails);
+    const dict = { status: 'success', data: [1, 2, 3] };
+    scope.recordOutputMessages(dict as any);
+    scope.dispose();
+
+    await flushProvider.forceFlush();
+    const { attributes } = getLastSpan();
+    // Overwrite: dict replaces initial messages
+    expect(attributes[OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY]).toBe(JSON.stringify(dict));
+  });
 });
