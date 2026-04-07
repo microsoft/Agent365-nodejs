@@ -61,4 +61,5 @@ export class ObservabilityConfiguration extends RuntimeConfiguration {
       ?? process.env.A365_OBSERVABILITY_LOG_LEVEL
       ?? 'none';
   }
+
 }

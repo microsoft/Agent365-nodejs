@@ -1,115 +1,100 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { SpanKind, TimeInput } from '@opentelemetry/api';
+import { SpanKind } from '@opentelemetry/api';
 import { OpenTelemetryScope } from './OpenTelemetryScope';
-import { AgentDetails, TenantDetails, CallerDetails, OutputResponse, SourceMetadata, ExecutionType } from '../contracts';
-import { ParentContext } from '../context/trace-context-propagation';
+import { AgentDetails, UserDetails, OutputResponse, Request, SpanDetails, OutputMessage, OutputMessagesParam, A365_MESSAGE_SCHEMA_VERSION } from '../contracts';
 import { OpenTelemetryConstants } from '../constants';
+import { normalizeOutputMessages, serializeMessages } from '../message-utils';
 
 /**
  * Provides OpenTelemetry tracing scope for output message tracing with parent span linking.
  */
 export class OutputScope extends OpenTelemetryScope {
-  private _outputMessages: string[];
+  private _outputMessages: OutputMessage[];
   private _outputMessagesDirty = false;
 
   /**
    * Creates and starts a new scope for output message tracing.
+   *
+   * @param request Request payload (channel, conversationId, content, sessionId).
    * @param response The response containing initial output messages.
-   * @param agentDetails The details of the agent producing the output.
-   * @param tenantDetails The tenant details.
-   * @param callerDetails Optional caller identity details (id, upn, name, tenant, client ip).
-   * @param conversationId Optional conversation identifier.
-   * @param sourceMetadata Optional source metadata; only `name` and `description` are used for tagging.
-   * @param executionType Optional execution type (HumanToAgent, Agent2Agent, etc.).
-   * @param parentContext Optional parent context for cross-async-boundary tracing.
-   *   Accepts a ParentSpanRef (manual traceId/spanId) or an OTel Context (e.g. from extractTraceContext).
-   * @param startTime Optional explicit start time (ms epoch, Date, or HrTime).
-   * @param endTime Optional explicit end time (ms epoch, Date, or HrTime).
+   * @param agentDetails The agent producing the output. Tenant ID is derived from `agentDetails.tenantId`.
+   * @param userDetails Optional human caller identity details.
+   * @param spanDetails Optional span configuration (parentContext, startTime, endTime, spanLinks).
    * @returns A new OutputScope instance.
    */
   public static start(
+    request: Request,
     response: OutputResponse,
     agentDetails: AgentDetails,
-    tenantDetails: TenantDetails,
-    callerDetails?: CallerDetails,
-    conversationId?: string,
-    sourceMetadata?: Pick<SourceMetadata, "name" | "description">,
-    executionType?: ExecutionType,
-    parentContext?: ParentContext,
-    startTime?: TimeInput,
-    endTime?: TimeInput
+    userDetails?: UserDetails,
+    spanDetails?: SpanDetails
   ): OutputScope {
-    return new OutputScope(response, agentDetails, tenantDetails, callerDetails, conversationId, sourceMetadata, executionType, parentContext, startTime, endTime);
+    return new OutputScope(request, response, agentDetails, userDetails, spanDetails);
   }
 
   private constructor(
+    request: Request,
     response: OutputResponse,
     agentDetails: AgentDetails,
-    tenantDetails: TenantDetails,
-    callerDetails?: CallerDetails,
-    conversationId?: string,
-    sourceMetadata?: Pick<SourceMetadata, "name" | "description">,
-    executionType?: ExecutionType,
-    parentContext?: ParentContext,
-    startTime?: TimeInput,
-    endTime?: TimeInput
+    userDetails?: UserDetails,
+    spanDetails?: SpanDetails
   ) {
+    // Validate tenantId is present (required for telemetry)
+    if (!agentDetails.tenantId) {
+      throw new Error('OutputScope: tenantId is required on agentDetails');
+    }
+
+    // spanKind for OutputScope is always CLIENT
+    const resolvedSpanDetails: SpanDetails = { ...spanDetails, spanKind: SpanKind.CLIENT };
+
     super(
-      SpanKind.CLIENT,
       OpenTelemetryConstants.OUTPUT_MESSAGES_OPERATION_NAME,
       agentDetails.agentName
         ? `${OpenTelemetryConstants.OUTPUT_MESSAGES_OPERATION_NAME} ${agentDetails.agentName}`
         : `${OpenTelemetryConstants.OUTPUT_MESSAGES_OPERATION_NAME} ${agentDetails.agentId}`,
       agentDetails,
-      tenantDetails,
-      parentContext,
-      startTime,
-      endTime
+      resolvedSpanDetails,
+      userDetails,
     );
 
-    // Initialize accumulated messages list from the response
-    this._outputMessages = [...response.messages];
+    // Normalize response messages and extract inner messages for accumulation
+    const normalized = normalizeOutputMessages(response.messages);
+    this._outputMessages = [...normalized.messages];
 
-    // Set initial output messages attribute
+    // Set initial output messages attribute as the full versioned wrapper
+    const wrapper = { version: A365_MESSAGE_SCHEMA_VERSION, messages: this._outputMessages };
     this.setTagMaybe(
       OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY,
-      JSON.stringify(this._outputMessages)
+      serializeMessages(wrapper)
     );
 
-    // Set conversation, execution type, and source metadata
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, conversationId);
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY, executionType);
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY, sourceMetadata?.name);
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY, sourceMetadata?.description);
-
-    // Set caller details if provided
-    if (callerDetails) {
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY, callerDetails.callerId);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_UPN_KEY, callerDetails.callerUpn);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY, callerDetails.callerName);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_TENANT_ID_KEY, callerDetails.tenantId);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY, callerDetails.callerClientIp);
-    }
+    // Set conversation and channel
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, request.conversationId);
+    this.setTagMaybe(OpenTelemetryConstants.CHANNEL_NAME_KEY, request.channel?.name);
+    this.setTagMaybe(OpenTelemetryConstants.CHANNEL_LINK_KEY, request.channel?.description);
   }
 
   /**
    * Records the output messages for telemetry tracking.
    * Appends the provided messages to the accumulated output messages list.
+   * Accepts plain strings (auto-wrapped as OTEL OutputMessage) or a versioned OutputMessages wrapper.
    * The updated attribute is flushed when the scope is disposed.
-   * @param messages Array of output messages to append.
+   * @param messages Array of output message strings or an OutputMessages wrapper to append.
    */
-  public recordOutputMessages(messages: string[]): void {
-    this._outputMessages.push(...messages);
+  public recordOutputMessages(messages: OutputMessagesParam): void {
+    const normalized = normalizeOutputMessages(messages);
+    this._outputMessages.push(...normalized.messages);
     this._outputMessagesDirty = true;
   }
 
   public override [Symbol.dispose](): void {
     if (this._outputMessagesDirty) {
+      const wrapper = { version: A365_MESSAGE_SCHEMA_VERSION, messages: this._outputMessages };
       this.setTagMaybe(
         OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY,
-        JSON.stringify(this._outputMessages)
+        serializeMessages(wrapper)
       );
     }
     super[Symbol.dispose]();

@@ -25,21 +25,11 @@ describe('BaggageBuilder', () => {
       expect(scope).toBeInstanceOf(BaggageScope);
     });
 
-    it('should set correlation ID', () => {
-      const builder = new BaggageBuilder();
-      builder.correlationId('corr-789');
-
-      const scope = builder.build();
-      expect(scope).toBeInstanceOf(BaggageScope);
-    });
-
     it('should chain multiple setters', () => {
       const builder = new BaggageBuilder()
         .tenantId('tenant-123')
         .agentId('agent-456')
-        .correlationId('corr-789')
         .agentName('TestAgent')
-        .agentType('assistant')
         .agentPlatformId('platform-xyz-123')
         .conversationId('conv-001');
 
@@ -58,17 +48,6 @@ describe('BaggageBuilder', () => {
       expect(bag?.getEntry(OpenTelemetryConstants.GEN_AI_AGENT_PLATFORM_ID_KEY)?.value).toBe('platform-abc-456');
     });
 
-    it('should set agent type', () => {
-      const builder = new BaggageBuilder();
-      builder.agentType('assistant');
-
-      const scope = builder.build();
-      expect(scope).toBeInstanceOf(BaggageScope);
-
-      const bag = propagation.getBaggage((scope as any).contextWithBaggage);
-      expect(bag?.getEntry(OpenTelemetryConstants.GEN_AI_AGENT_TYPE_KEY)?.value).toBe('assistant');
-    });
-
     it('should set caller agent platform ID via fluent API', () => {
       const builder = new BaggageBuilder();
       builder.callerAgentPlatformId('caller-platform-xyz');
@@ -78,6 +57,27 @@ describe('BaggageBuilder', () => {
 
       const bag = propagation.getBaggage((scope as any).contextWithBaggage);
       expect(bag?.getEntry(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_PLATFORM_ID_KEY)?.value).toBe('caller-platform-xyz');
+    });
+
+    it.each([
+      ['agentVersion', '1.0.0', OpenTelemetryConstants.GEN_AI_AGENT_VERSION_KEY],
+    ] as const)('%s should set the correct baggage key', (method, value, expectedKey) => {
+      const builder = new BaggageBuilder();
+      (builder as any)[method](value);
+      const scope = builder.build();
+      const bag = propagation.getBaggage((scope as any).contextWithBaggage);
+      expect(bag?.getEntry(expectedKey)?.value).toBe(value);
+    });
+
+    it.each([
+      ['agentVersion', null],
+      ['agentVersion', '   '],
+    ] as const)('%s should ignore %s', (method, value) => {
+      const builder = new BaggageBuilder();
+      (builder as any)[method](value);
+      const scope = builder.build();
+      const bag = propagation.getBaggage((scope as any).contextWithBaggage);
+      expect(bag?.getEntry(OpenTelemetryConstants.GEN_AI_AGENT_VERSION_KEY)).toBeUndefined();
     });
   });
 
@@ -115,8 +115,7 @@ describe('BaggageBuilder', () => {
       const builder = new BaggageBuilder();
       builder.setPairs({
         [OpenTelemetryConstants.TENANT_ID_KEY]: 'tenant-123',
-        [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]: null,
-        [OpenTelemetryConstants.CORRELATION_ID_KEY]: undefined
+        [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]: null
       });
 
       const scope = builder.build();
@@ -152,12 +151,57 @@ describe('BaggageBuilder', () => {
     });
   });
 
+  describe('operationSource, channelName, and channelLink', () => {
+    it.each([
+      ['operationSource', 'ATG', OpenTelemetryConstants.SERVICE_NAME_KEY],
+      ['channelName', 'teams', OpenTelemetryConstants.CHANNEL_NAME_KEY],
+      ['channelLink', 'https://teams/channel', OpenTelemetryConstants.CHANNEL_LINK_KEY],
+    ] as const)('%s should set the correct baggage key', (method, value, expectedKey) => {
+      const builder = new BaggageBuilder();
+      (builder as any)[method](value);
+      const scope = builder.build();
+      const bag = propagation.getBaggage((scope as any).contextWithBaggage);
+      expect(bag?.getEntry(expectedKey)?.value).toBe(value);
+    });
+  });
+
+  describe('invokeAgentServer', () => {
+    it.each([
+      ['api.example.com', 8080, 'api.example.com', '8080'],
+      ['api.example.com', 443, 'api.example.com', undefined],
+      ['api.example.com', undefined, 'api.example.com', undefined],
+    ] as const)('address=%s port=%s should set address=%s portBaggage=%s', (address, port, expectedAddress, expectedPort) => {
+      const builder = new BaggageBuilder();
+      builder.invokeAgentServer(address, port as number | undefined);
+      const scope = builder.build();
+      const bag = propagation.getBaggage((scope as any).contextWithBaggage);
+      expect(bag?.getEntry(OpenTelemetryConstants.SERVER_ADDRESS_KEY)?.value).toBe(expectedAddress);
+      expect(bag?.getEntry(OpenTelemetryConstants.SERVER_PORT_KEY)?.value).toBe(expectedPort);
+    });
+
+    it('should clear previously set non-443 port when port is 443', () => {
+      const builder = new BaggageBuilder();
+      // First set a non-443 port
+      builder.invokeAgentServer('api.example.com', 8080);
+      // Then call again with port 443, which should clear the port baggage
+      builder.invokeAgentServer('api.example.com', 443);
+      const scope = builder.build();
+      const bag = propagation.getBaggage((scope as any).contextWithBaggage);
+      expect(bag?.getEntry(OpenTelemetryConstants.SERVER_ADDRESS_KEY)?.value).toBe('api.example.com');
+      expect(bag?.getEntry(OpenTelemetryConstants.SERVER_PORT_KEY)).toBeUndefined();
+    });
+
+    it('should return self for method chaining', () => {
+      const builder = new BaggageBuilder();
+      expect(builder.invokeAgentServer('api.example.com', 8080)).toBe(builder);
+    });
+  });
+
   describe('setRequestContext static method', () => {
     it('should create scope with common fields', () => {
       const scope = BaggageBuilder.setRequestContext(
         'tenant-123',
-        'agent-456',
-        'corr-789'
+        'agent-456'
       );
 
       expect(scope).toBeInstanceOf(BaggageScope);
@@ -166,8 +210,7 @@ describe('BaggageBuilder', () => {
     it('should handle null values', () => {
       const scope = BaggageBuilder.setRequestContext(
         null,
-        'agent-456',
-        null
+        'agent-456'
       );
 
       expect(scope).toBeInstanceOf(BaggageScope);
@@ -179,7 +222,6 @@ describe('BaggageBuilder', () => {
       const scope = new BaggageBuilder()
         .tenantId('tenant-123')
         .agentId('agent-456')
-        .correlationId('corr-789')
         .sessionId('session-0001')
         .sessionDescription('My session desc')
         .build();

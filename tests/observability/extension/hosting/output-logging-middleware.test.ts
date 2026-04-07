@@ -148,7 +148,9 @@ describe('OutputLoggingMiddleware', () => {
     const outputSpan = spans.find(s => s.name.includes('output_messages'));
 
     expect(outputSpan).toBeDefined();
-    expect(outputSpan!.attributes[OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY]).toBe(JSON.stringify(['Hi there!']));
+    expect(outputSpan!.attributes[OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY]).toBe(
+      JSON.stringify({ version: '0.1.0', messages: [{ role: 'assistant', parts: [{ type: 'text', content: 'Hi there!' }] }] })
+    );
   });
 
   it('should skip non-message activities in OutputScope', async () => {
@@ -199,9 +201,9 @@ describe('OutputLoggingMiddleware', () => {
     const outputSpan = exporter.getFinishedSpans().find(s => s.name.includes('output_messages'));
     expect(outputSpan).toBeDefined();
 
-    expect(outputSpan!.attributes[OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY]).toBe('user-oid');
-    expect(outputSpan!.attributes[OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY]).toBe('Test User');
-    expect(outputSpan!.attributes[OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY]).toBe('teams');
+    expect(outputSpan!.attributes[OpenTelemetryConstants.USER_ID_KEY]).toBe('user-oid');
+    expect(outputSpan!.attributes[OpenTelemetryConstants.USER_NAME_KEY]).toBe('Test User');
+    expect(outputSpan!.attributes[OpenTelemetryConstants.CHANNEL_NAME_KEY]).toBe('teams');
   });
 
   it('should link OutputScope to parent when parentSpanRef is set in turnState', async () => {
@@ -241,7 +243,9 @@ describe('OutputLoggingMiddleware', () => {
     await flushProvider.forceFlush();
     const outputSpan = exporter.getFinishedSpans().find(s => s.name.includes('output_messages'));
     expect(outputSpan).toBeDefined();
-    expect(outputSpan!.attributes[OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY]).toBe(JSON.stringify(['Async reply']));
+    expect(outputSpan!.attributes[OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY]).toBe(
+      JSON.stringify({ version: '0.1.0', messages: [{ role: 'assistant', parts: [{ type: 'text', content: 'Async reply' }] }] })
+    );
   });
 
   it('should link async reply OutputScope to parent when parentSpanRef is set', async () => {

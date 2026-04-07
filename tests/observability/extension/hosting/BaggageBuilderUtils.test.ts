@@ -45,16 +45,15 @@ describe('BaggageBuilderUtils', () => {
     expect(result).toBe(builder);
     // Validate every expected OpenTelemetry baggage key and value
     const asObj = Object.fromEntries(capturedPairs);
-    expect(asObj[OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY]).toBeUndefined();
-    expect(asObj[OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY]).toBe('User One');
-    expect(asObj[OpenTelemetryConstants.GEN_AI_CALLER_UPN_KEY]).toBe('agentic-user-1');
-    expect(asObj[OpenTelemetryConstants.GEN_AI_CALLER_TENANT_ID_KEY]).toBe('tenant1');
+    expect(asObj[OpenTelemetryConstants.USER_ID_KEY]).toBeUndefined();
+    expect(asObj[OpenTelemetryConstants.USER_NAME_KEY]).toBe('User One');
+    expect(asObj[OpenTelemetryConstants.USER_EMAIL_KEY]).toBe('agentic-user-1');
     expect(asObj[OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]).toBe('agent-app-1');
     expect(asObj[OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY]).toBe('Agent One');
     expect(asObj[OpenTelemetryConstants.GEN_AI_AGENT_AUID_KEY]).toBeUndefined();
     expect(asObj[OpenTelemetryConstants.GEN_AI_AGENT_DESCRIPTION_KEY]).toBe('agent');
     expect(asObj[OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY]).toBeUndefined();
-    expect(asObj[OpenTelemetryConstants.GEN_AI_AGENT_UPN_KEY]).toBeUndefined();
+    expect(asObj[OpenTelemetryConstants.GEN_AI_AGENT_EMAIL_KEY]).toBeUndefined();
     expect(asObj[OpenTelemetryConstants.TENANT_ID_KEY]).toBe('tenant1');
   });
 

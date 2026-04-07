@@ -1,15 +1,17 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { SpanKind, TimeInput } from '@opentelemetry/api';
+import { SpanKind } from '@opentelemetry/api';
 import { OpenTelemetryScope } from './OpenTelemetryScope';
 import {
-  InvokeAgentDetails,
-  TenantDetails,
+  InvokeAgentScopeDetails,
   CallerDetails,
-  AgentDetails
+  Request,
+  SpanDetails,
+  AgentDetails,
+  InputMessagesParam,
+  OutputMessagesParam,
 } from '../contracts';
-import { ParentContext } from '../context/trace-context-propagation';
 import { OpenTelemetryConstants } from '../constants';
 
 /**
@@ -18,97 +20,84 @@ import { OpenTelemetryConstants } from '../constants';
 export class InvokeAgentScope extends OpenTelemetryScope {
   /**
    * Creates and starts a new scope for agent invocation tracing.
-   * @param invokeAgentDetails The details of the agent invocation including endpoint, agent information, and conversation context.
-   * @param tenantDetails The tenant details.
-   * @param callerAgentDetails The details of the caller agent.
-   * @param callerDetails The details of the non-agentic caller.
-   * @param parentContext Optional parent context for cross-async-boundary tracing.
-   *   Accepts a ParentSpanRef (manual traceId/spanId) or an OTel Context (e.g. from extractTraceContext).
-   * @param startTime Optional explicit start time (ms epoch, Date, or HrTime).
-   * @param endTime Optional explicit end time (ms epoch, Date, or HrTime).
+   *
+   * @param request Request payload (channel, conversationId, content, sessionId).
+   * @param invokeScopeDetails Scope-level details
+   * @param agentDetails The agent identity. Tenant ID is derived from `agentDetails.tenantId` (required).
+   * @param callerDetails Optional caller information. Supports three scenarios:
+   *   - Human caller only: `{ userDetails: { userId, userName, ... } }`
+   *   - Agent caller only: `{ callerAgentDetails: { agentId, agentName, ... } }`
+   *   - Both (A2A with human in chain): `{ userDetails: { ... }, callerAgentDetails: { ... } }`
+   * @param spanDetails Optional span configuration (parentContext, startTime, endTime, spanKind, spanLinks).
    * @returns A new InvokeAgentScope instance.
    */
   public static start(
-    invokeAgentDetails: InvokeAgentDetails,
-    tenantDetails: TenantDetails,
-    callerAgentDetails?: AgentDetails,
+    request: Request,
+    invokeScopeDetails: InvokeAgentScopeDetails,
+    agentDetails: AgentDetails,
     callerDetails?: CallerDetails,
-    parentContext?: ParentContext,
-    startTime?: TimeInput,
-    endTime?: TimeInput
+    spanDetails?: SpanDetails,
   ): InvokeAgentScope {
-    return new InvokeAgentScope(invokeAgentDetails, tenantDetails, callerAgentDetails, callerDetails, parentContext, startTime, endTime);
+    return new InvokeAgentScope(request, invokeScopeDetails, agentDetails, callerDetails, spanDetails);
   }
 
   private constructor(
-    invokeAgentDetails: InvokeAgentDetails,
-    tenantDetails: TenantDetails,
-    callerAgentDetails?: AgentDetails,
+    request: Request,
+    invokeScopeDetails: InvokeAgentScopeDetails,
+    agentDetails: AgentDetails,
     callerDetails?: CallerDetails,
-    parentContext?: ParentContext,
-    startTime?: TimeInput,
-    endTime?: TimeInput
+    spanDetails?: SpanDetails
   ) {
+    // Validate tenantId is present (required for telemetry)
+    if (!agentDetails.tenantId) {
+      throw new Error('InvokeAgentScope: tenantId is required on agentDetails');
+    }
+
+    const resolvedSpanDetails: SpanDetails = { ...spanDetails, spanKind: spanDetails?.spanKind ?? SpanKind.CLIENT };
+
     super(
-      SpanKind.CLIENT,
       OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME,
-      invokeAgentDetails.agentName
-        ? `${OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME} ${invokeAgentDetails.agentName}`
+      agentDetails.agentName
+        ? `${OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME} ${agentDetails.agentName}`
         : OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME,
-      invokeAgentDetails,
-      tenantDetails,
-      parentContext,
-      startTime,
-      endTime
+      agentDetails,
+      resolvedSpanDetails,
+      callerDetails?.userDetails,
     );
 
-    // Set session ID and endpoint information
-    this.setTagMaybe(OpenTelemetryConstants.SESSION_ID_KEY, invokeAgentDetails.sessionId);
+    // Set provider name from agent details
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY, agentDetails.providerName);
 
-    if (invokeAgentDetails.endpoint) {
-      this.setTagMaybe(OpenTelemetryConstants.SERVER_ADDRESS_KEY, invokeAgentDetails.endpoint.host);
+    // Set session ID from request
+    this.setTagMaybe(OpenTelemetryConstants.SESSION_ID_KEY, request.sessionId);
+
+    if (invokeScopeDetails.endpoint) {
+      this.setTagMaybe(OpenTelemetryConstants.SERVER_ADDRESS_KEY, invokeScopeDetails.endpoint.host);
 
       // Only record port if it is different from 443 (default HTTPS port)
-      if (invokeAgentDetails.endpoint.port && invokeAgentDetails.endpoint.port !== 443) {
-        this.setTagMaybe(OpenTelemetryConstants.SERVER_PORT_KEY, invokeAgentDetails.endpoint.port);
+      if (invokeScopeDetails.endpoint.port && invokeScopeDetails.endpoint.port !== 443) {
+        this.setTagMaybe(OpenTelemetryConstants.SERVER_PORT_KEY, invokeScopeDetails.endpoint.port);
       }
     }
 
-    // Set request-related tags
-    const requestToUse = invokeAgentDetails.request;
-    if (requestToUse) {
-      if (requestToUse.executionType) {
-        this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY, requestToUse.executionType.toString());
-      }
-      if (requestToUse.sourceMetadata) {
-        this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_ID_KEY, requestToUse.sourceMetadata.id);
-        this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY, requestToUse.sourceMetadata.name);
-        this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY, requestToUse.sourceMetadata.description);
-      }
+    // Set channel tags from request
+    if (request.channel) {
+      this.setTagMaybe(OpenTelemetryConstants.CHANNEL_NAME_KEY, request.channel.name);
+      this.setTagMaybe(OpenTelemetryConstants.CHANNEL_LINK_KEY, request.channel.description);
     }
 
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, invokeAgentDetails.conversationId);
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, request.conversationId);
 
-    // Set caller details tags
-    if (callerDetails) {
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY, callerDetails.callerId);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_UPN_KEY, callerDetails.callerUpn);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY, callerDetails.callerName);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_TENANT_ID_KEY, callerDetails.tenantId);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_CLIENT_IP_KEY, callerDetails.callerClientIp);
-    }
-
-    // Set caller agent details tags
-    if (callerAgentDetails) {
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_NAME_KEY, callerAgentDetails.agentName);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_ID_KEY, callerAgentDetails.agentId);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_TYPE_KEY, callerAgentDetails.agentType);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_APPLICATION_ID_KEY, callerAgentDetails.agentBlueprintId);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_USER_ID_KEY, callerAgentDetails.agentAUID);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_UPN_KEY, callerAgentDetails.agentUPN);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_TENANT_ID_KEY, callerAgentDetails.tenantId);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_CLIENT_IP_KEY, callerAgentDetails.agentClientIP);
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_PLATFORM_ID_KEY, callerAgentDetails.platformId);
+    // Set caller agent details tags for A2A scenarios
+    const callerAgent = callerDetails?.callerAgentDetails;
+    if (callerAgent) {
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_NAME_KEY, callerAgent.agentName);
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_ID_KEY, callerAgent.agentId);
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_APPLICATION_ID_KEY, callerAgent.agentBlueprintId);
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_USER_ID_KEY, callerAgent.agentAUID);
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_EMAIL_KEY, callerAgent.agentEmail);
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_PLATFORM_ID_KEY, callerAgent.platformId);
+      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_VERSION_KEY, callerAgent.agentVersion);
     }
   }
 
@@ -122,17 +111,19 @@ export class InvokeAgentScope extends OpenTelemetryScope {
 
   /**
    * Records the input messages for telemetry tracking.
-   * @param messages Array of input messages
+   * Accepts plain strings (auto-wrapped as OTEL ChatMessage with role `user`) or a versioned InputMessages wrapper.
+   * @param messages Array of input message strings or an InputMessages wrapper
    */
-  public recordInputMessages(messages: string[]): void {
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, JSON.stringify(messages));
+  public override recordInputMessages(messages: InputMessagesParam): void {
+    super.recordInputMessages(messages);
   }
 
   /**
    * Records the output messages for telemetry tracking.
-   * @param messages Array of output messages
+   * Accepts plain strings (auto-wrapped as OTEL OutputMessage with role `assistant`) or a versioned OutputMessages wrapper.
+   * @param messages Array of output message strings or an OutputMessages wrapper
    */
-  public recordOutputMessages(messages: string[]): void {
-      this.setTagMaybe(OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY, JSON.stringify(messages));
+  public override recordOutputMessages(messages: OutputMessagesParam): void {
+    super.recordOutputMessages(messages);
   }
 }

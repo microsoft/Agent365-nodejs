@@ -34,7 +34,7 @@ describe('OpenAIAgentsTraceProcessor', () => {
     let processor: OpenAIAgentsTraceProcessor;
 
     beforeEach(() => {
-      processor = new OpenAIAgentsTraceProcessor(tracer);
+      processor = new OpenAIAgentsTraceProcessor(tracer, { isContentRecordingEnabled: true });
     });
 
     afterEach(async () => {
@@ -480,7 +480,7 @@ describe('OpenAIAgentsTraceProcessor', () => {
     });
 
     it('does not record GEN_AI_INPUT_MESSAGES when disabled', async () => {
-      const processor = new OpenAIAgentsTraceProcessor(tracer, { suppressInvokeAgentInput: true });
+      const processor = new OpenAIAgentsTraceProcessor(tracer, { suppressInvokeAgentInput: true, isContentRecordingEnabled: true });
       const traceData = { traceId: 'trace-suppress', name: 'Agent' } as any;
       await processor.onTraceStart(traceData);
 
@@ -503,8 +503,8 @@ describe('OpenAIAgentsTraceProcessor', () => {
       expect(keys).not.toContain(OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY);
     });
 
-    it('records GEN_AI_INPUT_MESSAGES when enabled (default)', async () => {
-      const processor = new OpenAIAgentsTraceProcessor(tracer);
+    it('records GEN_AI_INPUT_MESSAGES when content recording is enabled', async () => {
+      const processor = new OpenAIAgentsTraceProcessor(tracer, { isContentRecordingEnabled: true });
       const traceData = { traceId: 'trace-allow', name: 'Agent' } as any;
       await processor.onTraceStart(traceData);
 
@@ -528,7 +528,7 @@ describe('OpenAIAgentsTraceProcessor', () => {
     });
 
     it('suppresses input on response spans when disabled', async () => {
-      const processor = new OpenAIAgentsTraceProcessor(tracer, { suppressInvokeAgentInput: true });
+      const processor = new OpenAIAgentsTraceProcessor(tracer, { suppressInvokeAgentInput: true, isContentRecordingEnabled: true });
       const traceData = { traceId: 'trace-resp', name: 'Agent' } as any;
       await processor.onTraceStart(traceData);
 
@@ -552,7 +552,7 @@ describe('OpenAIAgentsTraceProcessor', () => {
     });
 
     it('records full array JSON when only assistant messages are present', async () => {
-      const processor = new OpenAIAgentsTraceProcessor(tracer);
+      const processor = new OpenAIAgentsTraceProcessor(tracer, { isContentRecordingEnabled: true });
       const traceData = { traceId: 'trace-assistant-only', name: 'Agent' } as any;
       await processor.onTraceStart(traceData);
 
@@ -588,7 +588,7 @@ describe('OpenAIAgentsTraceProcessor', () => {
       expect(parsed).toEqual(inputArray);
     });
     it('records user text content for array _input on response spans', async () => {
-      const processor = new OpenAIAgentsTraceProcessor(tracer);
+      const processor = new OpenAIAgentsTraceProcessor(tracer, { isContentRecordingEnabled: true });
       const traceData = { traceId: 'trace-array-input', name: 'Agent' } as any;
       await processor.onTraceStart(traceData);
 
@@ -621,7 +621,7 @@ describe('OpenAIAgentsTraceProcessor', () => {
     });
 
     it('parses stringified array _input and records only user text content', async () => {
-      const processor = new OpenAIAgentsTraceProcessor(tracer);
+      const processor = new OpenAIAgentsTraceProcessor(tracer, { isContentRecordingEnabled: true });
       const traceData = { traceId: 'trace-array-input-string', name: 'Agent' } as any;
       await processor.onTraceStart(traceData);
 
@@ -657,7 +657,7 @@ describe('OpenAIAgentsTraceProcessor', () => {
     });
 
     it('records [gen_ai.input.messages] attribute for array input with non standard schema on response spans', async () => {
-      const processor = new OpenAIAgentsTraceProcessor(tracer);
+      const processor = new OpenAIAgentsTraceProcessor(tracer, { isContentRecordingEnabled: true });
       const traceData = { traceId: 'trace-array-input', name: 'Agent' } as any;
       await processor.onTraceStart(traceData);
       const inputArray = [
@@ -690,7 +690,7 @@ describe('OpenAIAgentsTraceProcessor', () => {
     });
 
     it('records GEN_AI_OUTPUT_MESSAGES as plain string when output is a string', async () => {
-      const processor = new OpenAIAgentsTraceProcessor(tracer);
+      const processor = new OpenAIAgentsTraceProcessor(tracer, { isContentRecordingEnabled: true });
       const traceData = { traceId: 'trace-output-string', name: 'Agent' } as any;
       await processor.onTraceStart(traceData);
 
@@ -717,7 +717,7 @@ describe('OpenAIAgentsTraceProcessor', () => {
     });
 
     it('records GEN_AI_OUTPUT_MESSAGES as aggregated texts when output is structured', async () => {
-      const processor = new OpenAIAgentsTraceProcessor(tracer);
+      const processor = new OpenAIAgentsTraceProcessor(tracer, { isContentRecordingEnabled: true });
       const traceData = { traceId: 'trace-output-structured', name: 'Agent' } as any;
       await processor.onTraceStart(traceData);
 
@@ -755,5 +755,40 @@ describe('OpenAIAgentsTraceProcessor', () => {
       const parsed = JSON.parse(value);
       expect(parsed).toEqual(['Hello user 1', 'Hello user 2']);
     });
+
+    it('suppresses all content attributes when isContentRecordingEnabled is false', async () => {
+      const processor = new OpenAIAgentsTraceProcessor(tracer);
+      const traceData = { traceId: 'trace-no-content', name: 'Agent' } as any;
+      await processor.onTraceStart(traceData);
+
+      // Generation span with input/output
+      const genSpan = {
+        spanId: 'gen-no-content',
+        traceId: 'trace-no-content',
+        startedAt: new Date().toISOString(),
+        spanData: {
+          type: 'generation' as const,
+          model: 'gpt-4',
+          input: [{ role: 'user', content: 'secret prompt' }],
+          output: { id: 'resp-1', choices: [{ text: 'secret response' }] },
+        },
+      } as any;
+
+      await processor.onSpanStart(genSpan);
+      await processor.onSpanEnd(genSpan);
+
+      const mock = spansByName['generation'];
+      const attrs = mock._attrs as Array<[string, unknown]>;
+      const contentKeys = attrs.filter(([k]) =>
+        k === OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY ||
+        k === OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY
+      );
+      expect(contentKeys).toHaveLength(0);
+
+      // Model attribute should still be present (non-content)
+      const modelAttr = attrs.find(([k]) => k === OpenTelemetryConstants.GEN_AI_REQUEST_MODEL_KEY);
+      expect(modelAttr).toBeDefined();
+    });
+
   });
 });

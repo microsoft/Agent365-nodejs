@@ -1,10 +1,15 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { SpanKind, TimeInput } from '@opentelemetry/api';
+import { SpanKind } from '@opentelemetry/api';
 import { OpenTelemetryScope } from './OpenTelemetryScope';
-import { ToolCallDetails, AgentDetails, TenantDetails, SourceMetadata } from '../contracts';
-import { ParentContext } from '../context/trace-context-propagation';
+import {
+  ToolCallDetails,
+  AgentDetails,
+  UserDetails,
+  Request,
+  SpanDetails,
+} from '../contracts';
 import { OpenTelemetryConstants } from '../constants';
 
 /**
@@ -13,54 +18,48 @@ import { OpenTelemetryConstants } from '../constants';
 export class ExecuteToolScope extends OpenTelemetryScope {
   /**
    * Creates and starts a new scope for tool execution tracing.
-   * @param details The tool call details
-   * @param agentDetails The agent details
-   * @param tenantDetails The tenant details
-   * @param conversationId Optional conversation id to tag on the span (`gen_ai.conversation.id`).
-   * @param sourceMetadata Optional source metadata; only `name` (channel name) and `description` (channel link/URL) are used for tagging.
-   * @param parentContext Optional parent context for cross-async-boundary tracing.
-   *   Accepts a ParentSpanRef (manual traceId/spanId) or an OTel Context (e.g. from extractTraceContext).
-   * @param startTime Optional explicit start time (ms epoch, Date, or HrTime). Useful when recording a
-   *        tool call after execution has already completed.
-   * @param endTime Optional explicit end time (ms epoch, Date, or HrTime). When provided, the span will
-   *        use this timestamp when disposed instead of the current wall-clock time.
+   *
+   * @param request Request payload (channel, conversationId, content, sessionId).
+   * @param details The tool call details (name, type, args, call id, etc.).
+   * @param agentDetails The agent executing the tool. Tenant ID is derived from `agentDetails.tenantId`.
+   * @param userDetails Optional human caller identity.
+   * @param spanDetails Optional span configuration (parentContext, startTime, endTime, spanLinks). Any provided spanKind is ignored; ExecuteToolScope always uses SpanKind.INTERNAL.
    * @returns A new ExecuteToolScope instance.
    */
   public static start(
+    request: Request,
     details: ToolCallDetails,
     agentDetails: AgentDetails,
-    tenantDetails: TenantDetails,
-    conversationId?: string,
-    sourceMetadata?: Pick<SourceMetadata, "name" | "description">,
-    parentContext?: ParentContext,
-    startTime?: TimeInput,
-    endTime?: TimeInput
+    userDetails?: UserDetails,
+    spanDetails?: SpanDetails
   ): ExecuteToolScope {
-    return new ExecuteToolScope(details, agentDetails, tenantDetails, conversationId, sourceMetadata, parentContext, startTime, endTime);
+    return new ExecuteToolScope(request, details, agentDetails, userDetails, spanDetails);
   }
 
   private constructor(
+    request: Request,
     details: ToolCallDetails,
     agentDetails: AgentDetails,
-    tenantDetails: TenantDetails,
-    conversationId?: string,
-    sourceMetadata?: Pick<SourceMetadata, "name" | "description">,
-    parentContext?: ParentContext,
-    startTime?: TimeInput,
-    endTime?: TimeInput
+    userDetails?: UserDetails,
+    spanDetails?: SpanDetails
   ) {
+    // Validate tenantId is present (required for telemetry)
+    if (!agentDetails.tenantId) {
+      throw new Error('ExecuteToolScope: tenantId is required on agentDetails');
+    }
+
+    // spanKind for ExecuteToolScope is always INTERNAL
+    const resolvedSpanDetails: SpanDetails = { ...spanDetails, spanKind: SpanKind.INTERNAL };
+
     super(
-      SpanKind.INTERNAL,
       OpenTelemetryConstants.EXECUTE_TOOL_OPERATION_NAME,
       `${OpenTelemetryConstants.EXECUTE_TOOL_OPERATION_NAME} ${details.toolName}`,
       agentDetails,
-      tenantDetails,
-      parentContext,
-      startTime,
-      endTime
+      resolvedSpanDetails,
+      userDetails,
     );
 
-    // Destructure the details object to match C# pattern
+    // Destructure the details object
     const { toolName, arguments: args, toolCallId, description, toolType, endpoint } = details;
 
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_TOOL_NAME_KEY, toolName);
@@ -68,10 +67,9 @@ export class ExecuteToolScope extends OpenTelemetryScope {
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_TOOL_TYPE_KEY, toolType);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_TOOL_CALL_ID_KEY, toolCallId);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_TOOL_DESCRIPTION_KEY, description);
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, conversationId);
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY, sourceMetadata?.name);
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY, sourceMetadata?.description);    
-
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, request.conversationId);
+    this.setTagMaybe(OpenTelemetryConstants.CHANNEL_NAME_KEY, request.channel?.name);
+    this.setTagMaybe(OpenTelemetryConstants.CHANNEL_LINK_KEY, request.channel?.description);
 
     // Set endpoint information if provided
     if (endpoint) {
@@ -89,6 +87,6 @@ export class ExecuteToolScope extends OpenTelemetryScope {
    * @param response The tool execution response
    */
   public recordResponse(response: string): void {
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_EVENT_CONTENT, response);
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_TOOL_CALL_RESULT_KEY, response);
   }
 }

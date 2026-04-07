@@ -53,7 +53,7 @@ BaggageBuilderUtils.setCallerBaggage(builder, turnContext);
 BaggageBuilderUtils.setExecutionTypeBaggage(builder, turnContext);
 BaggageBuilderUtils.setTargetAgentBaggage(builder, turnContext);
 BaggageBuilderUtils.setTenantIdBaggage(builder, turnContext);
-BaggageBuilderUtils.setSourceMetadataBaggage(builder, turnContext);
+BaggageBuilderUtils.setChannelBaggage(builder, turnContext);
 BaggageBuilderUtils.setConversationIdBaggage(builder, turnContext);
 
 // Build and use the scope
@@ -72,7 +72,7 @@ scope.run(() => {
 | `setExecutionTypeBaggage(builder, turnContext)` | Set execution type (HumanToAgent, Agent2Agent) |
 | `setTargetAgentBaggage(builder, turnContext)` | Set target agent ID, name, description |
 | `setTenantIdBaggage(builder, turnContext)` | Set tenant ID from recipient or channel data |
-| `setSourceMetadataBaggage(builder, turnContext)` | Set channel name and subchannel |
+| `setChannelBaggage(builder, turnContext)` | Set channel name and subchannel |
 | `setConversationIdBaggage(builder, turnContext)` | Set conversation ID and item link |
 
 ### TurnContextUtils ([TurnContextUtils.ts](../src/utils/TurnContextUtils.ts))
@@ -85,7 +85,7 @@ import {
   getExecutionTypePair,
   getTargetAgentBaggagePairs,
   getTenantIdPair,
-  getSourceMetadataBaggagePairs,
+  getChannelBaggagePairs,
   getConversationIdAndItemLinkPairs
 } from '@microsoft/agents-a365-observability-hosting';
 
@@ -110,7 +110,7 @@ const agentPairs = getTargetAgentBaggagePairs(turnContext);
 | `getExecutionTypePair()` | `gen_ai.execution.type` |
 | `getTargetAgentBaggagePairs()` | `gen_ai.agent.id`, `gen_ai.agent.name`, `gen_ai.agent.description`, `gen_ai.agent.auid` |
 | `getTenantIdPair()` | `tenant_id` |
-| `getSourceMetadataBaggagePairs()` | `gen_ai.execution.source.name`, `gen_ai.execution.source.description` |
+| `getChannelBaggagePairs()` | `gen_ai.execution.source.name`, `gen_ai.execution.source.description` |
 | `getConversationIdAndItemLinkPairs()` | `gen_ai.conversation.id`, `gen_ai.conversation.item_link` |
 
 ### AgenticTokenCacheInstance ([AgenticTokenCache.ts](../src/caching/AgenticTokenCache.ts))
@@ -192,12 +192,13 @@ async function onMessage(turnContext: TurnContext, turnState: TurnState) {
   return baggageScope.run(async () => {
     // Create agent invocation scope
     using scope = InvokeAgentScope.start(
+      { conversationId: turnContext.activity.conversation?.id, sessionId: turnContext.activity.conversation?.id },
+      {},  // InvokeAgentScopeDetails
       {
         agentId: turnContext.activity.recipient?.agenticAppId,
         agentName: turnContext.activity.recipient?.name,
-        sessionId: turnContext.activity.conversation?.id
-      },
-      { tenantId: turnContext.activity.recipient?.tenantId }
+        tenantId: turnContext.activity.recipient?.tenantId
+      }
     );
 
     // Agent processing...
