@@ -3,7 +3,7 @@
 
 import { SpanKind } from '@opentelemetry/api';
 import { OpenTelemetryScope } from './OpenTelemetryScope';
-import { AgentDetails, UserDetails, OutputResponse, Request, SpanDetails, OutputMessagesParam, ResponseMessagesParam, A365_MESSAGE_SCHEMA_VERSION } from '../contracts';
+import { AgentDetails, UserDetails, OutputResponse, Request, SpanDetails, ResponseMessagesParam, A365_MESSAGE_SCHEMA_VERSION } from '../contracts';
 import { OpenTelemetryConstants } from '../constants';
 import { normalizeOutputMessages, serializeMessages } from '../message-utils';
 
@@ -80,10 +80,17 @@ export class OutputScope extends OpenTelemetryScope {
   private _setOutput(messages: ResponseMessagesParam): void {
     // Dict (Record<string, unknown>) — treat as tool call result, serialize directly
     if (this._isRawDict(messages)) {
-      this.setTagMaybe(
-        OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY,
-        JSON.stringify(messages)
-      );
+      try {
+        this.setTagMaybe(
+          OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY,
+          JSON.stringify(messages)
+        );
+      } catch {
+        this.setTagMaybe(
+          OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY,
+          '[serialization failed]'
+        );
+      }
       return;
     }
     const normalized = normalizeOutputMessages(messages);
@@ -98,6 +105,6 @@ export class OutputScope extends OpenTelemetryScope {
    * Check if the value is a raw dict (plain object, not string[] or OutputMessages wrapper).
    */
   private _isRawDict(messages: ResponseMessagesParam): messages is Record<string, unknown> {
-    return typeof messages === 'object' && !Array.isArray(messages) && !('version' in messages);
+    return typeof messages === 'object' && messages !== null && !Array.isArray(messages) && !('version' in messages);
   }
 }
