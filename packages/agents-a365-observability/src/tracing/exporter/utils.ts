@@ -343,6 +343,7 @@ function collectShrinkActions(
             const blobAction = createBlobShrinkAction(part, key);
             if (blobAction) {
               actions.push(blobAction);
+              continue;
             }
 
             // Tool/server JSON payload fields → sentinel (one-shot)

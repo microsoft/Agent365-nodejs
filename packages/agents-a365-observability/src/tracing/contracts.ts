@@ -56,8 +56,8 @@ export interface Channel {
  * Used across all scope types for channel and conversation tracking.
  */
 export interface Request {
-  /** The content of the request */
-  content?: string;
+  /** The content of the request. */
+  content?: InputMessagesParam;
 
   /** Optional session identifier for grouping related requests */
   sessionId?: string;
@@ -450,11 +450,11 @@ export interface OutputMessages {
 
 export const A365_MESSAGE_SCHEMA_VERSION = '0.1.0' as const;
 
-/** Accepted input for `recordInputMessages`. Supports plain strings (backward compat) or the versioned wrapper. */
-export type InputMessagesParam = string[] | InputMessages;
+/** Accepted input for `recordInputMessages`. Supports a single string, an array of strings (backward compat), or the versioned wrapper. */
+export type InputMessagesParam = string | string[] | InputMessages;
 
-/** Accepted input for `recordOutputMessages`. Supports plain strings (backward compat) or the versioned wrapper. */
-export type OutputMessagesParam = string[] | OutputMessages;
+/** Accepted input for `recordOutputMessages`. Supports a single string, an array of strings (backward compat), or the versioned wrapper. */
+export type OutputMessagesParam = string | string[] | OutputMessages;
 
 /**
  * Accepted input for `OutputResponse.messages`.

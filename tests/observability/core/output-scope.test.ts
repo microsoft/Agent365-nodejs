@@ -234,4 +234,28 @@ describe('OutputScope', () => {
     // Overwrite: dict replaces initial messages
     expect(attributes[OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY]).toBe(JSON.stringify(dict));
   });
+
+  it('should accept a single string in constructor', async () => {
+    const scope = OutputScope.start(testRequest, { messages: 'single output' }, testAgentDetails);
+    scope.dispose();
+
+    await flushProvider.forceFlush();
+    const { attributes } = getLastSpan();
+    const parsed = JSON.parse(attributes[OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY] as string);
+    expect(parsed.messages).toHaveLength(1);
+    expect(parsed.messages[0].role).toBe('assistant');
+    expect(parsed.messages[0].parts[0].content).toBe('single output');
+  });
+
+  it('should accept a single string in recordOutputMessages', async () => {
+    const scope = OutputScope.start(testRequest, { messages: ['initial'] }, testAgentDetails);
+    scope.recordOutputMessages('overwritten single');
+    scope.dispose();
+
+    await flushProvider.forceFlush();
+    const { attributes } = getLastSpan();
+    const parsed = JSON.parse(attributes[OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY] as string);
+    expect(parsed.messages).toHaveLength(1);
+    expect(parsed.messages[0].parts[0].content).toBe('overwritten single');
+  });
 });

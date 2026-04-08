@@ -69,9 +69,9 @@ export class OutputScope extends OpenTelemetryScope {
   /**
    * Records the output messages for telemetry tracking.
    * Overwrites any previously recorded output messages on the span.
-   * Accepts plain strings (auto-wrapped as OTEL OutputMessage), a versioned OutputMessages wrapper,
+   * Accepts a single string, an array of strings (auto-wrapped as OTEL OutputMessage), a versioned OutputMessages wrapper,
    * or a raw dict (treated as a tool call result per OTEL spec, serialized directly).
-   * @param messages Array of output message strings, an OutputMessages wrapper, or a dict.
+   * @param messages A string, array of strings, an OutputMessages wrapper, or a dict.
    */
   public recordOutputMessages(messages: ResponseMessagesParam): void {
     this._setOutput(messages);
@@ -105,6 +105,8 @@ export class OutputScope extends OpenTelemetryScope {
    * Check if the value is a raw dict (plain object, not string[] or OutputMessages wrapper).
    */
   private _isRawDict(messages: ResponseMessagesParam): messages is Record<string, unknown> {
-    return typeof messages === 'object' && messages !== null && !Array.isArray(messages) && !('version' in messages);
+    return typeof messages === 'object' && messages !== null
+      && !Array.isArray(messages)
+      && !('version' in messages && 'messages' in messages);
   }
 }

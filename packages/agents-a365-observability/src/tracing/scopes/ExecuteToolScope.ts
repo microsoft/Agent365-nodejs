@@ -11,6 +11,7 @@ import {
   SpanDetails,
 } from '../contracts';
 import { OpenTelemetryConstants } from '../constants';
+import { safeSerializeToJson } from '../util';
 
 /**
  * Provides OpenTelemetry tracing scope for AI tool execution operations.
@@ -23,7 +24,7 @@ export class ExecuteToolScope extends OpenTelemetryScope {
    * @param details The tool call details (name, type, args, call id, etc.).
    * @param agentDetails The agent executing the tool. Tenant ID is derived from `agentDetails.tenantId`.
    * @param userDetails Optional human caller identity.
-   * @param spanDetails Optional span configuration (parentContext, startTime, endTime, spanLinks). Any provided spanKind is ignored; ExecuteToolScope always uses SpanKind.INTERNAL.
+   * @param spanDetails Optional span configuration (parentContext, startTime, endTime, spanLinks, spanKind). Defaults to SpanKind.INTERNAL.
    * @returns A new ExecuteToolScope instance.
    */
   public static start(
@@ -48,8 +49,8 @@ export class ExecuteToolScope extends OpenTelemetryScope {
       throw new Error('ExecuteToolScope: tenantId is required on agentDetails');
     }
 
-    // spanKind for ExecuteToolScope is always INTERNAL
-    const resolvedSpanDetails: SpanDetails = { ...spanDetails, spanKind: SpanKind.INTERNAL };
+    // Default to INTERNAL; allow caller override via spanDetails
+    const resolvedSpanDetails: SpanDetails = { spanKind: SpanKind.INTERNAL, ...spanDetails };
 
     super(
       OpenTelemetryConstants.EXECUTE_TOOL_OPERATION_NAME,
@@ -65,7 +66,7 @@ export class ExecuteToolScope extends OpenTelemetryScope {
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_TOOL_NAME_KEY, toolName);
     this.setTagMaybe(
       OpenTelemetryConstants.GEN_AI_TOOL_ARGS_KEY,
-      typeof args === 'object' && args !== null ? safeJsonStringify(args) : args as string
+      args != null ? safeSerializeToJson(args, 'arguments') : undefined
     );
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_TOOL_TYPE_KEY, toolType);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_TOOL_CALL_ID_KEY, toolCallId);
@@ -92,16 +93,7 @@ export class ExecuteToolScope extends OpenTelemetryScope {
   public recordResponse(response: Record<string, unknown> | string): void {
     this.setTagMaybe(
       OpenTelemetryConstants.GEN_AI_TOOL_CALL_RESULT_KEY,
-      typeof response === 'object' && response !== null ? safeJsonStringify(response) : response as string
+      safeSerializeToJson(response, 'result')
     );
-  }
-}
-
-/** Non-throwing JSON.stringify wrapper for telemetry safety. */
-function safeJsonStringify(value: unknown): string {
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return '[serialization failed]';
   }
 }

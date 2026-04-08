@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { describe, it, expect, beforeAll, afterAll, afterEach, jest } from '@jest/globals';
+import { describe, it, expect, beforeAll, afterAll, afterEach, jest, beforeEach } from '@jest/globals';
 import { trace, SpanKind } from '@opentelemetry/api';
 
 import {
@@ -16,13 +16,28 @@ import {
   UserDetails,
   OpenTelemetryConstants,
   OpenTelemetryScope,
+  InputMessages,
+  MessageRole,
+  A365_MESSAGE_SCHEMA_VERSION,
 } from '@microsoft/agents-a365-observability';
+import { safeSerializeToJson } from '@microsoft/agents-a365-observability/src/tracing/util';
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor, ReadableSpan } from '@opentelemetry/sdk-trace-base';
+
+// Shared file-level exporter that all describe blocks can use.
+// OTel only allows setGlobalTracerProvider once per process, so we create the
+// provider and register it in a top-level beforeAll to avoid module-load side effects.
+let sharedExporter: InMemorySpanExporter;
 
 // Mock console to avoid cluttering test output
 const originalConsoleWarn = console.warn;
 const originalConsoleError = console.error;
 beforeAll(() => {
+  sharedExporter = new InMemorySpanExporter();
+  const provider = new BasicTracerProvider({
+    spanProcessors: [new SimpleSpanProcessor(sharedExporter)],
+  });
+  trace.setGlobalTracerProvider(provider);
+
   console.warn = jest.fn();
   console.error = jest.fn();
 });
@@ -131,21 +146,6 @@ describe('Scopes', () => {
       ]));
       scope?.dispose();
       spy.mockRestore();
-    });
-
-    it('should record response', () => {
-      const scope = InvokeAgentScope.start(testRequest, {}, { agentId: 'test-agent', tenantId: 'test-tenant-456' });
-
-      expect(() => scope?.recordResponse('Test response')).not.toThrow();
-      scope?.dispose();
-    });
-
-    it('should record input and output messages', () => {
-      const scope = InvokeAgentScope.start(testRequest, {}, { agentId: 'test-agent', tenantId: 'test-tenant-456' });
-
-      expect(() => scope?.recordInputMessages(['Input message 1', 'Input message 2'])).not.toThrow();
-      expect(() => scope?.recordOutputMessages(['Output message 1', 'Output message 2'])).not.toThrow();
-      scope?.dispose();
     });
 
     it('should record error', () => {
@@ -341,6 +341,7 @@ describe('Scopes', () => {
       scope?.dispose();
       spy.mockRestore();
     });
+
   });
 
   describe('ExecuteToolScope', () => {
@@ -416,75 +417,6 @@ describe('Scopes', () => {
       spy.mockRestore();
     });
 
-    it('should serialize object arguments to JSON string', () => {
-      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
-      const objArgs = { query: 'GDPR data retention', maxResults: 5 };
-      const scope = ExecuteToolScope.start(
-        testRequest,
-        { toolName: 'search-tool', arguments: objArgs },
-        testAgentDetails
-      );
-
-      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
-      expect(calls).toEqual(expect.arrayContaining([
-        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_TOOL_ARGS_KEY, val: JSON.stringify(objArgs) })
-      ]));
-      scope?.dispose();
-      spy.mockRestore();
-    });
-
-    it('should pass string arguments as-is', () => {
-      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
-      const scope = ExecuteToolScope.start(
-        testRequest,
-        { toolName: 'search-tool', arguments: '{"query":"test"}' },
-        testAgentDetails
-      );
-
-      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
-      expect(calls).toEqual(expect.arrayContaining([
-        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_TOOL_ARGS_KEY, val: '{"query":"test"}' })
-      ]));
-      scope?.dispose();
-      spy.mockRestore();
-    });
-
-    it('should serialize object response to JSON string', () => {
-      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
-      const scope = ExecuteToolScope.start(
-        testRequest,
-        { toolName: 'test-tool' },
-        testAgentDetails
-      );
-
-      const objResponse = { results: [{ title: 'Doc A', relevance: 0.95 }] };
-      scope.recordResponse(objResponse);
-
-      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
-      expect(calls).toEqual(expect.arrayContaining([
-        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_TOOL_CALL_RESULT_KEY, val: JSON.stringify(objResponse) })
-      ]));
-      scope?.dispose();
-      spy.mockRestore();
-    });
-
-    it('should pass string response as-is', () => {
-      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
-      const scope = ExecuteToolScope.start(
-        testRequest,
-        { toolName: 'test-tool' },
-        testAgentDetails
-      );
-
-      scope.recordResponse('plain string result');
-
-      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
-      expect(calls).toEqual(expect.arrayContaining([
-        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_TOOL_CALL_RESULT_KEY, val: 'plain string result' })
-      ]));
-      scope?.dispose();
-      spy.mockRestore();
-    });
   });
 
   describe('endpoint.port serialization', () => {
@@ -702,39 +634,13 @@ describe('Scopes', () => {
   });
 
   describe('Custom start and end time', () => {
-    let exporter: InMemorySpanExporter;
-    let provider: BasicTracerProvider | undefined;
-
-    beforeAll(() => {
-      exporter = new InMemorySpanExporter();
-      const processor = new SimpleSpanProcessor(exporter);
-
-      // OTel API only allows setting the global tracer provider once per process.
-      // Reuse the existing provider when possible so other test files are not affected.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const globalProvider: any = trace.getTracerProvider();
-      if (globalProvider && typeof globalProvider.addSpanProcessor === 'function') {
-        globalProvider.addSpanProcessor(processor);
-      } else {
-        provider = new BasicTracerProvider({
-          spanProcessors: [processor],
-        });
-        trace.setGlobalTracerProvider(provider);
-      }
-    });
-
     afterEach(() => {
-      exporter.reset();
-    });
-
-    afterAll(async () => {
-      exporter.reset();
-      await provider?.shutdown?.();
+      sharedExporter.reset();
     });
 
     /** Extract the last finished span from the in-memory exporter. */
     const getFinishedSpan = (): ReadableSpan => {
-      const spans = exporter.getFinishedSpans();
+      const spans = sharedExporter.getFinishedSpans();
       expect(spans.length).toBeGreaterThanOrEqual(1);
       return spans[spans.length - 1];
     };
@@ -835,7 +741,7 @@ describe('Scopes', () => {
 
     it.each([
       ['INTERNAL (default)', undefined, SpanKind.INTERNAL],
-      ['INTERNAL (override ignored)', SpanKind.CLIENT, SpanKind.INTERNAL],
+      ['CLIENT (override)', SpanKind.CLIENT, SpanKind.CLIENT],
     ])('ExecuteToolScope spanKind: %s', (_label, input, expected) => {
       const scope = ExecuteToolScope.start(
         testRequest, { toolName: 'my-tool' }, testAgentDetails,
@@ -873,6 +779,106 @@ describe('Scopes', () => {
   });
 });
 
+describe('Request content and message serialization (span attributes)', () => {
+  const testAgentDetails: AgentDetails = {
+    agentId: 'test-agent',
+    agentName: 'Test Agent',
+    tenantId: 'test-tenant-456',
+  };
+  const testRequest = { conversationId: 'conv-1', channel: { name: 'TestChannel' } };
+
+  beforeEach(() => { sharedExporter.reset(); });
+
+  const getLastSpan = (): ReadableSpan => {
+    const spans = sharedExporter.getFinishedSpans();
+    expect(spans.length).toBeGreaterThanOrEqual(1);
+    return spans[spans.length - 1];
+  };
+
+  describe('InvokeAgentScope – request.content as input messages', () => {
+    it('should record a single string as input message attribute', () => {
+      const scope = InvokeAgentScope.start({ ...testRequest, content: 'Hello agent' }, {}, testAgentDetails);
+      scope.dispose();
+
+      const attributes = getLastSpan().attributes;
+      const parsed = JSON.parse(attributes[OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY] as string);
+      expect(parsed.version).toBe('0.1.0');
+      expect(parsed.messages).toHaveLength(1);
+      expect(parsed.messages[0].role).toBe('user');
+      expect(parsed.messages[0].parts[0]).toEqual({ type: 'text', content: 'Hello agent' });
+    });
+
+    it('should record a string array as input message attributes', () => {
+      const scope = InvokeAgentScope.start({ ...testRequest, content: ['msg1', 'msg2'] }, {}, testAgentDetails);
+      scope.dispose();
+
+      const attributes = getLastSpan().attributes;
+      const parsed = JSON.parse(attributes[OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY] as string);
+      expect(parsed.messages).toHaveLength(2);
+      expect(parsed.messages[0].parts[0].content).toBe('msg1');
+      expect(parsed.messages[1].parts[0].content).toBe('msg2');
+    });
+
+    it('should record a structured InputMessages wrapper as-is', () => {
+      const wrapper: InputMessages = {
+        version: A365_MESSAGE_SCHEMA_VERSION,
+        messages: [{ role: MessageRole.SYSTEM, parts: [{ type: 'text', content: 'system prompt' }] }],
+      };
+      const scope = InvokeAgentScope.start({ ...testRequest, content: wrapper }, {}, testAgentDetails);
+      scope.dispose();
+
+      const attributes = getLastSpan().attributes;
+      const parsed = JSON.parse(attributes[OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY] as string);
+      expect(parsed.version).toBe('0.1.0');
+      expect(parsed.messages).toHaveLength(1);
+      expect(parsed.messages[0].role).toBe('system');
+    });
+
+    it('should not set input messages when content is undefined', () => {
+      const scope = InvokeAgentScope.start(testRequest, {}, testAgentDetails);
+      scope.dispose();
+
+      const attributes = getLastSpan().attributes;
+      expect(attributes[OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY]).toBeUndefined();
+    });
+  });
+
+  describe('InvokeAgentScope – recordOutputMessages single string', () => {
+    it('should record a single string as output message attribute', () => {
+      const scope = InvokeAgentScope.start(testRequest, {}, testAgentDetails);
+      scope.recordOutputMessages('single output');
+      scope.dispose();
+
+      const attributes = getLastSpan().attributes;
+      const parsed = JSON.parse(attributes[OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY] as string);
+      expect(parsed.messages).toHaveLength(1);
+      expect(parsed.messages[0].role).toBe('assistant');
+      expect(parsed.messages[0].parts[0].content).toBe('single output');
+    });
+  });
+
+  describe('ExecuteToolScope – tool args and response serialization', () => {
+    it('should serialize object arguments to span attribute', () => {
+      const objArgs = { query: 'GDPR', maxResults: 5 };
+      const scope = ExecuteToolScope.start(testRequest, { toolName: 'search', arguments: objArgs }, testAgentDetails);
+      scope.dispose();
+
+      const attributes = getLastSpan().attributes;
+      expect(attributes[OpenTelemetryConstants.GEN_AI_TOOL_ARGS_KEY]).toBe(JSON.stringify(objArgs));
+    });
+
+    it('should serialize object response to span attribute', () => {
+      const objResponse = { results: [{ title: 'Doc A', relevance: 0.95 }] };
+      const scope = ExecuteToolScope.start(testRequest, { toolName: 'tool' }, testAgentDetails);
+      scope.recordResponse(objResponse);
+      scope.dispose();
+
+      const attributes = getLastSpan().attributes;
+      expect(attributes[OpenTelemetryConstants.GEN_AI_TOOL_CALL_RESULT_KEY]).toBe(JSON.stringify(objResponse));
+    });
+  });
+});
+
 // Validate attribute key constant values use the new schema namespace.
 describe('Attribute key schema values', () => {
   it('caller keys use user.* / client.* namespace', () => {
@@ -903,5 +909,36 @@ describe('Attribute key schema values', () => {
     expect(OpenTelemetryConstants.SESSION_ID_KEY).toBe('microsoft.session.id');
     expect(OpenTelemetryConstants.SESSION_DESCRIPTION_KEY).toBe('microsoft.session.description');
     expect(OpenTelemetryConstants.TENANT_ID_KEY).toBe('microsoft.tenant.id');
+  });
+});
+
+describe('safeSerializeToJson', () => {
+  it('should serialize an object to JSON', () => {
+    const obj = { query: 'test', count: 5 };
+    expect(safeSerializeToJson(obj, 'arguments')).toBe(JSON.stringify(obj));
+  });
+
+  it('should return [serialization failed] for circular reference objects', () => {
+    const circular: Record<string, unknown> = { a: 1 };
+    circular.self = circular;
+    expect(safeSerializeToJson(circular, 'arguments')).toBe('[serialization failed]');
+  });
+
+  it('should pass through a valid JSON object string as-is', () => {
+    expect(safeSerializeToJson('{"query":"test"}', 'arguments')).toBe('{"query":"test"}');
+  });
+
+  it('should pass through a valid JSON array string as-is', () => {
+    expect(safeSerializeToJson('[1,2,3]', 'result')).toBe('[1,2,3]');
+  });
+
+  it('should wrap a plain non-JSON string', () => {
+    expect(safeSerializeToJson('hello world', 'arguments')).toBe('{"arguments":"hello world"}');
+  });
+
+  it('should wrap bare JSON primitives instead of passing through', () => {
+    expect(safeSerializeToJson('42', 'arguments')).toBe('{"arguments":"42"}');
+    expect(safeSerializeToJson('true', 'result')).toBe('{"result":"true"}');
+    expect(safeSerializeToJson('null', 'result')).toBe('{"result":"null"}');
   });
 });

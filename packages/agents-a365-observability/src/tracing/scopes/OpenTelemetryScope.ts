@@ -174,8 +174,8 @@ export abstract class OpenTelemetryScope implements Disposable {
 
   /**
    * Records the input messages for telemetry tracking.
-   * Accepts plain strings (auto-wrapped as OTEL ChatMessage) or a versioned InputMessages wrapper.
-   * @param messages Array of input message strings or an InputMessages wrapper
+   * Accepts a single string, an array of strings (auto-wrapped as OTEL ChatMessage), or a versioned InputMessages wrapper.
+   * @param messages A string, array of strings, or an InputMessages wrapper
    */
   protected recordInputMessages(messages: InputMessagesParam): void {
     const wrapper = normalizeInputMessages(messages);
@@ -184,8 +184,8 @@ export abstract class OpenTelemetryScope implements Disposable {
 
   /**
    * Records the output messages for telemetry tracking.
-   * Accepts plain strings (auto-wrapped as OTEL OutputMessage) or a versioned OutputMessages wrapper.
-   * @param messages Array of output message strings or an OutputMessages wrapper
+   * Accepts a single string, an array of strings (auto-wrapped as OTEL OutputMessage), or a versioned OutputMessages wrapper.
+   * @param messages A string, array of strings, or an OutputMessages wrapper
    */
   protected recordOutputMessages(messages: OutputMessagesParam): void {
     const wrapper = normalizeOutputMessages(messages);
