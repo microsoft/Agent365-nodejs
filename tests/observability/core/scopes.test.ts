@@ -33,10 +33,18 @@ const originalConsoleWarn = console.warn;
 const originalConsoleError = console.error;
 beforeAll(() => {
   sharedExporter = new InMemorySpanExporter();
-  const provider = new BasicTracerProvider({
-    spanProcessors: [new SimpleSpanProcessor(sharedExporter)],
-  });
-  trace.setGlobalTracerProvider(provider);
+  const processor = new SimpleSpanProcessor(sharedExporter);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const globalProvider: any = trace.getTracerProvider();
+  if (globalProvider && typeof globalProvider.addSpanProcessor === 'function') {
+    globalProvider.addSpanProcessor(processor);
+  } else {
+    const provider = new BasicTracerProvider({
+      spanProcessors: [processor],
+    });
+    trace.setGlobalTracerProvider(provider);
+  }
 
   console.warn = jest.fn();
   console.error = jest.fn();
@@ -918,10 +926,10 @@ describe('safeSerializeToJson', () => {
     expect(safeSerializeToJson(obj, 'arguments')).toBe(JSON.stringify(obj));
   });
 
-  it('should return [serialization failed] for circular reference objects', () => {
+  it('should return JSON error object for circular reference objects', () => {
     const circular: Record<string, unknown> = { a: 1 };
     circular.self = circular;
-    expect(safeSerializeToJson(circular, 'arguments')).toBe('[serialization failed]');
+    expect(safeSerializeToJson(circular, 'arguments')).toBe(JSON.stringify({ error: 'serialization failed' }));
   });
 
   it('should pass through a valid JSON object string as-is', () => {

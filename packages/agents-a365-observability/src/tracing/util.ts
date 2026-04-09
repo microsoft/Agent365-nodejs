@@ -57,7 +57,7 @@ export function safeSerializeToJson(value: Record<string, unknown> | string, key
     try {
       return JSON.stringify(value);
     } catch {
-      return '[serialization failed]';
+      return JSON.stringify({ error: 'serialization failed' });
     }
   }
   // String: check if it's already a valid JSON object/array, otherwise wrap it

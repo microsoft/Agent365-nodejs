@@ -88,7 +88,7 @@ export class OutputScope extends OpenTelemetryScope {
       } catch {
         this.setTagMaybe(
           OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY,
-          '[serialization failed]'
+          JSON.stringify({ error: 'serialization failed' })
         );
       }
       return;
