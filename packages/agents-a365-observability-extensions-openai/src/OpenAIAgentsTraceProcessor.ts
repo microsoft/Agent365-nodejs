@@ -330,8 +330,7 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
   private processGenerationSpanData(otelSpan: OtelSpan, data: SpanData, traceId: string, contentRecording: boolean): void {
     const attrs = Utils.getAttributesFromGenerationSpanData(data);
     Object.entries(attrs).forEach(([key, value]) => {
-      const shouldExcludeKey = key === OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY
-        || key === Constants.GEN_AI_EXECUTION_PAYLOAD_KEY;
+      const shouldExcludeKey = key === Constants.GEN_AI_EXECUTION_PAYLOAD_KEY;
       if (value !== null && value !== undefined && !shouldExcludeKey) {
         const newKey = this.getNewKey(data.type, key);
         const resolvedKey = newKey || key;
@@ -360,7 +359,7 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
     const functionData = data as Record<string, unknown>;
     const attrs = Utils.getAttributesFromFunctionSpanData(data);
     Object.entries(attrs).forEach(([key, value]) => {
-      if (value !== null && value !== undefined && key !== OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY) {
+      if (value !== null && value !== undefined) {
         const newKey = this.getNewKey(data.type, key);
         const resolvedKey = newKey || key;
         if (!OpenAIAgentsTraceProcessor.isContentKey(resolvedKey) || contentRecording) {
@@ -382,7 +381,7 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
   private processMCPListToolsSpanData(otelSpan: OtelSpan, data: SpanData): void {
     const attrs = Utils.getAttributesFromMCPListToolsSpanData(data);
     Object.entries(attrs).forEach(([key, value]) => {
-      if (value !== null && value !== undefined && key !== OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY) {
+      if (value !== null && value !== undefined) {
         const newKey = this.getNewKey(data.type, key);
         otelSpan.setAttribute(newKey || key, value as string | number | boolean);
       }

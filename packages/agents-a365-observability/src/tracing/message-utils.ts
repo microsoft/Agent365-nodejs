@@ -13,14 +13,6 @@ import {
 } from './contracts';
 
 /**
- * Type guard that returns `true` when the input is a plain `string[]`
- * rather than a versioned wrapper object.
- */
-export function isStringArray(input: InputMessagesParam | OutputMessagesParam): input is string[] {
-  return Array.isArray(input);
-}
-
-/**
  * Type guard that returns `true` when the input is a versioned wrapper
  * object (`InputMessages` or `OutputMessages`).
  */
@@ -50,24 +42,26 @@ export function toOutputMessages(messages: string[]): OutputMessage[] {
 
 /**
  * Normalizes an `InputMessagesParam` to a versioned `InputMessages` wrapper.
- * - `string[]` → converted to `ChatMessage[]` and wrapped
+ * - `string` / `string[]` → converted to `ChatMessage[]` and wrapped
  * - `InputMessages` → returned as-is
  */
 export function normalizeInputMessages(param: InputMessagesParam): InputMessages {
-  if (isStringArray(param)) {
-    return { version: A365_MESSAGE_SCHEMA_VERSION, messages: toInputMessages(param) };
+  if (typeof param === 'string' || Array.isArray(param)) {
+    const arr = typeof param === 'string' ? [param] : param;
+    return { version: A365_MESSAGE_SCHEMA_VERSION, messages: toInputMessages(arr) };
   }
   return param;
 }
 
 /**
  * Normalizes an `OutputMessagesParam` to a versioned `OutputMessages` wrapper.
- * - `string[]` → converted to `OutputMessage[]` and wrapped
+ * - `string` / `string[]` → converted to `OutputMessage[]` and wrapped
  * - `OutputMessages` → returned as-is
  */
 export function normalizeOutputMessages(param: OutputMessagesParam): OutputMessages {
-  if (isStringArray(param)) {
-    return { version: A365_MESSAGE_SCHEMA_VERSION, messages: toOutputMessages(param) };
+  if (typeof param === 'string' || Array.isArray(param)) {
+    const arr = typeof param === 'string' ? [param] : param;
+    return { version: A365_MESSAGE_SCHEMA_VERSION, messages: toOutputMessages(arr) };
   }
   return param;
 }

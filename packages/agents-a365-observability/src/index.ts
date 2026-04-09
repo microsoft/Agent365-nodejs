@@ -29,12 +29,10 @@ export {
 
 // Contracts and interfaces
 export {
-  ExecutionType,
   InvocationRole,
   Channel,
   Request,
   AgentDetails,
-  TenantDetails,
   ToolCallDetails,
   InvokeAgentScopeDetails,
   UserDetails,
@@ -70,6 +68,7 @@ export {
   OutputMessages,
   InputMessagesParam,
   OutputMessagesParam,
+  ResponseMessagesParam,
   A365_MESSAGE_SCHEMA_VERSION,
 } from './tracing/contracts';
 
