@@ -5,6 +5,7 @@ import { Run } from "@langchain/core/tracers/base";
 import { Span } from "@opentelemetry/api";
 import { OpenTelemetryConstants } from "@microsoft/agents-a365-observability";
 import * as Utils from "../../../../packages/agents-a365-observability-extensions-langchain/src/Utils";
+import { expectValidInputMessages, expectValidOutputMessages, getSpanAttribute } from "../helpers/message-schema-validator";
 
 describe("LangChain Observability - InvokeAgentScope Attributes", () => {
   let mockSpan: Partial<Span>;
@@ -42,9 +43,12 @@ describe("LangChain Observability - InvokeAgentScope Attributes", () => {
 
       Utils.setInputMessagesAttribute(run as Run, mockSpan as Span);
 
+      const inputValue = getSpanAttribute(mockSpan as any, OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY);
+      expectValidInputMessages(inputValue);
+
       expect(mockSpan.setAttribute).toHaveBeenCalledWith(
         OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY,
-        JSON.stringify(["hi"])
+        JSON.stringify({"version":"0.1.0","messages":[{"role":"user","parts":[{"type":"text","content":"hi"}]}]})
       );
     });
 
@@ -64,9 +68,12 @@ describe("LangChain Observability - InvokeAgentScope Attributes", () => {
 
       Utils.setInputMessagesAttribute(run as Run, mockSpan as Span);
 
+      const inputValue = getSpanAttribute(mockSpan as any, OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY);
+      expectValidInputMessages(inputValue);
+
       expect(mockSpan.setAttribute).toHaveBeenCalledWith(
         OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY,
-        JSON.stringify(["hello agent"])
+        JSON.stringify({"version":"0.1.0","messages":[{"role":"user","parts":[{"type":"text","content":"hello agent"}]}]})
       );
     });
 
@@ -86,9 +93,12 @@ describe("LangChain Observability - InvokeAgentScope Attributes", () => {
 
       Utils.setOutputMessagesAttribute(run as Run, mockSpan as Span);
 
+      const outputValue = getSpanAttribute(mockSpan as any, OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY);
+      expectValidOutputMessages(outputValue);
+
       expect(mockSpan.setAttribute).toHaveBeenCalledWith(
         OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY,
-        JSON.stringify(["Hello! How can I assist you today?"])
+        JSON.stringify({"version":"0.1.0","messages":[{"role":"assistant","parts":[{"type":"text","content":"Hello! How can I assist you today?"}]}]})
       );
     });
 
@@ -177,7 +187,33 @@ describe("LangChain Observability - ExecuteToolScope Attributes", () => {
       );
       expect(mockSpan.setAttribute).toHaveBeenCalledWith(
         OpenTelemetryConstants.GEN_AI_TOOL_CALL_RESULT_KEY,
-        JSON.stringify("The weather in Seattle is currently rainy with a temperature of 39°C.")
+        "The weather in Seattle is currently rainy with a temperature of 39°C."
+      );
+    });
+
+    it("should extract tool result from v1 plain string output", () => {
+      const run: Partial<Run> = {
+        run_type: "tool",
+        name: "get_weather",
+        serialized: { name: "get_weather" },
+        inputs: {
+          input: '{"city": "Seattle"}',
+          tool_call_id: "call_v1_abc123",
+        },
+        outputs: {
+          output: "Sunny, 25°C in Seattle.",
+        },
+      };
+
+      Utils.setToolAttributes(run as Run, mockSpan as Span);
+
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith(
+        OpenTelemetryConstants.GEN_AI_TOOL_CALL_RESULT_KEY,
+        "Sunny, 25°C in Seattle."
+      );
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith(
+        OpenTelemetryConstants.GEN_AI_TOOL_CALL_ID_KEY,
+        "call_v1_abc123"
       );
     });
   });

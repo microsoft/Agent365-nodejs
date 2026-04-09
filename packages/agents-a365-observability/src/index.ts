@@ -82,6 +82,9 @@ export { logger, setLogger, getLogger, resetLogger, formatError } from './utils/
 export type { ILogger } from './utils/logging';
 export { truncateValue, MAX_ATTRIBUTE_LENGTH } from './tracing/util';
 
+// Message utilities
+export { serializeMessages, normalizeInputMessages, normalizeOutputMessages } from './tracing/message-utils';
+
 // Exporter utilities
 export { isPerRequestExportEnabled } from './tracing/exporter/utils';
 

@@ -13,6 +13,7 @@ import { OpenTelemetryConstants } from '@microsoft/agents-a365-observability';
 import { OpenAIAgentsTraceProcessor } from '@microsoft/agents-a365-observability-extensions-openai';
 import { ObservabilityManager } from '@microsoft/agents-a365-observability';
 import { trace } from '@opentelemetry/api';
+import { expectValidInputMessages, expectValidOutputMessages, getAttrFromArray } from '../helpers/message-schema-validator';
 
 describe('OpenAIAgentsTraceProcessor', () => {
   let tracer: Tracer;
@@ -551,7 +552,7 @@ describe('OpenAIAgentsTraceProcessor', () => {
       expect(keys).not.toContain(OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY);
     });
 
-    it('records full array JSON when only assistant messages are present', async () => {
+    it('records structured InputMessages when only assistant messages are present', async () => {
       const processor = new OpenAIAgentsTraceProcessor(tracer, { isContentRecordingEnabled: true });
       const traceData = { traceId: 'trace-assistant-only', name: 'Agent' } as any;
       await processor.onTraceStart(traceData);
@@ -583,11 +584,16 @@ describe('OpenAIAgentsTraceProcessor', () => {
       const entry = attrs.find(([k]) => k === OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY);
       expect(entry).toBeDefined();
 
+      expectValidInputMessages(entry![1]);
+
       const value = entry![1] as string;
       const parsed = JSON.parse(value);
-      expect(parsed).toEqual(inputArray);
+      expect(parsed.version).toBe('0.1.0');
+      expect(parsed.messages).toHaveLength(1);
+      expect(parsed.messages[0].role).toBe('assistant');
+      expect(parsed.messages[0].parts[0]).toEqual({ type: 'text', content: 'Assistant reply' });
     });
-    it('records user text content for array _input on response spans', async () => {
+    it('records structured InputMessages for array _input on response spans', async () => {
       const processor = new OpenAIAgentsTraceProcessor(tracer, { isContentRecordingEnabled: true });
       const traceData = { traceId: 'trace-array-input', name: 'Agent' } as any;
       await processor.onTraceStart(traceData);
@@ -617,10 +623,14 @@ describe('OpenAIAgentsTraceProcessor', () => {
 
       const value = entry![1] as string;
       const parsed = JSON.parse(value);
-      expect(parsed).toEqual(['Hello user 1', 'Hello user 2']);
+      expect(parsed.version).toBe('0.1.0');
+      expect(parsed.messages).toHaveLength(2);
+      expectValidInputMessages(entry![1]);
+      expect(parsed.messages[0]).toEqual({ role: 'user', parts: [{ type: 'text', content: 'Hello user 1' }] });
+      expect(parsed.messages[1]).toEqual({ role: 'user', parts: [{ type: 'text', content: 'Hello user 2' }] });
     });
 
-    it('parses stringified array _input and records only user text content', async () => {
+    it('parses stringified array _input and records all messages in structured format', async () => {
       const processor = new OpenAIAgentsTraceProcessor(tracer, { isContentRecordingEnabled: true });
       const traceData = { traceId: 'trace-array-input-string', name: 'Agent' } as any;
       await processor.onTraceStart(traceData);
@@ -653,10 +663,15 @@ describe('OpenAIAgentsTraceProcessor', () => {
 
       const value = entry![1] as string;
       const parsed = JSON.parse(value);
-      expect(parsed).toEqual(['Hello user 1', 'Hello user 2']);
+      expect(parsed.version).toBe('0.1.0');
+      expect(parsed.messages).toHaveLength(3);
+      expectValidInputMessages(entry![1]);
+      expect(parsed.messages[0].role).toBe('user');
+      expect(parsed.messages[1].role).toBe('user');
+      expect(parsed.messages[2].role).toBe('assistant');
     });
 
-    it('records [gen_ai.input.messages] attribute for array input with non standard schema on response spans', async () => {
+    it('records structured InputMessages for array input with non standard schema on response spans', async () => {
       const processor = new OpenAIAgentsTraceProcessor(tracer, { isContentRecordingEnabled: true });
       const traceData = { traceId: 'trace-array-input', name: 'Agent' } as any;
       await processor.onTraceStart(traceData);
@@ -671,7 +686,7 @@ describe('OpenAIAgentsTraceProcessor', () => {
         spanData: {
           type: 'response' as const,
           name: 'ResponseArray',
-          _input:  inputArray,         
+          _input:  inputArray,
           _response: { model: 'gpt-4', output: 'ok' },
         },
       } as any;
@@ -686,7 +701,9 @@ describe('OpenAIAgentsTraceProcessor', () => {
 
       const value = entry![1] as string;
       const parsed = JSON.parse(value);
-      expect(parsed).toEqual(inputArray);
+      expect(parsed.version).toBe('0.1.0');
+      expect(parsed.messages).toBeDefined();
+      expect(parsed.messages.length).toBeGreaterThan(0);
     });
 
     it('records GEN_AI_OUTPUT_MESSAGES as plain string when output is a string', async () => {
@@ -716,7 +733,7 @@ describe('OpenAIAgentsTraceProcessor', () => {
       expect(entry![1]).toBe('final answer');
     });
 
-    it('records GEN_AI_OUTPUT_MESSAGES as aggregated texts when output is structured', async () => {
+    it('records structured OutputMessages when output is structured', async () => {
       const processor = new OpenAIAgentsTraceProcessor(tracer, { isContentRecordingEnabled: true });
       const traceData = { traceId: 'trace-output-structured', name: 'Agent' } as any;
       await processor.onTraceStart(traceData);
@@ -753,7 +770,14 @@ describe('OpenAIAgentsTraceProcessor', () => {
 
       const value = entry![1] as string;
       const parsed = JSON.parse(value);
-      expect(parsed).toEqual(['Hello user 1', 'Hello user 2']);
+      expect(parsed.version).toBe('0.1.0');
+      expect(parsed.messages).toHaveLength(1);
+      expect(parsed.messages[0].role).toBe('assistant');
+      expectValidOutputMessages(entry![1]);
+      expect(parsed.messages[0].parts).toEqual([
+        { type: 'text', content: 'Hello user 1' },
+        { type: 'text', content: 'Hello user 2' },
+      ]);
     });
 
     it('suppresses all content attributes when isContentRecordingEnabled is false', async () => {
