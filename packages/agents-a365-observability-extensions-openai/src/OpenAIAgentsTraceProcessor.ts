@@ -11,7 +11,7 @@ import { context, trace as OtelTrace, Span as OtelSpan, Tracer as OtelTracer } f
 import { OpenTelemetryConstants, InferenceOperationType, logger, truncateValue, serializeMessages } from '@microsoft/agents-a365-observability';
 import * as Constants from './Constants';
 import * as Utils from './Utils';
-import { buildStructuredInputMessages, buildStructuredOutputMessages } from './Utils';
+import { buildStructuredInputMessages, buildStructuredOutputMessages, wrapRawContentAsInputMessages, wrapRawContentAsOutputMessages } from './Utils';
 import {
   Span as AgentsSpan,
   SpanData,
@@ -249,10 +249,11 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
     if (responseObj) {
       const resp = responseObj as Record<string, unknown>;
 
-      // Store the output field as structured OutputMessages
+      // Store the output field as structured OutputMessages (always use versioned envelope)
       if (resp.output && contentRecording) {
         if (typeof resp.output === 'string') {
-          otelSpan.setAttribute(OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY, truncateValue(resp.output));
+          const structured = wrapRawContentAsOutputMessages(resp.output);
+          otelSpan.setAttribute(OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY, truncateValue(serializeMessages(structured)));
         } else if (Array.isArray(resp.output)) {
           const structured = buildStructuredOutputMessages(resp.output as Array<Record<string, unknown>>);
           otelSpan.setAttribute(
@@ -288,9 +289,10 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
             return;
           }
         } catch {
-          // If parsing fails, fall back to raw string behavior
+          // If parsing fails, wrap raw string in versioned envelope
         }
-        otelSpan.setAttribute(OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, truncateValue(inputObj as string));
+        const wrappedInput = wrapRawContentAsInputMessages(inputObj);
+        otelSpan.setAttribute(OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, truncateValue(serializeMessages(wrappedInput)));
       } else if (Array.isArray(inputObj)) {
         const structured = buildStructuredInputMessages(inputObj as Array<{ role: string; content: string | unknown[] | unknown }>);
         otelSpan.setAttribute(
@@ -343,8 +345,8 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
           otelSpan.setAttribute(resolvedKey, value as string | number | boolean);
         }
       }
-      otelSpan.setAttribute(OpenTelemetryConstants.GEN_AI_TOOL_TYPE_KEY, 'function');
     });
+    otelSpan.setAttribute(OpenTelemetryConstants.GEN_AI_TOOL_TYPE_KEY, 'function');
 
     this.stampCustomParent(otelSpan, traceId);
     // Use function name from data instead of span name

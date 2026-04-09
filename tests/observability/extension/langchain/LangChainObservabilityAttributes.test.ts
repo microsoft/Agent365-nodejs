@@ -410,5 +410,150 @@ describe("LangChain Observability - InferenceScope Attributes", () => {
         "You are a code generator"
       );
     });
+
+    it("should extract system instructions from v1 constructor format", () => {
+      const run: Partial<Run> = {
+        inputs: {
+          messages: [[
+            {
+              lc: 1,
+              type: "constructor",
+              id: ["langchain_core", "messages", "SystemMessage"],
+              kwargs: { content: "v1 system prompt" },
+            },
+            {
+              lc: 1,
+              type: "constructor",
+              id: ["langchain_core", "messages", "HumanMessage"],
+              kwargs: { content: "user input" },
+            },
+          ]],
+        },
+      };
+
+      Utils.setSystemInstructionsAttribute(run as Run, mockSpan as Span);
+
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith(
+        OpenTelemetryConstants.GEN_AI_SYSTEM_INSTRUCTIONS_KEY,
+        "v1 system prompt"
+      );
+    });
+
+    it("should extract tokens from tokenUsage shape (promptTokens/completionTokens)", () => {
+      const run: Partial<Run> = {
+        outputs: {
+          generations: [[{
+            message: {
+              kwargs: {
+                response_metadata: {
+                  tokenUsage: {
+                    promptTokens: 100,
+                    completionTokens: 50,
+                    totalTokens: 150,
+                  },
+                },
+              },
+            },
+          }]],
+        },
+      };
+
+      Utils.setTokenAttributes(run as Run, mockSpan as Span);
+
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith(
+        OpenTelemetryConstants.GEN_AI_USAGE_INPUT_TOKENS_KEY,
+        100
+      );
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith(
+        OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY,
+        50
+      );
+    });
+  });
+});
+
+describe("LangChain Observability - v1 Format Coverage", () => {
+  let mockSpan: Partial<Span>;
+
+  beforeEach(() => {
+    mockSpan = { setAttribute: jest.fn() };
+  });
+
+  it("should extract input content from v1 constructor format", () => {
+    const run: Partial<Run> = {
+      run_type: "llm",
+      inputs: {
+        messages: [[
+          {
+            lc: 1,
+            type: "constructor",
+            id: ["langchain_core", "messages", "HumanMessage"],
+            kwargs: { content: "v1 format message" },
+          },
+        ]],
+      },
+    };
+
+    Utils.setInputMessagesAttribute(run as Run, mockSpan as Span);
+
+    const value = getSpanAttribute(mockSpan as any, OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY);
+    expectValidInputMessages(value);
+    const parsed = JSON.parse(value as string);
+    expect(parsed.messages[0].parts[0].content).toBe("v1 format message");
+  });
+
+  it("should extract output content from v1 AIMessage constructor format", () => {
+    const run: Partial<Run> = {
+      run_type: "llm",
+      outputs: {
+        generations: [[{
+          message: {
+            lc: 1,
+            type: "constructor",
+            id: ["langchain_core", "messages", "AIMessage"],
+            kwargs: { content: "v1 AI response", tool_calls: [] },
+          },
+        }]],
+      },
+    };
+
+    Utils.setOutputMessagesAttribute(run as Run, mockSpan as Span);
+
+    const value = getSpanAttribute(mockSpan as any, OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY);
+    expectValidOutputMessages(value);
+    const parsed = JSON.parse(value as string);
+    expect(parsed.messages[0].role).toBe("assistant");
+    expect(parsed.messages[0].parts[0].content).toBe("v1 AI response");
+  });
+
+  it("should not set input attribute when inputs.messages is missing", () => {
+    const run: Partial<Run> = { inputs: { other_key: "value" } };
+    Utils.setInputMessagesAttribute(run as Run, mockSpan as Span);
+    expect(mockSpan.setAttribute).not.toHaveBeenCalledWith(
+      OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY,
+      expect.anything()
+    );
+  });
+
+  it("should filter out non-AI messages from agent scope outputs", () => {
+    const run: Partial<Run> = {
+      run_type: "chain",
+      serialized: { id: ["langgraph", "graph", "CompiledStateGraph"] },
+      outputs: {
+        messages: [
+          { role: "user", content: "user message in output" },
+          { role: "system", content: "system in output" },
+          { role: "assistant", content: "ai response" },
+        ],
+      },
+    };
+
+    Utils.setOutputMessagesAttribute(run as Run, mockSpan as Span);
+
+    const value = getSpanAttribute(mockSpan as any, OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY);
+    const parsed = JSON.parse(value as string);
+    expect(parsed.messages).toHaveLength(1);
+    expect(parsed.messages[0].role).toBe("assistant");
+    expect(parsed.messages[0].parts[0].content).toBe("ai response");
   });
 });

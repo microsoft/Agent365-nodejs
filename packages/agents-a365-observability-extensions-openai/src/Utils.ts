@@ -182,21 +182,6 @@ export function getAttributesFromResponse(response: unknown): Record<string, unk
 }
 
 /**
- * Get attributes from input data
- */
-export function getAttributesFromInput(input: unknown): Record<string, unknown> {
-  const attributes: Record<string, unknown> = {};
-
-  if (typeof input === 'string') {
-    attributes[Constants.GEN_AI_REQUEST_CONTENT_KEY] = input;
-  } else if (Array.isArray(input)) {
-    attributes[Constants.GEN_AI_REQUEST_CONTENT_KEY] = safeJsonDumps(input);
-  }
-
-  return attributes;
-}
-
-/**
  * Get span status from OpenAI Agents SDK span
  */
 export function getSpanStatus(span: AgentsSpan<SpanData>): { code: SpanStatusCode; message?: string } {

@@ -168,4 +168,72 @@ describe('OpenAI Message Contract Tests', () => {
       expect(toolPart.arguments).toEqual({ city: 'Seattle' });
     });
   });
+
+  describe('Edge cases', () => {
+    it('should return empty messages array for empty input', () => {
+      const result = buildStructuredInputMessages([]);
+      expect(result.version).toBe('0.1.0');
+      expect(result.messages).toHaveLength(0);
+    });
+
+    it('should skip null/non-object entries in input array', () => {
+      const result = buildStructuredInputMessages([null as any, undefined as any, { role: 'user', content: 'valid' }]);
+      expect(result.messages).toHaveLength(1);
+      expect(result.messages[0].parts[0]).toEqual({ type: 'text', content: 'valid' });
+    });
+
+    it('should return empty messages array for empty output', () => {
+      const result = buildStructuredOutputMessages([]);
+      expect(result.messages).toHaveLength(0);
+    });
+
+    it('should map function_call content block to tool_call part', () => {
+      const result = buildStructuredOutputMessages([{
+        role: 'assistant',
+        content: [
+          { type: 'function_call', name: 'my_func', id: 'fc_1', arguments: '{"x":1}' },
+        ],
+      }]);
+      expect(result.messages[0].parts[0].type).toBe('tool_call');
+      const part = result.messages[0].parts[0] as any;
+      expect(part.name).toBe('my_func');
+      expect(part.id).toBe('fc_1');
+      expect(part.arguments).toEqual({ x: 1 });
+    });
+
+    it('should map input_file block with modality from mime_type', () => {
+      const result = buildStructuredInputMessages([{
+        role: 'user',
+        content: [
+          { type: 'input_file', mime_type: 'application/pdf', file_id: 'file_123' },
+        ],
+      }] as any);
+      expect(result.messages[0].parts[0].type).toBe('file');
+      expect((result.messages[0].parts[0] as any).modality).toBe('application');
+    });
+
+    it('should fall back to raw wrapper when tool_call arguments are malformed JSON', () => {
+      const result = buildStructuredOutputMessages([{
+        role: 'assistant',
+        content: [
+          { type: 'tool_call', name: 'get_weather', call_id: 'c1', arguments: 'not-json{{{' },
+        ],
+      }]);
+      const part = result.messages[0].parts[0] as any;
+      expect(part.type).toBe('tool_call');
+      expect(part.arguments).toEqual({ raw: 'not-json{{{' });
+    });
+
+    it('should produce a generic part for unknown input content block types', () => {
+      const result = buildStructuredInputMessages([{
+        role: 'user',
+        content: [
+          { type: 'future_block_type', some_field: 'value' },
+        ],
+      }] as any);
+      const part = result.messages[0].parts[0] as any;
+      expect(part.type).toBe('future_block_type');
+      expect(typeof part.content).toBe('string');
+    });
+  });
 });

@@ -110,25 +110,10 @@ export function setInputMessagesAttribute(run: Run, span: Span) {
   }
 }
 
-// Helper: Extract message content from various formats
-function extractMessageContent(msg: Record<string, unknown>): string | null {
-  // Simple format: {role: "user", content}
-  if (isString(msg.content)) {
-    return msg.content;
-  }
-
-  // LangChain format: {lc_type: "human", lc_kwargs: {content}}
-  if (msg.lc_kwargs && typeof msg.lc_kwargs === "object" && !Array.isArray(msg.lc_kwargs)) {
-    const kwargs = msg.lc_kwargs as Record<string, unknown>;
-    if (isString(kwargs.content)) return kwargs.content;
-  }
-
-  // LangChain v1 serialized format — see extractMessageContent for details
-  if (msg.lc === 1 && msg.type === "constructor" && msg.kwargs && typeof msg.kwargs === "object" && !Array.isArray(msg.kwargs)) {
-    const kwargs = msg.kwargs as Record<string, unknown>;
-    if (isString(kwargs.content)) return kwargs.content;
-  }
-  return null;
+// Helper: Extract string content from a message (used for fallback text extraction and system instructions)
+function extractStringContent(msg: Record<string, unknown>): string | null {
+  const raw = extractRawContent(msg);
+  return isString(raw) ? raw : null;
 }
 
 // Helper: Extract raw content (string or content block array) from various message formats
@@ -251,7 +236,7 @@ function buildPartsFromMessage(msg: Record<string, unknown>): MessagePart[] {
 
   // Fallback: if no parts were built, use text extraction
   if (parts.length === 0) {
-    const textContent = extractMessageContent(msg);
+    const textContent = extractStringContent(msg);
     if (textContent) {
       parts.push({ type: "text", content: textContent });
     }
@@ -301,14 +286,16 @@ function getMessageType(msg: Record<string, unknown>): string {
   if (isString(msg.role)) return msg.role;
   // LangChain old format
   if (isString(msg.lc_type)) return msg.lc_type;
-  if (isString(msg.type)) return msg.type;
-  // LangChain new format - check id array for message type
+  // Skip v1 constructor type marker — fall through to id array check
+  if (isString(msg.type) && msg.type !== "constructor") return msg.type;
+  // LangChain v1 format - check id array for message type (e.g., ["langchain_core", "messages", "HumanMessage"])
   if (Array.isArray(msg.id)) {
     const lastId = msg.id[msg.id.length - 1];
     if (isString(lastId)) {
       if (lastId.includes("Human")) return "human";
       if (lastId.includes("AI")) return "ai";
       if (lastId.includes("System")) return "system";
+      if (lastId.includes("Tool")) return "tool";
     }
   }
   return "unknown";
@@ -461,7 +448,7 @@ export function setSystemInstructionsAttribute(run: Run, span: Span) {
       const msgType = getMessageType(m as Record<string, unknown>);
       return msgType === "system";
     })
-    .map((m: unknown) => extractMessageContent(m as Record<string, unknown>) ?? "")
+    .map((m: unknown) => extractStringContent(m as Record<string, unknown>) ?? "")
     .map((s: string) => s.trim())
     .filter(Boolean)
     .join("\n");
@@ -490,11 +477,15 @@ export function setTokenAttributes(run: Run, span: Span) {
   }
 
   const usageObj = usage as Record<string, unknown>;
-  if (typeof usageObj.input_tokens === "number") {
-    span.setAttribute(OpenTelemetryConstants.GEN_AI_USAGE_INPUT_TOKENS_KEY, usageObj.input_tokens);
+  // Support both usage_metadata shape (input_tokens/output_tokens) and
+  // tokenUsage shape (promptTokens/completionTokens) from LangChain OpenAI provider
+  const inputTokens = usageObj.input_tokens ?? usageObj.promptTokens;
+  const outputTokens = usageObj.output_tokens ?? usageObj.completionTokens;
+  if (typeof inputTokens === "number") {
+    span.setAttribute(OpenTelemetryConstants.GEN_AI_USAGE_INPUT_TOKENS_KEY, inputTokens);
   }
-  if (typeof usageObj.output_tokens === "number") {
-    span.setAttribute(OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY, usageObj.output_tokens);
+  if (typeof outputTokens === "number") {
+    span.setAttribute(OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY, outputTokens);
   }
 }
 

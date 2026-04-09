@@ -706,7 +706,7 @@ describe('OpenAIAgentsTraceProcessor', () => {
       expect(parsed.messages.length).toBeGreaterThan(0);
     });
 
-    it('records GEN_AI_OUTPUT_MESSAGES as plain string when output is a string', async () => {
+    it('records GEN_AI_OUTPUT_MESSAGES in versioned envelope when output is a string', async () => {
       const processor = new OpenAIAgentsTraceProcessor(tracer, { isContentRecordingEnabled: true });
       const traceData = { traceId: 'trace-output-string', name: 'Agent' } as any;
       await processor.onTraceStart(traceData);
@@ -730,7 +730,9 @@ describe('OpenAIAgentsTraceProcessor', () => {
       const attrs = respMock._attrs as Array<[string, unknown]>;
       const entry = attrs.find(([k]) => k === OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY);
       expect(entry).toBeDefined();
-      expect(entry![1]).toBe('final answer');
+      expectValidOutputMessages(entry![1]);
+      const parsed = JSON.parse(entry![1] as string);
+      expect(parsed.messages[0].parts[0].content).toBe('final answer');
     });
 
     it('records structured OutputMessages when output is structured', async () => {
@@ -812,6 +814,36 @@ describe('OpenAIAgentsTraceProcessor', () => {
       // Model attribute should still be present (non-content)
       const modelAttr = attrs.find(([k]) => k === OpenTelemetryConstants.GEN_AI_REQUEST_MODEL_KEY);
       expect(modelAttr).toBeDefined();
+    });
+
+    it('suppresses content on response span when isContentRecordingEnabled is false', async () => {
+      const processor = new OpenAIAgentsTraceProcessor(tracer);
+      const traceData = { traceId: 'trace-resp-nc', name: 'Agent' } as any;
+      await processor.onTraceStart(traceData);
+
+      const respSpan = {
+        spanId: 'resp-nc',
+        traceId: 'trace-resp-nc',
+        startedAt: new Date().toISOString(),
+        spanData: {
+          type: 'response' as const,
+          _input: [{ role: 'user', content: 'secret input' }],
+          _response: {
+            model: 'gpt-4',
+            output: [{ role: 'assistant', content: [{ type: 'output_text', text: 'secret output' }] }],
+          },
+        },
+      } as any;
+
+      await processor.onSpanStart(respSpan);
+      await processor.onSpanEnd(respSpan);
+
+      const mock = spansByName['response'];
+      const attrs = mock._attrs as Array<[string, unknown]>;
+      expect(attrs.find(([k]) => k === OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY)).toBeUndefined();
+      expect(attrs.find(([k]) => k === OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY)).toBeUndefined();
+      // Model should still be present
+      expect(attrs.find(([k]) => k === OpenTelemetryConstants.GEN_AI_REQUEST_MODEL_KEY)).toBeDefined();
     });
 
   });
