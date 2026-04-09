@@ -124,7 +124,7 @@ describe('OpenAI Message Contract Tests', () => {
     });
 
     async function runResponseSpan(traceId: string, spanName: string, input: any[], responseOutput: any[]): Promise<Array<[string, unknown]>> {
-      const processor = new OpenAIAgentsTraceProcessor(tracer, { isContentRecordingEnabled: true });
+      const processor = new OpenAIAgentsTraceProcessor(tracer, {});
       await processor.onTraceStart({ traceId, name: 'Agent' } as any);
       const span = {
         spanId: `sid-${spanName}`,

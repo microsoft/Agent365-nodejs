@@ -187,7 +187,12 @@ describe("LangChain Observability - ExecuteToolScope Attributes", () => {
       );
       expect(mockSpan.setAttribute).toHaveBeenCalledWith(
         OpenTelemetryConstants.GEN_AI_TOOL_CALL_RESULT_KEY,
-        "The weather in Seattle is currently rainy with a temperature of 39°C."
+        '{"result":"The weather in Seattle is currently rainy with a temperature of 39°C."}'
+      );
+      // Tool args: string input is already valid JSON, passed through by safeSerializeToJson
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith(
+        OpenTelemetryConstants.GEN_AI_TOOL_ARGS_KEY,
+        '{"city": "Seattle"}'
       );
     });
 
@@ -209,13 +214,18 @@ describe("LangChain Observability - ExecuteToolScope Attributes", () => {
 
       expect(mockSpan.setAttribute).toHaveBeenCalledWith(
         OpenTelemetryConstants.GEN_AI_TOOL_CALL_RESULT_KEY,
-        "Sunny, 25°C in Seattle."
+        '{"result":"Sunny, 25°C in Seattle."}'
+      );
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith(
+        OpenTelemetryConstants.GEN_AI_TOOL_ARGS_KEY,
+        '{"city": "Seattle"}'
       );
       expect(mockSpan.setAttribute).toHaveBeenCalledWith(
         OpenTelemetryConstants.GEN_AI_TOOL_CALL_ID_KEY,
         "call_v1_abc123"
       );
     });
+
   });
 });
 

@@ -5,8 +5,8 @@
 import { SpanStatusCode } from '@opentelemetry/api';
 import {
   OpenTelemetryConstants,
-  truncateValue,
   serializeMessages,
+  safeSerializeToJson,
   A365_MESSAGE_SCHEMA_VERSION,
   MessageRole,
   InputMessages,
@@ -23,9 +23,9 @@ import { Span as AgentsSpan, SpanData } from '@openai/agents-core/dist/tracing/s
  */
 export function safeJsonDumps(obj: unknown): string {
   try {
-    return truncateValue(JSON.stringify(obj));
+    return JSON.stringify(obj);
   } catch {
-    return truncateValue(String(obj));
+    return String(obj);
   }
 }
 
@@ -129,14 +129,18 @@ export function getAttributesFromFunctionSpanData(data: SpanData): Record<string
     attributes['gen_ai.tool.name'] = funcData.name;
   }
 
-  if (funcData.input) {
-    attributes[Constants.GEN_AI_REQUEST_CONTENT_KEY] =
-      typeof funcData.input === 'string' ? truncateValue(funcData.input) : safeJsonDumps(funcData.input);
+  if (funcData.input != null) {
+    attributes[Constants.GEN_AI_REQUEST_CONTENT_KEY] = safeSerializeToJson(
+      typeof funcData.input === 'object' ? funcData.input as Record<string, unknown> : String(funcData.input),
+      'arguments'
+    );
   }
 
   if (funcData.output !== undefined && funcData.output !== null) {
-    const output = typeof funcData.output === 'object' ? safeJsonDumps(funcData.output) : truncateValue(String(funcData.output));
-    attributes[Constants.GEN_AI_RESPONSE_CONTENT_KEY] = output;
+    attributes[Constants.GEN_AI_RESPONSE_CONTENT_KEY] = safeSerializeToJson(
+      typeof funcData.output === 'object' ? funcData.output as Record<string, unknown> : String(funcData.output),
+      'result'
+    );
   }
 
   return attributes;

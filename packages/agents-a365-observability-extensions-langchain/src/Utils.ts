@@ -5,8 +5,8 @@ import { Run } from "@langchain/core/tracers/base";
 import { Span } from "@opentelemetry/api";
 import {
   OpenTelemetryConstants,
-  truncateValue,
   serializeMessages,
+  safeSerializeToJson,
   A365_MESSAGE_SCHEMA_VERSION,
   MessageRole,
 } from "@microsoft/agents-a365-observability";
@@ -64,14 +64,23 @@ export function setToolAttributes(run: Run, span: Span) {
   if (isString(run.name))  {
     span.setAttribute(OpenTelemetryConstants.GEN_AI_TOOL_NAME_KEY, run.name);
   }
-  if (run.inputs) span.setAttribute(OpenTelemetryConstants.GEN_AI_TOOL_ARGS_KEY, truncateValue(JSON.stringify(run.inputs?.input ?? run.inputs)));
+  if (run.inputs) {
+    const argsValue = run.inputs?.input ?? run.inputs;
+    span.setAttribute(OpenTelemetryConstants.GEN_AI_TOOL_ARGS_KEY, safeSerializeToJson(
+      typeof argsValue === 'object' ? argsValue as Record<string, unknown> : String(argsValue), 'arguments'
+    ));
+  }
 
   // Tool result: v0 uses output.kwargs.content, v1 returns output as a plain string or has content directly
   const toolResult =
     run.outputs?.output?.kwargs?.content ??
     (isString(run.outputs?.output) ? run.outputs.output : null) ??
     run.outputs?.output?.content;
-  if (toolResult != null) span.setAttribute(OpenTelemetryConstants.GEN_AI_TOOL_CALL_RESULT_KEY, truncateValue(isString(toolResult) ? toolResult : JSON.stringify(toolResult)));
+  if (toolResult != null) {
+    span.setAttribute(OpenTelemetryConstants.GEN_AI_TOOL_CALL_RESULT_KEY, safeSerializeToJson(
+      typeof toolResult === 'object' ? toolResult as Record<string, unknown> : String(toolResult), 'result'
+    ));
+  }
 
   span.setAttribute(OpenTelemetryConstants.GEN_AI_TOOL_TYPE_KEY, "extension");
 
@@ -106,7 +115,7 @@ export function setInputMessagesAttribute(run: Run, span: Span) {
 
   if (chatMessages.length > 0) {
     const wrapper: InputMessages = { version: A365_MESSAGE_SCHEMA_VERSION, messages: chatMessages };
-    span.setAttribute(OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, truncateValue(serializeMessages(wrapper)));
+    span.setAttribute(OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, serializeMessages(wrapper));
   }
 }
 
@@ -382,7 +391,7 @@ export function setOutputMessagesAttribute(run: Run, span: Span) {
 
   if (outputMessages.length > 0) {
     const wrapper: OutputMessages = { version: A365_MESSAGE_SCHEMA_VERSION, messages: outputMessages };
-    span.setAttribute(OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY, truncateValue(serializeMessages(wrapper)));
+    span.setAttribute(OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY, serializeMessages(wrapper));
   }
 }
 
@@ -437,7 +446,7 @@ export function setSystemInstructionsAttribute(run: Run, span: Span) {
   }
 
   const prompts = Array.isArray(inputs.prompts) ? inputs.prompts.map(p => String(p ?? "").trim()).filter(Boolean).join("\n") : "";
-  if (prompts) return span.setAttribute(OpenTelemetryConstants.GEN_AI_SYSTEM_INSTRUCTIONS_KEY, truncateValue(prompts));
+  if (prompts) return span.setAttribute(OpenTelemetryConstants.GEN_AI_SYSTEM_INSTRUCTIONS_KEY, prompts);
 
   // Check both flat and nested message arrays
   const rawMessages = Array.isArray(inputs.messages) ? inputs.messages : [];
@@ -452,7 +461,7 @@ export function setSystemInstructionsAttribute(run: Run, span: Span) {
     .map((s: string) => s.trim())
     .filter(Boolean)
     .join("\n");
-  if (systemText) span.setAttribute(OpenTelemetryConstants.GEN_AI_SYSTEM_INSTRUCTIONS_KEY, truncateValue(systemText));
+  if (systemText) span.setAttribute(OpenTelemetryConstants.GEN_AI_SYSTEM_INSTRUCTIONS_KEY, systemText);
 }
 
 // Tokens (input and output)
