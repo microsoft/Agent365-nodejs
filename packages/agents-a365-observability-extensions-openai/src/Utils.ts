@@ -272,7 +272,7 @@ function mapInputContentBlock(block: Record<string, unknown>): MessagePart {
   case 'input_text':
     return { type: 'text', content: String(block.text ?? '') };
   case 'input_image':
-    return { type: 'image' as string, modality: 'image', ...stripBinaryFields(block) } as MessagePart;
+    return { type: 'blob', modality: 'image', ...stripBinaryFields(block) } as MessagePart;
   case 'input_file':
     return {
       type: 'file' as string,

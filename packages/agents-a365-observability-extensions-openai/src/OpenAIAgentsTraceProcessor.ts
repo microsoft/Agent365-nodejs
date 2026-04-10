@@ -235,15 +235,16 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
 
       // Store the output field as structured OutputMessages (always use versioned envelope)
       if (resp.output != null) {
-        if (typeof resp.output === 'string') {
-          const structured = wrapRawContentAsOutputMessages(resp.output);
-          otelSpan.setAttribute(OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY, serializeMessages(structured));
-        } else if (Array.isArray(resp.output)) {
+        if (Array.isArray(resp.output)) {
           const structured = buildStructuredOutputMessages(resp.output as Array<Record<string, unknown>>);
           otelSpan.setAttribute(
             OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY,
             serializeMessages(structured)
           );
+        } else {
+          // String or non-array object — wrap as raw content
+          const structured = wrapRawContentAsOutputMessages(resp.output);
+          otelSpan.setAttribute(OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY, serializeMessages(structured));
         }
       }
 
