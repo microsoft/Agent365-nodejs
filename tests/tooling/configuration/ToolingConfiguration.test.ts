@@ -266,8 +266,14 @@ describe('resolveTokenScopeForServer', () => {
     expect(resolveTokenScopeForServer({ mcpServerName: 'mail', url: 'https://mail.example.com', audience: ATG_APP_ID })).toBe(ATG_SCOPE);
   });
 
-  it('should return ATG scope when audience starts with api:// (not a plain GUID)', () => {
-    expect(resolveTokenScopeForServer({ mcpServerName: 'mail', url: 'https://mail.example.com', audience: 'api://custom-app-id' })).toBe(ATG_SCOPE);
+  it('should return ATG scope when audience is the ATG api:// URI form', () => {
+    const atgAppIdUri = `api://${ATG_APP_ID}`;
+    expect(resolveTokenScopeForServer({ mcpServerName: 'mail', url: 'https://mail.example.com', audience: atgAppIdUri })).toBe(ATG_SCOPE);
+  });
+
+  it('should return per-server scope when audience is a non-ATG api:// URI (V2 server)', () => {
+    const v2AppIdUri = 'api://custom-app-id';
+    expect(resolveTokenScopeForServer({ mcpServerName: 'mail', url: 'https://mail.example.com', audience: v2AppIdUri })).toBe(`${v2AppIdUri}/.default`);
   });
 
   it('should return per-server scope for a V2 GUID audience', () => {

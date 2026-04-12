@@ -9,16 +9,17 @@ import { MCPServerConfig } from '../contracts';
 const MCP_PLATFORM_PROD_BASE_URL = 'https://agent365.svc.cloud.microsoft';
 const PROD_MCP_PLATFORM_AUTHENTICATION_SCOPE = 'ea9ffc3e-8a23-4a7d-836d-234d7c7565c1/.default';
 const ATG_APP_ID = 'ea9ffc3e-8a23-4a7d-836d-234d7c7565c1';
+const ATG_APP_ID_URI = `api://${ATG_APP_ID}`;   // "api://ea9ffc3e-8a23-4a7d-836d-234d7c7565c1"
 
 /**
  * Resolve the OAuth scope to request for a given MCP server.
  * V2 servers carry their own audience GUID in the `audience` field; V1 servers (no audience,
- * or audience matching the shared ATG AppId) fall back to the shared ATG scope.
+ * or audience matching the shared ATG AppId or its api:// URI form) fall back to the shared ATG scope.
  */
 export function resolveTokenScopeForServer(server: MCPServerConfig): string {
   if (server.audience &&
       server.audience !== ATG_APP_ID &&
-      !server.audience.startsWith('api://')) {
+      server.audience !== ATG_APP_ID_URI) {
     // V2 server: use explicit scope if provided, otherwise fall back to /.default
     if (server.scope) {
       return `${server.audience}/${server.scope}`;
