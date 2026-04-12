@@ -15,6 +15,12 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 
 /**
+ * Resolves a Bearer token for one MCP server given its computed scope.
+ * Returns null when no token is available (dev no-op); prod implementations throw instead.
+ */
+type TokenAcquirer = (server: MCPServerConfig, scope: string) => Promise<string | null>;
+
+/**
  * Service responsible for discovering and normalizing MCP (Model Context Protocol)
  * tool servers and producing configuration objects consumable by the Claude SDK.
  */
@@ -118,48 +124,85 @@ export class McpToolServerConfigurationService {
       // Resolve agenticAppId from TurnContext
       const agenticAppId = RuntimeUtility.ResolveAgentIdentity(turnContext, authToken);
 
-      // Discover servers (gateway uses authToken for the discovery call)
+      // Discover servers: manifest in dev, gateway in prod
       const servers = await (this.isDevScenario()
         ? this.getMCPServerConfigsFromManifest()
         : this.getMCPServerConfigsFromToolingGateway(agenticAppId, authToken, turnContext, toolOptions));
 
-      // Acquire per-audience tokens and attach the correct Authorization header to each server
-      return await this.attachPerAudienceTokens(servers, authorization, authHandlerName, turnContext);
+      // Acquire and attach per-server tokens via the same structural path in both envs.
+      // Token source differs: env vars in dev, OBO in prod.
+      const acquire = this.isDevScenario()
+        ? this.createDevTokenAcquirer()
+        : this.createOboTokenAcquirer(authorization, authHandlerName, turnContext);
+
+      return await this.attachPerAudienceTokens(servers, acquire);
     }
   }
 
   /**
-   * Acquire one OAuth token per unique audience across the provided server list and attach
+   * Acquire one token per unique audience across the provided server list and attach
    * the correct `Authorization: Bearer` header to each server's headers.
-   * V1 servers (no `audience` field, or ATG AppId) all share the same ATG token (one exchange).
+   * V1 servers (no `audience` field, or ATG AppId) all share the same token (one exchange).
    * V2 servers each get a token scoped to their own audience GUID.
+   * Token acquisition is delegated to `acquire`, enabling different strategies in dev
+   * (env vars via createDevTokenAcquirer) and prod (OBO via createOboTokenAcquirer)
+   * while keeping scope resolution, deduplication, and header attachment identical.
    */
   private async attachPerAudienceTokens(
     servers: MCPServerConfig[],
-    authorization: Authorization,
-    authHandlerName: string,
-    turnContext: TurnContext
+    acquire: TokenAcquirer
   ): Promise<MCPServerConfig[]> {
-    const tokenCache = new Map<string, string>(); // scope → token
+    const tokenCache = new Map<string, string | null>(); // scope → token (null = no token available)
 
     const result: MCPServerConfig[] = [];
     for (const server of servers) {
       const scope = resolveTokenScopeForServer(server);
       if (!tokenCache.has(scope)) {
-        const token = await AgenticAuthenticationService.GetAgenticUserToken(
-          authorization, authHandlerName, turnContext, [scope]
-        );
-        if (!token) {
-          throw new Error(`Failed to obtain token for MCP server '${server.mcpServerName}' (scope: ${scope})`);
-        }
-        tokenCache.set(scope, token);
+        tokenCache.set(scope, await acquire(server, scope));
       }
-      result.push({
-        ...server,
-        headers: { ...server.headers, Authorization: `Bearer ${tokenCache.get(scope)!}` }
-      });
+      const token = tokenCache.get(scope) as string | null;
+      result.push(token
+        ? { ...server, headers: { ...server.headers, Authorization: `Bearer ${token}` } }
+        : server // no token available — dev no-op; prod acquirer would have thrown already
+      );
     }
     return result;
+  }
+
+  /**
+   * Returns a TokenAcquirer that resolves tokens from environment variables (local dev only).
+   * Resolution order per server:
+   *   1. BEARER_TOKEN_<MCPSERVERNAME_UPPER>  — per-server token (effective for V2 unique audiences)
+   *   2. BEARER_TOKEN                         — shared fallback (V1 servers share one token)
+   * Returns null when neither variable is set; no Authorization header is attached.
+   */
+  private createDevTokenAcquirer(): TokenAcquirer {
+    return (server, _scope) => {
+      const key = (server.mcpServerName ?? '').toUpperCase();
+      const token = process.env[`BEARER_TOKEN_${key}`] ?? process.env.BEARER_TOKEN;
+      return Promise.resolve(token ?? null);
+    };
+  }
+
+  /**
+   * Returns a TokenAcquirer that performs OBO token exchange via AgenticAuthenticationService.
+   * Throws if the exchange returns null so callers receive an explicit error rather than a
+   * silently missing Authorization header.
+   */
+  private createOboTokenAcquirer(
+    authorization: Authorization,
+    authHandlerName: string,
+    turnContext: TurnContext
+  ): TokenAcquirer {
+    return async (server, scope) => {
+      const token = await AgenticAuthenticationService.GetAgenticUserToken(
+        authorization, authHandlerName, turnContext, [scope]
+      );
+      if (!token) {
+        throw new Error(`Failed to obtain token for MCP server '${server.mcpServerName}' (scope: ${scope})`);
+      }
+      return token;
+    };
   }
 
   /**
