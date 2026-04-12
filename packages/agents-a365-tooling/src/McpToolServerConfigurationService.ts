@@ -178,8 +178,7 @@ export class McpToolServerConfigurationService {
    */
   private createDevTokenAcquirer(): TokenAcquirer {
     return (server, _scope) => {
-      const key = (server.mcpServerName ?? '').toUpperCase();
-      const token = process.env[`BEARER_TOKEN_${key}`] ?? process.env.BEARER_TOKEN;
+      const token = this.configProvider.getConfiguration().getBearerTokenForServer(server.mcpServerName ?? '');
       return Promise.resolve(token ?? null);
     };
   }

@@ -88,4 +88,14 @@ export class ToolingConfiguration extends RuntimeConfiguration {
 
     return PROD_MCP_PLATFORM_AUTHENTICATION_SCOPE;
   }
+
+  /**
+   * Returns the dev-mode bearer token for an MCP server by name.
+   * Checks BEARER_TOKEN_<SERVERNAME_UPPER> first, then falls back to BEARER_TOKEN.
+   * Returns undefined when the variable is not set (no Authorization header will be attached).
+   */
+  getBearerTokenForServer(mcpServerName: string): string | undefined {
+    const key = mcpServerName.toUpperCase();
+    return process.env[`BEARER_TOKEN_${key}`];
+  }
 }

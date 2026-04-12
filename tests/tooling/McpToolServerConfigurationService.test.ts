@@ -1164,9 +1164,10 @@ describe('McpToolServerConfigurationService', () => {
     afterEach(() => {
       resolveAgentIdentitySpy.mockRestore();
       getAgenticUserTokenSpy.mockRestore();
-      delete process.env.BEARER_TOKEN;
       delete process.env.BEARER_TOKEN_MAILSERVER;
       delete process.env.BEARER_TOKEN_CALENDARSERVER;
+      delete process.env.BEARER_TOKEN_SERVER1;
+      delete process.env.BEARER_TOKEN_SERVER2;
     });
 
     it('should not call GetAgenticUserToken for per-server tokens in dev mode (env var acquirer, not OBO)', async () => {
@@ -1184,14 +1185,17 @@ describe('McpToolServerConfigurationService', () => {
       expect(getAgenticUserTokenSpy).not.toHaveBeenCalled();
     });
 
-    it('should attach BEARER_TOKEN as shared Authorization header for all servers', async () => {
-      const sharedToken = 'shared-dev-bearer-token';
-      process.env.BEARER_TOKEN = sharedToken;
+    it('should attach independent BEARER_TOKEN_<NAME> headers for two V2 servers with distinct audiences', async () => {
+      // V2 servers have unique audience GUIDs → unique scopes → separate cache entries → independent env var lookups.
+      const token1 = 'dev-token-server1';
+      const token2 = 'dev-token-server2';
+      process.env.BEARER_TOKEN_SERVER1 = token1;
+      process.env.BEARER_TOKEN_SERVER2 = token2;
       const mockToken = createMockJwt();
       const manifestContent = {
         mcpServers: [
-          { mcpServerName: 'server1', url: 'http://localhost:3000' },
-          { mcpServerName: 'server2', url: 'http://localhost:3001' }
+          { mcpServerName: 'server1', url: 'http://localhost:3000', audience: 'aaaabbbb-0001-0001-0001-000000000001' },
+          { mcpServerName: 'server2', url: 'http://localhost:3001', audience: 'aaaabbbb-0002-0002-0002-000000000002' }
         ]
       };
       jest.spyOn(fs, 'existsSync').mockReturnValue(true);
@@ -1199,23 +1203,21 @@ describe('McpToolServerConfigurationService', () => {
 
       const servers = await service.listToolServers(mockContext, mockAuthorization, 'graph', mockToken);
 
-      expect(servers[0].headers?.Authorization).toBe(`Bearer ${sharedToken}`);
-      expect(servers[1].headers?.Authorization).toBe(`Bearer ${sharedToken}`);
+      expect(servers[0].headers?.Authorization).toBe(`Bearer ${token1}`);
+      expect(servers[1].headers?.Authorization).toBe(`Bearer ${token2}`);
     });
 
-    it('should prefer BEARER_TOKEN_<NAME> over shared BEARER_TOKEN for a V2 server with a unique audience', async () => {
+    it('should attach BEARER_TOKEN_<NAME> independently for V2 server; V1 server with no env var gets no header', async () => {
       // V2 servers have a unique audience GUID → unique scope → own cache entry → own env var lookup.
-      // V1 servers (no audience) share the ATG scope → share one cache entry → BEARER_TOKEN fallback.
-      const sharedToken = 'shared-dev-token';
+      // V1 servers (no audience) share the ATG scope → own cache entry → own env var lookup (no fallback).
       const perServerToken = 'per-server-mail-token';
       const v2Audience = 'aaaabbbb-1234-5678-abcd-111122223333';
-      process.env.BEARER_TOKEN = sharedToken;
       process.env.BEARER_TOKEN_MAILSERVER = perServerToken;
       const mockToken = createMockJwt();
       const manifestContent = {
         mcpServers: [
           { mcpServerName: 'mailServer', url: 'http://localhost:3000', audience: v2Audience }, // V2 — unique scope
-          { mcpServerName: 'calendarServer', url: 'http://localhost:3001' }                    // V1 — ATG scope
+          { mcpServerName: 'calendarServer', url: 'http://localhost:3001' }                    // V1 — ATG scope, no env var
         ]
       };
       jest.spyOn(fs, 'existsSync').mockReturnValue(true);
@@ -1223,10 +1225,10 @@ describe('McpToolServerConfigurationService', () => {
 
       const servers = await service.listToolServers(mockContext, mockAuthorization, 'graph', mockToken);
 
-      // mailServer (V2): unique scope → cache miss → BEARER_TOKEN_MAILSERVER wins
+      // mailServer (V2): unique scope → BEARER_TOKEN_MAILSERVER set → header attached
       expect(servers[0].headers?.Authorization).toBe(`Bearer ${perServerToken}`);
-      // calendarServer (V1): ATG scope → separate cache miss → BEARER_TOKEN fallback
-      expect(servers[1].headers?.Authorization).toBe(`Bearer ${sharedToken}`);
+      // calendarServer (V1): ATG scope → BEARER_TOKEN_CALENDARSERVER not set → no header
+      expect(servers[1].headers?.Authorization).toBeUndefined();
     });
 
     it('should not attach Authorization header when no env var tokens are set', async () => {
