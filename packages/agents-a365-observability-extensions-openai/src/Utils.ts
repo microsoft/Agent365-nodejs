@@ -11,6 +11,7 @@ import {
   MessageRole,
   InputMessages,
   OutputMessages,
+  MAX_SPAN_SIZE_BYTES,
 } from '@microsoft/agents-a365-observability';
 import type { ChatMessage, OutputMessage, MessagePart } from '@microsoft/agents-a365-observability';
 import * as Constants from './Constants';
@@ -291,7 +292,7 @@ function stripBinaryFields(block: Record<string, unknown>): Record<string, unkno
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(block)) {
     if (key === 'type') continue;
-    if (typeof value === 'string' && value.length > 1024) {
+    if (typeof value === 'string' && value.length > MAX_SPAN_SIZE_BYTES) {
       result[key] = '[truncated]';
     } else {
       result[key] = value;

@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+import { expect } from '@jest/globals';
+
 function validateMessageEnvelope(value: unknown): Record<string, unknown> {
   // Attributes are stored as JSON strings; parse and validate the common envelope.
   expect(typeof value).toBe('string');

@@ -86,7 +86,7 @@ export { truncateValue, MAX_ATTRIBUTE_LENGTH, safeSerializeToJson } from './trac
 export { serializeMessages, normalizeInputMessages, normalizeOutputMessages } from './tracing/message-utils';
 
 // Exporter utilities
-export { isPerRequestExportEnabled } from './tracing/exporter/utils';
+export { isPerRequestExportEnabled, MAX_SPAN_SIZE_BYTES } from './tracing/exporter/utils';
 
 // Configuration
 export * from './configuration';
