@@ -4,7 +4,7 @@
 import { context, trace, Span, SpanKind, SpanStatusCode, Tracer } from "@opentelemetry/api";
 import { BaseTracer, Run } from "@langchain/core/tracers/base";
 import { isTracingSuppressed } from "@opentelemetry/core";
-import { logger, OpenTelemetryConstants, truncateValue } from "@microsoft/agents-a365-observability";
+import { logger, OpenTelemetryConstants } from "@microsoft/agents-a365-observability";
 import * as Utils from "./Utils";
 
 type RunWithSpan = { run: Run; span: Span; startTime: number; lastAccessTime: number };
@@ -12,15 +12,13 @@ type RunWithSpan = { run: Run; span: Span; startTime: number; lastAccessTime: nu
 export class LangChainTracer extends BaseTracer {
   private static readonly MAX_RUNS = 10_000;
   private tracer: Tracer;
-  private isContentRecordingEnabled: boolean;
   private runs = new Map<string, RunWithSpan>();
   private parentByRunId = new Map<string, string | undefined>();
 
 
-  constructor(tracer: Tracer, options?: { isContentRecordingEnabled?: boolean }) {
+  constructor(tracer: Tracer) {
     super();
     this.tracer = tracer;
-    this.isContentRecordingEnabled = options?.isContentRecordingEnabled ?? false;
   }
 
   name = "OpenTelemetryLangChainTracer";
@@ -108,7 +106,7 @@ export class LangChainTracer extends BaseTracer {
 
       if (run.error) {
         span.setStatus({ code: SpanStatusCode.ERROR });
-        span.setAttribute(OpenTelemetryConstants.ERROR_MESSAGE_KEY, truncateValue(String(run.error)));
+        span.setAttribute(OpenTelemetryConstants.ERROR_MESSAGE_KEY, String(run.error));
 
       } else {
         span.setStatus({ code: SpanStatusCode.OK });
@@ -122,14 +120,11 @@ export class LangChainTracer extends BaseTracer {
       Utils.setSessionIdAttribute(run, span);
       Utils.setTokenAttributes(run, span);
 
-      // Content attributes gated by content recording setting
-      const contentRecording = this.isContentRecordingEnabled;
-      if (contentRecording) {
-        Utils.setToolAttributes(run, span);
-        Utils.setInputMessagesAttribute(run, span);
-        Utils.setOutputMessagesAttribute(run, span);
-        Utils.setSystemInstructionsAttribute(run, span);
-      }
+      // Content attributes — always recorded (aligned with Python/.NET SDKs)
+      Utils.setToolAttributes(run, span);
+      Utils.setInputMessagesAttribute(run, span);
+      Utils.setOutputMessagesAttribute(run, span);
+      Utils.setSystemInstructionsAttribute(run, span);
 
     } catch (error) {
       logger.error(`[LangChainTracer] Error setting span attributes for run ${run.name}: ${error instanceof Error ? error.message : String(error)}`);

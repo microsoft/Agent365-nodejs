@@ -27,11 +27,6 @@ export interface OpenAIAgentsInstrumentationConfig extends InstrumentationConfig
    * Defaults to false.
    */
   suppressInvokeAgentInput?: boolean;
-  /**
-   * Whether to enable content recording (input/output messages, tool args, etc.).
-   * @default false
-   */
-  isContentRecordingEnabled?: boolean;
 }
 
 /**
@@ -106,7 +101,6 @@ export class OpenAIAgentsTraceInstrumentor extends InstrumentationBase<OpenAIAge
 
     this.processor = new OpenAIAgentsTraceProcessor(agent365Tracer, {
       suppressInvokeAgentInput: this._config.suppressInvokeAgentInput ?? false,
-      isContentRecordingEnabled: this._config.isContentRecordingEnabled ?? false,
     });
 
     // Register the processor directly using the imported setTraceProcessors function
