@@ -5,13 +5,43 @@ All notable changes to the Agent365 TypeScript SDK will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.0] - 2026-04-14
 
 ### Breaking Changes (`@microsoft/agents-a365-observability`)
 
-- **Observability exporter URL paths now include `/otlp/` segment** — Export endpoints changed from `.../tenants/{tenantId}/agents/{agentId}/traces` to `.../tenants/{tenantId}/otlp/agents/{agentId}/traces` (both standard and S2S paths). Existing agent blueprints must be granted `Agent365.Observability.OtelWrite` as both a delegated and application permission.
-  - **Option A — CLI:** Run `a365 setup admin --config-dir "<path-to-config-dir>"` (requires `a365.config.json` and `a365.generated.config.json`, and a Global Administrator account).
-  - **Option B — Entra Portal:** App registrations > select Blueprint app > API permissions > Add permission > search `9b975845-388f-4429-889e-eab1ef63949c` > add `Agent365.Observability.OtelWrite` for both Delegated and Application > Grant admin consent.
+- **New permission required: `Agent365.Observability.OtelWrite`** — The observability exporter now requires this scope as both a delegated and application permission on your agent blueprint. See [Upgrade Instructions](#upgrade-instructions-observability-permission-for-existing-agents) below.
+
+---
+
+### Upgrade Instructions: Observability Permission for Existing Agents
+
+Existing agent blueprints need `Agent365.Observability.OtelWrite` granted as both a **delegated permission** and an **application permission**. Choose either option below.
+
+#### Option A — Agent 365 CLI (requires both config files)
+
+Requires `a365.config.json` and `a365.generated.config.json` in your config directory, a Global Administrator account, and [Agent 365 CLI v1.1.139-preview](https://www.nuget.org/packages/Microsoft.Agents.A365.DevTools.Cli/1.1.139-preview) or later.
+
+```bash
+a365 setup admin --config-dir "<path-to-config-dir>"
+```
+
+This grants all missing permissions including the new Observability scopes.
+
+#### Option B — Entra Portal (no config files required)
+
+Requires Global Administrator access to the blueprint app registration.
+
+1. Go to **Entra portal** > **App registrations** > select your Blueprint app
+2. Go to **API permissions** > **Add a permission** > **APIs my organization uses** > search for `9b975845-388f-4429-889e-eab1ef63949c`
+3. Select **Delegated permissions** > check `Agent365.Observability.OtelWrite` > **Add permissions**
+4. Repeat step 2-3, this time select **Application permissions** > check `Agent365.Observability.OtelWrite` > **Add permissions**
+5. Click **Grant admin consent** and confirm
+
+Both `Agent365.Observability.OtelWrite` (Delegated) and `Agent365.Observability.OtelWrite` (Application) should show **Granted** status.
+
+## [Unreleased]
+
+### Breaking Changes (`@microsoft/agents-a365-observability`)
 
 - **`InvokeAgentDetails` renamed to `InvokeAgentScopeDetails`** — Now contains only scope-level config (`endpoint`). Agent identity (`AgentDetails`) is a separate parameter. `sessionId` moved to `Request`.
 - **`InvokeAgentScope.start()` — new signature.** `start(request, invokeScopeDetails, agentDetails, callerDetails?, spanDetails?)`. Tenant ID is derived from `agentDetails.tenantId` (required). `userDetails` and `callerAgentDetails` are wrapped in `CallerDetails`. Span options grouped in `SpanDetails`.
