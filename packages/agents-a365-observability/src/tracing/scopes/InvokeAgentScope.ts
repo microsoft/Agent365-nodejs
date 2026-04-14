@@ -88,6 +88,11 @@ export class InvokeAgentScope extends OpenTelemetryScope {
 
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, request.conversationId);
 
+    // Record request content as input messages
+    if (request.content != null) {
+      this.recordInputMessages(request.content);
+    }
+
     // Set caller agent details tags for A2A scenarios
     const callerAgent = callerDetails?.callerAgentDetails;
     if (callerAgent) {
@@ -106,13 +111,13 @@ export class InvokeAgentScope extends OpenTelemetryScope {
    * @param response The invocation response
    */
   public recordResponse(response: string): void {
-    this.recordOutputMessages([response]);
+    this.recordOutputMessages(response);
   }
 
   /**
    * Records the input messages for telemetry tracking.
-   * Accepts plain strings (auto-wrapped as OTEL ChatMessage with role `user`) or a versioned InputMessages wrapper.
-   * @param messages Array of input message strings or an InputMessages wrapper
+   * Accepts a single string, an array of strings (auto-wrapped as OTEL ChatMessage with role `user`), or a versioned InputMessages wrapper.
+   * @param messages A string, array of strings, or an InputMessages wrapper
    */
   public override recordInputMessages(messages: InputMessagesParam): void {
     super.recordInputMessages(messages);
@@ -120,8 +125,8 @@ export class InvokeAgentScope extends OpenTelemetryScope {
 
   /**
    * Records the output messages for telemetry tracking.
-   * Accepts plain strings (auto-wrapped as OTEL OutputMessage with role `assistant`) or a versioned OutputMessages wrapper.
-   * @param messages Array of output message strings or an OutputMessages wrapper
+   * Accepts a single string, an array of strings (auto-wrapped as OTEL OutputMessage with role `assistant`), or a versioned OutputMessages wrapper.
+   * @param messages A string, array of strings, or an OutputMessages wrapper
    */
   public override recordOutputMessages(messages: OutputMessagesParam): void {
     super.recordOutputMessages(messages);

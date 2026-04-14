@@ -5,13 +5,12 @@
 
 import {
   getCallerBaggagePairs,
-  getExecutionTypePair,
   getTargetAgentBaggagePairs,
   getTenantIdPair,
   getChannelBaggagePairs,
   getConversationIdAndItemLinkPairs
 } from '@microsoft/agents-a365-observability-hosting';
-import { OpenTelemetryConstants, ExecutionType } from '@microsoft/agents-a365-observability';
+import { OpenTelemetryConstants } from '@microsoft/agents-a365-observability';
 
 describe('TurnContextUtils', () => {
   const mockTurnContext = {
@@ -31,15 +30,6 @@ describe('TurnContextUtils', () => {
     const pairs = getCallerBaggagePairs(mockTurnContext);
     expect(Array.isArray(pairs)).toBe(true);
     expect(pairs.length).toBeGreaterThan(0);
-  });
-
-  it('should get execution type pair', () => {
-    const pairs = getExecutionTypePair(mockTurnContext);
-    expect(Array.isArray(pairs)).toBe(true);
-    expect(pairs.length).toBe(1);
-    const [key, val] = pairs[0];
-    expect(key).toBe(OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY);
-    expect(val).toBe(ExecutionType.Agent2Agent);
   });
 
   it('should get target agent baggage pairs', () => {

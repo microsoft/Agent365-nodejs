@@ -29,12 +29,10 @@ export {
 
 // Contracts and interfaces
 export {
-  ExecutionType,
   InvocationRole,
   Channel,
   Request,
   AgentDetails,
-  TenantDetails,
   ToolCallDetails,
   InvokeAgentScopeDetails,
   UserDetails,
@@ -70,6 +68,7 @@ export {
   OutputMessages,
   InputMessagesParam,
   OutputMessagesParam,
+  ResponseMessagesParam,
   A365_MESSAGE_SCHEMA_VERSION,
 } from './tracing/contracts';
 
@@ -81,10 +80,13 @@ export { InferenceScope } from './tracing/scopes/InferenceScope';
 export { OutputScope } from './tracing/scopes/OutputScope';
 export { logger, setLogger, getLogger, resetLogger, formatError } from './utils/logging';
 export type { ILogger } from './utils/logging';
-export { truncateValue, MAX_ATTRIBUTE_LENGTH } from './tracing/util';
+export { truncateValue, MAX_ATTRIBUTE_LENGTH, safeSerializeToJson } from './tracing/util';
+
+// Message utilities
+export { serializeMessages, normalizeInputMessages, normalizeOutputMessages } from './tracing/message-utils';
 
 // Exporter utilities
-export { isPerRequestExportEnabled } from './tracing/exporter/utils';
+export { isPerRequestExportEnabled, MAX_SPAN_SIZE_BYTES } from './tracing/exporter/utils';
 
 // Configuration
 export * from './configuration';

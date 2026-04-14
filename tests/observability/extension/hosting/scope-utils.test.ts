@@ -189,16 +189,6 @@ function makeCtx(partial: Partial<TurnContext>): TurnContext {
   return partial as unknown as TurnContext;
 }
 
-test('deriveTenantDetails returns tenantId from getAgenticTenantId()', () => {
-  const ctx = makeCtx({ activity: { getAgenticTenantId: () => 't-rec' } as any });
-  expect(ScopeUtils.deriveTenantDetails(ctx)).toEqual({ tenantId: 't-rec' });
-});
-
-test('deriveTenantDetails returns undefined when getAgenticTenantId() returns undefined', () => {
-  const ctx = makeCtx({ activity: { getAgenticTenantId: () => undefined } as any });
-  expect(ScopeUtils.deriveTenantDetails(ctx)).toBeUndefined();
-});
-
 test('deriveAgentDetails maps recipient fields to AgentDetails', () => {
   const ctx = makeCtx({ activity: { recipient: { name: 'A', aadObjectId: 'auid', role: 'bot' }, isAgenticRequest: () => false, getAgenticInstanceId: () => 'aid', getAgenticUser: () => 'upn1', getAgenticTenantId: () => 't1' } as any });
   expect(ScopeUtils.deriveAgentDetails(ctx, testAuthToken)).toEqual({

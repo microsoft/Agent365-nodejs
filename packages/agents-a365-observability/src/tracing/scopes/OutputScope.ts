@@ -3,7 +3,7 @@
 
 import { SpanKind } from '@opentelemetry/api';
 import { OpenTelemetryScope } from './OpenTelemetryScope';
-import { AgentDetails, UserDetails, OutputResponse, Request, SpanDetails, OutputMessage, OutputMessagesParam, A365_MESSAGE_SCHEMA_VERSION } from '../contracts';
+import { AgentDetails, UserDetails, OutputResponse, Request, SpanDetails, ResponseMessagesParam, A365_MESSAGE_SCHEMA_VERSION } from '../contracts';
 import { OpenTelemetryConstants } from '../constants';
 import { normalizeOutputMessages, serializeMessages } from '../message-utils';
 
@@ -11,8 +11,6 @@ import { normalizeOutputMessages, serializeMessages } from '../message-utils';
  * Provides OpenTelemetry tracing scope for output message tracing with parent span linking.
  */
 export class OutputScope extends OpenTelemetryScope {
-  private _outputMessages: OutputMessage[];
-  private _outputMessagesDirty = false;
 
   /**
    * Creates and starts a new scope for output message tracing.
@@ -59,16 +57,8 @@ export class OutputScope extends OpenTelemetryScope {
       userDetails,
     );
 
-    // Normalize response messages and extract inner messages for accumulation
-    const normalized = normalizeOutputMessages(response.messages);
-    this._outputMessages = [...normalized.messages];
-
-    // Set initial output messages attribute as the full versioned wrapper
-    const wrapper = { version: A365_MESSAGE_SCHEMA_VERSION, messages: this._outputMessages };
-    this.setTagMaybe(
-      OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY,
-      serializeMessages(wrapper)
-    );
+    // Normalize and set initial output messages
+    this._setOutput(response.messages);
 
     // Set conversation and channel
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, request.conversationId);
@@ -78,29 +68,45 @@ export class OutputScope extends OpenTelemetryScope {
 
   /**
    * Records the output messages for telemetry tracking.
-   * Appends the provided messages to the accumulated output messages list.
-   * Accepts plain strings (auto-wrapped as OTEL OutputMessage) or a versioned OutputMessages wrapper.
-   * The updated attribute is flushed when the scope is disposed.
-   * @param messages Array of output message strings or an OutputMessages wrapper to append.
+   * Overwrites any previously recorded output messages on the span.
+   * Accepts a single string, an array of strings (auto-wrapped as OTEL OutputMessage), a versioned OutputMessages wrapper,
+   * or a raw dict (treated as a tool call result per OTEL spec, serialized directly).
+   * @param messages A string, array of strings, an OutputMessages wrapper, or a dict.
    */
-  public recordOutputMessages(messages: OutputMessagesParam): void {
-    const normalized = normalizeOutputMessages(messages);
-    this._outputMessages.push(...normalized.messages);
-    this._outputMessagesDirty = true;
+  public recordOutputMessages(messages: ResponseMessagesParam): void {
+    this._setOutput(messages);
   }
 
-  public override [Symbol.dispose](): void {
-    if (this._outputMessagesDirty) {
-      const wrapper = { version: A365_MESSAGE_SCHEMA_VERSION, messages: this._outputMessages };
-      this.setTagMaybe(
-        OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY,
-        serializeMessages(wrapper)
-      );
+  private _setOutput(messages: ResponseMessagesParam): void {
+    // Dict (Record<string, unknown>) — treat as tool call result, serialize directly
+    if (this._isRawDict(messages)) {
+      try {
+        this.setTagMaybe(
+          OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY,
+          JSON.stringify(messages)
+        );
+      } catch {
+        this.setTagMaybe(
+          OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY,
+          JSON.stringify({ error: 'serialization failed' })
+        );
+      }
+      return;
     }
-    super[Symbol.dispose]();
+    const normalized = normalizeOutputMessages(messages);
+    const wrapper = { version: A365_MESSAGE_SCHEMA_VERSION, messages: normalized.messages };
+    this.setTagMaybe(
+      OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY,
+      serializeMessages(wrapper)
+    );
   }
 
-  public override dispose(): void {
-    this[Symbol.dispose]();
+  /**
+   * Check if the value is a raw dict (plain object, not string[] or OutputMessages wrapper).
+   */
+  private _isRawDict(messages: ResponseMessagesParam): messages is Record<string, unknown> {
+    return typeof messages === 'object' && messages !== null
+      && !Array.isArray(messages)
+      && !('version' in messages && 'messages' in messages);
   }
 }

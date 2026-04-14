@@ -43,7 +43,6 @@ describe("OpenAI Trace Processor Integration Tests", () => {
       enabled: true,
       tracerName: TEST_INSTRUMENTATION_NAME,
       tracerVersion: TEST_INSTRUMENTATION_VERSION,
-      isContentRecordingEnabled: true,
     });
 
     // Start observability
@@ -349,7 +348,7 @@ describe("OpenAI Trace Processor Integration Tests", () => {
         ).toBe('{"a":15,"b":27}');
         expect(
           toolSpan.attributes[OpenTelemetryConstants.GEN_AI_TOOL_CALL_RESULT_KEY],
-        ).toBe("The sum of 15 and 27 is 42");
+        ).toBe('{"result":"The sum of 15 and 27 is 42"}');
 
         validateParentChildRelationship(toolSpan, agentSpan!);
 

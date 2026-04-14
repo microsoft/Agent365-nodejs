@@ -323,7 +323,7 @@ function collectShrinkActions(
       if (!parsedMessages.has(key) && typeof attributes[key] === 'string') {
         try {
           const parsed = JSON.parse(attributes[key] as string);
-          if (parsed && typeof parsed === 'object' && Array.isArray(parsed.messages)) {
+          if (parsed && typeof parsed === 'object' && typeof parsed.version === 'string' && Array.isArray(parsed.messages)) {
             parsedMessages.set(key, parsed);
           }
         } catch {
@@ -343,6 +343,7 @@ function collectShrinkActions(
             const blobAction = createBlobShrinkAction(part, key);
             if (blobAction) {
               actions.push(blobAction);
+              continue;
             }
 
             // Tool/server JSON payload fields → sentinel (one-shot)
@@ -394,21 +395,34 @@ function collectShrinkActions(
       }
     }
 
-    // Non-message string attribute, OR message key with non-JSON content → trim
+    // Non-versioned string attribute → generate shrink action
     if (!handledAsMessage && typeof attributes[key] === 'string') {
-      const value = attributes[key] as string;
-      const valueSize = Buffer.byteLength(value, 'utf8');
+      const valueSize = Buffer.byteLength(attributes[key] as string, 'utf8');
       if (valueSize > MIN_SHRINKABLE_STRING_BYTES) {
-        const action: ShrinkAction = {
-          contentBytes: valueSize,
-          apply(bytesToShed: number) {
-            const cur = Buffer.byteLength(attributes[key] as string, 'utf8');
-            if (cur > TRUNCATED_SUFFIX_BYTES) {
-              attributes[key] = trimString(attributes[key] as string, bytesToShed);
-              action.contentBytes = Buffer.byteLength(attributes[key] as string, 'utf8');
+        // Message key with raw dict JSON → one-shot sentinel replacement (preserves JSON integrity)
+        // Other strings → incremental trim
+        let isRawJson = false;
+        if (MESSAGE_ATTR_KEYS.has(key)) {
+          try { const p = JSON.parse(attributes[key] as string); isRawJson = p && typeof p === 'object'; } catch { /* not JSON */ }
+        }
+        const action: ShrinkAction = isRawJson
+          ? {
+            contentBytes: valueSize,
+            apply() {
+              attributes[key] = OVERLIMIT_SENTINEL;
+              action.contentBytes = Buffer.byteLength(OVERLIMIT_SENTINEL, 'utf8');
             }
           }
-        };
+          : {
+            contentBytes: valueSize,
+            apply(bytesToShed: number) {
+              const cur = Buffer.byteLength(attributes[key] as string, 'utf8');
+              if (cur > TRUNCATED_SUFFIX_BYTES) {
+                attributes[key] = trimString(attributes[key] as string, bytesToShed);
+                action.contentBytes = Buffer.byteLength(attributes[key] as string, 'utf8');
+              }
+            }
+          };
         actions.push(action);
       }
     }
@@ -532,7 +546,7 @@ export function truncateSpan<T extends OTLPSpanLike>(spanDict: T): T {
             // Attempt to derive count from current attribute value
             try {
               const parsed = JSON.parse(attributes[key] as string);
-              if (parsed && Array.isArray(parsed.messages)) {
+              if (parsed && typeof parsed === 'object' && typeof parsed.version === 'string' && Array.isArray(parsed.messages)) {
                 messageCount = parsed.messages.length;
               }
             } catch { /* not valid JSON — count stays 0 */ }

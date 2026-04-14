@@ -6,7 +6,6 @@
 import { TurnContext } from '@microsoft/agents-hosting';
 import {
   getCallerBaggagePairs,
-  getExecutionTypePair,
   getTargetAgentBaggagePairs,
   getTenantIdPair,
   getChannelBaggagePairs,
@@ -31,7 +30,6 @@ export class BaggageBuilderUtils {
       throw new Error('turnContext is required');
     }
     this.setCallerBaggage(builder, turnContext);
-    this.setExecutionTypeBaggage(builder, turnContext);
     this.setTargetAgentBaggage(builder, turnContext);
     this.setTenantIdBaggage(builder, turnContext);
     this.setChannelBaggage(builder, turnContext);
@@ -47,18 +45,6 @@ export class BaggageBuilderUtils {
    */
   static setCallerBaggage(builder: BaggageBuilder, turnContext: TurnContext): BaggageBuilder {
     builder.setPairs(getCallerBaggagePairs(turnContext));
-    return builder;
-  }
-
-
-  /**
-   * Sets the execution type baggage value based on caller and recipient agentic status.
-   * @param builder The BaggageBuilder instance.
-   * @param turnContext The TurnContext containing activity information.
-   * @returns The updated BaggageBuilder instance.
-   */
-  static setExecutionTypeBaggage(builder: BaggageBuilder, turnContext: TurnContext): BaggageBuilder {
-    builder.setPairs(getExecutionTypePair(turnContext));
     return builder;
   }
 

@@ -900,6 +900,70 @@ describe('Agent365Exporter', () => {
       expect(parsed.messages[0].parts[0].type).toBe('text');
       expect(parsed.messages[0].parts[0].content).toBe('[truncated: 3 messages exceeded limit]');
     });
+
+    it('should replace oversized raw dict in gen_ai.output.messages with overlimit sentinel', () => {
+      // Raw dict plus other large attr to push span over 250KB limit
+      const rawDict = JSON.stringify({ result: 'x'.repeat(200 * 1024) });
+      const span = makeSpan({
+        'gen_ai.output.messages': rawDict,
+        'other_large': 'y'.repeat(100 * 1024),
+      });
+
+      const result = truncateSpan(span);
+      // Raw dict (no version field) should get OVERLIMIT_SENTINEL, not message-aware shrinking
+      expect(result.attributes!['gen_ai.output.messages']).toBe('[overlimit]');
+      expect(Buffer.byteLength(JSON.stringify(result), 'utf8')).toBeLessThanOrEqual(MAX_SPAN_SIZE_BYTES);
+    });
+
+    it('should replace oversized dict with messages array but no version with overlimit sentinel', () => {
+      const dictWithMessages = JSON.stringify({ messages: ['y'.repeat(200 * 1024)], type: 'tool_result' });
+      const span = makeSpan({
+        'gen_ai.output.messages': dictWithMessages,
+        'other_large': 'z'.repeat(100 * 1024),
+      });
+
+      const result = truncateSpan(span);
+      // Has messages array but no version string — must NOT be treated as versioned wrapper
+      expect(result.attributes!['gen_ai.output.messages']).toBe('[overlimit]');
+      expect(Buffer.byteLength(JSON.stringify(result), 'utf8')).toBeLessThanOrEqual(MAX_SPAN_SIZE_BYTES);
+    });
+
+    it('should preserve small raw dict in gen_ai.output.messages when span is within limit', () => {
+      const smallDict = JSON.stringify({ result: 'ok', count: 42 });
+      const span = makeSpan({
+        'gen_ai.output.messages': smallDict,
+        'gen_ai.agent.id': 'test-agent',
+      });
+
+      const result = truncateSpan(span);
+      // Small dict should be preserved as-is
+      expect(result.attributes!['gen_ai.output.messages']).toBe(smallDict);
+    });
+
+    it('should still use message-aware shrinking for versioned wrapper in gen_ai.output.messages', () => {
+      const messageWrapper = JSON.stringify({
+        version: '0.1.0',
+        messages: [{
+          role: 'assistant',
+          parts: [{ type: 'text', content: 'z'.repeat(200 * 1024) }],
+        }],
+      });
+      const span = makeSpan({
+        'gen_ai.output.messages': messageWrapper,
+        'other_large': 'a'.repeat(100 * 1024),
+      });
+
+      const result = truncateSpan(span);
+      const output = result.attributes!['gen_ai.output.messages'] as string;
+      // Versioned wrapper should get message-aware shrinking (trimmed text), not sentinel
+      expect(output).not.toBe('[overlimit]');
+      const parsed = JSON.parse(output);
+      expect(parsed.version).toBe('0.1.0');
+      expect(parsed.messages[0].parts[0].type).toBe('text');
+      // Text content should be trimmed (shorter than original)
+      expect(parsed.messages[0].parts[0].content.length).toBeLessThan(200 * 1024);
+      expect(Buffer.byteLength(JSON.stringify(result), 'utf8')).toBeLessThanOrEqual(MAX_SPAN_SIZE_BYTES);
+    });
   });
 
   describe('per-request export (token from OTel Context)', () => {
