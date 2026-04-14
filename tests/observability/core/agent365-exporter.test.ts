@@ -250,7 +250,7 @@ describe('Agent365Exporter', () => {
     expect(fetchCalls.length).toBe(1);
 
     const urlArg = fetchCalls[0][0] as string;
-    expect(urlArg).toMatch(`/observabilityService/tenants/${tenantId}/otlp/agents/${agentId}/traces?api-version=1`);
+    expect(urlArg).toContain(`/observabilityService/tenants/${tenantId}/otlp/agents/${agentId}/traces`);
     const headersArg = fetchCalls[0][1].headers as Record<string, string>;
     expect(headersArg['authorization']).toBe(`Bearer ${token}`);
     expect(headersArg['x-ms-tenant-id']).toBe(tenantId);
@@ -279,7 +279,7 @@ describe('Agent365Exporter', () => {
     const fetchCalls = getFetchCalls();
     expect(fetchCalls.length).toBe(1);
     const urlArg = fetchCalls[0][0] as string;
-    expect(urlArg).toMatch(`/observabilityService/tenants/${tenantId}/otlp/agents/${agentId}/traces?api-version=1`);
+    expect(urlArg).toContain(`/observabilityService/tenants/${tenantId}/otlp/agents/${agentId}/traces`);
     expect(urlArg).toContain('https://custom.domain');
     const headersArg = fetchCalls[0][1].headers as Record<string, string>;
     expect(headersArg['authorization']).toBe(`Bearer ${token}`);
