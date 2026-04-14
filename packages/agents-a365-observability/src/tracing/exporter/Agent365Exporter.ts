@@ -170,10 +170,8 @@ export class Agent365Exporter implements SpanExporter {
     const payload = this.buildExportRequest(spans);
     const body = JSON.stringify(payload);
     // Select endpoint path based on S2S flag (includes tenantId in path)
-    const endpointRelativePath =
-      this.options.useS2SEndpoint
-        ? `/observabilityService/tenants/${encodeURIComponent(tenantId)}/otlp/agents/${encodeURIComponent(agentId)}/traces`
-        : `/observability/tenants/${encodeURIComponent(tenantId)}/otlp/agents/${encodeURIComponent(agentId)}/traces`;
+    const servicePrefix = this.options.useS2SEndpoint ? '/observabilityService' : '/observability';
+    const endpointRelativePath = `${servicePrefix}/tenants/${encodeURIComponent(tenantId)}/otlp/agents/${encodeURIComponent(agentId)}/traces`;
 
     let url: string;
     const domainOverride = getAgent365ObservabilityDomainOverride(this.configProvider);
