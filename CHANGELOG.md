@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking Changes (`@microsoft/agents-a365-observability`)
 
+- **Observability exporter URL paths now include `/otlp/` segment** — Export endpoints changed from `.../tenants/{tenantId}/agents/{agentId}/traces` to `.../tenants/{tenantId}/otlp/agents/{agentId}/traces` (both standard and S2S paths). Existing agent blueprints must be granted `Agent365.Observability.OtelWrite` as both a delegated and application permission.
+  - **Option A — CLI:** Run `a365 setup admin --config-dir "<path-to-config-dir>"` (requires `a365.config.json` and `a365.generated.config.json`, and a Global Administrator account).
+  - **Option B — Entra Portal:** App registrations > select Blueprint app > API permissions > Add permission > search `9b975845-388f-4429-889e-eab1ef63949c` > add `Agent365.Observability.OtelWrite` for both Delegated and Application > Grant admin consent.
+
 - **`InvokeAgentDetails` renamed to `InvokeAgentScopeDetails`** — Now contains only scope-level config (`endpoint`). Agent identity (`AgentDetails`) is a separate parameter. `sessionId` moved to `Request`.
 - **`InvokeAgentScope.start()` — new signature.** `start(request, invokeScopeDetails, agentDetails, callerDetails?, spanDetails?)`. Tenant ID is derived from `agentDetails.tenantId` (required). `userDetails` and `callerAgentDetails` are wrapped in `CallerDetails`. Span options grouped in `SpanDetails`.
 - **`InferenceScope.start()` — new signature.** `start(request, details, agentDetails, userDetails?, spanDetails?)`. Tenant ID derived from `agentDetails.tenantId` (required).
