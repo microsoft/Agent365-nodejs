@@ -188,10 +188,22 @@ export class McpToolServerConfigurationService {
    *   1. BEARER_TOKEN_<MCPSERVERNAME_UPPER>  — per-server token (effective for V2 unique audiences)
    *   2. BEARER_TOKEN                         — shared fallback (V1 servers share one token)
    * Returns null when neither variable is set; no Authorization header is attached.
+   * Emits a warning when a V2 server (distinct audience) falls back to the shared BEARER_TOKEN,
+   * because that token is scoped to the shared ATG audience and will cause a 401 at the server.
    */
   private createDevTokenAcquirer(): TokenAcquirer {
-    return (server, _scope) => {
-      const token = this.configProvider.getConfiguration().getBearerTokenForServer(server.mcpServerName ?? '');
+    const sharedScope = this.configProvider.getConfiguration().mcpPlatformAuthenticationScope;
+    return (server, scope) => {
+      const serverName = server.mcpServerName ?? '';
+      const config = this.configProvider.getConfiguration();
+      const token = config.getBearerTokenForServer(serverName);
+      if (token && !config.hasPerServerBearerToken(serverName) && scope !== sharedScope) {
+        this.logger.warn(
+          `Dev: MCP server '${serverName}' requires scope '${scope}' but only BEARER_TOKEN is set. ` +
+          `The shared token is scoped to a different audience and will likely cause a 401. ` +
+          `Set BEARER_TOKEN_${serverName.toUpperCase()} to a token acquired for the correct audience.`
+        );
+      }
       return Promise.resolve(token ?? null);
     };
   }

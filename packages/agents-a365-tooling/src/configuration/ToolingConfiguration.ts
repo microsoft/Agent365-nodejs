@@ -116,4 +116,15 @@ export class ToolingConfiguration extends RuntimeConfiguration {
     const key = mcpServerName.toUpperCase();
     return process.env[`BEARER_TOKEN_${key}`] ?? process.env['BEARER_TOKEN'];
   }
+
+  /**
+   * Returns true when a per-server bearer token env var (BEARER_TOKEN_<SERVERNAME_UPPER>)
+   * is explicitly set for the given server, false when only the shared BEARER_TOKEN fallback
+   * would be used. Used to detect V2 servers that are silently falling back to a
+   * wrong-audience token in dev mode.
+   */
+  hasPerServerBearerToken(mcpServerName: string): boolean {
+    const key = mcpServerName.toUpperCase();
+    return !!process.env[`BEARER_TOKEN_${key}`];
+  }
 }
