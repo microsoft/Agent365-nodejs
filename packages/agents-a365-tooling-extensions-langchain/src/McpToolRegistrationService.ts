@@ -79,8 +79,9 @@ export class McpToolRegistrationService {
     const mcpServers: Record<string, Connection> = {};
 
     for (const server of servers) {
-      // Compose headers if values are available
-      const headers: Record<string, string> = Utility.GetToolRequestHeaders(authToken, turnContext, options);
+      // Merge base headers (channel, user-agent) with per-audience Authorization from server.headers
+      const baseHeaders: Record<string, string> = Utility.GetToolRequestHeaders(authToken, turnContext, options);
+      const headers: Record<string, string> = { ...baseHeaders, ...server.headers };
 
       // Create Connection instance for LangChain agents
       mcpServers[server.mcpServerName] = {

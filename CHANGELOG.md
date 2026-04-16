@@ -45,6 +45,33 @@ Both `Agent365.Observability.OtelWrite` (Delegated) and `Agent365.Observability.
 
 ## [Unreleased]
 
+### Breaking Changes (`@microsoft/agents-a365-tooling`)
+
+- **`listToolServers(agenticAppId, authToken)` throws for V2 MCP servers** — The deprecated
+  two-argument overload now throws a hard error if the gateway returns any server whose
+  `audience` field does not match the shared ATG app ID (i.e. a V2 server). The legacy
+  signature cannot perform per-audience OBO because it has no `Authorization` object or
+  `authHandlerName`. Agents whose blueprints only have V1 permissions are unaffected.
+
+  **Migration** — switch to the preferred overload which handles both V1 and V2 automatically:
+  ```typescript
+  // Before (deprecated)
+  const servers = await service.listToolServers(agenticAppId, authToken);
+
+  // After
+  const servers = await service.listToolServers(turnContext, authorization, 'graph');
+  // authToken is optional; omit it and the SDK auto-generates it via token exchange.
+  ```
+
+### Added (`@microsoft/agents-a365-tooling`)
+
+- **V1/V2 per-audience token acquisition** — `resolveTokenScopeForServer` now supports explicit `scope` field for V2 MCP servers. When a V2 server provides a `scope` value, the token is requested as `{audience}/{scope}`; otherwise falls back to `{audience}/.default` (pre-consented permissions cover both cases).
+- **`publisher` field preserved end-to-end** — `MCPServerConfig.publisher` is now carried through both gateway and manifest normalization and is available to callers of `listToolServers`.
+
+### Fixed (`@microsoft/agents-a365-tooling-extensions-openai`, `@microsoft/agents-a365-tooling-extensions-langchain`)
+
+- **Per-audience Authorization headers now correctly applied** — OpenAI and LangChain extensions now merge the per-server `Authorization: Bearer` token from `server.headers` (set by `attachPerAudienceTokens`) with base request headers, instead of applying a single shared discovery token to all MCP servers. This ensures V2 servers receive their own correctly-scoped token.
+
 ### Breaking Changes (`@microsoft/agents-a365-observability`)
 
 - **`InvokeAgentDetails` renamed to `InvokeAgentScopeDetails`** — Now contains only scope-level config (`endpoint`). Agent identity (`AgentDetails`) is a separate parameter. `sessionId` moved to `Request`.

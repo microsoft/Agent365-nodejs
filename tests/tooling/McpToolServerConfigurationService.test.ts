@@ -454,6 +454,7 @@ describe('McpToolServerConfigurationService', () => {
 
       // Assert
       expect(servers).toHaveLength(1);
+      // Dev mode: attachDevTokens is used instead of per-audience OBO — no token exchange
       expect(getAgenticUserTokenSpy).not.toHaveBeenCalled();
       expect(resolveAgentIdentitySpy).toHaveBeenCalledWith(mockContext, mockToken);
     });
@@ -468,6 +469,7 @@ describe('McpToolServerConfigurationService', () => {
       jest.spyOn(fs, 'existsSync').mockReturnValue(true);
       jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(manifestContent));
       resolveAgentIdentitySpy.mockReturnValue('resolved-agent-id');
+      getAgenticUserTokenSpy.mockResolvedValue(mockToken);
 
       // Act - new signature with all parameters
       const servers = await service.listToolServers(
@@ -609,6 +611,7 @@ describe('McpToolServerConfigurationService', () => {
       jest.spyOn(fs, 'existsSync').mockReturnValue(true);
       const readFileSpy = jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(manifestContent));
       resolveAgentIdentitySpy.mockReturnValue('resolved-agent-id');
+      getAgenticUserTokenSpy.mockResolvedValue(mockToken);
 
       // Act - use new signature in development mode
       const servers = await service.listToolServers(mockContext, mockAuthorization, 'graph', mockToken);
@@ -644,6 +647,7 @@ describe('McpToolServerConfigurationService', () => {
   describe('listToolServers new signature (production mode)', () => {
     let mockContext: TurnContext;
     let mockAuthorization: Authorization;
+    let getAgenticUserTokenSpy: jest.SpiedFunction<typeof AgenticAuthenticationService.GetAgenticUserToken>;
     let resolveAgentIdentitySpy: jest.SpiedFunction<typeof RuntimeUtility.ResolveAgentIdentity>;
     let validateAuthTokenSpy: jest.SpiedFunction<typeof Utility.ValidateAuthToken>;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -674,6 +678,9 @@ describe('McpToolServerConfigurationService', () => {
 
       mockAuthorization = {} as Authorization;
 
+      // Mock per-server token acquisition (attachPerAudienceTokens is called after gateway discovery)
+      getAgenticUserTokenSpy = jest.spyOn(AgenticAuthenticationService, 'GetAgenticUserToken')
+        .mockResolvedValue(createMockJwt());
       resolveAgentIdentitySpy = jest.spyOn(RuntimeUtility, 'ResolveAgentIdentity');
       validateAuthTokenSpy = jest.spyOn(Utility, 'ValidateAuthToken').mockImplementation(() => {});
 
@@ -685,6 +692,7 @@ describe('McpToolServerConfigurationService', () => {
 
     afterEach(() => {
       process.env.NODE_ENV = originalEnv;
+      getAgenticUserTokenSpy.mockRestore();
       resolveAgentIdentitySpy.mockRestore();
       validateAuthTokenSpy.mockRestore();
       axiosGetSpy.mockRestore();
@@ -722,7 +730,7 @@ describe('McpToolServerConfigurationService', () => {
 
       // Assert
       expect(axiosGetSpy).toHaveBeenCalledWith(
-        expect.stringContaining('/agents/my-agent-id/mcpServers'),
+        expect.stringContaining('/agents/v2/my-agent-id/mcpServers'),
         expect.any(Object)
       );
     });
@@ -767,7 +775,7 @@ describe('McpToolServerConfigurationService', () => {
 
         // Assert - verify the custom endpoint is used in the gateway URL
         expect(axiosGetSpy).toHaveBeenCalledWith(
-          `${customEndpoint}/agents/my-agent-id/mcpServers`,
+          `${customEndpoint}/agents/v2/my-agent-id/mcpServers`,
           expect.any(Object)
         );
       });
@@ -807,12 +815,12 @@ describe('McpToolServerConfigurationService', () => {
         // Assert - each service uses its own endpoint
         expect(axiosGetSpy).toHaveBeenNthCalledWith(
           1,
-          `${tenant1Endpoint}/agents/agent-1/mcpServers`,
+          `${tenant1Endpoint}/agents/v2/agent-1/mcpServers`,
           expect.any(Object)
         );
         expect(axiosGetSpy).toHaveBeenNthCalledWith(
           2,
-          `${tenant2Endpoint}/agents/agent-2/mcpServers`,
+          `${tenant2Endpoint}/agents/v2/agent-2/mcpServers`,
           expect.any(Object)
         );
       });
@@ -841,7 +849,7 @@ describe('McpToolServerConfigurationService', () => {
 
         // Assert - URL should not have double slashes
         expect(axiosGetSpy).toHaveBeenCalledWith(
-          'https://custom.endpoint.com/agents/my-agent-id/mcpServers',
+          'https://custom.endpoint.com/agents/v2/my-agent-id/mcpServers',
           expect.any(Object)
         );
       });
@@ -1044,7 +1052,9 @@ describe('McpToolServerConfigurationService', () => {
         await service1.listToolServers(mockContext, mockAuthorization, 'graph');
         await service2.listToolServers(mockContext, mockAuthorization, 'graph');
 
-        // Assert - each service uses its own scope
+        // Assert - each service uses its own scope for gateway discovery.
+        // Dev mode (useToolingManifest=true) uses attachDevTokens — no per-server OBO call.
+        // So each service makes exactly one discovery call.
         expect(getAgenticUserTokenSpy).toHaveBeenNthCalledWith(
           1,
           mockAuthorization,
@@ -1106,7 +1116,7 @@ describe('McpToolServerConfigurationService', () => {
 
         // Assert - should use the environment-based endpoint
         expect(axiosGetSpy).toHaveBeenCalledWith(
-          `${customEndpoint}/agents/my-agent-id/mcpServers`,
+          `${customEndpoint}/agents/v2/my-agent-id/mcpServers`,
           expect.any(Object)
         );
       });
@@ -1119,5 +1129,419 @@ describe('McpToolServerConfigurationService', () => {
       const signature = 'mock-signature';
       return `${header}.${payload}.${signature}`;
     }
+  });
+
+  describe('dev mode token attachment (TokenAcquirer with env vars)', () => {
+    let mockContext: TurnContext;
+    let mockAuthorization: Authorization;
+    let resolveAgentIdentitySpy: jest.SpiedFunction<typeof RuntimeUtility.ResolveAgentIdentity>;
+    let getAgenticUserTokenSpy: jest.SpiedFunction<typeof AgenticAuthenticationService.GetAgenticUserToken>;
+
+    const createMockJwt = () => {
+      const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
+      const payload = Buffer.from(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 3600 })).toString('base64url');
+      return `${header}.${payload}.mock-sig`;
+    };
+
+    beforeEach(() => {
+      process.env.NODE_ENV = 'Development';
+      mockContext = {
+        activity: {
+          from: { agenticAppBlueprintId: 'blueprint-dev' },
+          channelId: 'msteams',
+          recipient: { id: 'recipient-id' },
+          conversation: { id: 'conv-id' },
+          isAgenticRequest: jest.fn().mockReturnValue(false),
+          getAgenticInstanceId: jest.fn().mockReturnValue(undefined)
+        },
+        sendActivity: jest.fn()
+      } as unknown as TurnContext;
+      mockAuthorization = {} as Authorization;
+      resolveAgentIdentitySpy = jest.spyOn(RuntimeUtility, 'ResolveAgentIdentity').mockReturnValue('agent-id');
+      getAgenticUserTokenSpy = jest.spyOn(AgenticAuthenticationService, 'GetAgenticUserToken');
+    });
+
+    afterEach(() => {
+      resolveAgentIdentitySpy.mockRestore();
+      getAgenticUserTokenSpy.mockRestore();
+      delete process.env.BEARER_TOKEN_MAILSERVER;
+      delete process.env.BEARER_TOKEN_CALENDARSERVER;
+      delete process.env.BEARER_TOKEN_SERVER1;
+      delete process.env.BEARER_TOKEN_SERVER2;
+    });
+
+    it('should not call GetAgenticUserToken for per-server tokens in dev mode (env var acquirer, not OBO)', async () => {
+      const mockToken = createMockJwt();
+      const manifestContent = {
+        mcpServers: [{ mcpServerName: 'testServer', url: 'http://localhost:3000' }]
+      };
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(manifestContent));
+
+      // Pre-provide token so discovery is also skipped
+      await service.listToolServers(mockContext, mockAuthorization, 'graph', mockToken);
+
+      // attachDevTokens reads env vars — no OBO exchange at all in dev mode
+      expect(getAgenticUserTokenSpy).not.toHaveBeenCalled();
+    });
+
+    it('should attach independent BEARER_TOKEN_<NAME> headers for two V2 servers with distinct audiences', async () => {
+      // V2 servers have unique audience GUIDs → unique scopes → separate cache entries → independent env var lookups.
+      const token1 = 'dev-token-server1';
+      const token2 = 'dev-token-server2';
+      process.env.BEARER_TOKEN_SERVER1 = token1;
+      process.env.BEARER_TOKEN_SERVER2 = token2;
+      const mockToken = createMockJwt();
+      const manifestContent = {
+        mcpServers: [
+          { mcpServerName: 'server1', url: 'http://localhost:3000', audience: 'aaaabbbb-0001-0001-0001-000000000001' },
+          { mcpServerName: 'server2', url: 'http://localhost:3001', audience: 'aaaabbbb-0002-0002-0002-000000000002' }
+        ]
+      };
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(manifestContent));
+
+      const servers = await service.listToolServers(mockContext, mockAuthorization, 'graph', mockToken);
+
+      expect(servers[0].headers?.Authorization).toBe(`Bearer ${token1}`);
+      expect(servers[1].headers?.Authorization).toBe(`Bearer ${token2}`);
+    });
+
+    it('should attach BEARER_TOKEN_<NAME> independently for V2 server; V1 server with no env var gets no header', async () => {
+      // V2 servers have a unique audience GUID → unique scope → own cache entry → own env var lookup.
+      // V1 servers (no audience) share the ATG scope → own cache entry → own env var lookup (no fallback).
+      const perServerToken = 'per-server-mail-token';
+      const v2Audience = 'aaaabbbb-1234-5678-abcd-111122223333';
+      process.env.BEARER_TOKEN_MAILSERVER = perServerToken;
+      const mockToken = createMockJwt();
+      const manifestContent = {
+        mcpServers: [
+          { mcpServerName: 'mailServer', url: 'http://localhost:3000', audience: v2Audience }, // V2 — unique scope
+          { mcpServerName: 'calendarServer', url: 'http://localhost:3001' }                    // V1 — ATG scope, no env var
+        ]
+      };
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(manifestContent));
+
+      const servers = await service.listToolServers(mockContext, mockAuthorization, 'graph', mockToken);
+
+      // mailServer (V2): unique scope → BEARER_TOKEN_MAILSERVER set → header attached
+      expect(servers[0].headers?.Authorization).toBe(`Bearer ${perServerToken}`);
+      // calendarServer (V1): ATG scope → BEARER_TOKEN_CALENDARSERVER not set → no header
+      expect(servers[1].headers?.Authorization).toBeUndefined();
+    });
+
+    it('should not attach Authorization header when no env var tokens are set', async () => {
+      const mockToken = createMockJwt();
+      const manifestContent = {
+        mcpServers: [{ mcpServerName: 'testServer', url: 'http://localhost:3000' }]
+      };
+      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+      jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(manifestContent));
+
+      const servers = await service.listToolServers(mockContext, mockAuthorization, 'graph', mockToken);
+
+      expect(servers[0].headers?.Authorization).toBeUndefined();
+    });
+  });
+
+  describe('V1/V2 per-audience token acquisition (TurnContext path)', () => {
+    let mockContext: TurnContext;
+    let mockAuthorization: Authorization;
+    let getAgenticUserTokenSpy: jest.SpiedFunction<typeof AgenticAuthenticationService.GetAgenticUserToken>;
+    let resolveAgentIdentitySpy: jest.SpiedFunction<typeof RuntimeUtility.ResolveAgentIdentity>;
+    let validateAuthTokenSpy: jest.SpiedFunction<typeof Utility.ValidateAuthToken>;
+
+    const createMockJwt = (seed = 'default') => {
+      const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
+      const payload = Buffer.from(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 3600, sub: seed })).toString('base64url');
+      return `${header}.${payload}.mock-sig`;
+    };
+
+    beforeEach(() => {
+      // Per-audience OBO is production-only — dev mode uses attachDevTokens instead
+      process.env.NODE_ENV = 'production';
+      mockContext = {
+        activity: {
+          from: { agenticAppBlueprintId: 'blueprint-v2' },
+          channelId: 'msteams',
+          recipient: { id: 'recipient-id' },
+          conversation: { id: 'conv-id' },
+          isAgenticRequest: jest.fn().mockReturnValue(false),
+          getAgenticInstanceId: jest.fn().mockReturnValue(undefined)
+        },
+        sendActivity: jest.fn()
+      } as unknown as TurnContext;
+      mockAuthorization = {} as Authorization;
+      getAgenticUserTokenSpy = jest.spyOn(AgenticAuthenticationService, 'GetAgenticUserToken');
+      resolveAgentIdentitySpy = jest.spyOn(RuntimeUtility, 'ResolveAgentIdentity').mockReturnValue('agent-id');
+      validateAuthTokenSpy = jest.spyOn(Utility, 'ValidateAuthToken').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+      getAgenticUserTokenSpy.mockRestore();
+      resolveAgentIdentitySpy.mockRestore();
+      validateAuthTokenSpy.mockRestore();
+    });
+
+    it('should attach Authorization header using ATG scope for a V1 server (no audience field)', async () => {
+      const mockToken = createMockJwt('atg');
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const axios = require('axios');
+      jest.spyOn(axios, 'get').mockResolvedValue({
+        data: [{ mcpServerName: 'mailServer', url: 'http://localhost:3001' }]
+      });
+      getAgenticUserTokenSpy.mockResolvedValue(mockToken);
+
+      const servers = await service.listToolServers(mockContext, mockAuthorization, 'graph', mockToken);
+
+      expect(servers[0].headers?.Authorization).toBe(`Bearer ${mockToken}`);
+      expect(getAgenticUserTokenSpy).toHaveBeenCalledWith(
+        mockAuthorization, 'graph', mockContext, ['ea9ffc3e-8a23-4a7d-836d-234d7c7565c1/.default']
+      );
+    });
+
+    it('should acquire a per-server token using V2 server audience GUID as scope', async () => {
+      const v2Audience = 'aaaabbbb-1234-5678-abcd-111122223333';
+      const v2Token = createMockJwt('v2');
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const axios = require('axios');
+      jest.spyOn(axios, 'get').mockResolvedValue({
+        data: [{
+          mcpServerName: 'v2ToolsServer',
+          url: 'https://v2.example.com/mcp',
+          audience: v2Audience,
+          scope: 'Tools.ListInvoke.All'
+        }]
+      });
+      getAgenticUserTokenSpy.mockResolvedValue(v2Token);
+
+      const servers = await service.listToolServers(mockContext, mockAuthorization, 'graph', v2Token);
+
+      expect(getAgenticUserTokenSpy).toHaveBeenCalledWith(
+        mockAuthorization, 'graph', mockContext, [`${v2Audience}/Tools.ListInvoke.All`]
+      );
+      expect(servers[0].headers?.Authorization).toBe(`Bearer ${v2Token}`);
+    });
+
+    it('should perform one token exchange for multiple servers sharing the same V2 audience', async () => {
+      const sharedAudience = 'aaaabbbb-1234-5678-abcd-111122223333';
+      const sharedToken = createMockJwt('shared');
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const axios = require('axios');
+      jest.spyOn(axios, 'get').mockResolvedValue({
+        data: [
+          { mcpServerName: 'v2Server1', url: 'http://v2-1.example.com', audience: sharedAudience },
+          { mcpServerName: 'v2Server2', url: 'http://v2-2.example.com', audience: sharedAudience },
+        ]
+      });
+      getAgenticUserTokenSpy.mockResolvedValue(sharedToken);
+
+      const servers = await service.listToolServers(mockContext, mockAuthorization, 'graph', sharedToken);
+
+      expect(getAgenticUserTokenSpy).toHaveBeenCalledTimes(1);
+      expect(servers[0].headers?.Authorization).toBe(`Bearer ${sharedToken}`);
+      expect(servers[1].headers?.Authorization).toBe(`Bearer ${sharedToken}`);
+    });
+
+    it('should use different tokens for V1 and V2 servers in the same list', async () => {
+      const v2Audience = 'ccccdddd-5678-9012-efab-444455556666';
+      const atgToken = createMockJwt('atg');
+      const v2Token = createMockJwt('v2');
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const axios = require('axios');
+      jest.spyOn(axios, 'get').mockResolvedValue({
+        data: [
+          { mcpServerName: 'v1MailServer', url: 'http://v1.example.com' },
+          { mcpServerName: 'v2ToolsServer', url: 'http://v2.example.com', audience: v2Audience }
+        ]
+      });
+      getAgenticUserTokenSpy
+        .mockResolvedValueOnce(atgToken)  // V1 ATG scope
+        .mockResolvedValueOnce(v2Token);  // V2 per-audience scope
+
+      const servers = await service.listToolServers(mockContext, mockAuthorization, 'graph', atgToken);
+
+      expect(getAgenticUserTokenSpy).toHaveBeenCalledTimes(2);
+      expect(getAgenticUserTokenSpy).toHaveBeenNthCalledWith(1, mockAuthorization, 'graph', mockContext, ['ea9ffc3e-8a23-4a7d-836d-234d7c7565c1/.default']);
+      expect(getAgenticUserTokenSpy).toHaveBeenNthCalledWith(2, mockAuthorization, 'graph', mockContext, [`${v2Audience}/.default`]);
+      expect(servers[0].headers?.Authorization).toBe(`Bearer ${atgToken}`);
+      expect(servers[1].headers?.Authorization).toBe(`Bearer ${v2Token}`);
+    });
+
+    it('should throw when per-server token exchange fails', async () => {
+      const mockToken = createMockJwt();
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const axios = require('axios');
+      jest.spyOn(axios, 'get').mockResolvedValue({
+        data: [{ mcpServerName: 'mailServer', url: 'http://localhost:3001' }]
+      });
+      // Discovery token OK; per-server exchange returns null
+      getAgenticUserTokenSpy
+        .mockResolvedValueOnce(mockToken)
+        .mockResolvedValueOnce(null as unknown as string);
+
+      await expect(
+        service.listToolServers(mockContext, mockAuthorization, 'graph')
+      ).rejects.toThrow("Failed to obtain token for MCP server 'mailServer'");
+    });
+
+    it('should use OBO acquirer (not env var acquirer) in production mode', async () => {
+      // Verifies the prod branch: gateway discovery → OBO per-server token
+      const mockToken = createMockJwt('prod');
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const axios = require('axios');
+      jest.spyOn(axios, 'get').mockResolvedValue({
+        data: [{ mcpServerName: 'prodServer', url: 'http://prod.example.com' }]
+      });
+      getAgenticUserTokenSpy.mockResolvedValue(mockToken);
+
+      const servers = await service.listToolServers(mockContext, mockAuthorization, 'graph', mockToken);
+
+      // OBO must have been called for per-server token (ATG scope for V1 server)
+      expect(getAgenticUserTokenSpy).toHaveBeenCalledWith(
+        mockAuthorization, 'graph', mockContext, ['ea9ffc3e-8a23-4a7d-836d-234d7c7565c1/.default']
+      );
+      expect(servers[0].headers?.Authorization).toBe(`Bearer ${mockToken}`);
+    });
+
+    it('should pass audience and scope through from gateway into MCPServerConfig (TurnContext path)', async () => {
+      // Verifies gateway response fields are preserved end-to-end using the preferred TurnContext path.
+      const v2Audience = 'eeeeffff-0000-1111-2222-333344445555';
+      const mockToken = createMockJwt('v2-fields');
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const axios = require('axios');
+      jest.spyOn(axios, 'get').mockResolvedValue({
+        data: [{
+          mcpServerName: 'v2Server',
+          url: 'https://v2.example.com/mcp',
+          audience: v2Audience,
+          scope: 'Tools.ListInvoke.All'
+        }]
+      });
+      getAgenticUserTokenSpy.mockResolvedValue(mockToken);
+
+      const servers = await service.listToolServers(mockContext, mockAuthorization, 'graph', mockToken);
+
+      expect(servers[0].audience).toBe(v2Audience);
+      expect(servers[0].scope).toBe('Tools.ListInvoke.All');
+    });
+  });
+
+  describe('listToolServers legacy path — per-audience token attachment', () => {
+    const createMockJwt = () => {
+      const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
+      const payload = Buffer.from(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 3600 })).toString('base64url');
+      return `${header}.${payload}.mock-sig`;
+    };
+
+    afterEach(() => {
+      delete process.env.BEARER_TOKEN;
+      delete process.env.BEARER_TOKEN_MAILSERVER;
+      delete process.env.BEARER_TOKEN_V2SERVER;
+    });
+
+    describe('dev mode (manifest)', () => {
+      beforeEach(() => { process.env.NODE_ENV = 'Development'; });
+
+      it('should attach BEARER_TOKEN for a V1 server when BEARER_TOKEN is set', async () => {
+        process.env.BEARER_TOKEN = 'shared-dev-token';
+        const manifestContent = {
+          mcpServers: [{ mcpServerName: 'mailServer', url: 'http://localhost:3000' }]
+        };
+        jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+        jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(manifestContent));
+
+        const servers = await service.listToolServers('agent-id', 'mock-auth-token');
+
+        expect(servers[0].headers?.Authorization).toBe('Bearer shared-dev-token');
+      });
+
+      it('should attach BEARER_TOKEN_<NAME> for a V2 server when per-server env var is set', async () => {
+        process.env.BEARER_TOKEN_V2SERVER = 'v2-dev-token';
+        const v2Audience = 'aaaabbbb-1234-5678-abcd-111122223333';
+        const manifestContent = {
+          mcpServers: [{ mcpServerName: 'v2Server', url: 'http://localhost:3001', audience: v2Audience }]
+        };
+        jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+        jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(manifestContent));
+
+        const servers = await service.listToolServers('agent-id', 'mock-auth-token');
+
+        expect(servers[0].headers?.Authorization).toBe('Bearer v2-dev-token');
+      });
+
+      it('should leave headers undefined when no env var tokens are set', async () => {
+        const manifestContent = {
+          mcpServers: [{ mcpServerName: 'mailServer', url: 'http://localhost:3000' }]
+        };
+        jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+        jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(manifestContent));
+
+        const servers = await service.listToolServers('agent-id', 'mock-auth-token');
+
+        expect(servers[0].headers?.Authorization).toBeUndefined();
+      });
+    });
+
+    describe('prod mode (gateway)', () => {
+      beforeEach(() => {
+        process.env.NODE_ENV = 'production';
+        jest.spyOn(Utility, 'ValidateAuthToken').mockImplementation(() => {});
+      });
+
+      it('should attach the shared authToken for a V1 server (no audience)', async () => {
+        const mockToken = createMockJwt();
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const axios = require('axios');
+        jest.spyOn(axios, 'get').mockResolvedValue({
+          data: [{ mcpServerName: 'mailServer', url: 'http://prod.example.com' }]
+        });
+
+        const servers = await service.listToolServers('agent-id', mockToken);
+
+        expect(servers[0].headers?.Authorization).toBe(`Bearer ${mockToken}`);
+      });
+
+      it('should throw for a V2 server (non-ATG audience) with a message directing to the TurnContext overload', async () => {
+        const v2Audience = 'aaaabbbb-1234-5678-abcd-111122223333';
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const axios = require('axios');
+        jest.spyOn(axios, 'get').mockResolvedValue({
+          data: [{ mcpServerName: 'v2Server', url: 'http://v2.example.com', audience: v2Audience }]
+        });
+
+        await expect(
+          service.listToolServers('agent-id', 'mock-auth-token')
+        ).rejects.toThrow("MCP server 'v2Server' requires a per-audience token");
+      });
+
+      it('should throw with a message that names the migration overload', async () => {
+        const v2Audience = 'ccccdddd-5678-9012-efab-444455556666';
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const axios = require('axios');
+        jest.spyOn(axios, 'get').mockResolvedValue({
+          data: [{ mcpServerName: 'v2Tools', url: 'http://v2tools.example.com', audience: v2Audience }]
+        });
+
+        await expect(
+          service.listToolServers('agent-id', 'mock-auth-token')
+        ).rejects.toThrow('listToolServers(turnContext, authorization, authHandlerName)');
+      });
+
+      it('should NOT throw for a V1 server whose audience explicitly equals the shared ATG AppId', async () => {
+        const atgAppId = 'ea9ffc3e-8a23-4a7d-836d-234d7c7565c1';
+        const mockToken = createMockJwt();
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const axios = require('axios');
+        jest.spyOn(axios, 'get').mockResolvedValue({
+          data: [{ mcpServerName: 'legacyServer', url: 'http://legacy.example.com', audience: atgAppId }]
+        });
+
+        const servers = await service.listToolServers('agent-id', mockToken);
+
+        expect(servers[0].headers?.Authorization).toBe(`Bearer ${mockToken}`);
+      });
+    });
   });
 });
