@@ -97,6 +97,6 @@ export class ToolingConfiguration extends RuntimeConfiguration {
    */
   getBearerTokenForServer(mcpServerName: string): string | undefined {
     const key = mcpServerName.toUpperCase();
-    return process.env[`BEARER_TOKEN_${key}`];
+    return process.env[`BEARER_TOKEN_${key}`] ?? process.env['BEARER_TOKEN'];
   }
 }

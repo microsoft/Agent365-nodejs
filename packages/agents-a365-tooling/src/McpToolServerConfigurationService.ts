@@ -89,9 +89,20 @@ export class McpToolServerConfigurationService {
       const authToken = authTokenOrAuthorization;
       const toolOptions = optionsOrAuthHandlerName as ToolOptions | undefined;
 
-      return await (this.isDevScenario()
+      const servers = await (this.isDevScenario()
         ? this.getMCPServerConfigsFromManifest()
         : this.getMCPServerConfigsFromToolingGateway(agenticAppId, authToken, undefined, toolOptions));
+
+      // Apply per-audience tokens on the legacy path too, using the same structural path as the
+      // new overload so V2 servers are never silently missing an Authorization header.
+      // Dev: reads from BEARER_TOKEN_<NAME> / BEARER_TOKEN env vars, supports V1 and V2.
+      // Prod: uses the shared authToken for V1 servers; throws for V2 servers (OBO requires
+      //       Authorization and authHandlerName — use the TurnContext-based overload instead).
+      const acquire = this.isDevScenario()
+        ? this.createDevTokenAcquirer()
+        : this.createLegacyProdTokenAcquirer(authToken);
+
+      return await this.attachPerAudienceTokens(servers, acquire);
     } else {
       // NEW PATH: listToolServers(turnContext, authorization, authHandlerName, authToken?, options?)
       const turnContext = agenticAppIdOrTurnContext;
@@ -180,6 +191,27 @@ export class McpToolServerConfigurationService {
     return (server, _scope) => {
       const token = this.configProvider.getConfiguration().getBearerTokenForServer(server.mcpServerName ?? '');
       return Promise.resolve(token ?? null);
+    };
+  }
+
+  /**
+   * Returns a TokenAcquirer for the deprecated legacy (agenticAppId, authToken) overload in prod.
+   * V1 servers (ATG shared scope) receive the caller-supplied authToken directly.
+   * V2 servers (per-audience scope) throw immediately — OBO exchange requires Authorization and
+   * authHandlerName which the legacy signature does not provide; callers must migrate to the
+   * TurnContext-based overload.
+   */
+  private createLegacyProdTokenAcquirer(authToken: string): TokenAcquirer {
+    const sharedScope = this.configProvider.getConfiguration().mcpPlatformAuthenticationScope;
+    return (server, scope) => {
+      if (scope !== sharedScope) {
+        throw new Error(
+          `MCP server '${server.mcpServerName}' requires a per-audience token (scope: '${scope}'). ` +
+          `Per-audience token exchange is not supported by the deprecated listToolServers(agenticAppId, authToken) overload. ` +
+          `Migrate to listToolServers(turnContext, authorization, authHandlerName) instead.`
+        );
+      }
+      return Promise.resolve(authToken);
     };
   }
 

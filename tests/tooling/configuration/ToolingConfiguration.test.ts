@@ -225,6 +225,41 @@ describe('ToolingConfiguration', () => {
     });
   });
 
+  describe('getBearerTokenForServer', () => {
+    it('should return per-server token when BEARER_TOKEN_<NAME> is set', () => {
+      process.env.BEARER_TOKEN_MYSERVER = 'per-server-token';
+      const config = new ToolingConfiguration({});
+      expect(config.getBearerTokenForServer('myserver')).toBe('per-server-token');
+    });
+
+    it('should fall back to BEARER_TOKEN when per-server var is not set', () => {
+      delete process.env.BEARER_TOKEN_MYSERVER;
+      process.env.BEARER_TOKEN = 'shared-token';
+      const config = new ToolingConfiguration({});
+      expect(config.getBearerTokenForServer('myserver')).toBe('shared-token');
+    });
+
+    it('should return undefined when neither per-server nor shared token is set', () => {
+      delete process.env.BEARER_TOKEN_MYSERVER;
+      delete process.env.BEARER_TOKEN;
+      const config = new ToolingConfiguration({});
+      expect(config.getBearerTokenForServer('myserver')).toBeUndefined();
+    });
+
+    it('should prefer per-server token over shared BEARER_TOKEN when both are set', () => {
+      process.env.BEARER_TOKEN_MYSERVER = 'per-server-token';
+      process.env.BEARER_TOKEN = 'shared-token';
+      const config = new ToolingConfiguration({});
+      expect(config.getBearerTokenForServer('myserver')).toBe('per-server-token');
+    });
+
+    it('should uppercase the server name when looking up the env var', () => {
+      process.env.BEARER_TOKEN_MY_SERVER = 'upper-token';
+      const config = new ToolingConfiguration({});
+      expect(config.getBearerTokenForServer('my_server')).toBe('upper-token');
+    });
+  });
+
   describe('combined overrides', () => {
     it('should allow overriding both runtime and tooling settings', () => {
       const config = new ToolingConfiguration({

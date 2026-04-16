@@ -66,7 +66,7 @@ export class McpToolRegistrationService {
     for (const server of servers) {
       // server.headers contains the per-audience Authorization token set by listToolServers.
       // Merge with non-auth headers (channelId, user-agent); server.headers auth takes precedence.
-      const baseHeaders = Utility.GetToolRequestHeaders(undefined, turnContext, options);
+      const baseHeaders = Utility.GetToolRequestHeaders(authToken, turnContext, options);
       const headers = { ...baseHeaders, ...server.headers };
 
       // Add each server to the config object

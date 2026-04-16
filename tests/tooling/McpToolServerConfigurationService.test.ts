@@ -1405,9 +1405,10 @@ describe('McpToolServerConfigurationService', () => {
       expect(servers[0].headers?.Authorization).toBe(`Bearer ${mockToken}`);
     });
 
-    it('should pass audience and scope through from gateway into MCPServerConfig (legacy path)', async () => {
-      // Uses legacy path so attachPerAudienceTokens is not called — pure field passthrough check
+    it('should pass audience and scope through from gateway into MCPServerConfig (TurnContext path)', async () => {
+      // Verifies gateway response fields are preserved end-to-end using the preferred TurnContext path.
       const v2Audience = 'eeeeffff-0000-1111-2222-333344445555';
+      const mockToken = createMockJwt('v2-fields');
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const axios = require('axios');
       jest.spyOn(axios, 'get').mockResolvedValue({
@@ -1418,11 +1419,129 @@ describe('McpToolServerConfigurationService', () => {
           scope: 'Tools.ListInvoke.All'
         }]
       });
+      getAgenticUserTokenSpy.mockResolvedValue(mockToken);
 
-      const servers = await service.listToolServers('agent-id', 'mock-auth-token');
+      const servers = await service.listToolServers(mockContext, mockAuthorization, 'graph', mockToken);
 
       expect(servers[0].audience).toBe(v2Audience);
       expect(servers[0].scope).toBe('Tools.ListInvoke.All');
+    });
+  });
+
+  describe('listToolServers legacy path — per-audience token attachment', () => {
+    const createMockJwt = () => {
+      const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
+      const payload = Buffer.from(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 3600 })).toString('base64url');
+      return `${header}.${payload}.mock-sig`;
+    };
+
+    afterEach(() => {
+      delete process.env.BEARER_TOKEN;
+      delete process.env.BEARER_TOKEN_MAILSERVER;
+      delete process.env.BEARER_TOKEN_V2SERVER;
+    });
+
+    describe('dev mode (manifest)', () => {
+      beforeEach(() => { process.env.NODE_ENV = 'Development'; });
+
+      it('should attach BEARER_TOKEN for a V1 server when BEARER_TOKEN is set', async () => {
+        process.env.BEARER_TOKEN = 'shared-dev-token';
+        const manifestContent = {
+          mcpServers: [{ mcpServerName: 'mailServer', url: 'http://localhost:3000' }]
+        };
+        jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+        jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(manifestContent));
+
+        const servers = await service.listToolServers('agent-id', 'mock-auth-token');
+
+        expect(servers[0].headers?.Authorization).toBe('Bearer shared-dev-token');
+      });
+
+      it('should attach BEARER_TOKEN_<NAME> for a V2 server when per-server env var is set', async () => {
+        process.env.BEARER_TOKEN_V2SERVER = 'v2-dev-token';
+        const v2Audience = 'aaaabbbb-1234-5678-abcd-111122223333';
+        const manifestContent = {
+          mcpServers: [{ mcpServerName: 'v2Server', url: 'http://localhost:3001', audience: v2Audience }]
+        };
+        jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+        jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(manifestContent));
+
+        const servers = await service.listToolServers('agent-id', 'mock-auth-token');
+
+        expect(servers[0].headers?.Authorization).toBe('Bearer v2-dev-token');
+      });
+
+      it('should leave headers undefined when no env var tokens are set', async () => {
+        const manifestContent = {
+          mcpServers: [{ mcpServerName: 'mailServer', url: 'http://localhost:3000' }]
+        };
+        jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+        jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(manifestContent));
+
+        const servers = await service.listToolServers('agent-id', 'mock-auth-token');
+
+        expect(servers[0].headers?.Authorization).toBeUndefined();
+      });
+    });
+
+    describe('prod mode (gateway)', () => {
+      beforeEach(() => {
+        process.env.NODE_ENV = 'production';
+        jest.spyOn(Utility, 'ValidateAuthToken').mockImplementation(() => {});
+      });
+
+      it('should attach the shared authToken for a V1 server (no audience)', async () => {
+        const mockToken = createMockJwt();
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const axios = require('axios');
+        jest.spyOn(axios, 'get').mockResolvedValue({
+          data: [{ mcpServerName: 'mailServer', url: 'http://prod.example.com' }]
+        });
+
+        const servers = await service.listToolServers('agent-id', mockToken);
+
+        expect(servers[0].headers?.Authorization).toBe(`Bearer ${mockToken}`);
+      });
+
+      it('should throw for a V2 server (non-ATG audience) with a message directing to the TurnContext overload', async () => {
+        const v2Audience = 'aaaabbbb-1234-5678-abcd-111122223333';
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const axios = require('axios');
+        jest.spyOn(axios, 'get').mockResolvedValue({
+          data: [{ mcpServerName: 'v2Server', url: 'http://v2.example.com', audience: v2Audience }]
+        });
+
+        await expect(
+          service.listToolServers('agent-id', 'mock-auth-token')
+        ).rejects.toThrow("MCP server 'v2Server' requires a per-audience token");
+      });
+
+      it('should throw with a message that names the migration overload', async () => {
+        const v2Audience = 'ccccdddd-5678-9012-efab-444455556666';
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const axios = require('axios');
+        jest.spyOn(axios, 'get').mockResolvedValue({
+          data: [{ mcpServerName: 'v2Tools', url: 'http://v2tools.example.com', audience: v2Audience }]
+        });
+
+        await expect(
+          service.listToolServers('agent-id', 'mock-auth-token')
+        ).rejects.toThrow('listToolServers(turnContext, authorization, authHandlerName)');
+      });
+
+      it('should NOT throw for a V1 server whose audience explicitly equals the shared ATG AppId', async () => {
+        const atgAppId = 'ea9ffc3e-8a23-4a7d-836d-234d7c7565c1';
+        const mockToken = createMockJwt();
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const axios = require('axios');
+        jest.spyOn(axios, 'get').mockResolvedValue({
+          data: [{ mcpServerName: 'legacyServer', url: 'http://legacy.example.com', audience: atgAppId }]
+        });
+
+        const servers = await service.listToolServers('agent-id', mockToken);
+
+        expect(servers[0].headers?.Authorization).toBe(`Bearer ${mockToken}`);
+      });
     });
   });
 });
