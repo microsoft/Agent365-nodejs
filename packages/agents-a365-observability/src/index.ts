@@ -80,7 +80,7 @@ export { InferenceScope } from './tracing/scopes/InferenceScope';
 export { OutputScope } from './tracing/scopes/OutputScope';
 export { logger, setLogger, getLogger, resetLogger, formatError } from './utils/logging';
 export type { ILogger } from './utils/logging';
-export { truncateValue, MAX_ATTRIBUTE_LENGTH, safeSerializeToJson } from './tracing/util';
+export { safeSerializeToJson } from './tracing/util';
 
 // Message utilities
 export { serializeMessages, normalizeInputMessages, normalizeOutputMessages } from './tracing/message-utils';

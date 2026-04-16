@@ -23,28 +23,6 @@ export const isAgent365ExporterEnabled = (
 };
 
 /**
- * Maximum length for span attribute values.
- * Values exceeding this limit will be truncated with a suffix.
- */
-export const MAX_ATTRIBUTE_LENGTH = 8_192;
-
-const TRUNCATION_SUFFIX = '...[truncated]';
-
-/**
- * Truncate a string value to {@link MAX_ATTRIBUTE_LENGTH} characters.
- * If the value exceeds the limit, it is trimmed and a truncation suffix is appended,
- * with the total length capped at exactly {@link MAX_ATTRIBUTE_LENGTH}.
- * @param value The string to truncate
- * @returns The original string if within limits, otherwise the truncated string
- */
-export function truncateValue(value: string): string {
-  if (value.length > MAX_ATTRIBUTE_LENGTH) {
-    return value.substring(0, MAX_ATTRIBUTE_LENGTH - TRUNCATION_SUFFIX.length) + TRUNCATION_SUFFIX;
-  }
-  return value;
-}
-
-/**
  * Ensures the value is always a JSON-parseable string.
  * - Objects are serialized via JSON.stringify.
  * - Strings that are already valid JSON objects/arrays are passed through.
