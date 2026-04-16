@@ -325,6 +325,51 @@ describe('resolveTokenScopeForServer', () => {
       scope: 'Tools.ListInvoke.All'
     })).toBe(`${v2AppId}/Tools.ListInvoke.All`);
   });
+
+  describe('custom sharedScope (configurable mcpPlatformAuthenticationScope)', () => {
+    const customScope = 'api://custom-atg/.default';
+    const customAudience = 'api://custom-atg';
+
+    it('should return customScope for a V1 server with no audience when sharedScope is overridden', () => {
+      expect(resolveTokenScopeForServer(
+        { mcpServerName: 'mail', url: 'https://mail.example.com' },
+        customScope
+      )).toBe(customScope);
+    });
+
+    it('should return customScope when server audience matches the custom shared audience (api:// form)', () => {
+      expect(resolveTokenScopeForServer(
+        { mcpServerName: 'mail', url: 'https://mail.example.com', audience: customAudience },
+        customScope
+      )).toBe(customScope);
+    });
+
+    it('should return customScope when server audience matches the custom shared audience (plain form)', () => {
+      // audience field may arrive as plain GUID/id even when sharedScope uses api:// prefix
+      expect(resolveTokenScopeForServer(
+        { mcpServerName: 'mail', url: 'https://mail.example.com', audience: 'custom-atg' },
+        customScope
+      )).toBe(customScope);
+    });
+
+    it('should still treat a V2 server as V2 even when sharedScope is custom', () => {
+      const v2Audience = 'aaaabbbb-1234-5678-abcd-111122223333';
+      expect(resolveTokenScopeForServer(
+        { mcpServerName: 'tools', url: 'https://tools.example.com', audience: v2Audience },
+        customScope
+      )).toBe(`${v2Audience}/.default`);
+    });
+
+    it('should not raise false migration error in legacy prod acquirer when sharedScope is overridden', () => {
+      // Regression guard: with the old hardcoded constant, resolveTokenScopeForServer returned
+      // 'ea9ffc3e-.../.default' while createLegacyProdTokenAcquirer compared against the custom
+      // scope — mismatch → false throw. Now both sides use the same configured value.
+      expect(resolveTokenScopeForServer(
+        { mcpServerName: 'mail', url: 'https://mail.example.com' },
+        customScope
+      )).toBe(customScope); // returned scope === sharedScope → no throw
+    });
+  });
 });
 
 describe('defaultToolingConfigurationProvider', () => {

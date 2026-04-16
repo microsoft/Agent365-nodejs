@@ -163,11 +163,13 @@ export class McpToolServerConfigurationService {
     servers: MCPServerConfig[],
     acquire: TokenAcquirer
   ): Promise<MCPServerConfig[]> {
+    // Fetch once so scope resolution and the legacy-path guard use the same value.
+    const sharedScope = this.configProvider.getConfiguration().mcpPlatformAuthenticationScope;
     const tokenCache = new Map<string, string | null>(); // scope → token (null = no token available)
 
     const result: MCPServerConfig[] = [];
     for (const server of servers) {
-      const scope = resolveTokenScopeForServer(server);
+      const scope = resolveTokenScopeForServer(server, sharedScope);
       if (!tokenCache.has(scope)) {
         tokenCache.set(scope, await acquire(server, scope));
       }
@@ -404,6 +406,7 @@ export class McpToolServerConfigurationService {
         headers: s.headers,
         audience: s.audience,
         scope: s.scope,
+        publisher: s.publisher,
       }));
     } catch (err: unknown) {
       const error = err as Error & { code?: string };
@@ -465,6 +468,7 @@ export class McpToolServerConfigurationService {
           headers: s.headers,
           audience: s.audience,
           scope: s.scope,
+          publisher: s.publisher,
         };
       });
     } catch (err: unknown) {

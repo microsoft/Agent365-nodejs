@@ -8,25 +8,42 @@ import { MCPServerConfig } from '../contracts';
 // Constants for tooling-specific settings
 const MCP_PLATFORM_PROD_BASE_URL = 'https://agent365.svc.cloud.microsoft';
 const PROD_MCP_PLATFORM_AUTHENTICATION_SCOPE = 'ea9ffc3e-8a23-4a7d-836d-234d7c7565c1/.default';
-const ATG_APP_ID = 'ea9ffc3e-8a23-4a7d-836d-234d7c7565c1';
-const ATG_APP_ID_URI = `api://${ATG_APP_ID}`;   // "api://ea9ffc3e-8a23-4a7d-836d-234d7c7565c1"
 
 /**
  * Resolve the OAuth scope to request for a given MCP server.
- * V2 servers carry their own audience GUID in the `audience` field; V1 servers (no audience,
- * or audience matching the shared ATG AppId or its api:// URI form) fall back to the shared ATG scope.
+ *
+ * V2 servers carry their own audience in the `audience` field and get a per-audience token.
+ * V1 servers (no `audience`, or audience matching the shared scope's own audience in plain
+ * or api:// form) fall back to `sharedScope` — the configured mcpPlatformAuthenticationScope.
+ *
+ * @param server     The MCP server config returned by the gateway or manifest.
+ * @param sharedScope The configured shared scope (mcpPlatformAuthenticationScope).
+ *   Defaults to the prod ATG scope so that external callers without a custom config
+ *   continue to work without passing the argument.
  */
-export function resolveTokenScopeForServer(server: MCPServerConfig): string {
-  if (server.audience &&
-      server.audience !== ATG_APP_ID &&
-      server.audience !== ATG_APP_ID_URI) {
-    // V2 server: use explicit scope if provided, otherwise fall back to /.default
-    if (server.scope) {
-      return `${server.audience}/${server.scope}`;
+export function resolveTokenScopeForServer(
+  server: MCPServerConfig,
+  sharedScope: string = PROD_MCP_PLATFORM_AUTHENTICATION_SCOPE
+): string {
+  if (server.audience) {
+    // Extract the audience portion of sharedScope (everything before the last '/').
+    // e.g. 'ea9ffc3e-.../.default'      → 'ea9ffc3e-...'
+    //      'api://ea9ffc3e-.../.default' → 'api://ea9ffc3e-...'
+    const sharedAudience = sharedScope.slice(0, sharedScope.lastIndexOf('/'));
+    // Build the alternate form so we match both 'guid' and 'api://guid'.
+    const sharedAudienceAlt = sharedAudience.startsWith('api://')
+      ? sharedAudience.slice(6)        // 'api://guid' → 'guid'
+      : `api://${sharedAudience}`;     // 'guid'       → 'api://guid'
+
+    if (server.audience !== sharedAudience && server.audience !== sharedAudienceAlt) {
+      // V2 server: use its own audience with explicit scope or /.default fallback.
+      return server.scope
+        ? `${server.audience}/${server.scope}`
+        : `${server.audience}/.default`;
     }
-    return `${server.audience}/.default`;
   }
-  return `${ATG_APP_ID}/.default`;
+  // V1 server: no audience, or audience matches the shared ATG audience.
+  return sharedScope;
 }
 
 /**
