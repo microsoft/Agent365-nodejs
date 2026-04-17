@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ESNext",
-    "module": "commonjs", 
+    "module": "ESNext",
     "lib": ["ESNext"],
     "outDir": "./dist",
     "strict": true,
@@ -12,7 +12,7 @@
     "declarationMap": true,
     "sourceMap": true,
     "resolveJsonModule": true,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "types": ["jest", "node"]

@@ -9,9 +9,6 @@ import { ObservabilityManager, Builder, OpenTelemetryConstants } from "@microsof
 import { LangChainTraceInstrumentor } from "@microsoft/agents-a365-observability-extensions-langchain";
 import * as LangChainCallbacks from "@langchain/core/callbacks/manager";
 import { AzureChatOpenAI } from "@langchain/openai";
-// moduleResolution: "node" in tests/tsconfig.json doesn't see package `exports` subpaths
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore — runtime resolution works; TS resolution needs node16/bundler
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { DynamicStructuredTool } from "@langchain/core/tools";
 import { z } from "zod";
