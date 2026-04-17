@@ -20,7 +20,6 @@ module.exports = {
     'ts-jest': {
       tsconfig: {
         module: 'commonjs',
-        moduleResolution: 'bundler',
         esModuleInterop: true,
       },
     },

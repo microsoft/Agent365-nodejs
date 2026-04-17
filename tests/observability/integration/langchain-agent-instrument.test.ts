@@ -9,6 +9,8 @@ import { ObservabilityManager, Builder, OpenTelemetryConstants } from "@microsof
 import { LangChainTraceInstrumentor } from "@microsoft/agents-a365-observability-extensions-langchain";
 import * as LangChainCallbacks from "@langchain/core/callbacks/manager";
 import { AzureChatOpenAI } from "@langchain/openai";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore — ts-jest module:commonjs cannot resolve package exports subpaths
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { DynamicStructuredTool } from "@langchain/core/tools";
 import { z } from "zod";
