@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
-import { Tracer } from '@opentelemetry/api';
+import { SpanKind, Tracer } from '@opentelemetry/api';
 import { OpenTelemetryConstants } from '@microsoft/agents-a365-observability';
 import { OpenAIAgentsTraceProcessor } from '@microsoft/agents-a365-observability-extensions-openai';
 import { ObservabilityManager } from '@microsoft/agents-a365-observability';
@@ -117,32 +117,6 @@ describe('OpenAIAgentsTraceProcessor', () => {
 
         processor.onSpanEnd(funcSpan);
         expect(otelSpans.has('func-1')).toBe(false);
-      });
-
-      it('should process handoff span', () => {
-        const traceData = { traceId: 'trace-3', name: 'Agent' } as any;
-        processor.onTraceStart(traceData);
-
-        const handoffSpan = {
-          spanId: 'handoff-1',
-          traceId: 'trace-3',
-          startedAt: new Date().toISOString(),
-          spanData: {
-            type: 'handoff' as const,
-            name: 'handoff_to_agent',
-            to_agent: 'specialist',
-            from_agent: 'main-agent',
-          },
-        } as any;
-
-        processor.onSpanStart(handoffSpan);
-
-        const otelSpans = (processor as any).otelSpans;
-        expect(otelSpans.has('handoff-1')).toBe(true);
-
-        processor.onSpanEnd(handoffSpan);
-        const reverseHandoffs = (processor as any).reverseHandoffsDict;
-        expect(reverseHandoffs.has('specialist:trace-3')).toBe(true);
       });
 
       it('should process agent span', () => {
@@ -272,45 +246,6 @@ describe('OpenAIAgentsTraceProcessor', () => {
     });
 
     describe('Complex Scenarios', () => {
-      it('should handle handoff with agent graph', () => {
-        const traceData = { traceId: 'trace-graph', name: 'Agent' } as any;
-        processor.onTraceStart(traceData);
-
-        // Create handoff
-        const handoff = {
-          spanId: 'handoff-graph',
-          traceId: 'trace-graph',
-          startedAt: new Date().toISOString(),
-          spanData: {
-            type: 'handoff' as const,
-            name: 'Handoff',
-            to_agent: 'child-agent',
-            from_agent: 'parent-agent',
-          },
-        } as any;
-
-        processor.onSpanStart(handoff);
-        processor.onSpanEnd(handoff);
-
-        // Create agent that receives handoff
-        const agent = {
-          spanId: 'agent-graph',
-          traceId: 'trace-graph',
-          startedAt: new Date().toISOString(),
-          spanData: {
-            type: 'agent' as const,
-            name: 'child-agent',
-          },
-        } as any;
-
-        processor.onSpanStart(agent);
-
-        const otelSpans = (processor as any).otelSpans;
-        expect(otelSpans.has('agent-graph')).toBe(true);
-
-        processor.onSpanEnd(agent);
-      });
-
       it('should handle multiple spans in same trace', () => {
         const traceData = { traceId: 'trace-multi', name: 'Agent' } as any;
         processor.onTraceStart(traceData);
@@ -810,5 +745,65 @@ describe('OpenAIAgentsTraceProcessor', () => {
       ]);
     });
 
+    it('maps Chat Completions usage (prompt_tokens/completion_tokens) from output[0].usage', async () => {
+      const processor = new OpenAIAgentsTraceProcessor(tracer, {});
+      const traceData = { traceId: 'trace-usage-chat', name: 'Agent' } as any;
+      await processor.onTraceStart(traceData);
+
+      const genSpan = {
+        spanId: 'gen-usage-chat',
+        traceId: 'trace-usage-chat',
+        startedAt: new Date().toISOString(),
+        endedAt: new Date().toISOString(),
+        spanData: {
+          type: 'generation' as const,
+          name: 'GenChat',
+          model: 'gpt-4',
+          output: [{
+            choices: [{ finish_reason: 'stop' }],
+            usage: { prompt_tokens: 20, completion_tokens: 11, total_tokens: 31 },
+          }],
+        },
+      } as any;
+
+      await processor.onSpanStart(genSpan);
+      await processor.onSpanEnd(genSpan);
+
+      const genMock = spansByName['GenChat'];
+      const attrs = genMock._attrs as Array<[string, unknown]>;
+      expect(attrs.find(([k]) => k === OpenTelemetryConstants.GEN_AI_USAGE_INPUT_TOKENS_KEY)?.[1]).toBe(20);
+      expect(attrs.find(([k]) => k === OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY)?.[1]).toBe(11);
+    });
+
+    it('maps Responses API usage (input_tokens/output_tokens) from top-level usage', async () => {
+      const processor = new OpenAIAgentsTraceProcessor(tracer, {});
+      const traceData = { traceId: 'trace-usage-resp', name: 'Agent' } as any;
+      await processor.onTraceStart(traceData);
+
+      const genSpan = {
+        spanId: 'gen-usage-resp',
+        traceId: 'trace-usage-resp',
+        startedAt: new Date().toISOString(),
+        endedAt: new Date().toISOString(),
+        spanData: {
+          type: 'generation' as const,
+          name: 'GenResp',
+          model: 'gpt-4',
+          usage: { input_tokens: 42, output_tokens: 7 },
+        },
+      } as any;
+
+      await processor.onSpanStart(genSpan);
+      await processor.onSpanEnd(genSpan);
+
+      const genMock = spansByName['GenResp'];
+      const attrs = genMock._attrs as Array<[string, unknown]>;
+      expect(attrs.find(([k]) => k === OpenTelemetryConstants.GEN_AI_USAGE_INPUT_TOKENS_KEY)?.[1]).toBe(42);
+      expect(attrs.find(([k]) => k === OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY)?.[1]).toBe(7);
+    });
+
   });
+
+  // SpanKind, caller.agent.name, handoff A→B, and error.type are validated by
+  // the integration test (openai-agent-instrument.test.ts).
 });

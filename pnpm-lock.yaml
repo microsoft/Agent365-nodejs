@@ -27,6 +27,9 @@ catalogs:
     '@langchain/mcp-adapters':
       specifier: ^1.1.3
       version: 1.1.3
+    '@langchain/openai':
+      specifier: ^0.5.0
+      version: 0.5.18
     '@microsoft/agents-activity':
       specifier: ^1.3.1
       version: 1.3.1
@@ -706,6 +709,15 @@ importers:
 
   tests:
     dependencies:
+      '@langchain/core':
+        specifier: 'catalog:'
+        version: 1.1.32(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.213.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.6.0(@opentelemetry/api@1.9.0))(openai@6.29.0(ws@8.18.3)(zod@4.1.13))(ws@8.18.3)
+      '@langchain/langgraph':
+        specifier: 'catalog:'
+        version: 1.2.2(@langchain/core@1.1.32(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.213.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.6.0(@opentelemetry/api@1.9.0))(openai@6.29.0(ws@8.18.3)(zod@4.1.13))(ws@8.18.3))(zod-to-json-schema@3.25.1(zod@4.1.13))(zod@4.1.13)
+      '@langchain/openai':
+        specifier: 'catalog:'
+        version: 0.5.18(@langchain/core@1.1.32(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.213.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.6.0(@opentelemetry/api@1.9.0))(openai@6.29.0(ws@8.18.3)(zod@4.1.13))(ws@8.18.3))(ws@8.18.3)
       '@microsoft/agents-a365-observability':
         specifier: workspace:*
         version: link:../packages/agents-a365-observability
@@ -763,6 +775,9 @@ importers:
       openai:
         specifier: 'catalog:'
         version: 6.29.0(ws@8.18.3)(zod@4.1.13)
+      zod:
+        specifier: ^4.1.12
+        version: 4.1.13
     devDependencies:
       '@babel/preset-typescript':
         specifier: 'catalog:'
@@ -1404,6 +1419,12 @@ packages:
     peerDependencies:
       '@langchain/core': ^1.0.0
       '@langchain/langgraph': ^1.0.0
+
+  '@langchain/openai@0.5.18':
+    resolution: {integrity: sha512-CX1kOTbT5xVFNdtLjnM0GIYNf+P7oMSu+dGCFxxWRa3dZwWiuyuBXCm+dToUGxDLnsHuV1bKBtIzrY1mLq/A1Q==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@langchain/core': '>=0.3.58 <0.4.0'
 
   '@microsoft/agents-activity@1.3.1':
     resolution: {integrity: sha512-4k44NrfEqXiSg49ofj8geV8ylPocqDLtZKKt0PFL9BvFV0n57X3y1s/fEbsf7Fkl3+P/R2XLyMB5atEGf/eRGg==}
@@ -3163,6 +3184,18 @@ packages:
     resolution: {integrity: sha512-YgBpdJHPyQ2UE5x+hlSXcnejzAvD0b22U2OuAP+8OnlJT+PjWPxtgmGqKKc+RgTM63U9gN0YzrYc71R2WT/hTA==}
     engines: {node: '>=18'}
 
+  openai@5.23.2:
+    resolution: {integrity: sha512-MQBzmTulj+MM5O8SKEk/gL8a7s5mktS9zUtAkU257WjvobGc9nKcBuVwjyEEcb9SI8a8Y2G/mzn3vm9n1Jlleg==}
+    hasBin: true
+    peerDependencies:
+      ws: ^8.18.0
+      zod: ^4.1.12
+    peerDependenciesMeta:
+      ws:
+        optional: true
+      zod:
+        optional: true
+
   openai@6.29.0:
     resolution: {integrity: sha512-YxoArl2BItucdO89/sN6edksV0x47WUTgkgVfCgX7EuEMhbirENsgYe5oO4LTjBL9PtdKtk2WqND1gSLcTd2yw==}
     hasBin: true
@@ -4528,6 +4561,15 @@ snapshots:
     transitivePeerDependencies:
       - '@cfworker/json-schema'
       - supports-color
+
+  '@langchain/openai@0.5.18(@langchain/core@1.1.32(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.213.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.6.0(@opentelemetry/api@1.9.0))(openai@6.29.0(ws@8.18.3)(zod@4.1.13))(ws@8.18.3))(ws@8.18.3)':
+    dependencies:
+      '@langchain/core': 1.1.32(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.213.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.6.0(@opentelemetry/api@1.9.0))(openai@6.29.0(ws@8.18.3)(zod@4.1.13))(ws@8.18.3)
+      js-tiktoken: 1.0.21
+      openai: 5.23.2(ws@8.18.3)(zod@4.1.13)
+      zod: 4.1.13
+    transitivePeerDependencies:
+      - ws
 
   '@microsoft/agents-activity@1.3.1':
     dependencies:
@@ -6634,6 +6676,11 @@ snapshots:
       define-lazy-prop: 3.0.0
       is-inside-container: 1.0.0
       wsl-utils: 0.1.0
+
+  openai@5.23.2(ws@8.18.3)(zod@4.1.13):
+    optionalDependencies:
+      ws: 8.18.3
+      zod: 4.1.13
 
   openai@6.29.0(ws@8.18.3)(zod@4.1.13):
     optionalDependencies:

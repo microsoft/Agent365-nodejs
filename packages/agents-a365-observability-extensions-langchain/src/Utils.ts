@@ -428,13 +428,14 @@ export function setSessionIdAttribute(run: Run, span: Span): void {
   const metadata = run.extra?.metadata as Record<string, unknown> | undefined;
   if (!metadata) return;
 
-  const sessionId =
-    metadata.session_id ??
-    metadata.conversation_id ??
-    metadata.thread_id;
-
-  if (typeof sessionId === "string" && sessionId.length > 0) {
+  const sessionId = metadata.session_id ?? metadata.thread_id;
+  if (isString(sessionId) && sessionId.length > 0) {
     span.setAttribute(OpenTelemetryConstants.SESSION_ID_KEY, sessionId);
+  }
+
+  const conversationId = metadata.conversation_id;
+  if (isString(conversationId) && conversationId.length > 0) {
+    span.setAttribute(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, conversationId);
   }
 }
 
