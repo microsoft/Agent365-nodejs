@@ -9,10 +9,16 @@ import { OperationResult, OperationError, IConfigurationProvider, AgenticAuthent
 import { MCPServerConfig, MCPServerManifestEntry, McpClientTool, ToolOptions } from './contracts';
 import { ChatHistoryMessage, ChatMessageRequest } from './models/index';
 import { Utility } from './Utility';
-import { ToolingConfiguration, defaultToolingConfigurationProvider } from './configuration';
+import { ToolingConfiguration, defaultToolingConfigurationProvider, resolveTokenScopeForServer } from './configuration';
 
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+
+/**
+ * Resolves a Bearer token for one MCP server given its computed scope.
+ * Returns null when no token is available (dev no-op); prod implementations throw instead.
+ */
+type TokenAcquirer = (server: MCPServerConfig, scope: string) => Promise<string | null>;
 
 /**
  * Service responsible for discovering and normalizing MCP (Model Context Protocol)
@@ -83,9 +89,20 @@ export class McpToolServerConfigurationService {
       const authToken = authTokenOrAuthorization;
       const toolOptions = optionsOrAuthHandlerName as ToolOptions | undefined;
 
-      return await (this.isDevScenario()
+      const servers = await (this.isDevScenario()
         ? this.getMCPServerConfigsFromManifest()
         : this.getMCPServerConfigsFromToolingGateway(agenticAppId, authToken, undefined, toolOptions));
+
+      // Apply per-audience tokens on the legacy path too, using the same structural path as the
+      // new overload so V2 servers are never silently missing an Authorization header.
+      // Dev: reads from BEARER_TOKEN_<NAME> / BEARER_TOKEN env vars, supports V1 and V2.
+      // Prod: uses the shared authToken for V1 servers; throws for V2 servers (OBO requires
+      //       Authorization and authHandlerName — use the TurnContext-based overload instead).
+      const acquire = this.isDevScenario()
+        ? this.createDevTokenAcquirer()
+        : this.createLegacyProdTokenAcquirer(authToken);
+
+      return await this.attachPerAudienceTokens(servers, acquire);
     } else {
       // NEW PATH: listToolServers(turnContext, authorization, authHandlerName, authToken?, options?)
       const turnContext = agenticAppIdOrTurnContext;
@@ -118,10 +135,119 @@ export class McpToolServerConfigurationService {
       // Resolve agenticAppId from TurnContext
       const agenticAppId = RuntimeUtility.ResolveAgentIdentity(turnContext, authToken);
 
-      return await (this.isDevScenario()
+      // Discover servers: manifest in dev, gateway in prod
+      const servers = await (this.isDevScenario()
         ? this.getMCPServerConfigsFromManifest()
         : this.getMCPServerConfigsFromToolingGateway(agenticAppId, authToken, turnContext, toolOptions));
+
+      // Acquire and attach per-server tokens via the same structural path in both envs.
+      // Token source differs: env vars in dev, OBO in prod.
+      const acquire = this.isDevScenario()
+        ? this.createDevTokenAcquirer()
+        : this.createOboTokenAcquirer(authorization, authHandlerName, turnContext);
+
+      return await this.attachPerAudienceTokens(servers, acquire);
     }
+  }
+
+  /**
+   * Acquire one token per unique audience across the provided server list and attach
+   * the correct `Authorization: Bearer` header to each server's headers.
+   * V1 servers (no `audience` field, or ATG AppId) all share the same token (one exchange).
+   * V2 servers each get a token scoped to their own audience GUID.
+   * Token acquisition is delegated to `acquire`, enabling different strategies in dev
+   * (env vars via createDevTokenAcquirer) and prod (OBO via createOboTokenAcquirer)
+   * while keeping scope resolution, deduplication, and header attachment identical.
+   */
+  private async attachPerAudienceTokens(
+    servers: MCPServerConfig[],
+    acquire: TokenAcquirer
+  ): Promise<MCPServerConfig[]> {
+    // Fetch once so scope resolution and the legacy-path guard use the same value.
+    const sharedScope = this.configProvider.getConfiguration().mcpPlatformAuthenticationScope;
+    const tokenCache = new Map<string, string | null>(); // scope → token (null = no token available)
+
+    const result: MCPServerConfig[] = [];
+    for (const server of servers) {
+      const scope = resolveTokenScopeForServer(server, sharedScope);
+      if (!tokenCache.has(scope)) {
+        tokenCache.set(scope, await acquire(server, scope));
+      }
+      const token = tokenCache.get(scope) as string | null;
+      result.push(token
+        ? { ...server, headers: { ...server.headers, Authorization: `Bearer ${token}` } }
+        : server // no token available — dev no-op; prod acquirer would have thrown already
+      );
+    }
+    return result;
+  }
+
+  /**
+   * Returns a TokenAcquirer that resolves tokens from environment variables (local dev only).
+   * Resolution order per server:
+   *   1. BEARER_TOKEN_<MCPSERVERNAME_UPPER>  — per-server token (effective for V2 unique audiences)
+   *   2. BEARER_TOKEN                         — shared fallback (V1 servers share one token)
+   * Returns null when neither variable is set; no Authorization header is attached.
+   * Emits a warning when a V2 server (distinct audience) falls back to the shared BEARER_TOKEN,
+   * because that token is scoped to the shared ATG audience and will cause a 401 at the server.
+   */
+  private createDevTokenAcquirer(): TokenAcquirer {
+    const sharedScope = this.configProvider.getConfiguration().mcpPlatformAuthenticationScope;
+    return (server, scope) => {
+      const serverName = server.mcpServerName ?? '';
+      const config = this.configProvider.getConfiguration();
+      const token = config.getBearerTokenForServer(serverName);
+      if (token && !config.hasPerServerBearerToken(serverName) && scope !== sharedScope) {
+        this.logger.warn(
+          `Dev: MCP server '${serverName}' requires scope '${scope}' but only BEARER_TOKEN is set. ` +
+          `The shared token is scoped to a different audience and will likely cause a 401. ` +
+          `Set BEARER_TOKEN_${serverName.toUpperCase()} to a token acquired for the correct audience.`
+        );
+      }
+      return Promise.resolve(token ?? null);
+    };
+  }
+
+  /**
+   * Returns a TokenAcquirer for the deprecated legacy (agenticAppId, authToken) overload in prod.
+   * V1 servers (ATG shared scope) receive the caller-supplied authToken directly.
+   * V2 servers (per-audience scope) throw immediately — OBO exchange requires Authorization and
+   * authHandlerName which the legacy signature does not provide; callers must migrate to the
+   * TurnContext-based overload.
+   */
+  private createLegacyProdTokenAcquirer(authToken: string): TokenAcquirer {
+    const sharedScope = this.configProvider.getConfiguration().mcpPlatformAuthenticationScope;
+    return (server, scope) => {
+      if (scope !== sharedScope) {
+        throw new Error(
+          `MCP server '${server.mcpServerName}' requires a per-audience token (scope: '${scope}'). ` +
+          `Per-audience token exchange is not supported by the deprecated listToolServers(agenticAppId, authToken) overload. ` +
+          `Migrate to listToolServers(turnContext, authorization, authHandlerName) instead.`
+        );
+      }
+      return Promise.resolve(authToken);
+    };
+  }
+
+  /**
+   * Returns a TokenAcquirer that performs OBO token exchange via AgenticAuthenticationService.
+   * Throws if the exchange returns null so callers receive an explicit error rather than a
+   * silently missing Authorization header.
+   */
+  private createOboTokenAcquirer(
+    authorization: Authorization,
+    authHandlerName: string,
+    turnContext: TurnContext
+  ): TokenAcquirer {
+    return async (server, scope) => {
+      const token = await AgenticAuthenticationService.GetAgenticUserToken(
+        authorization, authHandlerName, turnContext, [scope]
+      );
+      if (!token) {
+        throw new Error(`Failed to obtain token for MCP server '${server.mcpServerName}' (scope: ${scope})`);
+      }
+      return token;
+    };
   }
 
   /**
@@ -285,7 +411,15 @@ export class McpToolServerConfigurationService {
         }
       );
 
-      return (response.data) || [];
+      const rawServers: MCPServerConfig[] = response.data || [];
+      return rawServers.map(s => ({
+        mcpServerName: s.mcpServerName,
+        url: s.url,
+        headers: s.headers,
+        audience: s.audience,
+        scope: s.scope,
+        publisher: s.publisher,
+      }));
     } catch (err: unknown) {
       const error = err as Error & { code?: string };
       throw new Error(`Failed to read MCP servers from endpoint: ${error.code || 'UNKNOWN'} ${error.message || 'Unknown error'}`);
@@ -343,7 +477,10 @@ export class McpToolServerConfigurationService {
         return {
           mcpServerName: serverName,
           url: s.url || this.buildMcpServerUrl(serverName),
-          headers: s.headers
+          headers: s.headers,
+          audience: s.audience,
+          scope: s.scope,
+          publisher: s.publisher,
         };
       });
     } catch (err: unknown) {
@@ -373,7 +510,7 @@ export class McpToolServerConfigurationService {
    * Construct the tooling gateway URL for a given agent identity.
    */
   private getToolingGatewayUrl(agenticAppId: string): string {
-    return `${this.getMcpPlatformBaseUrl()}/agents/${agenticAppId}/mcpServers`;
+    return `${this.getMcpPlatformBaseUrl()}/agents/v2/${agenticAppId}/mcpServers`;
   }
 
   /**
