@@ -111,7 +111,7 @@ export class LangChainTracer extends BaseTracer {
       if (run.error) {
         span.setStatus({ code: SpanStatusCode.ERROR });
         span.setAttribute(OpenTelemetryConstants.ERROR_MESSAGE_KEY, String(run.error));
-        const errorType = (run.error as { name?: string })?.name ?? (run.error as any)?.constructor?.name;
+        const errorType = (run.error as { name?: string })?.name ?? (run.error as { constructor?: { name?: string } })?.constructor?.name;
         if (typeof errorType === "string" && errorType.length > 0) {
           span.setAttribute(OpenTelemetryConstants.ERROR_TYPE_KEY, errorType);
         }
