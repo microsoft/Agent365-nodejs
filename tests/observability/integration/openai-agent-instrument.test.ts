@@ -277,32 +277,32 @@ describe("OpenAI Trace Processor Integration Tests", () => {
       console.log("Validate agent span");
 
       validateInstrumentationScope(agentSpan!, TEST_INSTRUMENTATION_NAME, TEST_INSTRUMENTATION_VERSION);
-        validateSpanProperties(agentSpan!);
-        expect(agentSpan!.kind).toBe(SpanKind.SERVER);
-        expect(agentSpan!.name).toBe(`invoke_agent ${agentName}`);
-        expect(
-          agentSpan!.attributes[OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY],
-        ).toBe("invoke_agent");
-        expect(
-          agentSpan!.attributes[OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY],
-        ).toBe(agentName);
-        expect(
-          agentSpan!.attributes[OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY],
-        ).toBe("openai");
-        // Top-level agent: no inbound caller
-        expect(
-          agentSpan!.attributes[OpenTelemetryConstants.GEN_AI_CALLER_AGENT_NAME_KEY],
-        ).toBeUndefined();
-        expect(
-          agentSpan!.attributes[OpenTelemetryConstants.CUSTOM_PARENT_SPAN_ID_KEY],
-        ).toBeUndefined();
-        expect(agentSpan!.status).toBeDefined();
-        expect(agentSpan!.status.code).toBe(1);
+      validateSpanProperties(agentSpan!);
+      expect(agentSpan!.kind).toBe(SpanKind.SERVER);
+      expect(agentSpan!.name).toBe(`invoke_agent ${agentName}`);
+      expect(
+        agentSpan!.attributes[OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY],
+      ).toBe("invoke_agent");
+      expect(
+        agentSpan!.attributes[OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY],
+      ).toBe(agentName);
+      expect(
+        agentSpan!.attributes[OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY],
+      ).toBe("openai");
+      // Top-level agent: no inbound caller
+      expect(
+        agentSpan!.attributes[OpenTelemetryConstants.GEN_AI_CALLER_AGENT_NAME_KEY],
+      ).toBeUndefined();
+      expect(
+        agentSpan!.attributes[OpenTelemetryConstants.CUSTOM_PARENT_SPAN_ID_KEY],
+      ).toBeUndefined();
+      expect(agentSpan!.status).toBeDefined();
+      expect(agentSpan!.status.code).toBe(1);
 
-        // Validate parent-child relationship: generation span should reference agent span as custom parent
-        validateParentChildRelationship(generationSpan!, agentSpan!);
+      // Validate parent-child relationship: generation span should reference agent span as custom parent
+      validateParentChildRelationship(generationSpan!, agentSpan!);
 
-        console.log("✅ Agent span validation passed");
+      console.log("✅ Agent span validation passed");
 
       expect(result.finalOutput).toBeDefined();
       console.log("✅ Agent response received");

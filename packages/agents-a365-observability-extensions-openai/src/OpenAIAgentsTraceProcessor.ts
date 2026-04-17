@@ -31,6 +31,8 @@ type ContextToken = unknown;
 export class OpenAIAgentsTraceProcessor implements TracingProcessor {
   private static readonly MAX_HANDOFFS_IN_FLIGHT = 1000;
   private static readonly MAX_SPANS_IN_FLIGHT = 10_000;
+  private static readonly SERVER_SPAN_TYPES = new Set(['agent']);
+  private static readonly CLIENT_SPAN_TYPES = new Set(['handoff', 'response', 'generation', 'function', 'mcp_tools']);
 
   private readonly tracer: OtelTracer;
   private readonly suppressInvokeAgentInput: boolean;
@@ -126,11 +128,9 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
     const spanName = Utils.getSpanName(span);
 
     // SpanKind per OTel client/server semantics + A365 schema:
-    const SERVER_SPAN_TYPES = new Set(['agent']);
-    const CLIENT_SPAN_TYPES = new Set(['handoff', 'response', 'generation', 'function', 'mcp_tools']);
-    const kind = SERVER_SPAN_TYPES.has(spanType)
+    const kind = OpenAIAgentsTraceProcessor.SERVER_SPAN_TYPES.has(spanType)
       ? SpanKind.SERVER
-      : CLIENT_SPAN_TYPES.has(spanType)
+      : OpenAIAgentsTraceProcessor.CLIENT_SPAN_TYPES.has(spanType)
         ? SpanKind.CLIENT
         : undefined;
 
@@ -334,7 +334,9 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
 
     // Update span name with model
     const modelName = attrs[OpenTelemetryConstants.GEN_AI_REQUEST_MODEL_KEY];
-    otelSpan.updateName(`${InferenceOperationType.CHAT} ${modelName}`);
+    if (typeof modelName === 'string' && modelName.length > 0) {
+      otelSpan.updateName(`${InferenceOperationType.CHAT} ${modelName}`);
+    }
   }
 
   /**

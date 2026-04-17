@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
-import { SpanKind, Tracer } from '@opentelemetry/api';
+import { Tracer } from '@opentelemetry/api';
 import { OpenTelemetryConstants } from '@microsoft/agents-a365-observability';
 import { OpenAIAgentsTraceProcessor } from '@microsoft/agents-a365-observability-extensions-openai';
 import { ObservabilityManager } from '@microsoft/agents-a365-observability';

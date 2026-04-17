@@ -18,45 +18,45 @@ import * as Constants from './Constants';
 import { Span as AgentsSpan, SpanData } from '@openai/agents-core/dist/tracing/spans';
 
 /**
- * Safely stringify an object to JSON
- * @param obj - The object to stringify
- * @returns JSON string representation or string conversion if JSON.stringify fails
- */
-/**
  * Locate and normalize usage counts across OpenAI API shapes:
  * - Responses API:    { input_tokens, output_tokens }
  * - Chat Completions: { prompt_tokens, completion_tokens }
  * Usage may live directly on the span data, on `.output`, or inside `.output[0]`.
  */
 export function extractUsageTokens(data: Record<string, unknown>): { inputTokens?: number; outputTokens?: number } {
-      const candidates: Array<Record<string, unknown> | undefined> = [];
-      const direct = data.usage as Record<string, unknown> | undefined;
-      candidates.push(direct);
-      const output = data.output as unknown;
-      if (output && typeof output === 'object') {
-        if (Array.isArray(output)) {
-          const first = output[0];
-          if (first && typeof first === 'object') {
-            candidates.push((first as Record<string, unknown>).usage as Record<string, unknown> | undefined);
-          }
-        } else {
-          candidates.push((output as Record<string, unknown>).usage as Record<string, unknown> | undefined);
-        }
+  const candidates: Array<Record<string, unknown> | undefined> = [];
+  const direct = data.usage as Record<string, unknown> | undefined;
+  candidates.push(direct);
+  const output = data.output as unknown;
+  if (output && typeof output === 'object') {
+    if (Array.isArray(output)) {
+      const first = output[0];
+      if (first && typeof first === 'object') {
+        candidates.push((first as Record<string, unknown>).usage as Record<string, unknown> | undefined);
       }
-      for (const usage of candidates) {
-        if (!usage) continue;
-        const inputTokens = usage.input_tokens ?? usage.prompt_tokens;
-        const outputTokens = usage.output_tokens ?? usage.completion_tokens;
-        if (typeof inputTokens === 'number' || typeof outputTokens === 'number') {
-          return {
-            inputTokens: typeof inputTokens === 'number' ? inputTokens : undefined,
-            outputTokens: typeof outputTokens === 'number' ? outputTokens : undefined,
-          };
-        }
-      }
-      return {};
+    } else {
+      candidates.push((output as Record<string, unknown>).usage as Record<string, unknown> | undefined);
+    }
   }
+  for (const usage of candidates) {
+    if (!usage) continue;
+    const inputTokens = usage.input_tokens ?? usage.prompt_tokens;
+    const outputTokens = usage.output_tokens ?? usage.completion_tokens;
+    if (typeof inputTokens === 'number' || typeof outputTokens === 'number') {
+      return {
+        inputTokens: typeof inputTokens === 'number' ? inputTokens : undefined,
+        outputTokens: typeof outputTokens === 'number' ? outputTokens : undefined,
+      };
+    }
+  }
+  return {};
+}
 
+/**
+ * Safely stringify an object to JSON
+ * @param obj - The object to stringify
+ * @returns JSON string representation or string conversion if JSON.stringify fails
+ */
 export function safeJsonDumps(obj: unknown): string {
   try {
     return JSON.stringify(obj);
