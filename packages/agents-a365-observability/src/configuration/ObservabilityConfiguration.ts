@@ -5,7 +5,7 @@ import { RuntimeConfiguration } from '@microsoft/agents-a365-runtime';
 import { ObservabilityConfigurationOptions } from './ObservabilityConfigurationOptions';
 
 // Default constants
-const PROD_OBSERVABILITY_SCOPE = 'https://api.powerplatform.com/.default';
+const PROD_OBSERVABILITY_SCOPE = 'api://9b975845-388f-4429-889e-eab1ef63949c/Agent365.Observability.OtelWrite';
 
 /**
  * Configuration for observability package.
