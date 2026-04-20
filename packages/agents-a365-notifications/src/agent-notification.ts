@@ -13,7 +13,9 @@ import {
   USER_DELETED_LIFECYCLE_EVENT,
   USER_UNDELETED_LIFECYCLE_EVENT,
   USER_UPDATED_LIFECYCLE_EVENT,
-  USER_MANAGER_UPDATED_LIFECYCLE_EVENT
+  USER_MANAGER_UPDATED_LIFECYCLE_EVENT,
+  USER_ENABLED_LIFECYCLE_EVENT,
+  USER_DISABLED_LIFECYCLE_EVENT
 } from './constants';
 
 /**
@@ -335,6 +337,40 @@ function onAgenticUserManagerUpdatedNotification(
 }
 
 /**
+ * Registers a route handler for user enabled lifecycle notifications.
+ *
+ * @param this - The agent application
+ * @param handler - The notification handler
+ * @param rank - Rank order in which to evaluate this
+ * @param autoSignInHandlers - handlers
+ */
+function onAgenticUserEnabledNotification(
+  this: AgentApplication<TurnState>,
+  handler: AgentNotificationHandler<TurnState>,
+  rank = 32767,
+  autoSignInHandlers?: string[]
+): void {
+  onLifecycleNotificationInternal(this, USER_ENABLED_LIFECYCLE_EVENT, handler, rank, autoSignInHandlers);
+}
+
+/**
+ * Registers a route handler for user disabled lifecycle notifications.
+ *
+ * @param this - The agent application
+ * @param handler - The notification handler
+ * @param rank - Rank order in which to evaluate this
+ * @param autoSignInHandlers - handlers
+ */
+function onAgenticUserDisabledNotification(
+  this: AgentApplication<TurnState>,
+  handler: AgentNotificationHandler<TurnState>,
+  rank = 32767,
+  autoSignInHandlers?: string[]
+): void {
+  onLifecycleNotificationInternal(this, USER_DISABLED_LIFECYCLE_EVENT, handler, rank, autoSignInHandlers);
+}
+
+/**
  * Checks if the given channel ID is an agentic channel.
  */
 function isAgenticChannel(channelId: string): boolean {
@@ -364,7 +400,9 @@ function isValidLifecycleEvent(lifecycleEvent: string): boolean {
     USER_DELETED_LIFECYCLE_EVENT,
     USER_UNDELETED_LIFECYCLE_EVENT,
     USER_UPDATED_LIFECYCLE_EVENT,
-    USER_MANAGER_UPDATED_LIFECYCLE_EVENT
+    USER_MANAGER_UPDATED_LIFECYCLE_EVENT,
+    USER_ENABLED_LIFECYCLE_EVENT,
+    USER_DISABLED_LIFECYCLE_EVENT
   ];
   return validLifecycleEvents.includes(lifecycleEvent.toLowerCase());
 }
@@ -383,6 +421,8 @@ declare module '@microsoft/agents-hosting' {
     onAgenticUserUndeletedNotification(routeHandler: AgentNotificationHandler<TState>, rank?: number, autoSignInHandlers?: string[]): void;
     onAgenticUserUpdatedNotification(routeHandler: AgentNotificationHandler<TState>, rank?: number, autoSignInHandlers?: string[]): void;
     onAgenticUserManagerUpdatedNotification(routeHandler: AgentNotificationHandler<TState>, rank?: number, autoSignInHandlers?: string[]): void;
+    onAgenticUserEnabledNotification(routeHandler: AgentNotificationHandler<TState>, rank?: number, autoSignInHandlers?: string[]): void;
+    onAgenticUserDisabledNotification(routeHandler: AgentNotificationHandler<TState>, rank?: number, autoSignInHandlers?: string[]): void;
   }
 }
 
@@ -398,3 +438,5 @@ AgentApplication.prototype.onAgenticUserDeletedNotification = onAgenticUserIdent
 AgentApplication.prototype.onAgenticUserUndeletedNotification = onAgenticUserIdentityUndeletedNotification;
 AgentApplication.prototype.onAgenticUserUpdatedNotification = onAgenticUserIdentityUpdatedNotification;
 AgentApplication.prototype.onAgenticUserManagerUpdatedNotification = onAgenticUserManagerUpdatedNotification;
+AgentApplication.prototype.onAgenticUserEnabledNotification = onAgenticUserEnabledNotification;
+AgentApplication.prototype.onAgenticUserDisabledNotification = onAgenticUserDisabledNotification;

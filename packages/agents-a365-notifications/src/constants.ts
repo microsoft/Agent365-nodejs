@@ -17,3 +17,5 @@ export const USER_DELETED_LIFECYCLE_EVENT = 'agenticuserdeleted';
 export const USER_UNDELETED_LIFECYCLE_EVENT = 'agenticuserundeleted';
 export const USER_UPDATED_LIFECYCLE_EVENT = 'agenticuseridentityupdated';
 export const USER_MANAGER_UPDATED_LIFECYCLE_EVENT = 'agenticusermanagerupdated';
+export const USER_ENABLED_LIFECYCLE_EVENT = 'agenticuserenabled';
+export const USER_DISABLED_LIFECYCLE_EVENT = 'agenticuserdisabled';
