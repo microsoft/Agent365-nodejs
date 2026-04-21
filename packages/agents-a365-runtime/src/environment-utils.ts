@@ -19,7 +19,7 @@ import { IConfigurationProvider } from './configuration/IConfigurationProvider';
  * @deprecated This constant is exported for backward compatibility only.
  * For new code, use `ObservabilityConfiguration.observabilityAuthenticationScopes` instead.
  */
-export const PROD_OBSERVABILITY_SCOPE = 'api://9b975845-388f-4429-889e-eab1ef63949c';
+export const PROD_OBSERVABILITY_SCOPE = 'api://9b975845-388f-4429-889e-eab1ef63949c/.default';
 
 /**
  * Production MCP platform authentication scope.
