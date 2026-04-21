@@ -16,8 +16,8 @@ import { IConfigurationProvider } from './configuration/IConfigurationProvider';
 
 /**
  * Production observability authentication scope.
- * @deprecated This constant is exported for backward compatibility only.
- * For new code, use `ObservabilityConfiguration.observabilityAuthenticationScopes` instead.
+ * Single source of truth for the default observability scope value.
+ * For env-var-aware resolution, use `ObservabilityConfiguration.observabilityAuthenticationScopes`.
  */
 export const PROD_OBSERVABILITY_SCOPE = 'api://9b975845-388f-4429-889e-eab1ef63949c/.default';
 
@@ -56,7 +56,6 @@ export const DEVELOPMENT_ENVIRONMENT_NAME = 'Development';
  */
 export function getObservabilityAuthenticationScope(): string[] {
   // Returns production default - use ObservabilityConfiguration for proper env var support
-  // eslint-disable-next-line @typescript-eslint/no-deprecated -- Intentional: deprecated function using deprecated constant
   return [PROD_OBSERVABILITY_SCOPE];
 }
 

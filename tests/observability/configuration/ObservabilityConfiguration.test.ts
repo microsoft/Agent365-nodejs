@@ -6,7 +6,7 @@ import {
   ObservabilityConfiguration,
   defaultObservabilityConfigurationProvider
 } from '../../../packages/agents-a365-observability/src';
-import { RuntimeConfiguration, DefaultConfigurationProvider, ClusterCategory } from '../../../packages/agents-a365-runtime/src';
+import { RuntimeConfiguration, DefaultConfigurationProvider, ClusterCategory, PROD_OBSERVABILITY_SCOPE } from '../../../packages/agents-a365-runtime/src';
 
 describe('ObservabilityConfiguration', () => {
   const originalEnv = process.env;
@@ -53,7 +53,7 @@ describe('ObservabilityConfiguration', () => {
       const config = new ObservabilityConfiguration({
         observabilityAuthenticationScopes: () => undefined as unknown as string[]
       });
-      expect(config.observabilityAuthenticationScopes).toEqual(['api://9b975845-388f-4429-889e-eab1ef63949c/.default']);
+      expect(config.observabilityAuthenticationScopes).toEqual([PROD_OBSERVABILITY_SCOPE]);
     });
 
     it('should fall back to env var when override not provided', () => {
@@ -65,19 +65,19 @@ describe('ObservabilityConfiguration', () => {
     it('should fall back to default when neither override nor env var', () => {
       delete process.env.A365_OBSERVABILITY_SCOPES_OVERRIDE;
       const config = new ObservabilityConfiguration({});
-      expect(config.observabilityAuthenticationScopes).toEqual(['api://9b975845-388f-4429-889e-eab1ef63949c/.default']);
+      expect(config.observabilityAuthenticationScopes).toEqual([PROD_OBSERVABILITY_SCOPE]);
     });
 
     it('should fall back to default when env var is empty string', () => {
       process.env.A365_OBSERVABILITY_SCOPES_OVERRIDE = '';
       const config = new ObservabilityConfiguration();
-      expect(config.observabilityAuthenticationScopes).toEqual(['api://9b975845-388f-4429-889e-eab1ef63949c/.default']);
+      expect(config.observabilityAuthenticationScopes).toEqual([PROD_OBSERVABILITY_SCOPE]);
     });
 
     it('should fall back to default when env var is whitespace only', () => {
       process.env.A365_OBSERVABILITY_SCOPES_OVERRIDE = '   ';
       const config = new ObservabilityConfiguration();
-      expect(config.observabilityAuthenticationScopes).toEqual(['api://9b975845-388f-4429-889e-eab1ef63949c/.default']);
+      expect(config.observabilityAuthenticationScopes).toEqual([PROD_OBSERVABILITY_SCOPE]);
     });
 
     it('should return readonly array', () => {

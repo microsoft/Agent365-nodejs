@@ -1,11 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { RuntimeConfiguration } from '@microsoft/agents-a365-runtime';
+import { PROD_OBSERVABILITY_SCOPE, RuntimeConfiguration } from '@microsoft/agents-a365-runtime';
 import { ObservabilityConfigurationOptions } from './ObservabilityConfigurationOptions';
-
-// Default constants
-const PROD_OBSERVABILITY_SCOPE = 'api://9b975845-388f-4429-889e-eab1ef63949c/.default';
 
 /**
  * Configuration for observability package.
