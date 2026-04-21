@@ -5,12 +5,23 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "@jest/globals";
 import { getAzureOpenAIConfig, validateEnvironment } from "./conftest";
 import { ReadableSpan } from "@opentelemetry/sdk-trace-base";
+import { SpanKind } from "@opentelemetry/api";
 import { ObservabilityManager, Builder, OpenTelemetryConstants } from "@microsoft/agents-a365-observability";
 import { OpenAIAgentsTraceInstrumentor } from "@microsoft/agents-a365-observability-extensions-openai";
 import { Agent, run, tool } from "@openai/agents";
 import { OpenAIChatCompletionsModel } from "@openai/agents-openai";
 import { ObservabilityBuilder } from "@microsoft/agents-a365-observability/dist/esm/ObservabilityBuilder";
 import { AzureOpenAI } from "openai";
+import { BaggageBuilder } from "@microsoft/agents-a365-observability";
+import {
+  validateInstrumentationScope,
+  validateSpanProperties,
+  validateMessageSchema,
+  validateInputMessageContent,
+  validateOutputMessageContent,
+  validateParentChildRelationship,
+  waitForSpans,
+} from "./helpers/span-validators";
 
 // Test instrumentation constants
 const TEST_INSTRUMENTATION_NAME = "openai-agent-test-instrumentation";
@@ -23,7 +34,7 @@ describe("OpenAI Trace Processor Integration Tests", () => {
   let spans: ReadableSpan[] = [];
 
   beforeAll(async () => {
-   validateEnvironment();
+    validateEnvironment();
     console.log("Setting up OpenAI Trace Processor test suite...");
 
     // Also spy on console.dir which ConsoleSpanExporter uses
@@ -47,25 +58,19 @@ describe("OpenAI Trace Processor Integration Tests", () => {
 
     // Start observability
     a365Observability.start();
-
-    // Enable instrumentation
-    openAIAgentsTraceInstrumentor.enable();
   });
 
   afterAll(async () => {
     console.log("🧹 Tearing down OpenAI Trace Processor test suite...");
 
-    // Restore console.log
     if (consoleDirSpy) {
       consoleDirSpy.mockRestore();
     }
 
-    // Disable instrumentation
     if (openAIAgentsTraceInstrumentor) {
       openAIAgentsTraceInstrumentor.disable();
     }
 
-    // Shutdown observability
     if (a365Observability) {
       await a365Observability.shutdown();
     }
@@ -74,11 +79,10 @@ describe("OpenAI Trace Processor Integration Tests", () => {
   });
 
   beforeEach(() => {
-    // Clear spans for each test
     spans = [];
   });
 
-  it("validate agent span and generation span", async () => {
+  it("validate chat span", async () => {
     const azureConfig = getAzureOpenAIConfig();
 
     if (!azureConfig) {
@@ -95,9 +99,8 @@ describe("OpenAI Trace Processor Integration Tests", () => {
         apiVersion: azureConfig.apiVersion,
       });
 
-      const agentName = "Test Agent";
       agent = new Agent({
-        name: agentName,
+        name: "Test Agent",
         model: new OpenAIChatCompletionsModel(
           azureClient as any,
           azureConfig.deployment,
@@ -109,12 +112,8 @@ describe("OpenAI Trace Processor Integration Tests", () => {
       const prompt = "Say hello!";
       const result = await run(agent, prompt);
 
-      // Wait for spans with timeout (poll until length >= 2 or timeout after 5s)
-      const startTime = Date.now();
-      const timeout = 5000;
-      while (spans.length < 2 && Date.now() - startTime < timeout) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
+      // Wait for spans with timeout
+      await waitForSpans(spans, 2);
 
       // Verify we captured spans
       expect(spans.length).toBeGreaterThanOrEqual(2);
@@ -126,97 +125,108 @@ describe("OpenAI Trace Processor Integration Tests", () => {
         console.log(JSON.stringify(span, null, 2));
       });
 
-      // Find the generation span
-      const generationSpan = spans.find((span) => span.name === "generation");
-      expect(generationSpan).toBeDefined();
-      console.log("Validate generation span");
-      if (generationSpan) {
-        validateInstrumentationScope(generationSpan);
-        validateSpanProperties(generationSpan);
+      // Find and validate the chat span
+      const inferenceSpan = spans.find(
+        (span) =>
+          span.attributes[
+            OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY
+          ] === "chat",
+      );
+      expect(inferenceSpan).toBeDefined();
+      expect(inferenceSpan?.name?.toLowerCase()).toContain("chat");
+      console.log("Validate inference span");
+      if (inferenceSpan) {
+        validateInstrumentationScope(inferenceSpan, TEST_INSTRUMENTATION_NAME, TEST_INSTRUMENTATION_VERSION);
+        validateSpanProperties(inferenceSpan);
+        expect(inferenceSpan.kind).toBe(SpanKind.CLIENT);
+        expect(inferenceSpan.name.toLowerCase()).toContain("chat");
 
         // Validate gen_ai attributes
         expect(
-          generationSpan.attributes[
+          inferenceSpan.attributes[
             OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY
           ],
         ).toBe("chat");
         expect(
-          generationSpan.attributes[OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY],
+          inferenceSpan.attributes[OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY],
         ).toBe("openai");
         expect(
-          generationSpan.attributes[
-            OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY
-          ],
-        ).toBe("openai");
-        expect(
-          generationSpan.attributes[
+          inferenceSpan.attributes[
             OpenTelemetryConstants.GEN_AI_REQUEST_MODEL_KEY
           ],
         ).toBe(azureConfig.deployment);
         expect(
-          generationSpan.attributes[
+          inferenceSpan.attributes[
             OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY
           ],
         ).toBeDefined();
         expect(
-          generationSpan.attributes[
+          inferenceSpan.attributes[
             OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY
           ],
         ).toContain(prompt);
         expect(
-          generationSpan.attributes[
+          inferenceSpan.attributes[
             OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY
           ],
         ).toBeDefined();
         expect(
-          generationSpan.attributes[
+          inferenceSpan.attributes[
             OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY
           ],
         ).toContain("chat.completion");
 
+        // Validate A365 message schema
+        validateMessageSchema(inferenceSpan);
+        validateInputMessageContent(inferenceSpan, {
+          hasRole: "user",
+          hasPartType: "text",
+          containsText: prompt,
+        });
+        validateOutputMessageContent(inferenceSpan, {
+          hasRole: "assistant",
+          hasPartType: "text",
+        });
+
+        // Detailed envelope + parts checks
+        const parsedInput = JSON.parse(
+          inferenceSpan.attributes[OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY] as string,
+        );
+        expect(parsedInput.version).toBe("0.1.0");
+        expect(Array.isArray(parsedInput.messages)).toBe(true);
+        const userMsg = parsedInput.messages.find((m: any) => m.role === "user");
+        expect(userMsg).toBeDefined();
+        expect(Array.isArray(userMsg.parts)).toBe(true);
+        expect(userMsg.parts[0].type).toBe("text");
+        expect(typeof userMsg.parts[0].content).toBe("string");
+        expect(userMsg.parts[0].content).toContain(prompt);
+
+        const parsedOutput = JSON.parse(
+          inferenceSpan.attributes[OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY] as string,
+        );
+        expect(parsedOutput.version).toBe("0.1.0");
+        const assistantMsg = parsedOutput.messages.find((m: any) => m.role === "assistant");
+        expect(assistantMsg).toBeDefined();
+        expect(Array.isArray(assistantMsg.parts)).toBe(true);
+        expect(assistantMsg.parts[0].type).toBe("text");
+        expect(typeof assistantMsg.parts[0].content).toBe("string");
+        expect((assistantMsg.parts[0].content as string).length).toBeGreaterThan(0);
+
+        // Token usage — our processor maps both Responses API (input_tokens/output_tokens)
+        // and Chat Completions (prompt_tokens/completion_tokens) into schema-defined attrs.
+        const inputTokens = inferenceSpan.attributes[OpenTelemetryConstants.GEN_AI_USAGE_INPUT_TOKENS_KEY];
+        const outputTokens = inferenceSpan.attributes[OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY];
+        expect(typeof inputTokens).toBe("number");
+        expect(typeof outputTokens).toBe("number");
+        expect(inputTokens as number).toBeGreaterThan(0);
+        expect(outputTokens as number).toBeGreaterThan(0);
+
         // Validate status
-        expect(generationSpan.status).toBeDefined();
-        expect(generationSpan.status.code).toBe(1);
+        expect(inferenceSpan.status).toBeDefined();
+        expect(inferenceSpan.status.code).toBe(1);
 
-        console.log("✅ Generation span validation passed");
+        console.log("✅ Inference span validation passed");
       }
-
-      // Find and validate the agent span
-      const agentSpan = spans.find(
-        (span) => span.name === `invoke_agent ${agentName}`,
-      );
-      expect(agentSpan).toBeDefined();
-      console.log("Validate agent span");
-
-      if (agentSpan) {
-        validateInstrumentationScope(agentSpan);
-        validateSpanProperties(agentSpan);
-
-        // Validate agent-specific attributes
-        expect(
-          agentSpan.attributes[
-            OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY
-          ],
-        ).toBe("invoke_agent");
-        expect(
-          agentSpan.attributes[OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY],
-        ).toBe("openai");
-        expect(
-          agentSpan?.attributes[
-            OpenTelemetryConstants.CUSTOM_PARENT_SPAN_ID_KEY
-          ],
-        ).toBeUndefined();
-
-        validateParentChildRelationship(generationSpan!, agentSpan);
-
-        // Validate status
-        expect(agentSpan.status).toBeDefined();
-        expect(agentSpan.status.code).toBe(1);
-
-        console.log("✅ Agent span validation passed");
-      }
-
-      console.log("✅ All span structure validation passed");
 
       // Verify the response
       expect(result.finalOutput).toBeDefined();
@@ -227,7 +237,82 @@ describe("OpenAI Trace Processor Integration Tests", () => {
     }
   });
 
-  it("Validate execution spans", async () => {
+  it("validate agent span", async () => {
+    const azureConfig = getAzureOpenAIConfig();
+
+    if (!azureConfig) {
+      throw new Error("Azure OpenAI configuration is required");
+    }
+
+    try {
+      const azureClient = new AzureOpenAI({
+        endpoint: azureConfig.endpoint,
+        deployment: azureConfig.deployment,
+        apiKey: azureConfig.apiKey,
+        apiVersion: azureConfig.apiVersion,
+      });
+
+      const agentName = "Agent Span Test Agent";
+      const agent = new Agent({
+        name: agentName,
+        model: new OpenAIChatCompletionsModel(
+          azureClient as any,
+          azureConfig.deployment,
+        ),
+        instructions: "You are a helpful assistant.",
+      });
+
+      const result = await run(agent, "Say hello!");
+      await waitForSpans(spans, 2);
+
+      // Find and validate the agent span only
+      const agentSpan = spans.find(
+        (span) => span.name === `invoke_agent ${agentName}`,
+      );
+      const generationSpan = spans.find(
+        (span) => span.attributes[OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY] === "chat",
+      );
+      expect(agentSpan).toBeDefined();
+      expect(generationSpan).toBeDefined();
+      console.log("Validate agent span");
+
+      validateInstrumentationScope(agentSpan!, TEST_INSTRUMENTATION_NAME, TEST_INSTRUMENTATION_VERSION);
+      validateSpanProperties(agentSpan!);
+      expect(agentSpan!.kind).toBe(SpanKind.SERVER);
+      expect(agentSpan!.name).toBe(`invoke_agent ${agentName}`);
+      expect(
+        agentSpan!.attributes[OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY],
+      ).toBe("invoke_agent");
+      expect(
+        agentSpan!.attributes[OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY],
+      ).toBe(agentName);
+      expect(
+        agentSpan!.attributes[OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY],
+      ).toBe("openai");
+      // Top-level agent: no inbound caller
+      expect(
+        agentSpan!.attributes[OpenTelemetryConstants.GEN_AI_CALLER_AGENT_NAME_KEY],
+      ).toBeUndefined();
+      expect(
+        agentSpan!.attributes[OpenTelemetryConstants.CUSTOM_PARENT_SPAN_ID_KEY],
+      ).toBeUndefined();
+      expect(agentSpan!.status).toBeDefined();
+      expect(agentSpan!.status.code).toBe(1);
+
+      // Validate parent-child relationship: generation span should reference agent span as custom parent
+      validateParentChildRelationship(generationSpan!, agentSpan!);
+
+      console.log("✅ Agent span validation passed");
+
+      expect(result.finalOutput).toBeDefined();
+      console.log("✅ Agent response received");
+    } catch (error) {
+      console.error("Test error:", error);
+      throw error;
+    }
+  });
+
+  it("validate execute_tool span", async () => {
     const azureConfig = getAzureOpenAIConfig();
 
     if (!azureConfig) {
@@ -280,11 +365,7 @@ describe("OpenAI Trace Processor Integration Tests", () => {
       const prompt = "What is 15 plus 27?";
       const result = await run(agent, prompt);
 
-      const startTime = Date.now();
-      const timeout = 5000;
-      while (spans.length < 3 && Date.now() - startTime < timeout) {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
+      await waitForSpans(spans, 3);
 
       // Verify we captured spans
       expect(spans.length).toBeGreaterThanOrEqual(3);
@@ -296,39 +377,21 @@ describe("OpenAI Trace Processor Integration Tests", () => {
         console.log(JSON.stringify(span, null, 2));
       });
 
-      // Find and validate the agent span
-      const agentSpan = spans.find(
-        (span) => span.name === `invoke_agent ${agentName}`,
-      );
-      expect(agentSpan).toBeDefined();
-
-      if (agentSpan) {
-        validateInstrumentationScope(agentSpan);
-        expect(
-          agentSpan.attributes[
-            OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY
-          ],
-        ).toBe("invoke_agent");
-        expect(
-          agentSpan.attributes[OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY],
-        ).toBe("openai");
-        console.log("✅ Agent span validated");
-      }
-
-      // Find and validate the generation span
-      const generationSpan = spans.find((span) => span.name === "generation");
-      expect(generationSpan).toBeDefined();
-
-      // Find and validate the tool execution span
+      // Find and validate the tool execution span only
       const toolSpan = spans.find(
         (span) => span.name === "execute_tool add_numbers",
       );
+      const agentSpanForTool = spans.find(
+        (span) => span.name === "invoke_agent Math Agent",
+      );
       expect(toolSpan).toBeDefined();
+      expect(agentSpanForTool).toBeDefined();
       console.log("Validate tool execution span");
 
       if (toolSpan) {
-        validateInstrumentationScope(toolSpan);
+        validateInstrumentationScope(toolSpan, TEST_INSTRUMENTATION_NAME, TEST_INSTRUMENTATION_VERSION);
         validateSpanProperties(toolSpan);
+        expect(toolSpan.kind).toBe(SpanKind.CLIENT);
 
         // Validate tool-specific attributes
         expect(
@@ -350,11 +413,12 @@ describe("OpenAI Trace Processor Integration Tests", () => {
           toolSpan.attributes[OpenTelemetryConstants.GEN_AI_TOOL_CALL_RESULT_KEY],
         ).toBe('{"result":"The sum of 15 and 27 is 42"}');
 
-        validateParentChildRelationship(toolSpan, agentSpan!);
-
         // Validate status
         expect(toolSpan.status).toBeDefined();
         expect(toolSpan.status.code).toBe(1);
+
+        // Validate parent-child relationship: tool span should reference agent span as custom parent
+        validateParentChildRelationship(toolSpan, agentSpanForTool!);
 
         console.log("✅ Tool execution span validated");
       }
@@ -368,35 +432,199 @@ describe("OpenAI Trace Processor Integration Tests", () => {
     }
   });
 
-  /**
-   * Validate instrumentation scope for a span
-   */
-  function validateInstrumentationScope(span: ReadableSpan): void {
-    expect(span.instrumentationScope).toBeDefined();
-    expect(span.instrumentationScope.name).toBe(TEST_INSTRUMENTATION_NAME);
-    expect(span.instrumentationScope.version).toBe(
-      TEST_INSTRUMENTATION_VERSION,
+  it("validate baggage propagation to spans", async () => {
+    const azureConfig = getAzureOpenAIConfig();
+
+    if (!azureConfig) {
+      throw new Error("Azure OpenAI configuration is required");
+    }
+
+    try {
+      const azureClient = new AzureOpenAI({
+        endpoint: azureConfig.endpoint,
+        deployment: azureConfig.deployment,
+        apiKey: azureConfig.apiKey,
+        apiVersion: azureConfig.apiVersion,
+      });
+
+      const agentName = "Baggage Test Agent";
+      const agent = new Agent({
+        name: agentName,
+        model: new OpenAIChatCompletionsModel(
+          azureClient as any,
+          azureConfig.deployment,
+        ),
+        instructions: "You are a helpful assistant.",
+      });
+
+      // Set up baggage context with known values
+      const testTenantId = "test-tenant-123";
+      const testAgentId = "test-agent-456";
+      const testUserId = "test-user-789";
+      const testSessionId = "test-session-abc";
+      const testChannelName = "test-channel";
+      const testConversationId = "test-conversation-def";
+
+      const baggageScope = new BaggageBuilder()
+        .tenantId(testTenantId)
+        .agentId(testAgentId)
+        .userId(testUserId)
+        .sessionId(testSessionId)
+        .channelName(testChannelName)
+        .conversationId(testConversationId)
+        .build();
+
+      // Run agent within baggage scope
+      const result = await baggageScope.run(async () => {
+        return await run(agent, "Say hello!");
+      });
+
+      await waitForSpans(spans, 2);
+
+      expect(spans.length).toBeGreaterThanOrEqual(2);
+      console.log("Total spans captured:", spans.length);
+
+      // Validate baggage propagation on all spans
+      for (const span of spans) {
+        console.log(`Checking baggage on span: ${span.name}`);
+
+        expect(span.attributes[OpenTelemetryConstants.TENANT_ID_KEY]).toBe(testTenantId);
+        expect(span.attributes[OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]).toBe(testAgentId);
+        expect(span.attributes[OpenTelemetryConstants.USER_ID_KEY]).toBe(testUserId);
+        expect(span.attributes[OpenTelemetryConstants.SESSION_ID_KEY]).toBe(testSessionId);
+        expect(span.attributes[OpenTelemetryConstants.CHANNEL_NAME_KEY]).toBe(testChannelName);
+        expect(span.attributes[OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY]).toBe(testConversationId);
+
+        console.log(`✅ Baggage validated on span: ${span.name}`);
+      }
+
+      expect(result.finalOutput).toBeDefined();
+      console.log("✅ Baggage propagation test passed");
+    } catch (error) {
+      console.error("Test error:", error);
+      throw error;
+    }
+  });
+
+  it("validate handoff emits CLIENT InvokeAgent with caller + SERVER InvokeAgent for target", async () => {
+    const azureConfig = getAzureOpenAIConfig();
+
+    if (!azureConfig) {
+      throw new Error("Azure OpenAI configuration is required");
+    }
+
+    try {
+      const azureClient = new AzureOpenAI({
+        endpoint: azureConfig.endpoint,
+        deployment: azureConfig.deployment,
+        apiKey: azureConfig.apiKey,
+        apiVersion: azureConfig.apiVersion,
+      });
+
+      const billingAgent = new Agent({
+        name: "BillingAgent",
+        model: new OpenAIChatCompletionsModel(azureClient as any, azureConfig.deployment),
+        instructions: "You handle billing-related questions. Respond briefly.",
+      });
+
+      const triageAgent = new Agent({
+        name: "TriageAgent",
+        model: new OpenAIChatCompletionsModel(azureClient as any, azureConfig.deployment),
+        instructions:
+          "For any question about billing, invoices, refunds, or payments, immediately hand off to BillingAgent. Do not answer directly.",
+        handoffs: [billingAgent],
+      });
+
+      const prompt = "I was double-charged on my invoice last month — can I get a refund?";
+      const result = await run(triageAgent, prompt);
+
+      await waitForSpans(spans, 3);
+      expect(spans.length).toBeGreaterThanOrEqual(3);
+
+      spans.forEach((span, idx) => {
+        console.log(`\n--- Span ${idx + 1} of ${spans.length} ---`);
+        console.log(JSON.stringify({ name: span.name, kind: span.kind, attributes: span.attributes }, null, 2));
+      });
+
+      // CLIENT-kind InvokeAgent span emitted for the handoff itself
+      const handoffSpan = spans.find(
+        (s) =>
+          s.kind === SpanKind.CLIENT &&
+          s.attributes[OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY] === "invoke_agent" &&
+          s.attributes[OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY] === "BillingAgent"
+      );
+      expect(handoffSpan).toBeDefined();
+      if (handoffSpan) {
+        expect(handoffSpan.attributes[OpenTelemetryConstants.GEN_AI_CALLER_AGENT_NAME_KEY]).toBe("TriageAgent");
+        expect(handoffSpan.name).toBe("invoke_agent BillingAgent");
+        console.log("✅ CLIENT-kind handoff InvokeAgent span validated");
+      }
+
+      // SERVER-kind InvokeAgent span emitted for BillingAgent's actual work
+      const billingAgentSpan = spans.find(
+        (s) =>
+          s.kind === SpanKind.SERVER &&
+          s.attributes[OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY] === "BillingAgent"
+      );
+      expect(billingAgentSpan).toBeDefined();
+      if (billingAgentSpan) {
+        expect(billingAgentSpan.attributes[OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY]).toBe("invoke_agent");
+        expect(billingAgentSpan.attributes[OpenTelemetryConstants.GEN_AI_CALLER_AGENT_NAME_KEY]).toBe("TriageAgent");
+        console.log("✅ SERVER-kind BillingAgent InvokeAgent span validated");
+      }
+
+      expect(result.finalOutput).toBeDefined();
+      console.log("✅ Handoff span validation passed");
+    } catch (error) {
+      console.error("Test error:", error);
+      throw error;
+    }
+  });
+
+  it("validate error.type on failing tool", async () => {
+    const azureConfig = getAzureOpenAIConfig();
+    if (!azureConfig) throw new Error("Azure OpenAI configuration is required");
+
+    const azureClient = new AzureOpenAI({
+      endpoint: azureConfig.endpoint,
+      deployment: azureConfig.deployment,
+      apiKey: azureConfig.apiKey,
+      apiVersion: azureConfig.apiVersion,
+    });
+
+    const throwingTool: any = tool({
+      name: "will_throw",
+      description: "Always fails",
+      parameters: { type: "object", properties: {}, additionalProperties: false } as any,
+      execute: async () => { throw new Error("simulated failure"); },
+    });
+
+    const agent = new Agent({
+      name: "ErrorAgent",
+      model: new OpenAIChatCompletionsModel(azureClient as any, azureConfig.deployment),
+      instructions: "Call the will_throw tool exactly once.",
+      tools: [throwingTool],
+    });
+
+    try {
+      await run(agent, "Please call the will_throw tool.");
+    } catch {
+      // run may surface the tool failure; spans should still be emitted
+    }
+
+    await waitForSpans(spans, 2);
+
+    // The failing tool should produce an execute_tool span with ERROR status + error.type attribute
+    const errorSpan = spans.find(
+      (s) => s.name === "execute_tool will_throw" && s.attributes[OpenTelemetryConstants.ERROR_TYPE_KEY],
     );
-  }
-
-  /**
-   * Validate basic span properties (traceId, id, timestamp)
-   */
-  function validateSpanProperties(span: ReadableSpan): void {
-    expect((span as any).traceId).toBeDefined();
-    expect((span as any).id).toBeDefined();
-    expect((span as any).timestamp).toBeDefined();
-  }
-
-  /**
-   * Validate parent-child span relationship
-   */
-  function validateParentChildRelationship(
-    childSpan: ReadableSpan,
-    parentSpan: ReadableSpan,
-  ): void {
-    expect(
-      childSpan.attributes[OpenTelemetryConstants.CUSTOM_PARENT_SPAN_ID_KEY],
-    ).toBe(`0x${(parentSpan as any).id}`);
-  }
+    expect(errorSpan).toBeDefined();
+    const errorTypeValue = errorSpan?.attributes[OpenTelemetryConstants.ERROR_TYPE_KEY];
+    expect(typeof errorTypeValue).toBe("string");
+    expect((errorTypeValue as string).length).toBeGreaterThan(0);
+    // The Agents SDK wraps tool failures — status code is ERROR, message describes tool failure
+    expect(errorSpan?.status.code).toBe(2); // SpanStatusCode.ERROR
+    expect(errorSpan?.status.message).toContain("tool");
+    console.log(`✅ error.type validated: type="${errorTypeValue}", message="${errorSpan?.status.message}"`);
+  });
 });

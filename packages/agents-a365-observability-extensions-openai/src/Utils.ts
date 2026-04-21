@@ -18,6 +18,41 @@ import * as Constants from './Constants';
 import { Span as AgentsSpan, SpanData } from '@openai/agents-core/dist/tracing/spans';
 
 /**
+ * Locate and normalize usage counts across OpenAI API shapes:
+ * - Responses API:    { input_tokens, output_tokens }
+ * - Chat Completions: { prompt_tokens, completion_tokens }
+ * Usage may live directly on the span data, on `.output`, or inside `.output[0]`.
+ */
+export function extractUsageTokens(data: Record<string, unknown>): { inputTokens?: number; outputTokens?: number } {
+  const candidates: Array<Record<string, unknown> | undefined> = [];
+  const direct = data.usage as Record<string, unknown> | undefined;
+  candidates.push(direct);
+  const output = data.output as unknown;
+  if (output && typeof output === 'object') {
+    if (Array.isArray(output)) {
+      const first = output[0];
+      if (first && typeof first === 'object') {
+        candidates.push((first as Record<string, unknown>).usage as Record<string, unknown> | undefined);
+      }
+    } else {
+      candidates.push((output as Record<string, unknown>).usage as Record<string, unknown> | undefined);
+    }
+  }
+  for (const usage of candidates) {
+    if (!usage) continue;
+    const inputTokens = usage.input_tokens ?? usage.prompt_tokens;
+    const outputTokens = usage.output_tokens ?? usage.completion_tokens;
+    if (typeof inputTokens === 'number' || typeof outputTokens === 'number') {
+      return {
+        inputTokens: typeof inputTokens === 'number' ? inputTokens : undefined,
+        outputTokens: typeof outputTokens === 'number' ? outputTokens : undefined,
+      };
+    }
+  }
+  return {};
+}
+
+/**
  * Safely stringify an object to JSON
  * @param obj - The object to stringify
  * @returns JSON string representation or string conversion if JSON.stringify fails
@@ -105,14 +140,12 @@ export function getAttributesFromGenerationSpanData(data: SpanData): Record<stri
     attributes[Constants.GEN_AI_RESPONSE_CONTENT_KEY] = serializeMessages(wrapRawContentAsOutputMessages(genData.output));
   }
 
-  if (genData.usage) {
-    const usage = genData.usage as Record<string, unknown>;
-    if (usage.input_tokens !== undefined) {
-      attributes[OpenTelemetryConstants.GEN_AI_USAGE_INPUT_TOKENS_KEY] = usage.input_tokens;
-    }
-    if (usage.output_tokens !== undefined) {
-      attributes[OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY] = usage.output_tokens;
-    }
+  const genUsage = extractUsageTokens(genData);
+  if (genUsage.inputTokens !== undefined) {
+    attributes[OpenTelemetryConstants.GEN_AI_USAGE_INPUT_TOKENS_KEY] = genUsage.inputTokens;
+  }
+  if (genUsage.outputTokens !== undefined) {
+    attributes[OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY] = genUsage.outputTokens;
   }
 
   return attributes;
@@ -173,14 +206,12 @@ export function getAttributesFromResponse(response: unknown): Record<string, unk
     attributes[OpenTelemetryConstants.GEN_AI_REQUEST_MODEL_KEY] = resp.model;
   }
 
-  if (resp.usage) {
-    const usage = resp.usage as Record<string, unknown>;
-    if (usage.input_tokens !== undefined) {
-      attributes[OpenTelemetryConstants.GEN_AI_USAGE_INPUT_TOKENS_KEY] = usage.input_tokens;
-    }
-    if (usage.output_tokens !== undefined) {
-      attributes[OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY] = usage.output_tokens;
-    }
+  const respUsage = extractUsageTokens(resp);
+  if (respUsage.inputTokens !== undefined) {
+    attributes[OpenTelemetryConstants.GEN_AI_USAGE_INPUT_TOKENS_KEY] = respUsage.inputTokens;
+  }
+  if (respUsage.outputTokens !== undefined) {
+    attributes[OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY] = respUsage.outputTokens;
   }
 
   return attributes;

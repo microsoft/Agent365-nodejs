@@ -102,11 +102,12 @@ describe("LangChain Observability - InvokeAgentScope Attributes", () => {
       );
     });
 
-    it("should extract conversation/session ID from metadata", () => {
+    it("should map conversation_id to gen_ai.conversation.id and session_id to session.id", () => {
       const run: Partial<Run> = {
         extra: {
           metadata: {
             conversation_id: "conv-789",
+            session_id: "sess-123",
           },
         },
       };
@@ -114,10 +115,15 @@ describe("LangChain Observability - InvokeAgentScope Attributes", () => {
       Utils.setSessionIdAttribute(run as Run, mockSpan as Span);
 
       expect(mockSpan.setAttribute).toHaveBeenCalledWith(
-        OpenTelemetryConstants.SESSION_ID_KEY,
+        OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY,
         "conv-789"
       );
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith(
+        OpenTelemetryConstants.SESSION_ID_KEY,
+        "sess-123"
+      );
     });
+
   });
 });
 
