@@ -41,9 +41,13 @@
     "@opentelemetry/sdk-node": "catalog:",
     "@opentelemetry/sdk-trace-base": "catalog:",
     "@opentelemetry/semantic-conventions": "catalog:",
+    "@langchain/core": "catalog:",
+    "@langchain/langgraph": "catalog:",
+    "@langchain/openai": "catalog:",
     "dotenv": "catalog:",
     "hono": "catalog:",
-    "openai": "catalog:"
+    "openai": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@babel/preset-typescript": "catalog:",

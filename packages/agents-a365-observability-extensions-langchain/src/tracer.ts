@@ -52,12 +52,16 @@ export class LangChainTracer extends BaseTracer {
       : context.active();
 
     let spanName = run.name;
+    let kind: SpanKind = SpanKind.INTERNAL;
     if (operation === "invoke_agent") {
       spanName = `${operation} ${run.name}`;
+      kind = SpanKind.SERVER;
     } else if (operation === "execute_tool") {
       spanName = `${operation} ${run.name}`;
+      kind = SpanKind.CLIENT;
     } else if (operation === "chat") {
       spanName = `${operation} ${Utils.getModel(run) || run.name}`.trim();
+      kind = SpanKind.CLIENT;
     }
 
     if (this.runs.size >= LangChainTracer.MAX_RUNS) {
@@ -68,7 +72,7 @@ export class LangChainTracer extends BaseTracer {
 
     const startTime = run.start_time ?? Date.now();
     const span = this.tracer.startSpan(spanName, {
-      kind: SpanKind.INTERNAL,
+      kind,
       startTime,
       attributes: { [OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY]: "langchain" },
     }, activeContext);
@@ -107,7 +111,10 @@ export class LangChainTracer extends BaseTracer {
       if (run.error) {
         span.setStatus({ code: SpanStatusCode.ERROR });
         span.setAttribute(OpenTelemetryConstants.ERROR_MESSAGE_KEY, String(run.error));
-
+        const errorType = (run.error as { name?: string })?.name ?? (run.error as { constructor?: { name?: string } })?.constructor?.name;
+        if (typeof errorType === "string" && errorType.length > 0) {
+          span.setAttribute(OpenTelemetryConstants.ERROR_TYPE_KEY, errorType);
+        }
       } else {
         span.setStatus({ code: SpanStatusCode.OK });
       }
@@ -115,6 +122,12 @@ export class LangChainTracer extends BaseTracer {
       // Set all attributes
       Utils.setOperationTypeAttribute(operation, span);
       Utils.setAgentAttributes(run, span);
+      if (operation === "invoke_agent") {
+        const callerName = this.findCallerAgentName(run);
+        if (callerName) {
+          span.setAttribute(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_NAME_KEY, callerName);
+        }
+      }
       Utils.setModelAttribute(run, span);
       Utils.setProviderNameAttribute(run, span);
       Utils.setSessionIdAttribute(run, span);
@@ -143,6 +156,18 @@ export class LangChainTracer extends BaseTracer {
     while (pid) {
       const entry = this.runs.get(pid);
       if (entry) return entry.span.spanContext();
+      pid = this.parentByRunId.get(pid);
+    }
+    return undefined;
+  }
+
+  private findCallerAgentName(run: Run): string | undefined {
+    let pid = run.parent_run_id;
+    while (pid) {
+      const entry = this.runs.get(pid);
+      if (entry && Utils.getOperationType(entry.run) === "invoke_agent") {
+        return entry.run.name;
+      }
       pid = this.parentByRunId.get(pid);
     }
     return undefined;
