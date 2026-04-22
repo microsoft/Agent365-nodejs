@@ -29,7 +29,7 @@ describe('environment-utils', () => {
       const scopes = getObservabilityAuthenticationScope();
 
       expect(scopes).toEqual([PROD_OBSERVABILITY_SCOPE]);
-      expect(scopes[0]).toEqual('api://9b975845-388f-4429-889e-eab1ef63949c/Agent365.Observability.OtelWrite');
+      expect(scopes[0]).toEqual('api://9b975845-388f-4429-889e-eab1ef63949c/.default');
     });
 
     it('should ignore A365_OBSERVABILITY_SCOPES_OVERRIDE env var (deprecated behavior)', () => {
