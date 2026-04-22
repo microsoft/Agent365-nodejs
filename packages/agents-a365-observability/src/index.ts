@@ -1,6 +1,5 @@
-// ------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// ------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 
 // Main SDK classes
 export { ObservabilityManager } from './ObservabilityManager';
@@ -23,28 +22,54 @@ export { ParentSpanRef, runWithParentSpanRef, createContextWithParentSpanRef } f
 export {
   HeadersCarrier,
   ParentContext,
-  injectTraceContext,
-  extractTraceContext,
+  injectContextToHeaders,
+  extractContextFromHeaders,
   runWithExtractedTraceContext
 } from './tracing/context/trace-context-propagation';
 
 // Contracts and interfaces
 export {
-  ExecutionType,
   InvocationRole,
-  SourceMetadata,
-  AgentRequest,
+  Channel,
+  Request,
   AgentDetails,
-  TenantDetails,
   ToolCallDetails,
-  InvokeAgentDetails,
+  InvokeAgentScopeDetails,
+  UserDetails,
   CallerDetails,
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- intentional re-export for backward compatibility
   EnhancedAgentDetails,
   ServiceEndpoint,
   InferenceDetails,
   InferenceOperationType,
   InferenceResponse,
   OutputResponse,
+  SpanDetails,
+  // OTEL gen-ai message format types
+  MessageRole,
+  FinishReason,
+  Modality,
+  TextPart,
+  ToolCallRequestPart,
+  ToolCallResponsePart,
+  ReasoningPart,
+  BlobPart,
+  FilePart,
+  UriPart,
+  ServerToolCallPart,
+  ServerToolCallResponsePart,
+  GenericServerToolCall,
+  GenericServerToolCallResponse,
+  GenericPart,
+  MessagePart,
+  ChatMessage,
+  OutputMessage,
+  InputMessages,
+  OutputMessages,
+  InputMessagesParam,
+  OutputMessagesParam,
+  ResponseMessagesParam,
+  A365_MESSAGE_SCHEMA_VERSION,
 } from './tracing/contracts';
 
 // Scopes
@@ -55,10 +80,13 @@ export { InferenceScope } from './tracing/scopes/InferenceScope';
 export { OutputScope } from './tracing/scopes/OutputScope';
 export { logger, setLogger, getLogger, resetLogger, formatError } from './utils/logging';
 export type { ILogger } from './utils/logging';
-export { truncateValue, MAX_ATTRIBUTE_LENGTH } from './tracing/util';
+export { safeSerializeToJson } from './tracing/util';
+
+// Message utilities
+export { serializeMessages, normalizeInputMessages, normalizeOutputMessages } from './tracing/message-utils';
 
 // Exporter utilities
-export { isPerRequestExportEnabled } from './tracing/exporter/utils';
+export { isPerRequestExportEnabled, MAX_SPAN_SIZE_BYTES } from './tracing/exporter/utils';
 
 // Configuration
 export * from './configuration';

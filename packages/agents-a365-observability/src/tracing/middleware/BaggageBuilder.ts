@@ -29,12 +29,12 @@ export class BaggageBuilder {
   private pairs: Map<string, string> = new Map();
 
   /**
-   * Set the service name baggage value.
+   * Set the operation source baggage value.
    * Used for server spans to identify the service (e.g., ATG, ACF).
-   * @param value The service name
+   * @param value The operation source
    * @returns Self for method chaining
    */
-  serviceName(value: string | null | undefined): BaggageBuilder {
+  operationSource(value: string | null | undefined): BaggageBuilder {
     this.set(OpenTelemetryConstants.SERVICE_NAME_KEY, value);
     return this;
   }
@@ -70,12 +70,12 @@ export class BaggageBuilder {
   }
 
   /**
-   * Set the agent UPN baggage value.
-   * @param value The agent UPN
+   * Set the agent email baggage value.
+   * @param value The agent email
    * @returns Self for method chaining
    */
-  agentUpn(value: string | null | undefined): BaggageBuilder {
-    this.set(OpenTelemetryConstants.GEN_AI_AGENT_UPN_KEY, value);
+  agentEmail(value: string | null | undefined): BaggageBuilder {
+    this.set(OpenTelemetryConstants.GEN_AI_AGENT_EMAIL_KEY, value);
     return this;
   }
 
@@ -100,12 +100,12 @@ export class BaggageBuilder {
   }
 
   /**
-   * Set the caller ID baggage value.
-   * @param value The caller ID
+   * Set the user ID baggage value.
+   * @param value The user ID
    * @returns Self for method chaining
    */
-  callerId(value: string | null | undefined): BaggageBuilder {
-    this.set(OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY, value);
+  userId(value: string | null | undefined): BaggageBuilder {
+    this.set(OpenTelemetryConstants.USER_ID_KEY, value);
     return this;
   }
 
@@ -140,6 +140,16 @@ export class BaggageBuilder {
   }
 
   /**
+   * Set the agent version baggage value.
+   * @param value The agent version (e.g., '1.0.0', '2025-05-01')
+   * @returns Self for method chaining
+   */
+  agentVersion(value: string | null | undefined): BaggageBuilder {
+    this.set(OpenTelemetryConstants.GEN_AI_AGENT_VERSION_KEY, value);
+    return this;
+  }
+
+  /**
    * Set the session description baggage value.
    * @param value The session description
    * @returns Self for method chaining
@@ -150,22 +160,22 @@ export class BaggageBuilder {
   }
 
   /**
-   * Set the caller name baggage value.
-   * @param value The caller name
+   * Set the user name baggage value.
+   * @param value The user name
    * @returns Self for method chaining
    */
-  callerName(value: string | null | undefined): BaggageBuilder {
-    this.set(OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY, value);
+  userName(value: string | null | undefined): BaggageBuilder {
+    this.set(OpenTelemetryConstants.USER_NAME_KEY, value);
     return this;
   }
 
   /**
-   * Set the caller UPN baggage value.
-   * @param value The caller UPN
+   * Set the user email baggage value.
+   * @param value The user email
    * @returns Self for method chaining
    */
-  callerUpn(value: string | null | undefined): BaggageBuilder {
-    this.set(OpenTelemetryConstants.GEN_AI_CALLER_UPN_KEY, value);
+  userEmail(value: string | null | undefined): BaggageBuilder {
+    this.set(OpenTelemetryConstants.USER_EMAIL_KEY, value);
     return this;
   }
 
@@ -216,7 +226,7 @@ export class BaggageBuilder {
    * @param value The channel name
    * @returns Self for method chaining
    */
-  sourceMetadataName(value: string | null | undefined): BaggageBuilder {
+  channelName(value: string | null | undefined): BaggageBuilder {
     this.set(OpenTelemetryConstants.CHANNEL_NAME_KEY, value);
     return this;
   }
@@ -226,8 +236,24 @@ export class BaggageBuilder {
    * @param value The channel link
    * @returns Self for method chaining
    */
-  sourceMetadataDescription(value: string | null | undefined): BaggageBuilder {
+  channelLink(value: string | null | undefined): BaggageBuilder {
     this.set(OpenTelemetryConstants.CHANNEL_LINK_KEY, value);
+    return this;
+  }
+
+  /**
+   * Sets the invoke agent server address and port baggage values.
+   * @param address The server address (hostname) of the target agent service.
+   * @param port Optional server port. Only recorded when different from 443.
+   * @returns The current builder instance for method chaining.
+   */
+  invokeAgentServer(address: string | null | undefined, port?: number): BaggageBuilder {
+    this.set(OpenTelemetryConstants.SERVER_ADDRESS_KEY, address);
+    if (port !== undefined && port !== 443) {
+      this.set(OpenTelemetryConstants.SERVER_PORT_KEY, port.toString());
+    } else {
+      this.pairs.delete(OpenTelemetryConstants.SERVER_PORT_KEY);
+    }
     return this;
   }
 

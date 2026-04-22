@@ -25,7 +25,6 @@
     "directory": "tests"
   },
   "dependencies": {
-    "@azure/monitor-opentelemetry-exporter": "catalog:",
     "@microsoft/agents-a365-observability": "workspace:*",
     "@microsoft/agents-a365-observability-extensions-langchain": "workspace:*",
     "@microsoft/agents-a365-observability-extensions-openai": "workspace:*",
@@ -42,9 +41,13 @@
     "@opentelemetry/sdk-node": "catalog:",
     "@opentelemetry/sdk-trace-base": "catalog:",
     "@opentelemetry/semantic-conventions": "catalog:",
+    "@langchain/core": "catalog:",
+    "@langchain/langgraph": "catalog:",
+    "@langchain/openai": "catalog:",
     "dotenv": "catalog:",
     "hono": "catalog:",
-    "openai": "catalog:"
+    "openai": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@babel/preset-typescript": "catalog:",

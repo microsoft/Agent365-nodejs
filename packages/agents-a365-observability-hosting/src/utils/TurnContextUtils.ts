@@ -4,8 +4,7 @@
 // ------------------------------------------------------------------------------
 
 import { TurnContext } from '@microsoft/agents-hosting';
-import { ExecutionType, OpenTelemetryConstants } from '@microsoft/agents-a365-observability';
-import {RoleTypes} from '@microsoft/agents-activity';
+import { OpenTelemetryConstants } from '@microsoft/agents-a365-observability';
 import { Utility as RuntimeUtility } from '@microsoft/agents-a365-runtime';
 
 /**
@@ -31,37 +30,12 @@ export function getCallerBaggagePairs(turnContext: TurnContext): Array<[string, 
     
   const upn = from.agenticUserId;
   const pairs: Array<[string, string | undefined]> = [
-    [OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY, from.aadObjectId],
-    [OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY, from.name],
-    [OpenTelemetryConstants.GEN_AI_CALLER_UPN_KEY, upn],
+    [OpenTelemetryConstants.USER_ID_KEY, from.aadObjectId],
+    [OpenTelemetryConstants.USER_NAME_KEY, from.name],
+    [OpenTelemetryConstants.USER_EMAIL_KEY, upn],
     [OpenTelemetryConstants.GEN_AI_CALLER_AGENT_APPLICATION_ID_KEY, from.agenticAppBlueprintId]
   ];
   return normalizePairs(pairs);
-}
-
-/**
- * Extracts the execution type baggage key-value pair based on caller and recipient agentic status.
- * @param turnContext The current TurnContext (activity context)
- * @returns Array of [key, value] for execution type
- */
-export function getExecutionTypePair(turnContext: TurnContext): Array<[string, string]> {
-  if (!turnContext || !turnContext.activity?.from || !turnContext.activity?.recipient) { 
-    return [];
-  }
-  const from = turnContext.activity.from;  
-  let executionType = ExecutionType.HumanToAgent;
-
-    if (from.role) {
-      switch (from.role) {
-        case RoleTypes.AgenticUser:
-          executionType = ExecutionType.Agent2Agent;
-          break;
-        case RoleTypes.User:
-          executionType = ExecutionType.HumanToAgent;
-          break;
-        }
-    }
-  return [[OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY, executionType]];
 }
 
 /**
@@ -118,11 +92,11 @@ export function getTenantIdPair(turnContext: TurnContext): Array<[string, string
 }
 
 /**
- * Extracts source metadata baggage pairs from the TurnContext.
+ * Extracts channel baggage pairs from the TurnContext.
  * @param turnContext The current TurnContext (activity context)
- * @returns Array of [key, value] pairs for channel name and link
+ * @returns Array of [key, value] pairs for channel name and subchannel description
  */
-export function getSourceMetadataBaggagePairs(turnContext: TurnContext): Array<[string, string]> {
+export function getChannelBaggagePairs(turnContext: TurnContext): Array<[string, string]> {
   if (!turnContext) { 
     return [];
   }  

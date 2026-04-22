@@ -1,17 +1,18 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { SpanKind, TimeInput } from '@opentelemetry/api';
+import { SpanKind } from '@opentelemetry/api';
 import { OpenTelemetryScope } from './OpenTelemetryScope';
 import { OpenTelemetryConstants } from '../constants';
 import {
   InferenceDetails,
   AgentDetails,
-  TenantDetails,
-  SourceMetadata,
-  CallerDetails
+  UserDetails,
+  Request,
+  SpanDetails,
+  InputMessagesParam,
+  OutputMessagesParam,
 } from '../contracts';
-import { ParentContext } from '../context/trace-context-propagation';
 
 /**
  * Provides OpenTelemetry tracing scope for generative AI inference operations.
@@ -19,66 +20,57 @@ import { ParentContext } from '../context/trace-context-propagation';
 export class InferenceScope extends OpenTelemetryScope {
   /**
    * Creates and starts a new scope for inference tracing.
-   * @param details The inference call details
-   * @param agentDetails The agent details
-   * @param tenantDetails The tenant details
-   * @param conversationId Optional conversation id to tag on the span (`gen_ai.conversation.id`).
-   * @param sourceMetadata Optional source metadata; only `name` (channel name) and `description` (channel link/URL) are used for tagging.
-   * @param parentContext Optional parent context for cross-async-boundary tracing.
-   *   Accepts a ParentSpanRef (manual traceId/spanId) or an OTel Context (e.g. from extractTraceContext).
-   * @param startTime Optional explicit start time (ms epoch, Date, or HrTime).
-   * @param endTime Optional explicit end time (ms epoch, Date, or HrTime).
-   * @param callerDetails Optional caller details.
+   *
+   * @param request Request payload (channel, conversationId, content, sessionId).
+   * @param details The inference call details (model, provider, tokens, etc.).
+   * @param agentDetails The agent performing the inference. Tenant ID is derived from `agentDetails.tenantId`.
+   * @param userDetails Optional human caller identity.
+   * @param spanDetails Optional span configuration (parentContext, startTime, endTime, spanLinks). Note: `spanKind` is ignored; InferenceScope always uses `SpanKind.CLIENT`.
    * @returns A new InferenceScope instance
    */
   public static start(
+    request: Request,
     details: InferenceDetails,
     agentDetails: AgentDetails,
-    tenantDetails: TenantDetails,
-    conversationId?: string,
-    sourceMetadata?: Pick<SourceMetadata, "name" | "description">,
-    parentContext?: ParentContext,
-    startTime?: TimeInput,
-    endTime?: TimeInput,
-    callerDetails?: CallerDetails
+    userDetails?: UserDetails,
+    spanDetails?: SpanDetails
   ): InferenceScope {
-    return new InferenceScope(details, agentDetails, tenantDetails, conversationId, sourceMetadata, parentContext, startTime, endTime, callerDetails);
+    return new InferenceScope(request, details, agentDetails, userDetails, spanDetails);
   }
 
   private constructor(
+    request: Request,
     details: InferenceDetails,
     agentDetails: AgentDetails,
-    tenantDetails: TenantDetails,
-    conversationId?: string,
-    sourceMetadata?: Pick<SourceMetadata, "name" | "description">,
-    parentContext?: ParentContext,
-    startTime?: TimeInput,
-    endTime?: TimeInput,
-    callerDetails?: CallerDetails
+    userDetails?: UserDetails,
+    spanDetails?: SpanDetails
   ) {
+    // Validate tenantId is present (required for telemetry)
+    if (!agentDetails.tenantId) {
+      throw new Error('InferenceScope: tenantId is required on agentDetails');
+    }
+
+    // spanKind for InferenceScope is always CLIENT
+    const resolvedSpanDetails: SpanDetails = { ...spanDetails, spanKind: SpanKind.CLIENT };
+
     super(
-      SpanKind.CLIENT,
       details.operationName.toString(),
       `${details.operationName} ${details.model}`,
       agentDetails,
-      tenantDetails,
-      parentContext,
-      startTime,
-      endTime,
-      callerDetails
+      resolvedSpanDetails,
+      userDetails,
     );
 
-    // Set core inference information matching C# implementation
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY, details.operationName.toString());
+    // Set core inference information
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_REQUEST_MODEL_KEY, details.model);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY, details.providerName);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_INPUT_TOKENS_KEY, details.inputTokens);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY, details.outputTokens);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_RESPONSE_FINISH_REASONS_KEY, details.finishReasons);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_THOUGHT_PROCESS_KEY, details.thoughtProcess);
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, conversationId);
-    this.setTagMaybe(OpenTelemetryConstants.CHANNEL_NAME_KEY, sourceMetadata?.name);
-    this.setTagMaybe(OpenTelemetryConstants.CHANNEL_LINK_KEY, sourceMetadata?.description);
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, request.conversationId);
+    this.setTagMaybe(OpenTelemetryConstants.CHANNEL_NAME_KEY, request.channel?.name);
+    this.setTagMaybe(OpenTelemetryConstants.CHANNEL_LINK_KEY, request.channel?.description);
 
     // Set endpoint information if provided
     if (details.endpoint) {
@@ -86,25 +78,9 @@ export class InferenceScope extends OpenTelemetryScope {
 
       // Only record port if it is different from 443 (default HTTPS port)
       if (details.endpoint.port && details.endpoint.port !== 443) {
-        this.setTagMaybe(OpenTelemetryConstants.SERVER_PORT_KEY, details.endpoint.port.toString());
+        this.setTagMaybe(OpenTelemetryConstants.SERVER_PORT_KEY, details.endpoint.port);
       }
     }
-  }
-
-  /**
-   * Records the input messages for telemetry tracking.
-   * @param messages Array of input messages
-   */
-  public recordInputMessages(messages: string[]): void {
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, JSON.stringify(messages));
-  }
-
-  /**
-   * Records the output messages for telemetry tracking.
-   * @param messages Array of output messages
-   */
-  public recordOutputMessages(messages: string[]): void {
-    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY, JSON.stringify(messages));
   }
 
   /**
@@ -133,4 +109,21 @@ export class InferenceScope extends OpenTelemetryScope {
     }
   }
 
+  /**
+   * Records the input messages for telemetry tracking.
+   * Accepts plain strings (auto-wrapped as OTEL ChatMessage with role `user`) or a versioned InputMessages wrapper.
+   * @param messages Array of input message strings or an InputMessages wrapper
+   */
+  public override recordInputMessages(messages: InputMessagesParam): void {
+    super.recordInputMessages(messages);
+  }
+
+  /**
+   * Records the output messages for telemetry tracking.
+   * Accepts plain strings (auto-wrapped as OTEL OutputMessage with role `assistant`) or a versioned OutputMessages wrapper.
+   * @param messages Array of output message strings or an OutputMessages wrapper
+   */
+  public override recordOutputMessages(messages: OutputMessagesParam): void {
+    super.recordOutputMessages(messages);
+  }
 }

@@ -16,7 +16,7 @@ jest.mock('@microsoft/agents-a365-runtime', () => {
 });
 
 import { ScopeUtils } from '../../../../packages/agents-a365-observability-hosting/src/utils/ScopeUtils';
-import { InferenceScope, InvokeAgentScope, ExecuteToolScope, OpenTelemetryConstants, ExecutionType, OpenTelemetryScope, InvokeAgentDetails } from '@microsoft/agents-a365-observability';
+import { InferenceScope, InvokeAgentScope, ExecuteToolScope, OpenTelemetryConstants, OpenTelemetryScope } from '@microsoft/agents-a365-observability';
 import { SpanKind } from '@opentelemetry/api';
 import { RoleTypes } from '@microsoft/agents-activity';
 import type { TurnContext } from '@microsoft/agents-hosting';
@@ -88,10 +88,10 @@ describe('ScopeUtils.populateFromTurnContext', () => {
         [OpenTelemetryConstants.GEN_AI_AGENT_AUID_KEY, 'agent-oid'],
         [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY, 'agent-1'],
         [OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY, 'test-blueprint-id'],
-        [OpenTelemetryConstants.GEN_AI_AGENT_UPN_KEY, 'agent-upn@contoso.com'],
+        [OpenTelemetryConstants.GEN_AI_AGENT_EMAIL_KEY, 'agent-upn@contoso.com'],
         [OpenTelemetryConstants.GEN_AI_AGENT_DESCRIPTION_KEY, 'assistant'],
         [OpenTelemetryConstants.TENANT_ID_KEY, 'tenant-123'],
-        [OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, JSON.stringify(['input text'])]
+        [OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, JSON.stringify({ version: '0.1.0', messages: [{ role: 'user', parts: [{ type: 'text', content: 'input text' }] }] })]
       ])
     );
     scope?.dispose();
@@ -110,7 +110,7 @@ describe('ScopeUtils.populateFromTurnContext', () => {
         const details: any = { operationName: 'inference', model: 'm', providerName: 'prov' };
         const ctx = makeCtx({ activity: { recipient: { agenticAppId: 'aid' }, isAgenticRequest: () => false, getAgenticInstanceId: () => 'aid', getAgenticUser: () => undefined, getAgenticTenantId: () => undefined } as any }); // agent ok, no tenantId
         expect(() => ScopeUtils.populateInferenceScopeFromTurnContext(details, ctx, testAuthToken))
-          .toThrow('populateInferenceScopeFromTurnContext: Missing tenant details on TurnContext (recipient)');
+          .toThrow('InferenceScope: tenantId is required on agentDetails');
       });
 
       test('populateExecuteToolScopeFromTurnContext throws when agent details are missing', () => {
@@ -124,37 +124,36 @@ describe('ScopeUtils.populateFromTurnContext', () => {
         const details: any = { toolName: 'tool' };
         const ctx = makeCtx({ activity: { recipient: { agenticAppId: 'aid' }, isAgenticRequest: () => false, getAgenticInstanceId: () => 'aid', getAgenticUser: () => undefined, getAgenticTenantId: () => undefined } as any }); // agent ok, no tenantId
         expect(() => ScopeUtils.populateExecuteToolScopeFromTurnContext(details, ctx, testAuthToken))
-          .toThrow('populateExecuteToolScopeFromTurnContext: Missing tenant details on TurnContext (recipient)');
+          .toThrow('ExecuteToolScope: tenantId is required on agentDetails');
       });
 
       test('populateInvokeAgentScopeFromTurnContext throws when tenant details are missing', () => {
-        const details: InvokeAgentDetails = { agentId: 'aid' } as any;
         const ctx = makeCtx({ activity: { recipient: { agenticAppId: 'aid' }, isAgenticRequest: () => false, getAgenticInstanceId: () => 'aid', getAgenticUser: () => undefined, getAgenticTenantId: () => undefined } as any }); // no tenantId
-        expect(() => ScopeUtils.populateInvokeAgentScopeFromTurnContext(details, ctx, testAuthToken))
-          .toThrow('populateInvokeAgentScopeFromTurnContext: Missing tenant details on TurnContext (recipient)');
+        expect(() => ScopeUtils.populateInvokeAgentScopeFromTurnContext({ agentId: 'aid' } as any, {}, ctx, testAuthToken))
+          .toThrow('InvokeAgentScope: tenantId is required on agentDetails');
       });
     });
 
   test('build InvokeAgentScope based on turn context', () => {
-    const details = { operationName: 'invoke', model: 'n/a', providerName: 'internal' } as any;
     const ctx = makeTurnContext('invoke message', 'teams', 'https://teams', 'conv-B');
     ctx.activity.from!.role = RoleTypes.AgenticUser;
-    const scope = ScopeUtils.populateInvokeAgentScopeFromTurnContext(details, ctx, testAuthToken) as InvokeAgentScope;
+    const scope = ScopeUtils.populateInvokeAgentScopeFromTurnContext({ agentId: 'invoke-agent', providerName: 'internal' } as any, {}, ctx, testAuthToken) as InvokeAgentScope;
     expect(scope).toBeInstanceOf(InvokeAgentScope);
     const calls = spy.mock.calls.map(args => [args[0], args[1]]);
     const expected = [
       [OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, 'conv-B'],
       [OpenTelemetryConstants.CHANNEL_NAME_KEY, 'teams'],
       [OpenTelemetryConstants.CHANNEL_LINK_KEY, 'https://teams'],
-      [OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY, 'user-oid'],
-      [OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY, 'Test User'],
-      [OpenTelemetryConstants.GEN_AI_CALLER_UPN_KEY, 'user@contoso.com'],
+      [OpenTelemetryConstants.USER_ID_KEY, 'user-oid'],
+      [OpenTelemetryConstants.USER_NAME_KEY, 'Test User'],
+      [OpenTelemetryConstants.USER_EMAIL_KEY, 'user@contoso.com'],
       [OpenTelemetryConstants.GEN_AI_CALLER_AGENT_USER_ID_KEY, 'user-oid'],
       [OpenTelemetryConstants.GEN_AI_CALLER_AGENT_NAME_KEY, 'Test User'],
       [OpenTelemetryConstants.GEN_AI_CALLER_AGENT_ID_KEY, 'callerAgent-1'],
       [OpenTelemetryConstants.GEN_AI_CALLER_AGENT_APPLICATION_ID_KEY, 'caller-agentBlueprintId'],
+      [OpenTelemetryConstants.GEN_AI_CALLER_AGENT_EMAIL_KEY, 'user@contoso.com'],
       [OpenTelemetryConstants.TENANT_ID_KEY, 'tenant-123'],
-      [OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, JSON.stringify(['invoke message'])],
+      [OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, JSON.stringify({ version: '0.1.0', messages: [{ role: 'user', parts: [{ type: 'text', content: 'invoke message' }] }] })],
       [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY, 'agent-1'],
       [OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY, 'Agent One'],
       [OpenTelemetryConstants.GEN_AI_AGENT_DESCRIPTION_KEY, 'assistant']
@@ -190,16 +189,6 @@ function makeCtx(partial: Partial<TurnContext>): TurnContext {
   return partial as unknown as TurnContext;
 }
 
-test('deriveTenantDetails returns tenantId from getAgenticTenantId()', () => {
-  const ctx = makeCtx({ activity: { getAgenticTenantId: () => 't-rec' } as any });
-  expect(ScopeUtils.deriveTenantDetails(ctx)).toEqual({ tenantId: 't-rec' });
-});
-
-test('deriveTenantDetails returns undefined when getAgenticTenantId() returns undefined', () => {
-  const ctx = makeCtx({ activity: { getAgenticTenantId: () => undefined } as any });
-  expect(ScopeUtils.deriveTenantDetails(ctx)).toBeUndefined();
-});
-
 test('deriveAgentDetails maps recipient fields to AgentDetails', () => {
   const ctx = makeCtx({ activity: { recipient: { name: 'A', aadObjectId: 'auid', role: 'bot' }, isAgenticRequest: () => false, getAgenticInstanceId: () => 'aid', getAgenticUser: () => 'upn1', getAgenticTenantId: () => 't1' } as any });
   expect(ScopeUtils.deriveAgentDetails(ctx, testAuthToken)).toEqual({
@@ -207,7 +196,7 @@ test('deriveAgentDetails maps recipient fields to AgentDetails', () => {
     agentName: 'A',
     agentAUID: 'auid',
     agentBlueprintId: undefined,
-    agentUPN: 'upn1',
+    agentEmail: 'upn1',
     agentDescription: 'bot',
     tenantId: 't1',
   });
@@ -224,7 +213,7 @@ test('deriveCallerAgent maps from fields to caller AgentDetails', () => {
     agentBlueprintId: 'bp',
     agentName: 'Caller',
     agentAUID: 'uid',
-    agentUPN: 'caller-upn',
+    agentEmail: 'caller-upn',
     agentDescription: 'agent',
     tenantId: 't2',
     agentId: 'agent-caller',
@@ -236,12 +225,12 @@ test('deriveCallerAgent returns undefined without from', () => {
   expect(ScopeUtils.deriveCallerAgent(ctx)).toBeUndefined();
 });
 
-test('deriveCallerDetails maps from to CallerDetails', () => {
+test('deriveCallerDetails maps from to UserDetails', () => {
   const ctx = makeCtx({ activity: { from: { aadObjectId: 'uid', agenticUserId: 'upn', name: 'User', tenantId: 't3' } } as any });
   expect(ScopeUtils.deriveCallerDetails(ctx)).toEqual({
-    callerId: 'uid',
-    callerUpn: 'upn',
-    callerName: 'User',
+    userId: 'uid',
+    userEmail: 'upn',
+    userName: 'User',
     tenantId: 't3',
   });
 });
@@ -261,21 +250,17 @@ test('deriveConversationId returns undefined when missing', () => {
   expect(ScopeUtils.deriveConversationId(ctx)).toBeUndefined();
 });
 
-test('deriveSourceMetadataObject maps channel name/description', () => {
+test('deriveChannelObject maps channel name/description', () => {
   const ctx = makeCtx({ activity: { channelId: 'teams', channelIdSubChannel: 'chat' } as any });
-  expect(ScopeUtils.deriveSourceMetadataObject(ctx)).toEqual({ name: 'teams', description: 'chat' });
+  expect(ScopeUtils.deriveChannelObject(ctx)).toEqual({ name: 'teams', description: 'chat' });
 });
 
-test('deriveSourceMetadataObject returns undefined fields when none', () => {
+test('deriveChannelObject returns undefined fields when none', () => {
   const ctx = makeCtx({ activity: {} as any });
-  expect(ScopeUtils.deriveSourceMetadataObject(ctx)).toEqual({ name: undefined, description: undefined });
+  expect(ScopeUtils.deriveChannelObject(ctx)).toEqual({ name: undefined, description: undefined });
 });
 
-test('buildInvokeAgentDetails merges agent (recipient), conversationId, sourceMetadata', () => {
-  const invokeAgentDetails: InvokeAgentDetails = {
-    agentId: 'provided',
-    request: { content: 'hi', executionType: ExecutionType.HumanToAgent, sourceMetadata: { id: 'orig-id' } },
-  };
+test('buildInvokeAgentDetails merges agent (recipient) into details', () => {
   const ctx = makeCtx({
     activity: {
       recipient: { name: 'Rec', role: 'bot' },
@@ -289,22 +274,15 @@ test('buildInvokeAgentDetails merges agent (recipient), conversationId, sourceMe
     } as any
   });
 
-  const result = ScopeUtils.buildInvokeAgentDetails(invokeAgentDetails, ctx, testAuthToken);
-  expect(result.agentId).toBeUndefined();
-  expect(result.conversationId).toBe('c-2');
-  expect(result.request?.sourceMetadata).toEqual({ id: 'orig-id', name: 'web', description: 'inbox' });
+  const result = ScopeUtils.buildInvokeAgentDetails({ agentId: 'provided' } as any, ctx, testAuthToken);
+  // Agent identity is merged into result
+  expect(result.agentName).toBe('Rec');
 });
 
-test('buildInvokeAgentDetails keeps base request when TurnContext has no overrides', () => {
-  const invokeAgentDetails: InvokeAgentDetails = {
-    agentId: 'base-agent',
-    request: { content: 'hi', executionType: ExecutionType.HumanToAgent, sourceMetadata: { description: 'keep', name: 'keep-name' }},
-  };
+test('buildInvokeAgentDetails keeps base details when TurnContext has no overrides', () => {
   const ctx = makeCtx({ activity: {} as any });
-  const result = ScopeUtils.buildInvokeAgentDetails(invokeAgentDetails, ctx, testAuthToken);
+  const result = ScopeUtils.buildInvokeAgentDetails({ agentId: 'base-agent' } as any, ctx, testAuthToken);
   expect(result.agentId).toBe('base-agent');
-  expect(result.conversationId).toBeUndefined();
-  expect(result.request?.sourceMetadata).toEqual({ description: 'keep', name: 'keep-name' });
 });
 
 describe('ScopeUtils spanKind forwarding', () => {
@@ -312,12 +290,13 @@ describe('ScopeUtils spanKind forwarding', () => {
     const spy = jest.spyOn(InvokeAgentScope, 'start');
     const ctx = makeTurnContext('hello', 'web', 'https://web', 'conv-span');
     const scope = ScopeUtils.populateInvokeAgentScopeFromTurnContext(
-      { agentId: 'test-agent' }, ctx, testAuthToken,
+      { agentId: 'test-agent' } as any, {}, ctx, testAuthToken,
       undefined, undefined, SpanKind.SERVER
     );
     expect(spy).toHaveBeenCalledWith(
-      expect.anything(), expect.anything(), expect.anything(), expect.anything(),
-      undefined, undefined, undefined, SpanKind.SERVER
+      expect.anything(), expect.anything(), expect.anything(),
+      expect.anything(),
+      expect.objectContaining({ spanKind: SpanKind.SERVER })
     );
     scope?.dispose();
     spy.mockRestore();
@@ -332,7 +311,7 @@ describe('ScopeUtils spanKind forwarding', () => {
     );
     expect(spy).toHaveBeenCalledWith(
       expect.anything(), expect.anything(), expect.anything(), expect.anything(),
-      expect.anything(), undefined, undefined, undefined, undefined, SpanKind.CLIENT
+      expect.objectContaining({ spanKind: SpanKind.CLIENT })
     );
     scope?.dispose();
     spy.mockRestore();

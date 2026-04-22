@@ -17,7 +17,8 @@ import {
   statusName,
   resolveAgent365Endpoint,
   getAgent365ObservabilityDomainOverride,
-  isPerRequestExportEnabled
+  isPerRequestExportEnabled,
+  truncateSpan,
 } from './utils';
 import { getExportToken } from '../context/token-context';
 import logger, { formatError } from '../../utils/logging';
@@ -80,8 +81,8 @@ interface OTLPStatus {
  * Observability span exporter for Agent365:
  * - Partitions spans by (tenantId, agentId)
  * - Builds OTLP-like JSON: resourceSpans -> scopeSpans -> spans
- * - POSTs per group to https://{endpoint}/observability/tenants/{tenantId}/agents/{agentId}/traces?api-version=1
- *   or, when useS2SEndpoint is true, https://{endpoint}/observabilityService/tenants/{tenantId}/agents/{agentId}/traces?api-version=1
+ * - POSTs per group to https://{endpoint}/observability/tenants/{tenantId}/otlp/agents/{agentId}/traces?api-version=1
+ *   or, when useS2SEndpoint is true, https://{endpoint}/observabilityService/tenants/{tenantId}/otlp/agents/{agentId}/traces?api-version=1
  * - Adds Bearer token via token_resolver(agentId, tenantId)
  */
 export class Agent365Exporter implements SpanExporter {
@@ -169,10 +170,8 @@ export class Agent365Exporter implements SpanExporter {
     const payload = this.buildExportRequest(spans);
     const body = JSON.stringify(payload);
     // Select endpoint path based on S2S flag (includes tenantId in path)
-    const endpointRelativePath =
-      this.options.useS2SEndpoint
-        ? `/observabilityService/tenants/${encodeURIComponent(tenantId)}/agents/${encodeURIComponent(agentId)}/traces`
-        : `/observability/tenants/${encodeURIComponent(tenantId)}/agents/${encodeURIComponent(agentId)}/traces`;
+    const servicePrefix = this.options.useS2SEndpoint ? '/observabilityService' : '/observability';
+    const endpointRelativePath = `${servicePrefix}/tenants/${encodeURIComponent(tenantId)}/otlp/agents/${encodeURIComponent(agentId)}/traces`;
 
     let url: string;
     const domainOverride = getAgent365ObservabilityDomainOverride(this.configProvider);
@@ -301,7 +300,7 @@ export class Agent365Exporter implements SpanExporter {
       const scopeKey = `${scope?.name || 'unknown'}:${scope?.version || ''}`;
 
       const existing = scopeMap.get(scopeKey) || [];
-      existing.push(this.mapSpan(sp));
+      existing.push(truncateSpan(this.mapSpan(sp)));
       scopeMap.set(scopeKey, existing);
     }
 

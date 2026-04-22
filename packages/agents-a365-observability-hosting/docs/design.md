@@ -50,10 +50,9 @@ BaggageBuilderUtils.fromTurnContext(builder, turnContext);
 
 // Or populate specific baggage categories
 BaggageBuilderUtils.setCallerBaggage(builder, turnContext);
-BaggageBuilderUtils.setExecutionTypeBaggage(builder, turnContext);
 BaggageBuilderUtils.setTargetAgentBaggage(builder, turnContext);
 BaggageBuilderUtils.setTenantIdBaggage(builder, turnContext);
-BaggageBuilderUtils.setSourceMetadataBaggage(builder, turnContext);
+BaggageBuilderUtils.setChannelBaggage(builder, turnContext);
 BaggageBuilderUtils.setConversationIdBaggage(builder, turnContext);
 
 // Build and use the scope
@@ -69,10 +68,9 @@ scope.run(() => {
 |--------|---------|
 | `fromTurnContext(builder, turnContext)` | Populate all supported baggage pairs |
 | `setCallerBaggage(builder, turnContext)` | Set caller ID, name, UPN, tenant |
-| `setExecutionTypeBaggage(builder, turnContext)` | Set execution type (HumanToAgent, Agent2Agent) |
 | `setTargetAgentBaggage(builder, turnContext)` | Set target agent ID, name, description |
 | `setTenantIdBaggage(builder, turnContext)` | Set tenant ID from recipient or channel data |
-| `setSourceMetadataBaggage(builder, turnContext)` | Set channel name and subchannel |
+| `setChannelBaggage(builder, turnContext)` | Set channel name and subchannel |
 | `setConversationIdBaggage(builder, turnContext)` | Set conversation ID and item link |
 
 ### TurnContextUtils ([TurnContextUtils.ts](../src/utils/TurnContextUtils.ts))
@@ -82,20 +80,15 @@ Low-level utilities to extract OpenTelemetry baggage pairs from `TurnContext`:
 ```typescript
 import {
   getCallerBaggagePairs,
-  getExecutionTypePair,
   getTargetAgentBaggagePairs,
   getTenantIdPair,
-  getSourceMetadataBaggagePairs,
+  getChannelBaggagePairs,
   getConversationIdAndItemLinkPairs
 } from '@microsoft/agents-a365-observability-hosting';
 
 // Extract caller information
 const callerPairs = getCallerBaggagePairs(turnContext);
 // => [['gen_ai.caller.id', 'aad-object-id'], ['gen_ai.caller.name', 'John'], ...]
-
-// Extract execution type
-const executionPair = getExecutionTypePair(turnContext);
-// => [['gen_ai.execution.type', 'HumanToAgent']]
 
 // Extract target agent information
 const agentPairs = getTargetAgentBaggagePairs(turnContext);
@@ -107,10 +100,9 @@ const agentPairs = getTargetAgentBaggagePairs(turnContext);
 | Function | Extracted Keys |
 |----------|----------------|
 | `getCallerBaggagePairs()` | `gen_ai.caller.id`, `gen_ai.caller.name`, `gen_ai.caller.upn`, `gen_ai.caller.tenant_id`, `gen_ai.agent.blueprint_id` |
-| `getExecutionTypePair()` | `gen_ai.execution.type` |
 | `getTargetAgentBaggagePairs()` | `gen_ai.agent.id`, `gen_ai.agent.name`, `gen_ai.agent.description`, `gen_ai.agent.auid` |
 | `getTenantIdPair()` | `tenant_id` |
-| `getSourceMetadataBaggagePairs()` | `gen_ai.execution.source.name`, `gen_ai.execution.source.description` |
+| `getChannelBaggagePairs()` | `gen_ai.execution.source.name`, `gen_ai.execution.source.description` |
 | `getConversationIdAndItemLinkPairs()` | `gen_ai.conversation.id`, `gen_ai.conversation.item_link` |
 
 ### AgenticTokenCacheInstance ([AgenticTokenCache.ts](../src/caching/AgenticTokenCache.ts))
@@ -125,30 +117,6 @@ AgenticTokenCacheInstance.set('cache-key', 'token-value', ttlMs);
 
 // Retrieve cached token
 const token = AgenticTokenCacheInstance.get('cache-key');
-```
-
-## Execution Type Detection
-
-The package automatically detects the execution type based on caller role:
-
-```typescript
-function getExecutionTypePair(turnContext: TurnContext): Array<[string, string]> {
-  const from = turnContext.activity.from;
-  let executionType = ExecutionType.HumanToAgent;
-
-  if (from.role) {
-    switch (from.role) {
-      case RoleTypes.AgenticUser:
-        executionType = ExecutionType.Agent2Agent;
-        break;
-      case RoleTypes.User:
-        executionType = ExecutionType.HumanToAgent;
-        break;
-    }
-  }
-
-  return [[OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY, executionType]];
-}
 ```
 
 ## Tenant ID Resolution
@@ -192,12 +160,13 @@ async function onMessage(turnContext: TurnContext, turnState: TurnState) {
   return baggageScope.run(async () => {
     // Create agent invocation scope
     using scope = InvokeAgentScope.start(
+      { conversationId: turnContext.activity.conversation?.id, sessionId: turnContext.activity.conversation?.id },
+      {},  // InvokeAgentScopeDetails
       {
         agentId: turnContext.activity.recipient?.agenticAppId,
         agentName: turnContext.activity.recipient?.name,
-        sessionId: turnContext.activity.conversation?.id
-      },
-      { tenantId: turnContext.activity.recipient?.tenantId }
+        tenantId: turnContext.activity.recipient?.tenantId
+      }
     );
 
     // Agent processing...
@@ -224,7 +193,7 @@ src/
 
 ## Dependencies
 
-- `@microsoft/agents-a365-observability` - BaggageBuilder, OpenTelemetryConstants, ExecutionType
+- `@microsoft/agents-a365-observability` - BaggageBuilder, OpenTelemetryConstants
 - `@microsoft/agents-a365-runtime` - Runtime utilities
 - `@microsoft/agents-hosting` - TurnContext type
 - `@microsoft/agents-activity` - RoleTypes enum
