@@ -19,6 +19,8 @@ import {
   getAgent365ObservabilityDomainOverride,
   isPerRequestExportEnabled,
   truncateSpan,
+  estimateSpanBytes,
+  chunkBySize,
 } from './utils';
 import { getExportToken } from '../context/token-context';
 import logger, { formatError } from '../../utils/logging';
@@ -75,6 +77,13 @@ interface OTLPLink {
 interface OTLPStatus {
   code: string;
   message?: string;
+}
+
+interface MappedSpan {
+  span: OTLPSpan;
+  scopeKey: string;
+  scopeName: string;
+  scopeVersion?: string;
 }
 
 /**
@@ -167,8 +176,19 @@ export class Agent365Exporter implements SpanExporter {
 
     const startTime = Date.now();
 
-    const payload = this.buildExportRequest(spans);
-    const body = JSON.stringify(payload);
+    // Map, truncate, and chunk spans by estimated byte size
+    const mappedSpans = this.mapAndTruncateSpans(spans);
+    const resourceAttrs = this.getResourceAttributes(spans);
+    const chunks = chunkBySize(
+      mappedSpans,
+      (ms) => estimateSpanBytes(ms.span),
+      this.options.maxPayloadBytes,
+    );
+
+    if (chunks.length > 1) {
+      logger.info(`[Agent365Exporter] Split ${spans.length} spans into ${chunks.length} chunks for tenantId: ${tenantId}, agentId: ${agentId}`);
+    }
+
     // Select endpoint path based on S2S flag (includes tenantId in path)
     const servicePrefix = this.options.useS2SEndpoint ? '/observabilityService' : '/observability';
     const endpointRelativePath = `${servicePrefix}/tenants/${encodeURIComponent(tenantId)}/otlp/agents/${encodeURIComponent(agentId)}/traces`;
@@ -222,14 +242,25 @@ export class Agent365Exporter implements SpanExporter {
     // Always include tenant id header
     headers['x-ms-tenant-id'] = tenantId;
 
-    // Basic retry loop
-    const { ok, correlationId } = await this.postWithRetries(url, body, headers);
-    const duration = Date.now() - startTime;
-    if (!ok) {
-      logger.event(ExporterEventNames.EXPORT_GROUP, false, duration, undefined, { tenantId, agentId, correlationId });
-      throw new Error('Failed to export spans');
+    // Send each chunk (all-or-nothing: fail on first chunk failure)
+    let lastCorrelationId = 'unknown';
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      const payload = this.buildEnvelope(chunk, resourceAttrs);
+      const body = JSON.stringify(payload);
+      logger.info(`[Agent365Exporter] Sending chunk ${i + 1} of ${chunks.length} (${chunk.length} spans, ${body.length} bytes)`);
+
+      const { ok, correlationId } = await this.postWithRetries(url, body, headers);
+      lastCorrelationId = correlationId;
+      if (!ok) {
+        const duration = Date.now() - startTime;
+        logger.event(ExporterEventNames.EXPORT_GROUP, false, duration, `chunk ${i + 1} of ${chunks.length} failed`, { tenantId, agentId, correlationId });
+        throw new Error(`Failed to export spans (chunk ${i + 1} of ${chunks.length})`);
+      }
     }
-    logger.event(ExporterEventNames.EXPORT_GROUP, true, duration, 'Spans exported successfully', { tenantId, agentId, correlationId });
+
+    const duration = Date.now() - startTime;
+    logger.event(ExporterEventNames.EXPORT_GROUP, true, duration, `${chunks.length} chunk(s) exported successfully`, { tenantId, agentId, correlationId: lastCorrelationId });
   }
 
   /**
@@ -289,40 +320,54 @@ export class Agent365Exporter implements SpanExporter {
   }
 
   /**
-   * Build OTLP export request payload
+   * Map ReadableSpans to OTLP format and apply per-span truncation.
    */
-  private buildExportRequest(spans: ReadableSpan[]): OTLPExportRequest {
-    // Group by instrumentation scope (name, version)
-    const scopeMap = new Map<string, OTLPSpan[]>();
-    logger.info('[Agent365Exporter] Building OTLP export request payload');
-    for (const sp of spans) {
+  private mapAndTruncateSpans(spans: ReadableSpan[]): MappedSpan[] {
+    logger.info('[Agent365Exporter] Mapping and truncating spans');
+    return spans.map(sp => {
       const scope = sp.instrumentationScope || (sp as ReadableSpan & { instrumentationLibrary?: { name?: string; version?: string } }).instrumentationLibrary;
-      const scopeKey = `${scope?.name || 'unknown'}:${scope?.version || ''}`;
+      const scopeName = scope?.name || 'unknown';
+      const scopeVersion = scope?.version || '';
+      return {
+        span: truncateSpan(this.mapSpan(sp)),
+        scopeKey: `${scopeName}:${scopeVersion}`,
+        scopeName,
+        scopeVersion: scopeVersion || undefined,
+      };
+    });
+  }
 
-      const existing = scopeMap.get(scopeKey) || [];
-      existing.push(truncateSpan(this.mapSpan(sp)));
-      scopeMap.set(scopeKey, existing);
+  /**
+   * Extract resource attributes from the first span in the batch.
+   */
+  private getResourceAttributes(spans: ReadableSpan[]): Record<string, unknown> {
+    if (spans.length > 0 && spans[0].resource?.attributes) {
+      return { ...spans[0].resource.attributes };
+    }
+    return {};
+  }
+
+  /**
+   * Build an OTLP export request envelope from pre-mapped spans.
+   */
+  private buildEnvelope(mappedSpans: MappedSpan[], resourceAttrs: Record<string, unknown>): OTLPExportRequest {
+    const scopeMap = new Map<string, OTLPSpan[]>();
+    for (const ms of mappedSpans) {
+      const existing = scopeMap.get(ms.scopeKey) || [];
+      existing.push(ms.span);
+      scopeMap.set(ms.scopeKey, existing);
     }
 
     const scopeSpans: ScopeSpan[] = [];
-    for (const [scopeKey, mappedSpans] of scopeMap) {
+    for (const [scopeKey, spans] of scopeMap) {
       const [name, version] = scopeKey.split(':');
       scopeSpans.push({
         scope: {
           name,
           version: version || undefined,
         },
-        spans: mappedSpans,
+        spans,
       });
-    }
-
-    // Resource attributes (from the first span - all spans in a batch usually share resource)
-    let resourceAttrs: Record<string, unknown> = {};
-    if (spans.length > 0) {
-      const firstSpanResource = spans[0].resource?.attributes;
-      if (firstSpanResource) {
-        resourceAttrs = { ...firstSpanResource };
-      }
     }
 
     return {
