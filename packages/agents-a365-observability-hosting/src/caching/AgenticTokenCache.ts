@@ -69,7 +69,8 @@ export class AgenticTokenCache {
         tenantId: string,
         turnContext: TurnContext,
         authorization: Authorization,
-        scopes: string[]
+        scopes: string[],
+        authHandlerName: string = 'agentic'
     ): Promise<void> {
         const key = AgenticTokenCache.makeKey(agentId, tenantId);
         if (!authorization) {
@@ -108,7 +109,7 @@ export class AgenticTokenCache {
             for (let attempt = 0; attempt <= maxRetries; attempt++) {
                 logger.info(`[AgenticTokenCache] Exchanging token attempt ${attempt + 1}/${maxRetries + 1}`);
                 try {
-                    const tokenResponse = await authorization.exchangeToken(turnContext, 'agentic', { scopes: entry.scopes });
+                    const tokenResponse = await authorization.exchangeToken(turnContext, authHandlerName, { scopes: entry.scopes });
                     if (!tokenResponse?.token) {
                         logger.error('[AgenticTokenCache] Undefined token returned');
                         entry.token = undefined;
