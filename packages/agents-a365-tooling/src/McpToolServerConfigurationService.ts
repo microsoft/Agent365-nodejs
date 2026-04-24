@@ -5,7 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
 import { TurnContext, Authorization } from '@microsoft/agents-hosting';
-import { OperationResult, OperationError, IConfigurationProvider, AgenticAuthenticationService, Utility as RuntimeUtility } from '@microsoft/agents-a365-runtime';
+import { OperationResult, OperationError, IConfigurationProvider, AgenticAuthenticationService, AppTokenProvider, Utility as RuntimeUtility } from '@microsoft/agents-a365-runtime';
 import { MCPServerConfig, MCPServerManifestEntry, McpClientTool, ToolOptions } from './contracts';
 import { ChatHistoryMessage, ChatMessageRequest } from './models/index';
 import { Utility } from './Utility';
@@ -70,24 +70,64 @@ export class McpToolServerConfigurationService {
    */
   async listToolServers(turnContext: TurnContext, authorization: Authorization, authHandlerName: string, authToken?: string, options?: ToolOptions): Promise<MCPServerConfig[]>;
 
+  /**
+   * Return MCP server definitions for the given agent using service-to-service (S2S) authentication.
+   * Uses an AppTokenProvider to acquire tokens via the OAuth 2.0 client credentials grant.
+   * A TurnContext is not required for token acquisition but, when provided, enables
+   * request headers (x-ms-agentid, x-ms-channel-id) to be attached to gateway and server calls.
+   *
+   * @param agenticAppId The agentic app id for which to discover servers.
+   * @param tokenProvider A function that acquires app-only tokens via client credentials.
+   * @param turnContext Optional TurnContext for request header composition. Does not affect token acquisition.
+   * @param options Optional tool options when calling the gateway.
+   * @returns A promise resolving to an array of normalized MCP server configuration objects.
+   */
+  async listToolServers(agenticAppId: string, tokenProvider: AppTokenProvider, turnContext?: TurnContext, options?: ToolOptions): Promise<MCPServerConfig[]>;
+
   async listToolServers(
     agenticAppIdOrTurnContext: string | TurnContext,
-    authTokenOrAuthorization: string | Authorization,
-    optionsOrAuthHandlerName?: ToolOptions | string,
-    authTokenOrOptions?: string | ToolOptions,
+    authTokenOrAuthorizationOrTokenProvider: string | Authorization | AppTokenProvider,
+    optionsOrAuthHandlerNameOrTurnContext?: ToolOptions | string | TurnContext,
+    authTokenOrOptionsOrToolOptions?: string | ToolOptions,
     options?: ToolOptions
   ): Promise<MCPServerConfig[]> {
     // Detect which signature is being used based on the type of the first parameter
     if (typeof agenticAppIdOrTurnContext === 'string') {
-      // LEGACY PATH: listToolServers(agenticAppId, authToken, options?)
       const agenticAppId = agenticAppIdOrTurnContext;
 
+      if (typeof authTokenOrAuthorizationOrTokenProvider === 'function') {
+        // S2S PATH: listToolServers(agenticAppId, tokenProvider, turnContext?, options?)
+        const tokenProvider = authTokenOrAuthorizationOrTokenProvider;
+        // Third param is either a TurnContext object, a ToolOptions object, or undefined
+        const thirdParam = optionsOrAuthHandlerNameOrTurnContext;
+        const isTurnContext = thirdParam != null && typeof thirdParam === 'object' && 'activity' in thirdParam;
+        const turnContext = isTurnContext ? thirdParam as TurnContext : undefined;
+        const toolOptions = isTurnContext
+          ? authTokenOrOptionsOrToolOptions as ToolOptions | undefined
+          : thirdParam as ToolOptions | undefined;
+
+        // Acquire a gateway token via client credentials
+        const gatewayScope = this.configProvider.getConfiguration().mcpPlatformAuthenticationScope;
+        const authToken = await AgenticAuthenticationService.GetAgenticAppToken(tokenProvider, [gatewayScope]);
+
+        const servers = await (this.isDevScenario()
+          ? this.getMCPServerConfigsFromManifest()
+          : this.getMCPServerConfigsFromToolingGateway(agenticAppId, authToken, turnContext, toolOptions));
+
+        const acquire = this.isDevScenario()
+          ? this.createDevTokenAcquirer()
+          : this.createS2sTokenAcquirer(tokenProvider);
+
+        return await this.attachPerAudienceTokens(servers, acquire);
+      }
+
+      // LEGACY PATH: listToolServers(agenticAppId, authToken, options?)
       // Runtime validation for legacy signature parameters
-      if (typeof authTokenOrAuthorization !== 'string') {
+      if (typeof authTokenOrAuthorizationOrTokenProvider !== 'string') {
         throw new Error('authToken must be a string when using the legacy listToolServers(agenticAppId, authToken) signature');
       }
-      const authToken = authTokenOrAuthorization;
-      const toolOptions = optionsOrAuthHandlerName as ToolOptions | undefined;
+      const authToken = authTokenOrAuthorizationOrTokenProvider;
+      const toolOptions = optionsOrAuthHandlerNameOrTurnContext as ToolOptions | undefined;
 
       const servers = await (this.isDevScenario()
         ? this.getMCPServerConfigsFromManifest()
@@ -104,20 +144,23 @@ export class McpToolServerConfigurationService {
 
       return await this.attachPerAudienceTokens(servers, acquire);
     } else {
-      // NEW PATH: listToolServers(turnContext, authorization, authHandlerName, authToken?, options?)
+      // OBO PATH: listToolServers(turnContext, authorization, authHandlerName, authToken?, options?)
       const turnContext = agenticAppIdOrTurnContext;
 
       // Runtime validation for new signature parameters
-      if (typeof authTokenOrAuthorization === 'string') {
+      if (typeof authTokenOrAuthorizationOrTokenProvider === 'string') {
         throw new Error('authorization must be an Authorization object when using the new listToolServers(turnContext, authorization, authHandlerName) signature');
       }
-      if (typeof optionsOrAuthHandlerName !== 'string') {
+      if (typeof authTokenOrAuthorizationOrTokenProvider === 'function') {
+        throw new Error('tokenProvider is not supported with TurnContext — use the listToolServers(agenticAppId, tokenProvider) overload instead');
+      }
+      if (typeof optionsOrAuthHandlerNameOrTurnContext !== 'string') {
         throw new Error('authHandlerName must be a string when using the new listToolServers(turnContext, authorization, authHandlerName) signature');
       }
 
-      const authorization = authTokenOrAuthorization;
-      const authHandlerName = optionsOrAuthHandlerName;
-      let authToken = authTokenOrOptions as string | undefined;
+      const authorization = authTokenOrAuthorizationOrTokenProvider;
+      const authHandlerName = optionsOrAuthHandlerNameOrTurnContext;
+      let authToken = authTokenOrOptionsOrToolOptions as string | undefined;
       const toolOptions = options;
 
       // Auto-generate token if not provided
@@ -245,6 +288,21 @@ export class McpToolServerConfigurationService {
       );
       if (!token) {
         throw new Error(`Failed to obtain token for MCP server '${server.mcpServerName}' (scope: ${scope})`);
+      }
+      return token;
+    };
+  }
+
+  /**
+   * Returns a TokenAcquirer that acquires app-only tokens via client credentials (S2S).
+   * Uses AgenticAuthenticationService.GetAgenticAppToken which delegates to the caller-provided
+   * AppTokenProvider. Throws if the provider returns a falsy token.
+   */
+  private createS2sTokenAcquirer(tokenProvider: AppTokenProvider): TokenAcquirer {
+    return async (server, scope) => {
+      const token = await AgenticAuthenticationService.GetAgenticAppToken(tokenProvider, [scope]);
+      if (!token) {
+        throw new Error(`Failed to obtain S2S token for MCP server '${server.mcpServerName}' (scope: ${scope})`);
       }
       return token;
     };

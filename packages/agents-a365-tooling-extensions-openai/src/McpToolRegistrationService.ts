@@ -2,8 +2,8 @@
 // Licensed under the MIT License.
 
 import { v4 as uuidv4 } from 'uuid';
-import { McpToolServerConfigurationService, Utility, ToolOptions, ChatHistoryMessage } from '@microsoft/agents-a365-tooling';
-import { AgenticAuthenticationService, OperationResult, OperationError, IConfigurationProvider } from '@microsoft/agents-a365-runtime';
+import { McpToolServerConfigurationService, MCPServerConfig, Utility, ToolOptions, ChatHistoryMessage } from '@microsoft/agents-a365-tooling';
+import { AgenticAuthenticationService, AppTokenProvider, OperationResult, OperationError, IConfigurationProvider } from '@microsoft/agents-a365-runtime';
 import { OpenAIToolingConfiguration, defaultOpenAIToolingConfigurationProvider } from './configuration';
 
 // Agents SDK
@@ -48,27 +48,67 @@ export class McpToolRegistrationService {
     authHandlerName: string,
     turnContext: TurnContext,
     authToken: string
-  ): Promise<Agent> {
+  ): Promise<Agent>;
 
+  /**
+   * Registers MCP tool servers using S2S (client credentials) authentication.
+   * A TurnContext is not required for token acquisition but, when provided, enables
+   * request headers (x-ms-agentid, x-ms-channel-id) to be attached to MCP server calls.
+   * @param agent The OpenAI Agent instance to which MCP servers will be added.
+   * @param agenticAppId The agentic app id for which to discover servers.
+   * @param tokenProvider A function that acquires app-only tokens via client credentials.
+   * @param turnContext Optional TurnContext for request header composition.
+   * @returns The updated Agent instance with registered MCP servers.
+   */
+  async addToolServersToAgent(
+    agent: Agent,
+    agenticAppId: string,
+    tokenProvider: AppTokenProvider,
+    turnContext?: TurnContext
+  ): Promise<Agent>;
+
+  async addToolServersToAgent(
+    agent: Agent,
+    authorizationOrAgenticAppId: Authorization | string,
+    authHandlerNameOrTokenProvider: string | AppTokenProvider,
+    turnContext?: TurnContext,
+    authToken?: string
+  ): Promise<Agent> {
     if (!agent) {
       throw new Error('Agent is Required');
     }
 
-    if (!authToken) {
-      const scope = this.configProvider.getConfiguration().mcpPlatformAuthenticationScope;
-      authToken = await AgenticAuthenticationService.GetAgenticUserToken(authorization, authHandlerName, turnContext, [scope]);
+    const options: ToolOptions = { orchestratorName: this.orchestratorName };
+    let servers: MCPServerConfig[];
+    let gatewayAuthToken: string | undefined;
+
+    if (typeof authorizationOrAgenticAppId === 'string') {
+      // S2S PATH
+      const agenticAppId = authorizationOrAgenticAppId;
+      const tokenProvider = authHandlerNameOrTokenProvider as AppTokenProvider;
+
+      servers = await this.configService.listToolServers(agenticAppId, tokenProvider, turnContext, options);
+    } else {
+      // OBO PATH
+      const authorization = authorizationOrAgenticAppId;
+      const authHandlerName = authHandlerNameOrTokenProvider as string;
+
+      if (!authToken) {
+        const scope = this.configProvider.getConfiguration().mcpPlatformAuthenticationScope;
+        authToken = await AgenticAuthenticationService.GetAgenticUserToken(authorization, authHandlerName, turnContext!, [scope]);
+      }
+
+      Utility.ValidateAuthToken(authToken);
+      gatewayAuthToken = authToken;
+
+      servers = await this.configService.listToolServers(turnContext!, authorization, authHandlerName, authToken, options);
     }
 
-    // Validate the authentication token
-    Utility.ValidateAuthToken(authToken);
-
-    const options: ToolOptions = { orchestratorName: this.orchestratorName };
-    const servers = await this.configService.listToolServers(turnContext, authorization, authHandlerName, authToken, options);
     const mcpServers: MCPServerStreamableHttp[] = [];
 
     for (const server of servers) {
       // Merge base headers (channel, user-agent) with per-audience Authorization from server.headers
-      const baseHeaders: Record<string, string> = Utility.GetToolRequestHeaders(authToken, turnContext, options);
+      const baseHeaders: Record<string, string> = Utility.GetToolRequestHeaders(gatewayAuthToken, turnContext, options);
       const headers: Record<string, string> = { ...baseHeaders, ...server.headers };
 
       // Create MCPServerStreamableHttp instance for OpenAI agents

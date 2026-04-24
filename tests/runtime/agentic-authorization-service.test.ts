@@ -3,7 +3,7 @@
 
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { TurnContext, Authorization } from '@microsoft/agents-hosting';
-import { AgenticAuthenticationService } from '@microsoft/agents-a365-runtime';
+import { AgenticAuthenticationService, AppTokenProvider } from '@microsoft/agents-a365-runtime';
 
 describe('AgenticAuthenticationService', () => {
   let mockAuthorization: jest.Mocked<Authorization>;
@@ -116,6 +116,53 @@ describe('AgenticAuthenticationService', () => {
         mockAuthHandlerName,
         { scopes: ['ea9ffc3e-8a23-4a7d-836d-234d7c7565c1/.default'] }
       );
+    });
+  });
+
+  describe('GetAgenticAppToken', () => {
+    it('should return token from the AppTokenProvider', async () => {
+      const mockProvider: AppTokenProvider = jest.fn<AppTokenProvider>().mockResolvedValue('app-token-123');
+
+      const result = await AgenticAuthenticationService.GetAgenticAppToken(
+        mockProvider,
+        ['api://test-audience/.default']
+      );
+
+      expect(result).toEqual('app-token-123');
+      expect(mockProvider).toHaveBeenCalledWith(['api://test-audience/.default']);
+    });
+
+    it('should throw when token provider returns empty string', async () => {
+      const mockProvider: AppTokenProvider = jest.fn<AppTokenProvider>().mockResolvedValue('');
+
+      await expect(
+        AgenticAuthenticationService.GetAgenticAppToken(mockProvider, ['scope/.default'])
+      ).rejects.toThrow('Client credentials token acquisition failed');
+    });
+
+    it('should throw when token provider returns null', async () => {
+      const mockProvider: AppTokenProvider = jest.fn<AppTokenProvider>().mockResolvedValue(null as unknown as string);
+
+      await expect(
+        AgenticAuthenticationService.GetAgenticAppToken(mockProvider, ['scope/.default'])
+      ).rejects.toThrow('Client credentials token acquisition failed');
+    });
+
+    it('should propagate errors from the token provider', async () => {
+      const mockProvider: AppTokenProvider = jest.fn<AppTokenProvider>().mockRejectedValue(new Error('MSAL client credentials failed'));
+
+      await expect(
+        AgenticAuthenticationService.GetAgenticAppToken(mockProvider, ['scope/.default'])
+      ).rejects.toThrow('MSAL client credentials failed');
+    });
+
+    it('should pass multiple scopes to the token provider', async () => {
+      const mockProvider: AppTokenProvider = jest.fn<AppTokenProvider>().mockResolvedValue('multi-scope-token');
+      const scopes = ['scope1/.default', 'scope2/.default'];
+
+      await AgenticAuthenticationService.GetAgenticAppToken(mockProvider, scopes);
+
+      expect(mockProvider).toHaveBeenCalledWith(scopes);
     });
   });
 });

@@ -6,7 +6,7 @@ import { McpToolServerConfigurationService } from '../../packages/agents-a365-to
 import { Utility } from '../../packages/agents-a365-tooling/src/Utility';
 import { ToolingConfiguration, defaultToolingConfigurationProvider } from '../../packages/agents-a365-tooling/src/configuration';
 import { TurnContext, Authorization } from '@microsoft/agents-hosting';
-import { AgenticAuthenticationService, DefaultConfigurationProvider, Utility as RuntimeUtility } from '@microsoft/agents-a365-runtime';
+import { AgenticAuthenticationService, AppTokenProvider, DefaultConfigurationProvider, Utility as RuntimeUtility } from '@microsoft/agents-a365-runtime';
 import fs from 'fs';
 
 describe('McpToolServerConfigurationService', () => {
@@ -1541,6 +1541,251 @@ describe('McpToolServerConfigurationService', () => {
         const servers = await service.listToolServers('agent-id', mockToken);
 
         expect(servers[0].headers?.Authorization).toBe(`Bearer ${mockToken}`);
+      });
+    });
+  });
+
+  describe('listToolServers S2S signature (agenticAppId, tokenProvider)', () => {
+    let mockTokenProvider: jest.Mock<AppTokenProvider>;
+    let getAgenticAppTokenSpy: jest.SpiedFunction<typeof AgenticAuthenticationService.GetAgenticAppToken>;
+
+    const createMockJwt = (seed = 'default') => {
+      const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
+      const payload = Buffer.from(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 3600, sub: seed })).toString('base64url');
+      return `${header}.${payload}.mock-sig`;
+    };
+
+    beforeEach(() => {
+      mockTokenProvider = jest.fn<AppTokenProvider>();
+      getAgenticAppTokenSpy = jest.spyOn(AgenticAuthenticationService, 'GetAgenticAppToken');
+    });
+
+    afterEach(() => {
+      getAgenticAppTokenSpy.mockRestore();
+    });
+
+    describe('development mode (manifest)', () => {
+      beforeEach(() => {
+        process.env.NODE_ENV = 'Development';
+      });
+
+      it('should read from manifest and use dev token acquirer', async () => {
+        const manifestContent = {
+          mcpServers: [{ mcpServerName: 'testServer', url: 'http://localhost:3000' }]
+        };
+        const mockToken = createMockJwt('s2s');
+        mockTokenProvider.mockResolvedValue(mockToken);
+        getAgenticAppTokenSpy.mockResolvedValue(mockToken);
+
+        jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+        jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(manifestContent));
+
+        const servers = await service.listToolServers('my-agent-id', mockTokenProvider);
+
+        expect(servers).toHaveLength(1);
+        expect(servers[0].mcpServerName).toBe('testServer');
+        // Dev mode uses env var acquirer, not S2S acquirer
+        expect(getAgenticAppTokenSpy).toHaveBeenCalledTimes(1); // Only for the gateway token
+      });
+
+      it('should attach BEARER_TOKEN env var in dev mode (not S2S acquirer)', async () => {
+        process.env.BEARER_TOKEN = 'dev-shared-token';
+        const manifestContent = {
+          mcpServers: [{ mcpServerName: 'testServer', url: 'http://localhost:3000' }]
+        };
+        const mockToken = createMockJwt('s2s');
+        getAgenticAppTokenSpy.mockResolvedValue(mockToken);
+
+        jest.spyOn(fs, 'existsSync').mockReturnValue(true);
+        jest.spyOn(fs, 'readFileSync').mockReturnValue(JSON.stringify(manifestContent));
+
+        const servers = await service.listToolServers('my-agent-id', mockTokenProvider);
+
+        expect(servers[0].headers?.Authorization).toBe('Bearer dev-shared-token');
+        delete process.env.BEARER_TOKEN;
+      });
+    });
+
+    describe('production mode (gateway)', () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let axiosGetSpy: any;
+
+      beforeEach(() => {
+        process.env.NODE_ENV = 'production';
+        jest.spyOn(Utility, 'ValidateAuthToken').mockImplementation(() => {});
+
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const axios = require('axios');
+        axiosGetSpy = jest.spyOn(axios, 'get');
+      });
+
+      afterEach(() => {
+        axiosGetSpy.mockRestore();
+      });
+
+      it('should acquire gateway token via GetAgenticAppToken and call gateway', async () => {
+        const mockToken = createMockJwt('s2s-gateway');
+        getAgenticAppTokenSpy.mockResolvedValue(mockToken);
+        axiosGetSpy.mockResolvedValue({
+          data: [{ mcpServerName: 'prodServer', url: 'http://prod.example.com' }]
+        });
+
+        await service.listToolServers('my-agent-id', mockTokenProvider);
+
+        // Should have called GetAgenticAppToken for the gateway token
+        expect(getAgenticAppTokenSpy).toHaveBeenCalledWith(
+          mockTokenProvider,
+          ['ea9ffc3e-8a23-4a7d-836d-234d7c7565c1/.default']
+        );
+
+        // Should call gateway with the correct URL
+        expect(axiosGetSpy).toHaveBeenCalledWith(
+          expect.stringContaining('/agents/v2/my-agent-id/mcpServers'),
+          expect.any(Object)
+        );
+      });
+
+      it('should use S2S token acquirer for per-server tokens in prod', async () => {
+        const v2Audience = 'aaaabbbb-1234-5678-abcd-111122223333';
+        const gatewayToken = createMockJwt('gateway');
+        const serverToken = createMockJwt('server');
+        // First call: gateway token, second call: per-server token
+        getAgenticAppTokenSpy
+          .mockResolvedValueOnce(gatewayToken)
+          .mockResolvedValueOnce(serverToken);
+
+        axiosGetSpy.mockResolvedValue({
+          data: [{
+            mcpServerName: 'v2Server',
+            url: 'http://v2.example.com',
+            audience: v2Audience,
+            scope: 'Tools.ListInvoke.All'
+          }]
+        });
+
+        const servers = await service.listToolServers('my-agent-id', mockTokenProvider);
+
+        // Per-server S2S token should be attached
+        expect(servers[0].headers?.Authorization).toBe(`Bearer ${serverToken}`);
+        // Second call should use per-audience scope
+        expect(getAgenticAppTokenSpy).toHaveBeenNthCalledWith(
+          2,
+          mockTokenProvider,
+          [`${v2Audience}/Tools.ListInvoke.All`]
+        );
+      });
+
+      it('should cache tokens for servers sharing the same audience', async () => {
+        const sharedAudience = 'aaaabbbb-1234-5678-abcd-111122223333';
+        const gatewayToken = createMockJwt('gateway');
+        const sharedToken = createMockJwt('shared');
+        getAgenticAppTokenSpy
+          .mockResolvedValueOnce(gatewayToken)
+          .mockResolvedValueOnce(sharedToken);
+
+        axiosGetSpy.mockResolvedValue({
+          data: [
+            { mcpServerName: 'server1', url: 'http://s1.example.com', audience: sharedAudience },
+            { mcpServerName: 'server2', url: 'http://s2.example.com', audience: sharedAudience },
+          ]
+        });
+
+        const servers = await service.listToolServers('my-agent-id', mockTokenProvider);
+
+        // Only 2 calls: gateway + one shared per-audience token (cached for second server)
+        expect(getAgenticAppTokenSpy).toHaveBeenCalledTimes(2);
+        expect(servers[0].headers?.Authorization).toBe(`Bearer ${sharedToken}`);
+        expect(servers[1].headers?.Authorization).toBe(`Bearer ${sharedToken}`);
+      });
+
+      it('should throw when token provider fails for gateway token', async () => {
+        getAgenticAppTokenSpy.mockRejectedValue(new Error('Client credentials token acquisition failed: token provider returned an empty or null token'));
+
+        await expect(
+          service.listToolServers('my-agent-id', mockTokenProvider)
+        ).rejects.toThrow('Client credentials token acquisition failed');
+      });
+
+      it('should pass ToolOptions when provided', async () => {
+        const mockToken = createMockJwt('s2s');
+        getAgenticAppTokenSpy.mockResolvedValue(mockToken);
+        axiosGetSpy.mockResolvedValue({ data: [] });
+
+        await service.listToolServers('my-agent-id', mockTokenProvider, undefined, { orchestratorName: 'Claude' });
+
+        expect(axiosGetSpy).toHaveBeenCalled();
+      });
+
+      it('should include x-ms-agentid header when turnContext is provided', async () => {
+        const mockToken = createMockJwt('s2s-ctx');
+        getAgenticAppTokenSpy.mockResolvedValue(mockToken);
+        axiosGetSpy.mockResolvedValue({
+          data: [{ mcpServerName: 'prodServer', url: 'http://prod.example.com' }]
+        });
+
+        const mockContext = {
+          activity: {
+            from: { agenticAppBlueprintId: 'blueprint-s2s' },
+            channelId: 'msteams',
+            recipient: { id: 'recipient-id' },
+            conversation: { id: 'conv-id' },
+            isAgenticRequest: jest.fn().mockReturnValue(false),
+            getAgenticInstanceId: jest.fn().mockReturnValue(undefined)
+          },
+          sendActivity: jest.fn()
+        } as unknown as TurnContext;
+
+        await service.listToolServers('my-agent-id', mockTokenProvider, mockContext);
+
+        // Gateway call should include x-ms-agentid from TurnContext
+        const callArgs = axiosGetSpy.mock.calls[0] as [string, { headers: Record<string, string> }];
+        const headers = callArgs[1].headers;
+        expect(headers['x-ms-agentid']).toBe('blueprint-s2s');
+      });
+
+      it('should not include x-ms-agentid header when turnContext is omitted', async () => {
+        const mockToken = createMockJwt('s2s-no-ctx');
+        getAgenticAppTokenSpy.mockResolvedValue(mockToken);
+        axiosGetSpy.mockResolvedValue({
+          data: [{ mcpServerName: 'prodServer', url: 'http://prod.example.com' }]
+        });
+
+        await service.listToolServers('my-agent-id', mockTokenProvider);
+
+        // Gateway call should not have x-ms-agentid
+        const callArgs = axiosGetSpy.mock.calls[0] as [string, { headers: Record<string, string> }];
+        const headers = callArgs[1].headers;
+        expect(headers['x-ms-agentid']).toBeUndefined();
+      });
+
+      it('should pass turnContext and ToolOptions together', async () => {
+        const mockToken = createMockJwt('s2s-both');
+        getAgenticAppTokenSpy.mockResolvedValue(mockToken);
+        axiosGetSpy.mockResolvedValue({
+          data: [{ mcpServerName: 'prodServer', url: 'http://prod.example.com' }]
+        });
+
+        const mockContext = {
+          activity: {
+            from: { agenticAppBlueprintId: 'blueprint-both' },
+            channelId: 'webchat',
+            recipient: { id: 'recipient-id' },
+            conversation: { id: 'conv-id' },
+            isAgenticRequest: jest.fn().mockReturnValue(false),
+            getAgenticInstanceId: jest.fn().mockReturnValue(undefined)
+          },
+          sendActivity: jest.fn()
+        } as unknown as TurnContext;
+
+        await service.listToolServers('my-agent-id', mockTokenProvider, mockContext, { orchestratorName: 'Claude' });
+
+        const callArgs = axiosGetSpy.mock.calls[0] as [string, { headers: Record<string, string> }];
+        const headers = callArgs[1].headers;
+        expect(headers['x-ms-agentid']).toBe('blueprint-both');
+        expect(axiosGetSpy).toHaveBeenCalledWith(
+          expect.stringContaining('/agents/v2/my-agent-id/mcpServers'),
+          expect.any(Object)
+        );
       });
     });
   });
