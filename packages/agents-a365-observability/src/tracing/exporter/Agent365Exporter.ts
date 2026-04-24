@@ -248,7 +248,8 @@ export class Agent365Exporter implements SpanExporter {
       const chunk = chunks[i];
       const payload = this.buildEnvelope(chunk, resourceAttrs);
       const body = JSON.stringify(payload);
-      logger.info(`[Agent365Exporter] Sending chunk ${i + 1} of ${chunks.length} (${chunk.length} spans, ${body.length} bytes)`);
+      const bodyBytes = Buffer.byteLength(body, 'utf8');
+      logger.info(`[Agent365Exporter] Sending chunk ${i + 1} of ${chunks.length} (${chunk.length} spans, ${bodyBytes} bytes)`);
 
       const { ok, correlationId } = await this.postWithRetries(url, body, headers);
       lastCorrelationId = correlationId;
