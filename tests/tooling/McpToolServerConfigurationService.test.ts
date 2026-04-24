@@ -1546,7 +1546,7 @@ describe('McpToolServerConfigurationService', () => {
   });
 
   describe('listToolServers S2S signature (agenticAppId, tokenProvider)', () => {
-    let mockTokenProvider: jest.Mock<AppTokenProvider>;
+    let mockTokenProvider: jest.MockedFunction<AppTokenProvider>;
     let getAgenticAppTokenSpy: jest.SpiedFunction<typeof AgenticAuthenticationService.GetAgenticAppToken>;
 
     const createMockJwt = (seed = 'default') => {
@@ -1584,8 +1584,8 @@ describe('McpToolServerConfigurationService', () => {
 
         expect(servers).toHaveLength(1);
         expect(servers[0].mcpServerName).toBe('testServer');
-        // Dev mode uses env var acquirer, not S2S acquirer
-        expect(getAgenticAppTokenSpy).toHaveBeenCalledTimes(1); // Only for the gateway token
+        // Dev mode skips gateway token acquisition
+        expect(getAgenticAppTokenSpy).not.toHaveBeenCalled();
       });
 
       it('should attach BEARER_TOKEN env var in dev mode (not S2S acquirer)', async () => {

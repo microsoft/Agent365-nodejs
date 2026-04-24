@@ -108,7 +108,8 @@ export class McpToolRegistrationService {
 
     for (const server of servers) {
       // Merge base headers (channel, user-agent) with per-audience Authorization from server.headers
-      const baseHeaders: Record<string, string> = Utility.GetToolRequestHeaders(gatewayAuthToken, turnContext, options);
+      const toolRequestAuthToken = gatewayAuthToken ?? server.headers?.Authorization ?? server.headers?.authorization;
+      const baseHeaders: Record<string, string> = Utility.GetToolRequestHeaders(toolRequestAuthToken, turnContext, options);
       const headers: Record<string, string> = { ...baseHeaders, ...server.headers };
 
       // Create MCPServerStreamableHttp instance for OpenAI agents

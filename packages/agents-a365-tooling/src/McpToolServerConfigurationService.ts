@@ -104,15 +104,17 @@ export class McpToolServerConfigurationService {
         const turnContext = isTurnContext ? thirdParam as TurnContext : undefined;
         const toolOptions = isTurnContext
           ? authTokenOrOptionsOrToolOptions as ToolOptions | undefined
-          : thirdParam as ToolOptions | undefined;
-
-        // Acquire a gateway token via client credentials
-        const gatewayScope = this.configProvider.getConfiguration().mcpPlatformAuthenticationScope;
-        const authToken = await AgenticAuthenticationService.GetAgenticAppToken(tokenProvider, [gatewayScope]);
+          // When thirdParam is not a TurnContext (undefined or ToolOptions), check both the 3rd and 4th args
+          : (thirdParam as ToolOptions | undefined) ?? (authTokenOrOptionsOrToolOptions as ToolOptions | undefined);
 
         const servers = await (this.isDevScenario()
           ? this.getMCPServerConfigsFromManifest()
-          : this.getMCPServerConfigsFromToolingGateway(agenticAppId, authToken, turnContext, toolOptions));
+          : (async () => {
+              // Acquire a gateway token via client credentials only when calling the gateway
+              const gatewayScope = this.configProvider.getConfiguration().mcpPlatformAuthenticationScope;
+              const authToken = await AgenticAuthenticationService.GetAgenticAppToken(tokenProvider, [gatewayScope]);
+              return this.getMCPServerConfigsFromToolingGateway(agenticAppId, authToken, turnContext, toolOptions);
+            })());
 
         const acquire = this.isDevScenario()
           ? this.createDevTokenAcquirer()
@@ -299,12 +301,8 @@ export class McpToolServerConfigurationService {
    * AppTokenProvider. Throws if the provider returns a falsy token.
    */
   private createS2sTokenAcquirer(tokenProvider: AppTokenProvider): TokenAcquirer {
-    return async (server, scope) => {
-      const token = await AgenticAuthenticationService.GetAgenticAppToken(tokenProvider, [scope]);
-      if (!token) {
-        throw new Error(`Failed to obtain S2S token for MCP server '${server.mcpServerName}' (scope: ${scope})`);
-      }
-      return token;
+    return async (_server, scope) => {
+      return await AgenticAuthenticationService.GetAgenticAppToken(tokenProvider, [scope]);
     };
   }
 
