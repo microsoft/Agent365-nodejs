@@ -480,7 +480,7 @@ describe('exporter/utils', () => {
       expect(result.size).toBe(0);
     });
 
-    it('should skip spans without a known gen_ai.operation.name', async () => {
+    it('should skip spans with missing or unknown gen_ai.operation.name', async () => {
       const { partitionByIdentity } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
 
       const spans = [
