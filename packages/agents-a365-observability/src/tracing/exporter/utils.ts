@@ -98,10 +98,11 @@ export function partitionByIdentity(
   let skippedCount = 0;
   for (const span of spans) {
     const attrs = span.attributes || {};
+    const operationName = asStr(attrs[OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY]);
     const tenant = asStr(attrs[OpenTelemetryConstants.TENANT_ID_KEY]);
     const agent = asStr(attrs[OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]);
 
-    if (!tenant || !agent) {
+    if (!operationName || !tenant || !agent) {
       skippedCount++;
       continue;
     }
@@ -113,7 +114,7 @@ export function partitionByIdentity(
   }
 
   if(skippedCount > 0) {
-    logger.event(ExporterEventNames.EXPORT_PARTITION_SPAN_MISSING_IDENTITY, false, 0, `${skippedCount} spans are skipped due to missing tenant or agent ID`);
+    logger.event(ExporterEventNames.EXPORT_PARTITION_SPAN_MISSING_IDENTITY, false, 0, `${skippedCount} spans are skipped due to missing genAI operation name, tenant, or agent ID`);
   }
 
   logger.info(`[Agent365Exporter] Partitioned into ${groups.size} identity groups (${skippedCount} spans skipped)`);
