@@ -108,15 +108,22 @@ export function partitionByIdentity(
 ): Map<string, ReadableSpan[]> {
   const groups = new Map<string, ReadableSpan[]>();
 
-  let skippedCount = 0;
+  let nonGenAICount = 0;
+  let missingIdentityCount = 0;
   for (const span of spans) {
     const attrs = span.attributes || {};
     const operationName = asStr(attrs[OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY]);
+
+    if (!operationName || !GEN_AI_OPERATION_NAMES.has(operationName)) {
+      nonGenAICount++;
+      continue;
+    }
+
     const tenant = asStr(attrs[OpenTelemetryConstants.TENANT_ID_KEY]);
     const agent = asStr(attrs[OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]);
 
-    if (!operationName || !GEN_AI_OPERATION_NAMES.has(operationName) || !tenant || !agent) {
-      skippedCount++;
+    if (!tenant || !agent) {
+      missingIdentityCount++;
       continue;
     }
 
@@ -126,10 +133,15 @@ export function partitionByIdentity(
     groups.set(key, existing);
   }
 
-  if(skippedCount > 0) {
-    logger.event(ExporterEventNames.EXPORT_PARTITION_SPAN_MISSING_IDENTITY, false, 0, `${skippedCount} spans are skipped due to missing genAI operation name, tenant, or agent ID`);
+  if (nonGenAICount > 0) {
+    logger.info(`[Agent365Exporter] ${nonGenAICount} non-genAI spans filtered out`);
   }
 
+  if (missingIdentityCount > 0) {
+    logger.event(ExporterEventNames.EXPORT_PARTITION_SPAN_MISSING_IDENTITY, false, 0, `${missingIdentityCount} spans are skipped due to missing tenant or agent ID`);
+  }
+
+  const skippedCount = nonGenAICount + missingIdentityCount;
   logger.info(`[Agent365Exporter] Partitioned into ${groups.size} identity groups (${skippedCount} spans skipped)`);
   return groups;
 }
