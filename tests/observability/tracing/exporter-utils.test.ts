@@ -387,7 +387,7 @@ describe('exporter/utils', () => {
   });
 
   describe('partitionByIdentity', () => {
-    const createMockSpan = (name: string, tenantId?: string, agentId?: string): ReadableSpan => ({
+    const createMockSpan = (name: string, tenantId?: string, agentId?: string, operationName?: string): ReadableSpan => ({
       name,
       kind: SpanKind.INTERNAL,
       spanContext: () => ({
@@ -402,6 +402,7 @@ describe('exporter/utils', () => {
       attributes: {
         ...(tenantId !== undefined && { [OpenTelemetryConstants.TENANT_ID_KEY]: tenantId }),
         ...(agentId !== undefined && { [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]: agentId }),
+        ...(operationName !== undefined && { [OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY]: operationName }),
       },
       links: [],
       events: [],
@@ -417,9 +418,9 @@ describe('exporter/utils', () => {
       const { partitionByIdentity } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
 
       const spans = [
-        createMockSpan('span1', 'tenant1', 'agent1'),
-        createMockSpan('span2', 'tenant1', 'agent1'),
-        createMockSpan('span3', 'tenant2', 'agent2'),
+        createMockSpan('span1', 'tenant1', 'agent1', 'invoke_agent'),
+        createMockSpan('span2', 'tenant1', 'agent1', 'chat'),
+        createMockSpan('span3', 'tenant2', 'agent2', 'execute_tool'),
       ];
 
       const result = partitionByIdentity(spans);
@@ -433,8 +434,8 @@ describe('exporter/utils', () => {
       const { partitionByIdentity } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
 
       const spans = [
-        createMockSpan('span1', undefined, 'agent1'),
-        createMockSpan('span2', 'tenant1', 'agent1'),
+        createMockSpan('span1', undefined, 'agent1', 'invoke_agent'),
+        createMockSpan('span2', 'tenant1', 'agent1', 'invoke_agent'),
       ];
 
       const result = partitionByIdentity(spans);
@@ -447,8 +448,8 @@ describe('exporter/utils', () => {
       const { partitionByIdentity } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
 
       const spans = [
-        createMockSpan('span1', 'tenant1', undefined),
-        createMockSpan('span2', 'tenant1', 'agent1'),
+        createMockSpan('span1', 'tenant1', undefined, 'invoke_agent'),
+        createMockSpan('span2', 'tenant1', 'agent1', 'invoke_agent'),
       ];
 
       const result = partitionByIdentity(spans);
@@ -469,14 +470,31 @@ describe('exporter/utils', () => {
       const { partitionByIdentity } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
 
       const spans = [
-        createMockSpan('span1', undefined, undefined),
-        createMockSpan('span2', 'tenant1', undefined),
-        createMockSpan('span3', undefined, 'agent1'),
+        createMockSpan('span1', undefined, undefined, 'invoke_agent'),
+        createMockSpan('span2', 'tenant1', undefined, 'invoke_agent'),
+        createMockSpan('span3', undefined, 'agent1', 'invoke_agent'),
       ];
 
       const result = partitionByIdentity(spans);
 
       expect(result.size).toBe(0);
+    });
+
+    it('should skip spans with missing or unknown gen_ai.operation.name', async () => {
+      const { partitionByIdentity } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
+
+      const spans = [
+        createMockSpan('genai-span', 'tenant1', 'agent1', 'invoke_agent'),
+        createMockSpan('http-span', 'tenant1', 'agent1', undefined),
+        createMockSpan('db-span', 'tenant1', 'agent1'),
+        createMockSpan('unknown-op', 'tenant1', 'agent1', 'some_random_op'),
+      ];
+
+      const result = partitionByIdentity(spans);
+
+      expect(result.size).toBe(1);
+      expect(result.get('tenant1:agent1')?.length).toBe(1);
+      expect(result.get('tenant1:agent1')?.[0].name).toBe('genai-span');
     });
   });
 });
