@@ -5708,9 +5708,9 @@ snapshots:
       jest-mock: 30.2.0
       jest-util: 30.2.0
 
-  express-rate-limit@8.3.1(express@5.2.1):
+  express-rate-limit@8.3.1(express@5.2.0):
     dependencies:
-      express: 5.2.1
+      express: 5.2.0
       ip-address: 10.1.0
 
   express@5.2.0:
