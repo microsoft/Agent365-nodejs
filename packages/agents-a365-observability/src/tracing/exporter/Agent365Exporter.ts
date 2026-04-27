@@ -361,11 +361,11 @@ export class Agent365Exporter implements SpanExporter {
 
     const scopeSpans: ScopeSpan[] = [];
     for (const [scopeKey, spans] of scopeMap) {
-      const [name, version] = scopeKey.split(':');
+      const representative = mappedSpans.find(ms => ms.scopeKey === scopeKey)!;
       scopeSpans.push({
         scope: {
-          name,
-          version: version || undefined,
+          name: representative.scopeName,
+          version: representative.scopeVersion,
         },
         spans,
       });

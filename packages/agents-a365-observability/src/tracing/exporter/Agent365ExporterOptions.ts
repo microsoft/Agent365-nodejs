@@ -53,6 +53,6 @@ export class Agent365ExporterOptions {
   /** Maximum number of spans per export batch. */
   public maxExportBatchSize: number = 512;
 
-  /** Upper bound on HTTP request body size in bytes. 100 KB headroom under the 1 MB server limit for estimator error and header overhead. */
+  /** Upper bound on HTTP request body size in bytes. 100 KB headroom under the 1 MB server limit for estimator error and JSON/envelope overhead (for example, resource attributes and scope wrappers). */
   public maxPayloadBytes: number = 900_000;
 }

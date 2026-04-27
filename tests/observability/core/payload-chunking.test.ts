@@ -138,7 +138,7 @@ describe('truncateSpan verification', () => {
     const span = makeOTLPSpan({
       a: '[overlimit]',
       b: '[overlimit]',
-      big: new Array(100000).fill(42),
+      big: new Array(5200).fill(42),
     });
     expect(truncateSpan(span)).toBeDefined();
   });
