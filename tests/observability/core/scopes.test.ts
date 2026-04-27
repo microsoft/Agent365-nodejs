@@ -558,7 +558,7 @@ describe('Scopes', () => {
     it('should create scope with minimal details', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
       const inferenceDetails: InferenceDetails = {
-        operationName: InferenceOperationType.TEXT_COMPLETION,
+        operationName: InferenceOperationType.CHAT,
         model: 'gpt-3.5-turbo'
       };
 

@@ -451,9 +451,7 @@ enum InvocationRole {
 }
 
 enum InferenceOperationType {
-  CHAT = 'Chat',
-  TEXT_COMPLETION = 'TextCompletion',
-  GENERATE_CONTENT = 'GenerateContent'
+  CHAT = 'Chat'
 }
 ```
 
