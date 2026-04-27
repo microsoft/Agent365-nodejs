@@ -37,8 +37,8 @@ catalogs:
       specifier: ^1.3.1
       version: 1.3.1
     '@modelcontextprotocol/sdk':
-      specifier: ^1.25.2
-      version: 1.25.2
+      specifier: ^1.26.0
+      version: 1.27.1
     '@openai/agents':
       specifier: ^0.7.0
       version: 0.7.2
@@ -488,7 +488,7 @@ importers:
         version: 1.3.1
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
-        version: 1.25.2(@cfworker/json-schema@4.1.1)(hono@4.11.7)(zod@4.1.13)
+        version: 1.27.1(@cfworker/json-schema@4.1.1)(zod@4.1.13)
       express:
         specifier: 'catalog:'
         version: 5.2.0
@@ -546,7 +546,7 @@ importers:
         version: 1.3.1
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
-        version: 1.25.2(@cfworker/json-schema@4.1.1)(hono@4.11.7)(zod@4.1.13)
+        version: 1.27.1(@cfworker/json-schema@4.1.1)(zod@4.1.13)
     devDependencies:
       '@eslint/js':
         specifier: 'catalog:'
@@ -738,7 +738,7 @@ importers:
         version: 1.3.1
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
-        version: 1.25.2(@cfworker/json-schema@4.1.1)(hono@4.11.7)(zod@4.1.13)
+        version: 1.27.1(@cfworker/json-schema@4.1.1)(zod@4.1.13)
       '@openai/agents':
         specifier: 'catalog:'
         version: 0.7.2(@cfworker/json-schema@4.1.1)(ws@8.18.3)(zod@4.1.13)
@@ -1162,12 +1162,6 @@ packages:
     peerDependencies:
       hono: ^4.11.7
 
-  '@hono/node-server@1.19.7':
-    resolution: {integrity: sha512-vUcD0uauS7EU2caukW8z5lJKtoGMokxNbJtBiwHgpqxEXokaHCBkQUmCHhjFB1VUTWdqj25QoMkMKzgjq+uhrw==}
-    engines: {node: '>=18.14.1'}
-    peerDependencies:
-      hono: ^4.11.7
-
   '@humanfs/core@0.19.1':
     resolution: {integrity: sha512-5DyQ4+1JEUzejeK1JGICcideyfUbGixgS9jNgex5nqkW+cY7WZhxBigmieN5Qnw9ZosSNVC9KQKyb+GUaGyKUA==}
     engines: {node: '>=18.18.0'}
@@ -1433,16 +1427,6 @@ packages:
   '@microsoft/agents-hosting@1.3.1':
     resolution: {integrity: sha512-570oJr93l1RcCNNaMVpOm+PgQkRgno/F65nH1aCWLIKLnw0o7iPoj+8Z5b7mnLMidg9lldVSCcf0dBxqTGE1/w==}
     engines: {node: '>=20.0.0'}
-
-  '@modelcontextprotocol/sdk@1.25.2':
-    resolution: {integrity: sha512-LZFeo4F9M5qOhC/Uc1aQSrBHxMrvxett+9KLHt7OhcExtoiRN9DKgbZffMP/nxjutWDQpfMDfP3nkHI4X9ijww==}
-    engines: {node: '>=18'}
-    peerDependencies:
-      '@cfworker/json-schema': ^4.1.1
-      zod: ^4.1.12
-    peerDependenciesMeta:
-      '@cfworker/json-schema':
-        optional: true
 
   '@modelcontextprotocol/sdk@1.27.1':
     resolution: {integrity: sha512-sr6GbP+4edBwFndLbM60gf07z0FQ79gaExpnsjMGePXqFcSSb7t6iscpjk9DhFhwd+mTEQrzNafGP8/iGGFYaA==}
@@ -2411,12 +2395,6 @@ packages:
   expect@30.2.0:
     resolution: {integrity: sha512-u/feCi0GPsI+988gU2FLcsHyAHTU0MX1Wg68NhAnN7z/+C5wqG+CY8J53N9ioe8RXgaoz0nBR/TYMf3AycUuPw==}
     engines: {node: ^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0}
-
-  express-rate-limit@7.5.1:
-    resolution: {integrity: sha512-7iN8iPMDzOMHPUYllBEsQdWVB6fPDMPqwjBaFrgr4Jgr/+okjvzAy+UHlYYL/Vs0OsOrMkwS6PJDkFlJwoxUnw==}
-    engines: {node: '>= 16'}
-    peerDependencies:
-      express: '>= 4.11'
 
   express-rate-limit@8.3.1:
     resolution: {integrity: sha512-D1dKN+cmyPWuvB+G2SREQDzPY1agpBIcTa9sJxOPMCNeH3gwzhqJRDWCXW3gg0y//+LQ/8j52JbMROWyrKdMdw==}
@@ -3756,11 +3734,6 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
 
-  zod-to-json-schema@3.25.0:
-    resolution: {integrity: sha512-HvWtU2UG41LALjajJrML6uQejQhNJx+JBO9IflpSja4R03iNWfKXrj6W2h7ljuLyc1nKS+9yDyL/9tD1U/yBnQ==}
-    peerDependencies:
-      zod: ^4.1.12
-
   zod-to-json-schema@3.25.1:
     resolution: {integrity: sha512-pM/SU9d3YAggzi6MtR4h7ruuQlqKtad8e9S0fmxcMi+ueAK5Korys/aWcV9LIIHTVbj01NdzxcnXSN+O74ZIVA==}
     peerDependencies:
@@ -4221,10 +4194,6 @@ snapshots:
     dependencies:
       hono: 4.11.7
 
-  '@hono/node-server@1.19.7(hono@4.11.7)':
-    dependencies:
-      hono: 4.11.7
-
   '@humanfs/core@0.19.1': {}
 
   '@humanfs/node@0.16.7':
@@ -4654,30 +4623,6 @@ snapshots:
       zod: 4.1.13
     transitivePeerDependencies:
       - debug
-      - supports-color
-
-  '@modelcontextprotocol/sdk@1.25.2(@cfworker/json-schema@4.1.1)(hono@4.11.7)(zod@4.1.13)':
-    dependencies:
-      '@hono/node-server': 1.19.7(hono@4.11.7)
-      ajv: 8.17.1
-      ajv-formats: 3.0.1(ajv@8.17.1)
-      content-type: 1.0.5
-      cors: 2.8.5
-      cross-spawn: 7.0.6
-      eventsource: 3.0.7
-      eventsource-parser: 3.0.6
-      express: 5.2.0
-      express-rate-limit: 7.5.1(express@5.2.0)
-      jose: 6.1.3
-      json-schema-typed: 8.0.2
-      pkce-challenge: 5.0.0
-      raw-body: 3.0.2
-      zod: 4.1.13
-      zod-to-json-schema: 3.25.0(zod@4.1.13)
-    optionalDependencies:
-      '@cfworker/json-schema': 4.1.1
-    transitivePeerDependencies:
-      - hono
       - supports-color
 
   '@modelcontextprotocol/sdk@1.27.1(@cfworker/json-schema@4.1.1)(zod@4.1.13)':
@@ -5762,10 +5707,6 @@ snapshots:
       jest-message-util: 30.2.0
       jest-mock: 30.2.0
       jest-util: 30.2.0
-
-  express-rate-limit@7.5.1(express@5.2.0):
-    dependencies:
-      express: 5.2.0
 
   express-rate-limit@8.3.1(express@5.2.1):
     dependencies:
@@ -7298,10 +7239,6 @@ snapshots:
     optional: true
 
   yocto-queue@0.1.0: {}
-
-  zod-to-json-schema@3.25.0(zod@4.1.13):
-    dependencies:
-      zod: 4.1.13
 
   zod-to-json-schema@3.25.1(zod@4.1.13):
     dependencies:
