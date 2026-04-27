@@ -88,21 +88,44 @@ export function statusName(code: SpanStatusCode): string {
 }
 
 /**
- * Partition spans by (tenantId, agentId) identity pairs
+ * Known genAI operation names produced by the SDK scopes and auto-instrumentation.
+ * Only spans whose gen_ai.operation.name matches one of these values are exported.
+ */
+const GEN_AI_OPERATION_NAMES: ReadonlySet<string> = new Set([
+  OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME,   // 'invoke_agent'
+  OpenTelemetryConstants.EXECUTE_TOOL_OPERATION_NAME,   // 'execute_tool'
+  OpenTelemetryConstants.OUTPUT_MESSAGES_OPERATION_NAME, // 'output_messages'
+  OpenTelemetryConstants.CHAT_OPERATION_NAME,            // 'chat'
+  'Chat',            // InferenceOperationType.CHAT
+  'TextCompletion',  // InferenceOperationType.TEXT_COMPLETION
+  'GenerateContent', // InferenceOperationType.GENERATE_CONTENT
+]);
+
+/**
+ * Partition spans by (tenantId, agentId) identity pairs.
+ * Only genAI spans (those with a known gen_ai.operation.name) are included.
  */
 export function partitionByIdentity(
   spans: ReadableSpan[]
 ): Map<string, ReadableSpan[]> {
   const groups = new Map<string, ReadableSpan[]>();
 
-  let skippedCount = 0;
+  let nonGenAICount = 0;
+  let missingIdentityCount = 0;
   for (const span of spans) {
     const attrs = span.attributes || {};
+    const operationName = asStr(attrs[OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY]);
+
+    if (!operationName || !GEN_AI_OPERATION_NAMES.has(operationName)) {
+      nonGenAICount++;
+      continue;
+    }
+
     const tenant = asStr(attrs[OpenTelemetryConstants.TENANT_ID_KEY]);
     const agent = asStr(attrs[OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]);
 
     if (!tenant || !agent) {
-      skippedCount++;
+      missingIdentityCount++;
       continue;
     }
 
@@ -112,10 +135,15 @@ export function partitionByIdentity(
     groups.set(key, existing);
   }
 
-  if(skippedCount > 0) {
-    logger.event(ExporterEventNames.EXPORT_PARTITION_SPAN_MISSING_IDENTITY, false, 0, `${skippedCount} spans are skipped due to missing tenant or agent ID`);
+  if (nonGenAICount > 0) {
+    logger.info(`[Agent365Exporter] ${nonGenAICount} non-genAI spans filtered out`);
   }
 
+  if (missingIdentityCount > 0) {
+    logger.event(ExporterEventNames.EXPORT_PARTITION_SPAN_MISSING_IDENTITY, false, 0, `${missingIdentityCount} spans are skipped due to missing tenant or agent ID`);
+  }
+
+  const skippedCount = nonGenAICount + missingIdentityCount;
   logger.info(`[Agent365Exporter] Partitioned into ${groups.size} identity groups (${skippedCount} spans skipped)`);
   return groups;
 }

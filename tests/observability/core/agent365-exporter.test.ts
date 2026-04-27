@@ -26,7 +26,10 @@ function makeSpan(attrs: Record<string, unknown>, name = 'test'): ReadableSpan {
     startTime: [Math.floor(Date.now() / 1000), 0],
     endTime: [Math.floor(Date.now() / 1000) + 1, 0],
     status: { code: 0 },
-    attributes: attrs,
+    attributes: {
+      [OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY]: 'invoke_agent',
+      ...attrs,
+    },
     events: [],
     links: [],
     duration: [1, 0],
