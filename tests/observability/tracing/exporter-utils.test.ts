@@ -480,13 +480,14 @@ describe('exporter/utils', () => {
       expect(result.size).toBe(0);
     });
 
-    it('should skip spans without gen_ai.operation.name', async () => {
+    it('should skip spans without a known gen_ai.operation.name', async () => {
       const { partitionByIdentity } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
 
       const spans = [
         createMockSpan('genai-span', 'tenant1', 'agent1', 'invoke_agent'),
         createMockSpan('http-span', 'tenant1', 'agent1', undefined),
         createMockSpan('db-span', 'tenant1', 'agent1'),
+        createMockSpan('unknown-op', 'tenant1', 'agent1', 'some_random_op'),
       ];
 
       const result = partitionByIdentity(spans);

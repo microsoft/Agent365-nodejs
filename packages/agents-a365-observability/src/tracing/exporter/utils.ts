@@ -88,7 +88,22 @@ export function statusName(code: SpanStatusCode): string {
 }
 
 /**
- * Partition spans by (tenantId, agentId) identity pairs
+ * Known genAI operation names produced by the SDK scopes and auto-instrumentation.
+ * Only spans whose gen_ai.operation.name matches one of these values are exported.
+ */
+const GEN_AI_OPERATION_NAMES: ReadonlySet<string> = new Set([
+  OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME,   // 'invoke_agent'
+  OpenTelemetryConstants.EXECUTE_TOOL_OPERATION_NAME,   // 'execute_tool'
+  OpenTelemetryConstants.OUTPUT_MESSAGES_OPERATION_NAME, // 'output_messages'
+  OpenTelemetryConstants.CHAT_OPERATION_NAME,            // 'chat'
+  'Chat',            // InferenceOperationType.CHAT
+  'TextCompletion',  // InferenceOperationType.TEXT_COMPLETION
+  'GenerateContent', // InferenceOperationType.GENERATE_CONTENT
+]);
+
+/**
+ * Partition spans by (tenantId, agentId) identity pairs.
+ * Only genAI spans (those with a known gen_ai.operation.name) are included.
  */
 export function partitionByIdentity(
   spans: ReadableSpan[]
@@ -102,7 +117,7 @@ export function partitionByIdentity(
     const tenant = asStr(attrs[OpenTelemetryConstants.TENANT_ID_KEY]);
     const agent = asStr(attrs[OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]);
 
-    if (!operationName || !tenant || !agent) {
+    if (!operationName || !GEN_AI_OPERATION_NAMES.has(operationName) || !tenant || !agent) {
       skippedCount++;
       continue;
     }
