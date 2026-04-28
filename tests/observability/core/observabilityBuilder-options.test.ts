@@ -4,7 +4,7 @@
 import { ObservabilityBuilder } from '@microsoft/agents-a365-observability/src/ObservabilityBuilder';
 import { ClusterCategory } from '@microsoft/agents-a365-runtime';
 import { ATTR_SERVICE_NAMESPACE } from '@opentelemetry/semantic-conventions';
-import * as resources from '@opentelemetry/resources';
+import { trace } from '@opentelemetry/api';
 
 // Mock the Agent365Exporter so we can capture the constructed options without performing network calls.
 jest.mock('@microsoft/agents-a365-observability/src/tracing/exporter/Agent365Exporter', () => {
@@ -79,19 +79,33 @@ describe('ObservabilityBuilder exporterOptions merging', () => {
 });
 
 describe('ObservabilityBuilder serviceNamespace', () => {
-  it('includes service.namespace only when withServiceNamespace is called', () => {
-    const resourceSpy = jest.spyOn(resources, 'resourceFromAttributes');
+  let createResourceSpy: jest.SpyInstance;
+
+  beforeEach(() => {
     process.env.ENABLE_A365_OBSERVABILITY_EXPORTER = 'true';
+    // Spy on the private createResource method to capture the resource attributes.
+    createResourceSpy = jest.spyOn(ObservabilityBuilder.prototype as any, 'createResource');
+    // Force the builder to take the NodeSDK code path (which calls createResource)
+    // by making getTracerProvider return a provider without addSpanProcessor/resource.
+    jest.spyOn(trace, 'getTracerProvider').mockReturnValue({} as any);
+  });
 
-    // Without namespace
-    new ObservabilityBuilder().withService('svc').build();
-    expect(resourceSpy.mock.calls[0][0]).not.toHaveProperty(ATTR_SERVICE_NAMESPACE);
-
-    // With namespace
-    new ObservabilityBuilder().withService('svc').withServiceNamespace('ns').build();
-    expect(resourceSpy.mock.calls[1][0][ATTR_SERVICE_NAMESPACE]).toBe('ns');
-
+  afterEach(() => {
     delete process.env.ENABLE_A365_OBSERVABILITY_EXPORTER;
-    resourceSpy.mockRestore();
+  });
+
+  it('does not include service.namespace when withServiceNamespace is not called', () => {
+    new ObservabilityBuilder().withService('svc').build();
+    expect(createResourceSpy).toHaveBeenCalled();
+    const result = createResourceSpy.mock.results[0].value;
+    // The resource should not contain ATTR_SERVICE_NAMESPACE
+    expect(result?.attributes?.[ATTR_SERVICE_NAMESPACE]).toBeUndefined();
+  });
+
+  it('includes service.namespace when withServiceNamespace is called', () => {
+    new ObservabilityBuilder().withService('svc').withServiceNamespace('ns').build();
+    expect(createResourceSpy).toHaveBeenCalled();
+    const result = createResourceSpy.mock.results[0].value;
+    expect(result?.attributes?.[ATTR_SERVICE_NAMESPACE]).toBe('ns');
   });
 });
