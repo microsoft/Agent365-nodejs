@@ -94,7 +94,6 @@ export class OpenTelemetryConstants {
   public static readonly GEN_AI_AGENT_BLUEPRINT_ID_KEY = 'microsoft.a365.agent.blueprint.id';
 
   // Execution context dimensions
-  public static readonly GEN_AI_EXECUTION_TYPE_KEY = 'gen_ai.execution.type';
   public static readonly GEN_AI_EXECUTION_PAYLOAD_KEY = 'gen_ai.execution.payload';
 
   // Channel dimensions

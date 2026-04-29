@@ -4,7 +4,8 @@
 import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import {
   ToolingConfiguration,
-  defaultToolingConfigurationProvider
+  defaultToolingConfigurationProvider,
+  resolveTokenScopeForServer
 } from '../../../packages/agents-a365-tooling/src';
 import { RuntimeConfiguration, DefaultConfigurationProvider, ClusterCategory } from '../../../packages/agents-a365-runtime/src';
 
@@ -224,6 +225,41 @@ describe('ToolingConfiguration', () => {
     });
   });
 
+  describe('getBearerTokenForServer', () => {
+    it('should return per-server token when BEARER_TOKEN_<NAME> is set', () => {
+      process.env.BEARER_TOKEN_MYSERVER = 'per-server-token';
+      const config = new ToolingConfiguration({});
+      expect(config.getBearerTokenForServer('myserver')).toBe('per-server-token');
+    });
+
+    it('should fall back to BEARER_TOKEN when per-server var is not set', () => {
+      delete process.env.BEARER_TOKEN_MYSERVER;
+      process.env.BEARER_TOKEN = 'shared-token';
+      const config = new ToolingConfiguration({});
+      expect(config.getBearerTokenForServer('myserver')).toBe('shared-token');
+    });
+
+    it('should return undefined when neither per-server nor shared token is set', () => {
+      delete process.env.BEARER_TOKEN_MYSERVER;
+      delete process.env.BEARER_TOKEN;
+      const config = new ToolingConfiguration({});
+      expect(config.getBearerTokenForServer('myserver')).toBeUndefined();
+    });
+
+    it('should prefer per-server token over shared BEARER_TOKEN when both are set', () => {
+      process.env.BEARER_TOKEN_MYSERVER = 'per-server-token';
+      process.env.BEARER_TOKEN = 'shared-token';
+      const config = new ToolingConfiguration({});
+      expect(config.getBearerTokenForServer('myserver')).toBe('per-server-token');
+    });
+
+    it('should uppercase the server name when looking up the env var', () => {
+      process.env.BEARER_TOKEN_MY_SERVER = 'upper-token';
+      const config = new ToolingConfiguration({});
+      expect(config.getBearerTokenForServer('my_server')).toBe('upper-token');
+    });
+  });
+
   describe('combined overrides', () => {
     it('should allow overriding both runtime and tooling settings', () => {
       const config = new ToolingConfiguration({
@@ -249,6 +285,89 @@ describe('ToolingConfiguration', () => {
       expect(config.mcpPlatformEndpoint).toBe('https://tenant-a.endpoint');
       currentTenant = 'tenant-b';
       expect(config.mcpPlatformEndpoint).toBe('https://tenant-b.endpoint');
+    });
+  });
+});
+
+describe('resolveTokenScopeForServer', () => {
+  const ATG_SCOPE = 'ea9ffc3e-8a23-4a7d-836d-234d7c7565c1/.default';
+  const ATG_APP_ID = 'ea9ffc3e-8a23-4a7d-836d-234d7c7565c1';
+
+  it('should return ATG scope when audience is undefined (V1 server)', () => {
+    expect(resolveTokenScopeForServer({ mcpServerName: 'mail', url: 'https://mail.example.com' })).toBe(ATG_SCOPE);
+  });
+
+  it('should return ATG scope when audience equals the shared ATG AppId', () => {
+    expect(resolveTokenScopeForServer({ mcpServerName: 'mail', url: 'https://mail.example.com', audience: ATG_APP_ID })).toBe(ATG_SCOPE);
+  });
+
+  it('should return ATG scope when audience is the ATG api:// URI form', () => {
+    const atgAppIdUri = `api://${ATG_APP_ID}`;
+    expect(resolveTokenScopeForServer({ mcpServerName: 'mail', url: 'https://mail.example.com', audience: atgAppIdUri })).toBe(ATG_SCOPE);
+  });
+
+  it('should return per-server scope when audience is a non-ATG api:// URI (V2 server)', () => {
+    const v2AppIdUri = 'api://custom-app-id';
+    expect(resolveTokenScopeForServer({ mcpServerName: 'mail', url: 'https://mail.example.com', audience: v2AppIdUri })).toBe(`${v2AppIdUri}/.default`);
+  });
+
+  it('should return per-server scope for a V2 GUID audience', () => {
+    const v2AppId = 'aaaabbbb-1234-5678-abcd-111122223333';
+    expect(resolveTokenScopeForServer({ mcpServerName: 'tools', url: 'https://tools.example.com', audience: v2AppId })).toBe(`${v2AppId}/.default`);
+  });
+
+  it('should return per-server scope using explicit scope field when provided (V2)', () => {
+    const v2AppId = 'aaaabbbb-1234-5678-abcd-111122223333';
+    expect(resolveTokenScopeForServer({
+      mcpServerName: 'tools',
+      url: 'https://tools.example.com',
+      audience: v2AppId,
+      scope: 'Tools.ListInvoke.All'
+    })).toBe(`${v2AppId}/Tools.ListInvoke.All`);
+  });
+
+  describe('custom sharedScope (configurable mcpPlatformAuthenticationScope)', () => {
+    const customScope = 'api://custom-atg/.default';
+    const customAudience = 'api://custom-atg';
+
+    it('should return customScope for a V1 server with no audience when sharedScope is overridden', () => {
+      expect(resolveTokenScopeForServer(
+        { mcpServerName: 'mail', url: 'https://mail.example.com' },
+        customScope
+      )).toBe(customScope);
+    });
+
+    it('should return customScope when server audience matches the custom shared audience (api:// form)', () => {
+      expect(resolveTokenScopeForServer(
+        { mcpServerName: 'mail', url: 'https://mail.example.com', audience: customAudience },
+        customScope
+      )).toBe(customScope);
+    });
+
+    it('should return customScope when server audience matches the custom shared audience (plain form)', () => {
+      // audience field may arrive as plain GUID/id even when sharedScope uses api:// prefix
+      expect(resolveTokenScopeForServer(
+        { mcpServerName: 'mail', url: 'https://mail.example.com', audience: 'custom-atg' },
+        customScope
+      )).toBe(customScope);
+    });
+
+    it('should still treat a V2 server as V2 even when sharedScope is custom', () => {
+      const v2Audience = 'aaaabbbb-1234-5678-abcd-111122223333';
+      expect(resolveTokenScopeForServer(
+        { mcpServerName: 'tools', url: 'https://tools.example.com', audience: v2Audience },
+        customScope
+      )).toBe(`${v2Audience}/.default`);
+    });
+
+    it('should not raise false migration error in legacy prod acquirer when sharedScope is overridden', () => {
+      // Regression guard: with the old hardcoded constant, resolveTokenScopeForServer returned
+      // 'ea9ffc3e-.../.default' while createLegacyProdTokenAcquirer compared against the custom
+      // scope — mismatch → false throw. Now both sides use the same configured value.
+      expect(resolveTokenScopeForServer(
+        { mcpServerName: 'mail', url: 'https://mail.example.com' },
+        customScope
+      )).toBe(customScope); // returned scope === sharedScope → no throw
     });
   });
 });

@@ -17,7 +17,6 @@ import {
   Request,
   SpanDetails,
   InvokeAgentScopeDetails,
-  TenantDetails,
 } from '@microsoft/agents-a365-observability';
 import { resolveEmbodiedAgentIds } from './TurnContextUtils';
 
@@ -41,16 +40,6 @@ export class ScopeUtils {
   // ----------------------
   // Context-derived helpers
   // ----------------------
-  /**
-   * Derive tenant details from the TurnContext.
-   * @param turnContext Activity context
-   * @returns Tenant details if a recipient tenant id is present; otherwise undefined.
-   */
-  public static deriveTenantDetails(turnContext: TurnContext): TenantDetails | undefined {
-    const tenantId = turnContext?.activity?.getAgenticTenantId?.();
-    return tenantId ? { tenantId } : undefined;
-  }
-
   /**
    * Derive target agent details from the activity recipient.
    * Uses {@link resolveEmbodiedAgentIds} to resolve the agent ID and blueprint ID, which are only

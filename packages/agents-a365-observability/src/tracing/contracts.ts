@@ -4,22 +4,6 @@
 import type { SpanKind, TimeInput, Link } from '@opentelemetry/api';
 import type { ParentContext } from './context/trace-context-propagation';
 
-/**
- * Represents different types of agent invocations
- */
-export enum ExecutionType {
-  /** Direct human-to-agent invocation (e.g., through UI, API call) */
-  HumanToAgent = 'HumanToAgent',
-
-  /** Agent-to-agent invocation (e.g., one agent calling another) */
-  Agent2Agent = 'Agent2Agent',
-
-  /** Event-driven agent invocation (e.g., scheduled, webhook, message queue) */
-  EventToAgent = 'EventToAgent',
-
-  /** Unknown or unspecified invocation type */
-  Unknown = 'Unknown'
-}
 
 /**
  * Represents different roles that can invoke an agent
@@ -72,8 +56,8 @@ export interface Channel {
  * Used across all scope types for channel and conversation tracking.
  */
 export interface Request {
-  /** The content of the request */
-  content?: string;
+  /** The content of the request. */
+  content?: InputMessagesParam;
 
   /** Optional session identifier for grouping related requests */
   sessionId?: string;
@@ -85,13 +69,6 @@ export interface Request {
   conversationId?: string;
 }
 
-/**
- * Details about a tenant
- */
-export interface TenantDetails {
-  /** The unique identifier for the tenant */
-  tenantId: string;
-}
 
 /**
  * Details about an AI agent
@@ -138,8 +115,8 @@ export interface ToolCallDetails {
   /** The name of the tool being executed */
   toolName: string;
 
-  /** Tool arguments/parameters */
-  arguments?: string;
+  /** Tool arguments/parameters. Objects are serialized to JSON automatically. */
+  arguments?: Record<string, unknown> | string;
 
   /** The unique identifier for the tool call */
   toolCallId?: string;
@@ -272,11 +249,12 @@ export interface InferenceResponse {
 /**
  * Represents a response containing output messages from an agent.
  * Used with OutputScope for output message tracing.
- * Accepts plain strings or structured OTEL OutputMessage objects.
+ * Accepts plain strings, structured OTEL OutputMessage objects, or a raw dict
+ * (treated as a tool call result per OTEL spec).
  */
 export interface OutputResponse {
   /** The output messages from the agent */
-  messages: OutputMessagesParam;
+  messages: ResponseMessagesParam;
 }
 
 /**
@@ -472,8 +450,15 @@ export interface OutputMessages {
 
 export const A365_MESSAGE_SCHEMA_VERSION = '0.1.0' as const;
 
-/** Accepted input for `recordInputMessages`. Supports plain strings (backward compat) or the versioned wrapper. */
-export type InputMessagesParam = string[] | InputMessages;
+/** Accepted input for `recordInputMessages`. Supports a single string, an array of strings (backward compat), or the versioned wrapper. */
+export type InputMessagesParam = string | string[] | InputMessages;
 
-/** Accepted input for `recordOutputMessages`. Supports plain strings (backward compat) or the versioned wrapper. */
-export type OutputMessagesParam = string[] | OutputMessages;
+/** Accepted input for `recordOutputMessages`. Supports a single string, an array of strings (backward compat), or the versioned wrapper. */
+export type OutputMessagesParam = string | string[] | OutputMessages;
+
+/**
+ * Accepted input for `OutputResponse.messages`.
+ * Supports plain strings, structured OutputMessages, or a raw dict (treated as a tool call result
+ * per OTEL spec and serialized directly via JSON.stringify).
+ */
+export type ResponseMessagesParam = OutputMessagesParam | Record<string, unknown>;

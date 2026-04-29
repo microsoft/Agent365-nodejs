@@ -443,13 +443,6 @@ interface ToolCallDetails {
 ### Enums
 
 ```typescript
-enum ExecutionType {
-  HumanToAgent = 'HumanToAgent',
-  Agent2Agent = 'Agent2Agent',
-  EventToAgent = 'EventToAgent',
-  Unknown = 'Unknown'
-}
-
 enum InvocationRole {
   Human = 'Human',
   Agent = 'Agent',

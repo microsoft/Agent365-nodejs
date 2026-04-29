@@ -21,7 +21,7 @@ export type ObservabilityConfigurationOptions = RuntimeConfigurationOptions & {
    *
    * @returns Array of OAuth scopes for observability service authentication.
    * @envvar A365_OBSERVABILITY_SCOPES_OVERRIDE - Space-separated list of scopes.
-   * @default ['https://api.powerplatform.com/.default']
+   * @default ['api://9b975845-388f-4429-889e-eab1ef63949c/.default']
    */
   observabilityAuthenticationScopes?: () => string[];
 

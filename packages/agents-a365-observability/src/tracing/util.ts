@@ -23,23 +23,31 @@ export const isAgent365ExporterEnabled = (
 };
 
 /**
- * Maximum length for span attribute values.
- * Values exceeding this limit will be truncated with a suffix.
+ * Ensures the value is always a JSON-parseable string.
+ * - Objects are serialized via JSON.stringify.
+ * - Strings that are already valid JSON objects/arrays are passed through.
+ * - All other strings (including bare JSON primitives) are wrapped: `{ [key]: value }`.
+ * @param value The value to serialize.
+ * @param key The key to use when wrapping a plain string.
  */
-export const MAX_ATTRIBUTE_LENGTH = 8_192;
-
-const TRUNCATION_SUFFIX = '...[truncated]';
-
-/**
- * Truncate a string value to {@link MAX_ATTRIBUTE_LENGTH} characters.
- * If the value exceeds the limit, it is trimmed and a truncation suffix is appended,
- * with the total length capped at exactly {@link MAX_ATTRIBUTE_LENGTH}.
- * @param value The string to truncate
- * @returns The original string if within limits, otherwise the truncated string
- */
-export function truncateValue(value: string): string {
-  if (value.length > MAX_ATTRIBUTE_LENGTH) {
-    return value.substring(0, MAX_ATTRIBUTE_LENGTH - TRUNCATION_SUFFIX.length) + TRUNCATION_SUFFIX;
+export function safeSerializeToJson(value: Record<string, unknown> | string, key: string): string {
+  if (typeof value === 'object' && value !== null) {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return JSON.stringify({ error: 'serialization failed' });
+    }
   }
-  return value;
+  // String: check if it's already a valid JSON object/array, otherwise wrap it
+  const str = value as string;
+  try {
+    const parsed = JSON.parse(str);
+    // Only pass through objects/arrays; bare primitives (numbers, booleans, etc.) get wrapped
+    if (parsed !== null && typeof parsed === 'object') {
+      return str;
+    }
+  } catch {
+    // not valid JSON — fall through to wrap
+  }
+  return JSON.stringify({ [key]: str });
 }

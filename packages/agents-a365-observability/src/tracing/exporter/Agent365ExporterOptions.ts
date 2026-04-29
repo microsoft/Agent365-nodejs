@@ -21,7 +21,7 @@ export type TokenResolver = (agentId: string, tenantId: string) => string | null
  * @property {ClusterCategory | string} clusterCategory Environment / cluster category (e.g. ClusterCategory.preprod, ClusterCategory.prod, default to ClusterCategory.prod).
  * @property {TokenResolver} [tokenResolver] Optional delegate to obtain an auth token. If omitted the exporter will
  *           fall back to reading the cached token (AgenticTokenCacheInstance.getObservabilityToken).
- * @property {boolean} [useS2SEndpoint] When true, exporter will POST to the S2S path (/observabilityService/tenants/{tenantId}/agents/{agentId}/traces).
+ * @property {boolean} [useS2SEndpoint] When true, exporter will POST to the S2S path (/observabilityService/tenants/{tenantId}/otlp/agents/{agentId}/traces).
  * @property {number} maxQueueSize Maximum span queue size before drops occur (passed to BatchSpanProcessor).
  * @property {number} scheduledDelayMilliseconds Delay between automatic batch flush attempts.
  * @property {number} exporterTimeoutMilliseconds Maximum time (ms) the BatchSpanProcessor waits for the entire export() call to complete before giving up. Covers partitioning, token resolution, and all HTTP retries.
@@ -52,4 +52,7 @@ export class Agent365ExporterOptions {
 
   /** Maximum number of spans per export batch. */
   public maxExportBatchSize: number = 512;
+
+  /** Upper bound on HTTP request body size in bytes. 100 KB headroom under the 1 MB server limit for estimator error and JSON/envelope overhead (for example, resource attributes and scope wrappers). */
+  public maxPayloadBytes: number = 900_000;
 }

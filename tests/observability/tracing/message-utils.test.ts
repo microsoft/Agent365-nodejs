@@ -10,7 +10,6 @@ import {
   A365_MESSAGE_SCHEMA_VERSION,
 } from '@microsoft/agents-a365-observability';
 import {
-  isStringArray,
   isWrappedMessages,
   toInputMessages,
   toOutputMessages,
@@ -18,32 +17,6 @@ import {
   normalizeOutputMessages,
   serializeMessages,
 } from '@microsoft/agents-a365-observability/src/tracing/message-utils';
-
-describe('isStringArray', () => {
-  it('returns true for string[]', () => {
-    expect(isStringArray(['hello', 'world'])).toBe(true);
-  });
-
-  it('returns true for empty array', () => {
-    expect(isStringArray([])).toBe(true);
-  });
-
-  it('returns false for InputMessages wrapper', () => {
-    const wrapper: InputMessages = {
-      version: A365_MESSAGE_SCHEMA_VERSION,
-      messages: [{ role: MessageRole.USER, parts: [{ type: 'text', content: 'hi' }] }],
-    };
-    expect(isStringArray(wrapper)).toBe(false);
-  });
-
-  it('returns false for OutputMessages wrapper', () => {
-    const wrapper: OutputMessages = {
-      version: A365_MESSAGE_SCHEMA_VERSION,
-      messages: [{ role: MessageRole.ASSISTANT, parts: [{ type: 'text', content: 'hello' }], finish_reason: 'stop' }],
-    };
-    expect(isStringArray(wrapper)).toBe(false);
-  });
-});
 
 describe('isWrappedMessages', () => {
   it('returns true for InputMessages wrapper', () => {
