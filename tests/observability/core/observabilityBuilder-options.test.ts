@@ -78,6 +78,7 @@ describe('ObservabilityBuilder exporterOptions merging', () => {
   });
 });
 
+
 describe('ObservabilityBuilder serviceNamespace', () => {
   let createResourceSpy: jest.SpyInstance;
 
