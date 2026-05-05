@@ -32,6 +32,39 @@ describe('TurnContextUtils', () => {
     expect(pairs.length).toBeGreaterThan(0);
   });
 
+  it('should use aadObjectId for userId when present (precedence test)', () => {
+    const ctx = {
+      activity: {
+        from: { id: 'from-id-1', name: 'User', aadObjectId: 'aad-oid-1', agenticUserId: 'agentic-uid-1' },
+      },
+    } as any;
+    const pairs = getCallerBaggagePairs(ctx);
+    const obj = Object.fromEntries(pairs);
+    expect(obj[OpenTelemetryConstants.USER_ID_KEY]).toBe('aad-oid-1');
+  });
+
+  it('should fall back to agenticUserId when aadObjectId is absent (A2A scenario)', () => {
+    const ctx = {
+      activity: {
+        from: { id: 'from-id-1', name: 'Agent Caller', agenticUserId: 'agentic-uid-1' },
+      },
+    } as any;
+    const pairs = getCallerBaggagePairs(ctx);
+    const obj = Object.fromEntries(pairs);
+    expect(obj[OpenTelemetryConstants.USER_ID_KEY]).toBe('agentic-uid-1');
+  });
+
+  it('should fall back to from.id when aadObjectId and agenticUserId are absent (non-Teams channel)', () => {
+    const ctx = {
+      activity: {
+        from: { id: 'webchat-user-42', name: 'Web User' },
+      },
+    } as any;
+    const pairs = getCallerBaggagePairs(ctx);
+    const obj = Object.fromEntries(pairs);
+    expect(obj[OpenTelemetryConstants.USER_ID_KEY]).toBe('webchat-user-42');
+  });
+
   it('should get target agent baggage pairs', () => {
     const pairs = getTargetAgentBaggagePairs(mockTurnContext);
     expect(Array.isArray(pairs)).toBe(true);
