@@ -7,11 +7,10 @@
  * Converts OpenAI Agents SDK spans to OpenTelemetry spans
  */
 
-import { context, trace as OtelTrace, Span as OtelSpan, Tracer as OtelTracer, SpanKind } from '@opentelemetry/api';
-import { OpenTelemetryConstants, InferenceOperationType, logger, serializeMessages } from '@microsoft/agents-a365-observability';
+import { context, trace as OtelTrace, Span as OtelSpan, Tracer as OtelTracer } from '@opentelemetry/api';
+import { OpenTelemetryConstants, InferenceOperationType, logger, truncateValue } from '@microsoft/agents-a365-observability';
 import * as Constants from './Constants';
 import * as Utils from './Utils';
-import { buildStructuredInputMessages, buildStructuredOutputMessages, wrapRawContentAsInputMessages, wrapRawContentAsOutputMessages } from './Utils';
 import {
   Span as AgentsSpan,
   SpanData,
@@ -31,11 +30,10 @@ type ContextToken = unknown;
 export class OpenAIAgentsTraceProcessor implements TracingProcessor {
   private static readonly MAX_HANDOFFS_IN_FLIGHT = 1000;
   private static readonly MAX_SPANS_IN_FLIGHT = 10_000;
-  private static readonly SERVER_SPAN_TYPES = new Set(['agent']);
-  private static readonly CLIENT_SPAN_TYPES = new Set(['handoff', 'response', 'generation', 'function', 'mcp_tools']);
 
   private readonly tracer: OtelTracer;
   private readonly suppressInvokeAgentInput: boolean;
+  private readonly isContentRecordingEnabled: boolean;
   private readonly rootSpans: Map<string, OtelSpan> = new Map();
   private readonly otelSpans: Map<string, OtelSpan> = new Map();
   private readonly tokens: Map<string, ContextToken> = new Map();
@@ -52,9 +50,23 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
     ['generation' + Constants.GEN_AI_REQUEST_CONTENT_KEY, OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY],
   ]);
 
-  constructor(tracer: OtelTracer, options?: { suppressInvokeAgentInput?: boolean }) {
+  constructor(tracer: OtelTracer, options?: { suppressInvokeAgentInput?: boolean; isContentRecordingEnabled?: boolean }) {
     this.tracer = tracer;
     this.suppressInvokeAgentInput = options?.suppressInvokeAgentInput ?? false;
+    this.isContentRecordingEnabled = options?.isContentRecordingEnabled ?? false;
+  }
+
+  private static readonly CONTENT_KEYS = new Set([
+    OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY,
+    OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY,
+    OpenTelemetryConstants.GEN_AI_TOOL_ARGS_KEY,
+    OpenTelemetryConstants.GEN_AI_TOOL_CALL_RESULT_KEY,
+    Constants.GEN_AI_REQUEST_CONTENT_KEY,
+    Constants.GEN_AI_RESPONSE_CONTENT_KEY,
+  ]);
+
+  private static isContentKey(key: string): boolean {
+    return OpenAIAgentsTraceProcessor.CONTENT_KEYS.has(key);
   }
 
   private getNewKey(spanType: string, key: string): string | null {
@@ -100,14 +112,6 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
       return;
     }
 
-    // Handoff spans are emitted as CLIENT-kind InvokeAgent spans (see processHandoffSpanData).
-    const spanType = spanData?.type as string | undefined;
-
-    // Skip span types we don't map to schema-defined operations.
-    if (!spanType || spanType === 'custom' || spanType === 'guardrail') {
-      return;
-    }
-
     if (this.otelSpans.size >= OpenAIAgentsTraceProcessor.MAX_SPANS_IN_FLIGHT) {
       logger.warn(`[OpenAIAgentsTraceProcessor] Max spans in flight (${OpenAIAgentsTraceProcessor.MAX_SPANS_IN_FLIGHT}) reached, skipping span`);
       return;
@@ -127,18 +131,10 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
 
     const spanName = Utils.getSpanName(span);
 
-    // SpanKind per OTel client/server semantics + A365 schema:
-    const kind = OpenAIAgentsTraceProcessor.SERVER_SPAN_TYPES.has(spanType)
-      ? SpanKind.SERVER
-      : OpenAIAgentsTraceProcessor.CLIENT_SPAN_TYPES.has(spanType)
-        ? SpanKind.CLIENT
-        : undefined;
-
     // Start OpenTelemetry span
     const otelSpan = this.tracer.startSpan(
       spanName,
       {
-        kind,
         startTime,
         attributes: {
           [OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY]: Utils.getSpanKind(spanData),
@@ -200,14 +196,6 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
     const endTime = endedAt ? new Date(endedAt).getTime() : undefined;
     const status = Utils.getSpanStatus(span);
     otelSpan.setStatus(status);
-    if (span.error) {
-      const errData = (span.error as { data?: Record<string, unknown>; name?: string }).data;
-      const errorType =
-        (typeof errData?.type === 'string' && errData.type) ||
-        (span.error as { name?: string }).name ||
-        'error';
-      otelSpan.setAttribute(OpenTelemetryConstants.ERROR_TYPE_KEY, errorType);
-    }
     if (endTime) {
       otelSpan.end(endTime);
     } else {
@@ -220,18 +208,19 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
    */
   private processSpanData(otelSpan: OtelSpan, data: SpanData, traceId: string): void {
     const type = data.type;
+    const contentRecording = this.isContentRecordingEnabled;
 
     switch (type) {
     case 'response':
-      this.processResponseSpanData(otelSpan, data);
+      this.processResponseSpanData(otelSpan, data, contentRecording);
       break;
 
     case 'generation':
-      this.processGenerationSpanData(otelSpan, data, traceId);
+      this.processGenerationSpanData(otelSpan, data, traceId, contentRecording);
       break;
 
     case 'function':
-      this.processFunctionSpanData(otelSpan, data, traceId);
+      this.processFunctionSpanData(otelSpan, data, traceId, contentRecording);
       break;
 
     case 'mcp_tools':
@@ -251,7 +240,7 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
   /**
    * Process response span data
    */
-  private processResponseSpanData(otelSpan: OtelSpan, data: SpanData): void {
+  private processResponseSpanData(otelSpan: OtelSpan, data: SpanData, contentRecording: boolean): void {
     const responseData = data as Record<string, unknown>;
     // Handle both formats: _response/_input (actual format) and response/input (legacy format)
     const responseObj = responseData._response || responseData.response;
@@ -259,18 +248,15 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
     if (responseObj) {
       const resp = responseObj as Record<string, unknown>;
 
-      // Store the output field as structured OutputMessages (always use versioned envelope)
-      if (resp.output != null) {
-        if (Array.isArray(resp.output)) {
-          const structured = buildStructuredOutputMessages(resp.output as Array<Record<string, unknown>>);
+      // Store the output field for GEN_AI_RESPONSE_CONTENT_KEY
+      if (resp.output && contentRecording) {
+        if (typeof resp.output === 'string') {
+          otelSpan.setAttribute(OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY, truncateValue(resp.output));
+        } else {
           otelSpan.setAttribute(
             OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY,
-            serializeMessages(structured)
+            truncateValue(this.buildOutputMessages(resp.output  as Array<{ role: string; content: Array<{ type: string; text: string }> }>))
           );
-        } else {
-          // String or non-array object — wrap as raw content
-          const structured = wrapRawContentAsOutputMessages(resp.output);
-          otelSpan.setAttribute(OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY, serializeMessages(structured));
         }
       }
 
@@ -287,37 +273,61 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
       otelSpan.updateName(`${InferenceOperationType.CHAT} ${modelName}`);
     }
 
-    if (inputObj != null && !this.suppressInvokeAgentInput) {
+    if (inputObj && !this.suppressInvokeAgentInput && contentRecording) {
       if (typeof inputObj === 'string') {
         try {
           const parsed = JSON.parse(inputObj as string);
           if (Array.isArray(parsed)) {
-            const structured = buildStructuredInputMessages(parsed);
             otelSpan.setAttribute(
               OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY,
-              serializeMessages(structured)
+              truncateValue(this.buildInputMessages(parsed))
             );
             return;
           }
         } catch {
-          // If parsing fails, wrap raw string in versioned envelope
+          // If parsing fails, fall back to raw string behavior
         }
-        const wrappedInput = wrapRawContentAsInputMessages(inputObj);
-        otelSpan.setAttribute(OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, serializeMessages(wrappedInput));
+        otelSpan.setAttribute(OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, truncateValue(inputObj as string));
       } else if (Array.isArray(inputObj)) {
-        const structured = buildStructuredInputMessages(inputObj as Array<{ role: string; content: string | unknown[] | unknown }>);
+        // build the input messages from array
         otelSpan.setAttribute(
           OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY,
-          serializeMessages(structured)
+          truncateValue(this.buildInputMessages(inputObj))
         );
       }
     }
   }
 
+  private buildInputMessages(arr: Array<{ role: string; content: string }>): string {
+    const userTexts = arr
+      .filter((m) => m && m.role === 'user' && typeof m.content === 'string')
+      .map((m) => m.content);
+
+    return JSON.stringify(userTexts.length ? userTexts : arr);
+  }
+
+  private buildOutputMessages(arr: Array<{ role: string; content: Array<{ type: string; text: string }> }>): string {
+    const userTexts: string[] = [];
+
+    for (const { content } of arr) {
+      if (!Array.isArray(content)) {
+        continue;
+      }
+
+      for (const { type, text } of content) {
+        if (type === 'output_text' && typeof text === 'string') {
+          userTexts.push(text);
+        }
+      }
+    }
+
+    return JSON.stringify(userTexts.length ? userTexts : arr);
+  }
+
   /**
    * Process generation span data
    */
-  private processGenerationSpanData(otelSpan: OtelSpan, data: SpanData, traceId: string): void {
+  private processGenerationSpanData(otelSpan: OtelSpan, data: SpanData, traceId: string, contentRecording: boolean): void {
     const attrs = Utils.getAttributesFromGenerationSpanData(data);
     Object.entries(attrs).forEach(([key, value]) => {
       const shouldExcludeKey = key === Constants.GEN_AI_EXECUTION_PAYLOAD_KEY;
@@ -325,7 +335,9 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
         const newKey = this.getNewKey(data.type, key);
         const resolvedKey = newKey || key;
         if (resolvedKey !== OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY || !this.suppressInvokeAgentInput) {
-          otelSpan.setAttribute(resolvedKey, value as string | number | boolean);
+          if (!OpenAIAgentsTraceProcessor.isContentKey(resolvedKey) || contentRecording) {
+            otelSpan.setAttribute(resolvedKey, value as string | number | boolean);
+          }
         }
       }
     });
@@ -333,26 +345,29 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
     this.stampCustomParent(otelSpan, traceId);
 
     // Update span name with model
+    const operationName = attrs[OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY];
     const modelName = attrs[OpenTelemetryConstants.GEN_AI_REQUEST_MODEL_KEY];
-    if (typeof modelName === 'string' && modelName.length > 0) {
-      otelSpan.updateName(`${InferenceOperationType.CHAT} ${modelName}`);
+    if (operationName && modelName) {
+      otelSpan.updateName(`${operationName} ${modelName}`);
     }
   }
 
   /**
    * Process function/tool span data
    */
-  private processFunctionSpanData(otelSpan: OtelSpan, data: SpanData, traceId: string): void {
+  private processFunctionSpanData(otelSpan: OtelSpan, data: SpanData, traceId: string, contentRecording: boolean): void {
     const functionData = data as Record<string, unknown>;
     const attrs = Utils.getAttributesFromFunctionSpanData(data);
     Object.entries(attrs).forEach(([key, value]) => {
       if (value !== null && value !== undefined) {
         const newKey = this.getNewKey(data.type, key);
         const resolvedKey = newKey || key;
-        otelSpan.setAttribute(resolvedKey, value as string | number | boolean);
+        if (!OpenAIAgentsTraceProcessor.isContentKey(resolvedKey) || contentRecording) {
+          otelSpan.setAttribute(resolvedKey, value as string | number | boolean);
+        }
       }
+      otelSpan.setAttribute(OpenTelemetryConstants.GEN_AI_TOOL_TYPE_KEY, 'function');
     });
-    otelSpan.setAttribute(OpenTelemetryConstants.GEN_AI_TOOL_TYPE_KEY, 'function');
 
     this.stampCustomParent(otelSpan, traceId);
     // Use function name from data instead of span name
@@ -383,19 +398,13 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
   }
 
   /**
-   * Process handoff span data. The handoff span is emitted as a CLIENT-kind
-   * Invoke Agent span representing the caller invoking the target agent.
-   * The from→to mapping is also recorded so the downstream agent (SERVER)
-   * span can back-reference the caller.
+   * Process handoff span data
    */
-  private processHandoffSpanData(otelSpan: OtelSpan, data: SpanData, traceId: string): void {
+  private processHandoffSpanData(_otelSpan: OtelSpan, data: SpanData, traceId: string): void {
     const handoffData = data as Record<string, unknown>;
-    const fromAgent = handoffData.from_agent as string | undefined;
-    const toAgent = handoffData.to_agent as string | undefined;
-
-    if (toAgent && fromAgent) {
-      const key = `${toAgent}:${traceId}`;
-      this.reverseHandoffsDict.set(key, fromAgent);
+    if (handoffData.to_agent && handoffData.from_agent) {
+      const key = `${handoffData.to_agent}:${traceId}`;
+      this.reverseHandoffsDict.set(key, handoffData.from_agent as string);
 
       // Cap the size
       while (this.reverseHandoffsDict.size > OpenAIAgentsTraceProcessor.MAX_HANDOFFS_IN_FLIGHT) {
@@ -405,18 +414,6 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
         }
       }
     }
-
-    otelSpan.setAttribute(
-      OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY,
-      OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME
-    );
-    if (toAgent) {
-      otelSpan.setAttribute(OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY, toAgent);
-      otelSpan.updateName(`${OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME} ${toAgent}`);
-    }
-    if (fromAgent) {
-      otelSpan.setAttribute(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_NAME_KEY, fromAgent);
-    }
   }
 
   /**
@@ -425,15 +422,15 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
   private processAgentSpanData(otelSpan: OtelSpan, data: SpanData, traceId: string): void {
     const agentData = data as Record<string, unknown>;
     if (agentData.name) {
-      otelSpan.setAttribute(OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY, agentData.name as string);
+      otelSpan.setAttribute(Constants.GEN_AI_GRAPH_NODE_ID, agentData.name as string);
       otelSpan.setAttribute(OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY, OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME);
 
-      // Link back to the agent that handed off to this one (A2A caller semantics)
+      // Lookup parent node if exists
       const key = `${agentData.name}:${traceId}`;
       const parentNode = this.reverseHandoffsDict.get(key);
       if (parentNode) {
         this.reverseHandoffsDict.delete(key);
-        otelSpan.setAttribute(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_NAME_KEY, parentNode);
+        otelSpan.setAttribute(Constants.GEN_AI_GRAPH_NODE_PARENT_ID, parentNode);
       }
 
       // Update span name for agent

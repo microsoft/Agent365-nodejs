@@ -152,9 +152,7 @@ export function isPerRequestExportEnabled(
 
   const provider = configProvider ?? defaultPerRequestSpanProcessorConfigurationProvider;
   const enabled = provider.getConfiguration().isPerRequestExportEnabled;
-  if (enabled) {
-    logger.info('[Agent365Exporter] Per-request export is enabled');
-  }
+  logger.info(`[Agent365Exporter] Per-request export enabled: ${enabled}`);
   return enabled;
 }
 

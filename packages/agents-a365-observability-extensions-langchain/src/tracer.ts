@@ -4,7 +4,7 @@
 import { context, trace, Span, SpanKind, SpanStatusCode, Tracer } from "@opentelemetry/api";
 import { BaseTracer, Run } from "@langchain/core/tracers/base";
 import { isTracingSuppressed } from "@opentelemetry/core";
-import { logger, OpenTelemetryConstants } from "@microsoft/agents-a365-observability";
+import { logger, OpenTelemetryConstants, truncateValue } from "@microsoft/agents-a365-observability";
 import * as Utils from "./Utils";
 
 type RunWithSpan = { run: Run; span: Span; startTime: number; lastAccessTime: number };
@@ -12,13 +12,15 @@ type RunWithSpan = { run: Run; span: Span; startTime: number; lastAccessTime: nu
 export class LangChainTracer extends BaseTracer {
   private static readonly MAX_RUNS = 10_000;
   private tracer: Tracer;
+  private isContentRecordingEnabled: boolean;
   private runs = new Map<string, RunWithSpan>();
   private parentByRunId = new Map<string, string | undefined>();
 
 
-  constructor(tracer: Tracer) {
+  constructor(tracer: Tracer, options?: { isContentRecordingEnabled?: boolean }) {
     super();
     this.tracer = tracer;
+    this.isContentRecordingEnabled = options?.isContentRecordingEnabled ?? false;
   }
 
   name = "OpenTelemetryLangChainTracer";
@@ -52,16 +54,12 @@ export class LangChainTracer extends BaseTracer {
       : context.active();
 
     let spanName = run.name;
-    let kind: SpanKind = SpanKind.INTERNAL;
     if (operation === "invoke_agent") {
       spanName = `${operation} ${run.name}`;
-      kind = SpanKind.SERVER;
     } else if (operation === "execute_tool") {
       spanName = `${operation} ${run.name}`;
-      kind = SpanKind.CLIENT;
     } else if (operation === "chat") {
       spanName = `${operation} ${Utils.getModel(run) || run.name}`.trim();
-      kind = SpanKind.CLIENT;
     }
 
     if (this.runs.size >= LangChainTracer.MAX_RUNS) {
@@ -72,7 +70,7 @@ export class LangChainTracer extends BaseTracer {
 
     const startTime = run.start_time ?? Date.now();
     const span = this.tracer.startSpan(spanName, {
-      kind,
+      kind: SpanKind.INTERNAL,
       startTime,
       attributes: { [OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY]: "langchain" },
     }, activeContext);
@@ -110,11 +108,8 @@ export class LangChainTracer extends BaseTracer {
 
       if (run.error) {
         span.setStatus({ code: SpanStatusCode.ERROR });
-        span.setAttribute(OpenTelemetryConstants.ERROR_MESSAGE_KEY, String(run.error));
-        const errorType = (run.error as { name?: string })?.name ?? (run.error as { constructor?: { name?: string } })?.constructor?.name;
-        if (typeof errorType === "string" && errorType.length > 0) {
-          span.setAttribute(OpenTelemetryConstants.ERROR_TYPE_KEY, errorType);
-        }
+        span.setAttribute(OpenTelemetryConstants.ERROR_MESSAGE_KEY, truncateValue(String(run.error)));
+
       } else {
         span.setStatus({ code: SpanStatusCode.OK });
       }
@@ -122,22 +117,19 @@ export class LangChainTracer extends BaseTracer {
       // Set all attributes
       Utils.setOperationTypeAttribute(operation, span);
       Utils.setAgentAttributes(run, span);
-      if (operation === "invoke_agent") {
-        const callerName = this.findCallerAgentName(run);
-        if (callerName) {
-          span.setAttribute(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_NAME_KEY, callerName);
-        }
-      }
       Utils.setModelAttribute(run, span);
       Utils.setProviderNameAttribute(run, span);
       Utils.setSessionIdAttribute(run, span);
       Utils.setTokenAttributes(run, span);
 
-      // Content attributes — always recorded (aligned with Python/.NET SDKs)
-      Utils.setToolAttributes(run, span);
-      Utils.setInputMessagesAttribute(run, span);
-      Utils.setOutputMessagesAttribute(run, span);
-      Utils.setSystemInstructionsAttribute(run, span);
+      // Content attributes gated by content recording setting
+      const contentRecording = this.isContentRecordingEnabled;
+      if (contentRecording) {
+        Utils.setToolAttributes(run, span);
+        Utils.setInputMessagesAttribute(run, span);
+        Utils.setOutputMessagesAttribute(run, span);
+        Utils.setSystemInstructionsAttribute(run, span);
+      }
 
     } catch (error) {
       logger.error(`[LangChainTracer] Error setting span attributes for run ${run.name}: ${error instanceof Error ? error.message : String(error)}`);
@@ -156,18 +148,6 @@ export class LangChainTracer extends BaseTracer {
     while (pid) {
       const entry = this.runs.get(pid);
       if (entry) return entry.span.spanContext();
-      pid = this.parentByRunId.get(pid);
-    }
-    return undefined;
-  }
-
-  private findCallerAgentName(run: Run): string | undefined {
-    let pid = run.parent_run_id;
-    while (pid) {
-      const entry = this.runs.get(pid);
-      if (entry && Utils.getOperationType(entry.run) === "invoke_agent") {
-        return entry.run.name;
-      }
       pid = this.parentByRunId.get(pid);
     }
     return undefined;

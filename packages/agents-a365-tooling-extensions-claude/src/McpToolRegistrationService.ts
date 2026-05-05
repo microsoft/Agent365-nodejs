@@ -64,10 +64,7 @@ export class McpToolRegistrationService {
     const tools: McpClientTool[] = [];
 
     for (const server of servers) {
-      // server.headers contains the per-audience Authorization token set by listToolServers.
-      // Merge with non-auth headers (channelId, user-agent); server.headers auth takes precedence.
-      const baseHeaders = Utility.GetToolRequestHeaders(authToken, turnContext, options);
-      const headers = { ...baseHeaders, ...server.headers };
+      const headers: Record<string, string> = Utility.GetToolRequestHeaders(authToken, turnContext, options);
 
       // Add each server to the config object
       mcpServers[server.mcpServerName] = {
@@ -78,7 +75,10 @@ export class McpToolRegistrationService {
 
       let clientTools = await this.configService.getMcpClientTools(
         server.mcpServerName,
-        { url: server.url, headers: headers } as MCPServerConfig,
+        {
+          url: server.url,
+          headers: headers
+        } as MCPServerConfig,
       );
 
       // Claude will add a prefix to the tool name based on the server name.
