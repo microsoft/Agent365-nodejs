@@ -140,4 +140,47 @@ describe('BaggageMiddleware', () => {
 
     expect(nextCalled).toBe(true);
   });
+
+  it('should extract productContext from channelData when channelIdSubChannel is not set', async () => {
+    const middleware = new BaggageMiddleware();
+    const ctx: any = makeMockTurnContext({ channelId: 'msteams' });
+    
+    // Add channelData with productContext, no channelIdSubChannel
+    ctx.activity.channelData = { productContext: 'COPILOT' };
+    ctx.activity.channelIdSubChannel = undefined;
+    
+    let capturedChannelLink: string | undefined;
+
+    await middleware.onTurn(ctx, async () => {
+      const bag = propagation.getBaggage(otelContext.active());
+      if (bag) {
+        const entry = bag.getEntry(OpenTelemetryConstants.CHANNEL_LINK_KEY);
+        capturedChannelLink = entry?.value;
+      }
+    });
+
+    expect(capturedChannelLink).toBe('COPILOT');
+  });
+
+  it('should use channelIdSubChannel when both channelIdSubChannel and productContext are present', async () => {
+    const middleware = new BaggageMiddleware();
+    const ctx: any = makeMockTurnContext({ channelId: 'msteams' });
+    
+    // Set BOTH channelIdSubChannel and productContext in channelData
+    ctx.activity.channelIdSubChannel = 'teams-subchannel';
+    ctx.activity.channelData = { productContext: 'COPILOT' };
+    
+    let capturedChannelLink: string | undefined;
+
+    await middleware.onTurn(ctx, async () => {
+      const bag = propagation.getBaggage(otelContext.active());
+      if (bag) {
+        const entry = bag.getEntry(OpenTelemetryConstants.CHANNEL_LINK_KEY);
+        capturedChannelLink = entry?.value;
+      }
+    });
+
+    // channelIdSubChannel should take precedence, productContext should be ignored
+    expect(capturedChannelLink).toBe('teams-subchannel');
+  });
 });
