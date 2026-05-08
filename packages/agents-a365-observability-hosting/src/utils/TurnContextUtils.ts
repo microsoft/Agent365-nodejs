@@ -103,8 +103,8 @@ export function getChannelBaggagePairs(turnContext: TurnContext): Array<[string,
   
   let subChannel = turnContext.activity?.channelIdSubChannel as string | undefined;
   
-  // Try to get subChannel from productContext in channelData if subChannel is not set
-  if (!subChannel && turnContext.activity?.channelData) {
+  // Try to get subChannel from productContext in channelData if subChannel is not set or empty
+  if ((!subChannel || subChannel.trim() === '') && turnContext.activity?.channelData) {
     try {
       const channelData = turnContext.activity.channelData;
       let channelDataObj: Record<string, unknown> | undefined;
