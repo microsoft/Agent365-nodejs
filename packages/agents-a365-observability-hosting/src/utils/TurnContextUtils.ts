@@ -107,13 +107,13 @@ export function getChannelBaggagePairs(turnContext: TurnContext): Array<[string,
   if (!subChannel && turnContext.activity?.channelData) {
     try {
       const channelData = turnContext.activity.channelData;
-      let channelDataObj: any;
+      let channelDataObj: Record<string, unknown> | undefined;
       
       // Convert channelData to object if it's a string
       if (typeof channelData === 'string') {
         channelDataObj = JSON.parse(channelData);
       } else if (typeof channelData === 'object') {
-        channelDataObj = channelData;
+        channelDataObj = channelData as Record<string, unknown>;
       }
       
       // Extract productContext if available
