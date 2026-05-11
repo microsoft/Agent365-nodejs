@@ -140,4 +140,90 @@ describe('BaggageMiddleware', () => {
 
     expect(nextCalled).toBe(true);
   });
+
+  it('should extract productContext from channelData when channelIdSubChannel is not set', async () => {
+    const middleware = new BaggageMiddleware();
+    const ctx: any = makeMockTurnContext({ channelId: 'msteams' });
+
+    // Add channelData with productContext, no channelIdSubChannel
+    ctx.activity.channelData = { productContext: 'COPILOT' };
+    ctx.activity.channelIdSubChannel = undefined;
+
+    let capturedChannelLink: string | undefined;
+
+    await middleware.onTurn(ctx, async () => {
+      const bag = propagation.getBaggage(otelContext.active());
+      if (bag) {
+        const entry = bag.getEntry(OpenTelemetryConstants.CHANNEL_LINK_KEY);
+        capturedChannelLink = entry?.value;
+      }
+    });
+
+    expect(capturedChannelLink).toBe('COPILOT');
+  });
+
+  it('should use channelIdSubChannel when both channelIdSubChannel and productContext are present', async () => {
+    const middleware = new BaggageMiddleware();
+    const ctx: any = makeMockTurnContext({ channelId: 'msteams' });
+
+    // Set BOTH channelIdSubChannel and productContext in channelData
+    ctx.activity.channelIdSubChannel = 'teams-subchannel';
+    ctx.activity.channelData = { productContext: 'COPILOT' };
+
+    let capturedChannelLink: string | undefined;
+
+    await middleware.onTurn(ctx, async () => {
+      const bag = propagation.getBaggage(otelContext.active());
+      if (bag) {
+        const entry = bag.getEntry(OpenTelemetryConstants.CHANNEL_LINK_KEY);
+        capturedChannelLink = entry?.value;
+      }
+    });
+
+    // channelIdSubChannel should take precedence, productContext should be ignored
+    expect(capturedChannelLink).toBe('teams-subchannel');
+  });
+
+  it('should extract productContext from channelData when it is a JSON string', async () => {
+    const middleware = new BaggageMiddleware();
+    const ctx: any = makeMockTurnContext({ channelId: 'msteams' });
+
+    // Set channelData as a JSON string (simulating wire format)
+    ctx.activity.channelIdSubChannel = undefined;
+    ctx.activity.channelData = JSON.stringify({ productContext: 'COPILOT' });
+
+    let capturedChannelLink: string | undefined;
+
+    await middleware.onTurn(ctx, async () => {
+      const bag = propagation.getBaggage(otelContext.active());
+      if (bag) {
+        const entry = bag.getEntry(OpenTelemetryConstants.CHANNEL_LINK_KEY);
+        capturedChannelLink = entry?.value;
+      }
+    });
+
+    expect(capturedChannelLink).toBe('COPILOT');
+  });
+
+  it('should not set channel link when channelData is invalid JSON', async () => {
+    const middleware = new BaggageMiddleware();
+    const ctx: any = makeMockTurnContext({ channelId: 'msteams' });
+
+    // Set channelData as an invalid JSON string
+    ctx.activity.channelIdSubChannel = undefined;
+    ctx.activity.channelData = 'not valid json';
+
+    let capturedChannelLink: string | undefined;
+
+    await middleware.onTurn(ctx, async () => {
+      const bag = propagation.getBaggage(otelContext.active());
+      if (bag) {
+        const entry = bag.getEntry(OpenTelemetryConstants.CHANNEL_LINK_KEY);
+        capturedChannelLink = entry?.value;
+      }
+    });
+
+    // Channel link should not be set when JSON parsing fails
+    expect(capturedChannelLink).toBeUndefined();
+  });
 });
