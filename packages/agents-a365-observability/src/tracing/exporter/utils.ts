@@ -88,21 +88,44 @@ export function statusName(code: SpanStatusCode): string {
 }
 
 /**
- * Partition spans by (tenantId, agentId) identity pairs
+ * Known genAI operation names produced by the SDK scopes and auto-instrumentation.
+ * Only spans whose gen_ai.operation.name matches one of these values are exported.
+ */
+const GEN_AI_OPERATION_NAMES: ReadonlySet<string> = new Set([
+  OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME,   // 'invoke_agent'
+  OpenTelemetryConstants.EXECUTE_TOOL_OPERATION_NAME,   // 'execute_tool'
+  OpenTelemetryConstants.OUTPUT_MESSAGES_OPERATION_NAME, // 'output_messages'
+  OpenTelemetryConstants.CHAT_OPERATION_NAME,            // 'chat'
+  'Chat',            // InferenceOperationType.CHAT
+  'TextCompletion',  // InferenceOperationType.TEXT_COMPLETION
+  'GenerateContent', // InferenceOperationType.GENERATE_CONTENT
+]);
+
+/**
+ * Partition spans by (tenantId, agentId) identity pairs.
+ * Only genAI spans (those with a known gen_ai.operation.name) are included.
  */
 export function partitionByIdentity(
   spans: ReadableSpan[]
 ): Map<string, ReadableSpan[]> {
   const groups = new Map<string, ReadableSpan[]>();
 
-  let skippedCount = 0;
+  let nonGenAICount = 0;
+  let missingIdentityCount = 0;
   for (const span of spans) {
     const attrs = span.attributes || {};
+    const operationName = asStr(attrs[OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY]);
+
+    if (!operationName || !GEN_AI_OPERATION_NAMES.has(operationName)) {
+      nonGenAICount++;
+      continue;
+    }
+
     const tenant = asStr(attrs[OpenTelemetryConstants.TENANT_ID_KEY]);
     const agent = asStr(attrs[OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]);
 
     if (!tenant || !agent) {
-      skippedCount++;
+      missingIdentityCount++;
       continue;
     }
 
@@ -112,10 +135,15 @@ export function partitionByIdentity(
     groups.set(key, existing);
   }
 
-  if(skippedCount > 0) {
-    logger.event(ExporterEventNames.EXPORT_PARTITION_SPAN_MISSING_IDENTITY, false, 0, `${skippedCount} spans are skipped due to missing tenant or agent ID`);
+  if (nonGenAICount > 0) {
+    logger.info(`[Agent365Exporter] ${nonGenAICount} non-genAI spans filtered out`);
   }
 
+  if (missingIdentityCount > 0) {
+    logger.event(ExporterEventNames.EXPORT_PARTITION_SPAN_MISSING_IDENTITY, false, 0, `${missingIdentityCount} spans are skipped due to missing tenant or agent ID`);
+  }
+
+  const skippedCount = nonGenAICount + missingIdentityCount;
   logger.info(`[Agent365Exporter] Partitioned into ${groups.size} identity groups (${skippedCount} spans skipped)`);
   return groups;
 }
@@ -511,6 +539,131 @@ function runShrinkPhase(
  *          priority, remeasuring after each step.
  * Phase 2 (fallback): replace remaining string attributes with overlimit sentinel.
  */
+// ---------------------------------------------------------------------------
+// Span size estimation and byte-level chunking
+// ---------------------------------------------------------------------------
+
+/**
+ * Overhead constant for OTLP JSON span fixed fields
+ * (traceId, spanId, parentSpanId, kind, timestamps, status, scope wrapper, etc.).
+ * Intentionally generous to account for serializer variance.
+ * @internal
+ */
+const SPAN_BASE_OVERHEAD = 2000;
+
+/**
+ * Overhead per attribute in OTLP JSON format.
+ * Covers key/value JSON wrapping overhead.
+ * @internal
+ */
+const ATTR_OVERHEAD = 80;
+
+/**
+ * Overhead per event in OTLP JSON.
+ * @internal
+ */
+const EVENT_OVERHEAD = 200;
+
+/**
+ * Estimate the serialized byte size of a single attribute value in OTLP/HTTP JSON.
+ */
+export function estimateValueBytes(value: unknown): number {
+  if (typeof value === 'string') {
+    return 40 + Buffer.byteLength(value, 'utf8');
+  }
+  if (Array.isArray(value)) {
+    if (value.length === 0) return 60;
+    if (typeof value[0] === 'string') {
+      let sum = 60;
+      for (const s of value) {
+        sum += 40 + Buffer.byteLength(String(s), 'utf8');
+      }
+      return sum;
+    }
+    return 60 + 50 * value.length;
+  }
+  return 40; // bool/int/float/null/other
+}
+
+/**
+ * Heuristic estimator for the serialized size of an OTLP span in HTTP JSON.
+ *
+ * Uses generous constants tuned to over-estimate by ~25-50%, providing headroom
+ * for JSON serializer variance (whitespace, enum representation, integer-as-string).
+ */
+export function estimateSpanBytes(span: {
+  name?: string;
+  attributes?: Record<string, unknown> | null;
+  events?: Array<{ name: string; attributes?: Record<string, unknown> | null }> | null;
+}): number {
+  let total = SPAN_BASE_OVERHEAD;
+  if (span.name) {
+    total += Buffer.byteLength(span.name, 'utf8');
+  }
+  if (span.attributes) {
+    for (const [key, value] of Object.entries(span.attributes)) {
+      total += ATTR_OVERHEAD;
+      total += Buffer.byteLength(key, 'utf8');
+      total += estimateValueBytes(value);
+    }
+  }
+  if (span.events) {
+    for (const ev of span.events) {
+      total += EVENT_OVERHEAD;
+      total += Buffer.byteLength(ev.name, 'utf8');
+      if (ev.attributes) {
+        for (const [key, value] of Object.entries(ev.attributes)) {
+          total += ATTR_OVERHEAD;
+          total += Buffer.byteLength(key, 'utf8');
+          total += estimateValueBytes(value);
+        }
+      }
+    }
+  }
+  return total;
+}
+
+/**
+ * Split items into sub-batches whose cumulative estimated size stays under maxChunkBytes.
+ *
+ * Invariants:
+ * - Input order is preserved across chunks.
+ * - Empty input produces empty output.
+ * - A single item whose size exceeds maxChunkBytes forms its own single-item chunk
+ *   (never silently dropped).
+ * - No chunk is ever empty.
+ *
+ * @param items       The items to chunk.
+ * @param getSize     Estimator function returning approximate serialized byte size of one item.
+ * @param maxChunkBytes  Upper bound on cumulative estimated size per chunk.
+ */
+export function chunkBySize<T>(
+  items: T[],
+  getSize: (item: T) => number,
+  maxChunkBytes: number,
+): T[][] {
+  const chunks: T[][] = [];
+  let current: T[] = [];
+  let currentBytes = 0;
+
+  for (const item of items) {
+    const itemBytes = getSize(item);
+    if (current.length > 0 && currentBytes + itemBytes > maxChunkBytes) {
+      chunks.push(current);
+      current = [];
+      currentBytes = 0;
+    }
+    current.push(item);
+    currentBytes += itemBytes;
+  }
+
+  if (current.length > 0) {
+    chunks.push(current);
+  }
+
+  return chunks;
+}
+
 export function truncateSpan<T extends OTLPSpanLike>(spanDict: T): T {
   try {
     let currentSize = getSerializedSize(spanDict);

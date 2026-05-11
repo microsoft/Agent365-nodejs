@@ -9,7 +9,7 @@ import { Agent365Exporter } from './tracing/exporter/Agent365Exporter';
 import type { TokenResolver } from './tracing/exporter/Agent365ExporterOptions';
 import { Agent365ExporterOptions } from './tracing/exporter/Agent365ExporterOptions';
 import { PerRequestSpanProcessor } from './tracing/PerRequestSpanProcessor';
-import { resourceFromAttributes } from '@opentelemetry/resources';
+import { resourceFromAttributes, envDetector, processDetector } from '@opentelemetry/resources';
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_NAMESPACE } from '@opentelemetry/semantic-conventions';
 import { trace } from '@opentelemetry/api';
 import { ClusterCategory, IConfigurationProvider } from '@microsoft/agents-a365-runtime';
@@ -261,6 +261,7 @@ export class ObservabilityBuilder {
     // Create & configure the NodeSDK manually so we can inject processors + resource.
     this.sdk = new NodeSDK({
       resource: this.createResource(),
+      resourceDetectors: [envDetector, processDetector],
       spanProcessors: [
         spanProcessor,
         exportProcessor,
