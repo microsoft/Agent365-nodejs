@@ -45,7 +45,7 @@ describe('BaggageBuilderUtils', () => {
     expect(result).toBe(builder);
     // Validate every expected OpenTelemetry baggage key and value
     const asObj = Object.fromEntries(capturedPairs);
-    expect(asObj[OpenTelemetryConstants.USER_ID_KEY]).toBe('agentic-user-1');
+    expect(asObj[OpenTelemetryConstants.USER_ID_KEY]).toBeUndefined();
     expect(asObj[OpenTelemetryConstants.USER_NAME_KEY]).toBe('User One');
     expect(asObj[OpenTelemetryConstants.USER_EMAIL_KEY]).toBe('agentic-user-1');
     expect(asObj[OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]).toBe('agent-app-1');
