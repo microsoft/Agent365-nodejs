@@ -14,8 +14,8 @@
     "clean": "npx rimraf dist",
     "test": "jest --passWithNoTests",
     "test:watch": "jest --watch",
-    "lint": "eslint src/**/*.ts",
-    "lint:fix": "eslint src/**/*.ts --fix",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
     "prepublishOnly": "npm run clean && npm run build",
     "ci": "npm ci",
     "pack": "node ../../copyFiles.js . && pnpm pack --pack-destination=../"

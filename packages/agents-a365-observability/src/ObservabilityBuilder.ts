@@ -1,6 +1,5 @@
-// ------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// ------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { ConsoleSpanExporter, BatchSpanProcessor } from '@opentelemetry/sdk-trace-base';
@@ -10,11 +9,12 @@ import { Agent365Exporter } from './tracing/exporter/Agent365Exporter';
 import type { TokenResolver } from './tracing/exporter/Agent365ExporterOptions';
 import { Agent365ExporterOptions } from './tracing/exporter/Agent365ExporterOptions';
 import { PerRequestSpanProcessor } from './tracing/PerRequestSpanProcessor';
-import { resourceFromAttributes } from '@opentelemetry/resources';
-import { ATTR_SERVICE_NAME } from '@opentelemetry/semantic-conventions';
+import { resourceFromAttributes, envDetector, processDetector } from '@opentelemetry/resources';
+import { ATTR_SERVICE_NAME, ATTR_SERVICE_NAMESPACE } from '@opentelemetry/semantic-conventions';
 import { trace } from '@opentelemetry/api';
-import { ClusterCategory } from '@microsoft/agents-a365-runtime';
-import logger from './utils/logging';
+import { ClusterCategory, IConfigurationProvider } from '@microsoft/agents-a365-runtime';
+import logger, { setLogger, DefaultLogger, type ILogger } from './utils/logging';
+import type { ObservabilityConfiguration } from './configuration';
 /**
  * Configuration options for Agent 365 Observability Builder
  */
@@ -24,6 +24,9 @@ export interface BuilderOptions {
 
   /** Custom service version for telemetry */
   serviceVersion?: string;
+
+  /** Optional service namespace for the OTel resource (service.namespace attribute) */
+  serviceNamespace?: string;
 
   tokenResolver?: TokenResolver;
   /** Environment / cluster category (e.g., "preprod", "prod"). */
@@ -36,6 +39,19 @@ export interface BuilderOptions {
    */
   exporterOptions?: Partial<Agent365ExporterOptions>;
 
+  /**
+   * Optional custom logger implementation for the observability SDK.
+   * If not provided, the SDK uses the default console logger.
+   * Implement ILogger to integrate with other logging services
+   */
+  customLogger?: ILogger;
+
+  /**
+   * Optional configuration provider for ObservabilityConfiguration.
+   * When provided, this is used by the builder and its internal components
+   * (exporter, span processors, logger)
+   */
+  configProvider?: IConfigurationProvider<ObservabilityConfiguration>;
 }
 
 /**
@@ -55,6 +71,16 @@ export class ObservabilityBuilder {
   public withService(serviceName: string, serviceVersion?: string): ObservabilityBuilder {
     this.options.serviceName = serviceName;
     this.options.serviceVersion = serviceVersion;
+    return this;
+  }
+
+  /**
+   * Configures the service namespace for telemetry (service.namespace resource attribute)
+   * @param serviceNamespace The service namespace
+   * @returns The builder instance for method chaining
+   */
+  public withServiceNamespace(serviceNamespace: string): ObservabilityBuilder {
+    this.options.serviceNamespace = serviceNamespace;
     return this;
   }
 
@@ -92,8 +118,40 @@ export class ObservabilityBuilder {
     return this;
   }
 
+  /**
+   * Configures the configuration provider for ObservabilityConfiguration.
+   * When set, this provider is used by the builder and its internal components
+   * instead of the default provider that reads from environment variables.
+   * @param configProvider The configuration provider
+   * @returns The builder instance for method chaining
+   */
+  public withConfigurationProvider(configProvider: IConfigurationProvider<ObservabilityConfiguration>): ObservabilityBuilder {
+    this.options.configProvider = configProvider;
+    return this;
+  }
+
+  /**
+   * Sets a custom logger implementation for the observability SDK
+   * @param customLogger The custom logger implementation (must implement ILogger interface)
+   * @returns The builder instance for method chaining
+   *
+   * Example with Winston:
+   * ```typescript
+   * const winstonLogger = winston.createLogger({...});
+   * builder.withCustomLogger({
+   *   info: (msg, ...args) => winstonLogger.info(msg, ...args),
+   *   warn: (msg, ...args) => winstonLogger.warn(msg, ...args),
+   *   error: (msg, ...args) => winstonLogger.error(msg, ...args)
+   * });
+   * ```
+   */
+  public withCustomLogger(customLogger: ILogger): ObservabilityBuilder {
+    this.options.customLogger = customLogger;
+    return this;
+  }
+
   private createBatchProcessor(): BatchSpanProcessor {
-    if (!isAgent365ExporterEnabled()) {
+    if (!isAgent365ExporterEnabled(this.options.configProvider)) {
       logger.info('[ObservabilityBuilder] Agent 365 exporter not enabled. Using ConsoleSpanExporter for BatchSpanProcessor.');      
       return new BatchSpanProcessor(new ConsoleSpanExporter());
     }
@@ -102,11 +160,11 @@ export class ObservabilityBuilder {
     if (this.options.exporterOptions) {
       Object.assign(opts, this.options.exporterOptions);
     }
-    opts.clusterCategory = this.options.clusterCategory || opts.clusterCategory || 'prod';
+    opts.clusterCategory = this.options.clusterCategory || opts.clusterCategory || ClusterCategory.prod;
     if (this.options.tokenResolver) {
       opts.tokenResolver = this.options.tokenResolver;
     }
-    return new BatchSpanProcessor(new Agent365Exporter(opts), {
+    return new BatchSpanProcessor(new Agent365Exporter(opts, this.options.configProvider), {
       maxQueueSize: opts.maxQueueSize,
       scheduledDelayMillis: opts.scheduledDelayMilliseconds,
       exportTimeoutMillis: opts.exporterTimeoutMilliseconds,
@@ -115,7 +173,7 @@ export class ObservabilityBuilder {
   }
 
   private createPerRequestProcessor(): PerRequestSpanProcessor {
-    if (!isAgent365ExporterEnabled()) {
+    if (!isAgent365ExporterEnabled(this.options.configProvider)) {
       logger.info('[Agent365Exporter] Per-request export enabled but Agent 365 exporter is disabled. Using ConsoleSpanExporter.');
       return new PerRequestSpanProcessor(new ConsoleSpanExporter());
     }
@@ -124,11 +182,11 @@ export class ObservabilityBuilder {
     if (this.options.exporterOptions) {
       Object.assign(opts, this.options.exporterOptions);
     }
-    opts.clusterCategory = this.options.clusterCategory || opts.clusterCategory || 'prod';
+    opts.clusterCategory = this.options.clusterCategory || opts.clusterCategory || ClusterCategory.prod;
     
     // For per-request export, token is retrieved from OTel Context by Agent365Exporter
     // using getExportToken(), so no tokenResolver is needed here
-    return new PerRequestSpanProcessor(new Agent365Exporter(opts));
+    return new PerRequestSpanProcessor(new Agent365Exporter(opts, this.options.configProvider));
   }
 
   private createExportProcessor(): BatchSpanProcessor | PerRequestSpanProcessor {
@@ -144,9 +202,15 @@ export class ObservabilityBuilder {
       ? `${this.options.serviceName}-${this.options.serviceVersion}`
       : this.options.serviceName ?? 'Agent365-TypeScript';
 
-    return resourceFromAttributes({
+    const attrs: Record<string, string> = {
       [ATTR_SERVICE_NAME]: serviceName,
-    });
+    };
+
+    if (this.options.serviceNamespace) {
+      attrs[ATTR_SERVICE_NAMESPACE] = this.options.serviceNamespace;
+    }
+
+    return resourceFromAttributes(attrs);
   }
 
   /**
@@ -157,6 +221,14 @@ export class ObservabilityBuilder {
     if (this.isBuilt) {
       return this.isBuilt;
     }
+
+    // Apply custom logger if provided, or configure logger with custom config provider
+    if (this.options.customLogger) {
+      setLogger(this.options.customLogger);
+    } else if (this.options.configProvider) {
+      setLogger(new DefaultLogger(this.options.configProvider));
+    }
+
     // Create processors in the desired order:
     // 1. baggage enricher (copies baggage -> span attributes)
     const spanProcessor = new SpanProcessor();
@@ -189,6 +261,7 @@ export class ObservabilityBuilder {
     // Create & configure the NodeSDK manually so we can inject processors + resource.
     this.sdk = new NodeSDK({
       resource: this.createResource(),
+      resourceDetectors: [envDetector, processDetector],
       spanProcessors: [
         spanProcessor,
         exportProcessor,

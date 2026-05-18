@@ -6,11 +6,11 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "test": "node --experimental-vm-modules $(npm root)/../node_modules/.bin/jest --config jest.config.cjs --passWithNoTests --testPathIgnorePatterns=/integration/",
-    "test:watch": "node --experimental-vm-modules $(npm root)/../node_modules/.bin/jest --config jest.config.cjs --watch --testPathIgnorePatterns=/integration/",
-    "test:coverage": "node --experimental-vm-modules $(npm root)/../node_modules/.bin/jest --config jest.config.cjs --coverage --passWithNoTests --testPathIgnorePatterns=/integration/",
-    "test:verbose": "node --experimental-vm-modules $(npm root)/../node_modules/.bin/jest --config jest.config.cjs --verbose --passWithNoTests --testPathIgnorePatterns=/integration/",
-    "test:ci": "node --experimental-vm-modules $(npm root)/../node_modules/.bin/jest --config jest.config.cjs --coverage --ci --maxWorkers=2 --passWithNoTests --testPathIgnorePatterns=/integration/"
+    "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --config jest.config.cjs --passWithNoTests --testPathIgnorePatterns=/integration/",
+    "test:watch": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --config jest.config.cjs --watch --testPathIgnorePatterns=/integration/",
+    "test:coverage": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --config jest.config.cjs --coverage --passWithNoTests --testPathIgnorePatterns=/integration/",
+    "test:verbose": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --config jest.config.cjs --verbose --passWithNoTests --testPathIgnorePatterns=/integration/",
+    "test:ci": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --config jest.config.cjs --coverage --ci --maxWorkers=2 --passWithNoTests --testPathIgnorePatterns=/integration/"
   },
   "keywords": [
     "agents",
@@ -25,8 +25,8 @@
     "directory": "tests"
   },
   "dependencies": {
-    "@azure/monitor-opentelemetry-exporter": "catalog:",
     "@microsoft/agents-a365-observability": "workspace:*",
+    "@microsoft/agents-a365-observability-extensions-langchain": "workspace:*",
     "@microsoft/agents-a365-observability-extensions-openai": "workspace:*",
     "@microsoft/agents-a365-observability-hosting": "workspace:*",
     "@microsoft/agents-a365-runtime": "workspace:*",
@@ -35,14 +35,19 @@
     "@openai/agents": "catalog:",
     "@openai/agents-openai": "catalog:",
     "@opentelemetry/api": "catalog:",
+    "@opentelemetry/core": "catalog:",
     "@opentelemetry/exporter-trace-otlp-http": "catalog:",
     "@opentelemetry/resources": "catalog:",
     "@opentelemetry/sdk-node": "catalog:",
     "@opentelemetry/sdk-trace-base": "catalog:",
     "@opentelemetry/semantic-conventions": "catalog:",
+    "@langchain/core": "catalog:",
+    "@langchain/langgraph": "catalog:",
+    "@langchain/openai": "catalog:",
     "dotenv": "catalog:",
     "hono": "catalog:",
-    "openai": "catalog:"
+    "openai": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@babel/preset-typescript": "catalog:",
@@ -51,6 +56,7 @@
     "@types/node": "catalog:",
     "@typescript-eslint/eslint-plugin": "catalog:",
     "@typescript-eslint/parser": "catalog:",
+    "cross-env": "catalog:",
     "eslint": "catalog:",
     "jest": "catalog:",
     "js-yaml": "catalog:",

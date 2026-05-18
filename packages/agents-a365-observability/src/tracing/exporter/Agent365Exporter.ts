@@ -6,7 +6,8 @@
 import { ExportResult, ExportResultCode } from '@opentelemetry/core';
 import { ReadableSpan, SpanExporter } from '@opentelemetry/sdk-trace-base';
 
-import { PowerPlatformApiDiscovery, ClusterCategory } from '@microsoft/agents-a365-runtime';
+import { ClusterCategory, IConfigurationProvider } from '@microsoft/agents-a365-runtime';
+import type { ObservabilityConfiguration } from '../../configuration';
 import {
   partitionByIdentity,
   parseIdentityKey,
@@ -14,16 +15,18 @@ import {
   hexSpanId,
   kindName,
   statusName,
-  useCustomDomainForObservability,
   resolveAgent365Endpoint,
   getAgent365ObservabilityDomainOverride,
-  isPerRequestExportEnabled
+  isPerRequestExportEnabled,
+  truncateSpan,
+  estimateSpanBytes,
+  chunkBySize,
 } from './utils';
 import { getExportToken } from '../context/token-context';
 import logger, { formatError } from '../../utils/logging';
 import { Agent365ExporterOptions } from './Agent365ExporterOptions';
+import { ExporterEventNames } from './ExporterEventNames';
 
-const DEFAULT_HTTP_TIMEOUT_SECONDS = 30000; // 30 seconds in ms
 const DEFAULT_MAX_RETRIES = 3;
 
 interface OTLPExportRequest {
@@ -76,23 +79,33 @@ interface OTLPStatus {
   message?: string;
 }
 
+interface MappedSpan {
+  span: OTLPSpan;
+  scopeKey: string;
+  scopeName: string;
+  scopeVersion?: string;
+}
+
 /**
  * Observability span exporter for Agent365:
  * - Partitions spans by (tenantId, agentId)
  * - Builds OTLP-like JSON: resourceSpans -> scopeSpans -> spans
- * - POSTs per group to https://{endpoint}/maven/agent365/agents/{agentId}/traces?api-version=1
- *   or, when useS2SEndpoint is true, https://{endpoint}/maven/agent365/service/agents/{agentId}/traces?api-version=1
+ * - POSTs per group to https://{endpoint}/observability/tenants/{tenantId}/otlp/agents/{agentId}/traces?api-version=1
+ *   or, when useS2SEndpoint is true, https://{endpoint}/observabilityService/tenants/{tenantId}/otlp/agents/{agentId}/traces?api-version=1
  * - Adds Bearer token via token_resolver(agentId, tenantId)
  */
 export class Agent365Exporter implements SpanExporter {
   private closed = false;
   private readonly options: Agent365ExporterOptions;
+  private readonly configProvider?: IConfigurationProvider<ObservabilityConfiguration>;
 
   /**
    * Initialize exporter with a fully constructed options instance.
-   * If tokenResolver is missing, installs cache-backed resolver.
+   * @param options Exporter options controlling batching, timeouts, token acquisition and endpoint shape.
+   * @param configProvider Optional configuration provider. When supplied, the exporter uses it for
+   *        configuration lookups (custom domain, domain override) instead of the default env-based provider.
    */
-  constructor(options: Agent365ExporterOptions) {
+  constructor(options: Agent365ExporterOptions, configProvider?: IConfigurationProvider<ObservabilityConfiguration>) {
     if (!options) {
       throw new Error('Agent365ExporterOptions must be provided (was null/undefined)');
     }
@@ -101,6 +114,7 @@ export class Agent365Exporter implements SpanExporter {
       throw new Error('Agent365Exporter tokenResolver must be provided for batch export');
     }
     this.options = options;
+    this.configProvider = configProvider;
   }
 
   /**
@@ -111,6 +125,8 @@ export class Agent365Exporter implements SpanExporter {
       resultCallback({ code: ExportResultCode.FAILED });
       return;
     }
+
+    const startTime = Date.now();
 
     try {
       logger.info(`[Agent365Exporter] Exporting ${spans.length} spans`);
@@ -135,13 +151,18 @@ export class Agent365Exporter implements SpanExporter {
       }
 
       await Promise.all(promises);
-      logger.info(`[Agent365Exporter] Export completed. Success: ${!anyFailure}`);
+      const duration = Date.now() - startTime;
+      const success = !anyFailure;
+      const message = success ? 'All spans exported successfully' : 'Not all spans exported successfully';
+      logger.event(ExporterEventNames.EXPORT, success, duration, message);
       resultCallback({
-        code: anyFailure ? ExportResultCode.FAILED : ExportResultCode.SUCCESS
+        code: success ? ExportResultCode.SUCCESS : ExportResultCode.FAILED
       });
 
     } catch (_error) {
       // Exporters should not raise; signal failure
+      const duration = Date.now() - startTime;
+      logger.event(ExporterEventNames.EXPORT, false, duration, `Export failed with error: ${formatError(_error)}`);
       resultCallback({ code: ExportResultCode.FAILED });
     }
   }
@@ -153,29 +174,33 @@ export class Agent365Exporter implements SpanExporter {
     const { tenantId, agentId } = parseIdentityKey(identityKey);
     logger.info(`[Agent365Exporter] Exporting ${spans.length} spans for tenantId: ${tenantId}, agentId: ${agentId}`);
 
-    const payload = this.buildExportRequest(spans);
-    const body = JSON.stringify(payload);
-    const usingCustomServiceEndpoint = useCustomDomainForObservability();
-    // Select endpoint path based on S2S flag
-    const endpointRelativePath =
-      this.options.useS2SEndpoint
-        ? `/maven/agent365/service/agents/${agentId}/traces`
-        : `/maven/agent365/agents/${agentId}/traces`;
+    const startTime = Date.now();
+
+    // Map, truncate, and chunk spans by estimated byte size
+    const mappedSpans = this.mapAndTruncateSpans(spans);
+    const resourceAttrs = this.getResourceAttributes(spans);
+    const chunks = chunkBySize(
+      mappedSpans,
+      (ms) => estimateSpanBytes(ms.span),
+      this.options.maxPayloadBytes,
+    );
+
+    if (chunks.length > 1) {
+      logger.info(`[Agent365Exporter] Split ${spans.length} spans into ${chunks.length} chunks for tenantId: ${tenantId}, agentId: ${agentId}`);
+    }
+
+    // Select endpoint path based on S2S flag (includes tenantId in path)
+    const servicePrefix = this.options.useS2SEndpoint ? '/observabilityService' : '/observability';
+    const endpointRelativePath = `${servicePrefix}/tenants/${encodeURIComponent(tenantId)}/otlp/agents/${encodeURIComponent(agentId)}/traces`;
 
     let url: string;
-    const domainOverride = getAgent365ObservabilityDomainOverride();
+    const domainOverride = getAgent365ObservabilityDomainOverride(this.configProvider);
     if (domainOverride) {
       url = `${domainOverride}${endpointRelativePath}?api-version=1`;
-    } else if (usingCustomServiceEndpoint) {
+    } else {
       const base = resolveAgent365Endpoint(this.options.clusterCategory as ClusterCategory);
       url = `${base}${endpointRelativePath}?api-version=1`;
-      logger.info(`[Agent365Exporter] Using custom domain endpoint: ${url}`);
-    } else {
-      // Default behavior: discover PPAPI gateway endpoint per-tenant
-      const discovery = new PowerPlatformApiDiscovery(this.options.clusterCategory as ClusterCategory);
-      const endpoint = discovery.getTenantIslandClusterEndpoint(tenantId);
-      url = `https://${endpoint}${endpointRelativePath}?api-version=1`;
-      logger.info(`[Agent365Exporter] Resolved endpoint: ${url}`);
+      logger.info(`[Agent365Exporter] Using default endpoint: ${url}`);
     }
 
     const headers: Record<string, string> = {
@@ -183,50 +208,67 @@ export class Agent365Exporter implements SpanExporter {
     };
 
     let token: string | null = null;
-
+    let tokenNotResolvedReason: string | null = null;
     if (isPerRequestExportEnabled()) {
       // For per-request export, get token from OTel Context
       token = getExportToken() ?? null;
       if (!token) {
-        logger.error('[Agent365Exporter] No token available in OTel Context for per-request export');
+        tokenNotResolvedReason = 'No token available in OTel Context for per-request export';
       }
     } else {
       // For batch export, use tokenResolver
       if (!this.options.tokenResolver) {
-        logger.error('[Agent365Exporter] tokenResolver is undefined, skip exporting');
-        return;
-      }
-      const tokenResult = this.options.tokenResolver(agentId, tenantId);
-      token = tokenResult instanceof Promise ? await tokenResult : tokenResult;
-      if (token) {
-        logger.info('[Agent365Exporter] Token resolved successfully via tokenResolver');
+        tokenNotResolvedReason = 'tokenResolver is undefined';
       } else {
-        logger.error('[Agent365Exporter] No token resolved via tokenResolver');
+        const tokenResult = this.options.tokenResolver(agentId, tenantId);
+        token = tokenResult instanceof Promise ? await tokenResult : tokenResult;
+        if (token) {
+          logger.info('[Agent365Exporter] Token resolved successfully via tokenResolver');
+        } else {
+          tokenNotResolvedReason = 'No token resolved via tokenResolver';
+        }
       }
     }
 
     if (token) {
       headers['authorization'] = `Bearer ${token}`;
     }
-
-    // Add tenant id to headers when using custom domain
-    if (usingCustomServiceEndpoint) {
-      headers['x-ms-tenant-id'] = tenantId;
+    else {
+      const skipReason = tokenNotResolvedReason || 'Token not resolved for export request';
+      logger.event(ExporterEventNames.EXPORT_GROUP, false, 0, `skip exporting: ${skipReason}`, { tenantId, agentId });
+      return;
     }
 
-    // Basic retry loop
-    const ok = await this.postWithRetries(url, body, headers);
-    if (!ok) {
-      logger.error('[Agent365Exporter] Failed to export spans');
-      throw new Error('Failed to export spans');
+    // Always include tenant id header
+    headers['x-ms-tenant-id'] = tenantId;
+
+    // Send each chunk (all-or-nothing: fail on first chunk failure)
+    let lastCorrelationId = 'unknown';
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      const payload = this.buildEnvelope(chunk, resourceAttrs);
+      const body = JSON.stringify(payload);
+      const bodyBytes = Buffer.byteLength(body, 'utf8');
+      logger.info(`[Agent365Exporter] Sending chunk ${i + 1} of ${chunks.length} (${chunk.length} spans, ${bodyBytes} bytes)`);
+
+      const { ok, correlationId } = await this.postWithRetries(url, body, headers);
+      lastCorrelationId = correlationId;
+      if (!ok) {
+        const duration = Date.now() - startTime;
+        logger.event(ExporterEventNames.EXPORT_GROUP, false, duration, `chunk ${i + 1} of ${chunks.length} failed`, { tenantId, agentId, correlationId });
+        throw new Error(`Failed to export spans (chunk ${i + 1} of ${chunks.length})`);
+      }
     }
-    logger.info('[Agent365Exporter] Successfully exported spans');
+
+    const duration = Date.now() - startTime;
+    logger.event(ExporterEventNames.EXPORT_GROUP, true, duration, `${chunks.length} chunk(s) exported successfully`, { tenantId, agentId, correlationId: lastCorrelationId });
   }
 
   /**
    * HTTP POST with retry logic
    */
-  private async postWithRetries(url: string, body: string, headers: Record<string, string>): Promise<boolean> {
+  private async postWithRetries(url: string, body: string, headers: Record<string, string>): Promise<{ ok: boolean; correlationId: string }> {
+    let lastCorrelationId = 'unknown';
     for (let attempt = 0; attempt <= DEFAULT_MAX_RETRIES; attempt++) {
       let correlationId: string;
       try {
@@ -235,27 +277,28 @@ export class Agent365Exporter implements SpanExporter {
           method: 'POST',
           headers,
           body,
-          signal: AbortSignal.timeout(DEFAULT_HTTP_TIMEOUT_SECONDS)
+          signal: AbortSignal.timeout(this.options.httpRequestTimeoutMilliseconds)
         });
 
         correlationId = response?.headers?.get('x-ms-correlation-id') || response?.headers?.get('x-correlation-id') || 'unknown';
+        lastCorrelationId = correlationId;
+        
         // 2xx => success
         if (response.status >= 200 && response.status < 300) {
-          logger.info(`[Agent365Exporter] Success with status ${response.status}, correlation ID: ${correlationId}`);
-          return true;
+          return { ok: true, correlationId };
         }
 
         // Retry transient errors
         if ([408, 429].includes(response.status) || (response.status >= 500 && response.status < 600)) {
           if (attempt < DEFAULT_MAX_RETRIES) {
-            const sleepMs = 200 * (attempt + 1);
+            const sleepMs = 200 * (attempt + 1) + Math.floor(Math.random() * 100);
             logger.warn(`[Agent365Exporter] Transient error ${response.status}, correlation ID: ${correlationId}, retrying after ${sleepMs}ms`);
             await this.sleep(sleepMs);
             continue;
           }
         }
         logger.error(`[Agent365Exporter] Failed with status ${response.status}, correlation ID: ${correlationId}`);
-        return false;
+        return { ok: false, correlationId };
       } catch (error) {
         logger.error('[Agent365Exporter] Request error:', formatError(error));
         if (attempt < DEFAULT_MAX_RETRIES) {
@@ -264,10 +307,10 @@ export class Agent365Exporter implements SpanExporter {
           await this.sleep(sleepMs);
           continue;
         }
-        return false;
+        return { ok: false, correlationId: lastCorrelationId };
       }
     }
-    return false;
+    return { ok: false, correlationId: lastCorrelationId };
   }
 
   /**
@@ -278,40 +321,54 @@ export class Agent365Exporter implements SpanExporter {
   }
 
   /**
-   * Build OTLP export request payload
+   * Map ReadableSpans to OTLP format and apply per-span truncation.
    */
-  private buildExportRequest(spans: ReadableSpan[]): OTLPExportRequest {
-    // Group by instrumentation scope (name, version)
-    const scopeMap = new Map<string, OTLPSpan[]>();
-    logger.info('[Agent365Exporter] Building OTLP export request payload');
-    for (const sp of spans) {
+  private mapAndTruncateSpans(spans: ReadableSpan[]): MappedSpan[] {
+    logger.info('[Agent365Exporter] Mapping and truncating spans');
+    return spans.map(sp => {
       const scope = sp.instrumentationScope || (sp as ReadableSpan & { instrumentationLibrary?: { name?: string; version?: string } }).instrumentationLibrary;
-      const scopeKey = `${scope?.name || 'unknown'}:${scope?.version || ''}`;
+      const scopeName = scope?.name || 'unknown';
+      const scopeVersion = scope?.version || '';
+      return {
+        span: truncateSpan(this.mapSpan(sp)),
+        scopeKey: `${scopeName}:${scopeVersion}`,
+        scopeName,
+        scopeVersion: scopeVersion || undefined,
+      };
+    });
+  }
 
-      const existing = scopeMap.get(scopeKey) || [];
-      existing.push(this.mapSpan(sp));
-      scopeMap.set(scopeKey, existing);
+  /**
+   * Extract resource attributes from the first span in the batch.
+   */
+  private getResourceAttributes(spans: ReadableSpan[]): Record<string, unknown> {
+    if (spans.length > 0 && spans[0].resource?.attributes) {
+      return { ...spans[0].resource.attributes };
+    }
+    return {};
+  }
+
+  /**
+   * Build an OTLP export request envelope from pre-mapped spans.
+   */
+  private buildEnvelope(mappedSpans: MappedSpan[], resourceAttrs: Record<string, unknown>): OTLPExportRequest {
+    const scopeMap = new Map<string, OTLPSpan[]>();
+    for (const ms of mappedSpans) {
+      const existing = scopeMap.get(ms.scopeKey) || [];
+      existing.push(ms.span);
+      scopeMap.set(ms.scopeKey, existing);
     }
 
     const scopeSpans: ScopeSpan[] = [];
-    for (const [scopeKey, mappedSpans] of scopeMap) {
-      const [name, version] = scopeKey.split(':');
+    for (const [scopeKey, spans] of scopeMap) {
+      const representative = mappedSpans.find(ms => ms.scopeKey === scopeKey)!;
       scopeSpans.push({
         scope: {
-          name,
-          version: version || undefined,
+          name: representative.scopeName,
+          version: representative.scopeVersion,
         },
-        spans: mappedSpans,
+        spans,
       });
-    }
-
-    // Resource attributes (from the first span - all spans in a batch usually share resource)
-    let resourceAttrs: Record<string, unknown> = {};
-    if (spans.length > 0) {
-      const firstSpanResource = spans[0].resource?.attributes;
-      if (firstSpanResource) {
-        resourceAttrs = { ...firstSpanResource };
-      }
     }
 
     return {

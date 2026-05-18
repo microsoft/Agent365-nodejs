@@ -98,6 +98,23 @@ describe('McpToolServerConfigurationService - sendChatHistory', () => {
       expect(mockedAxios.post).toHaveBeenCalledTimes(1);
     });
 
+    it('should NOT include x-ms-agentid header in sendChatHistory requests', async () => {
+      // Per PRD: sendChatHistory() passes undefined for authToken,
+      // so x-ms-agentid header should NOT be included
+      mockedAxios.post.mockResolvedValue({ status: 200, data: {} });
+
+      await service.sendChatHistory(mockTurnContext, chatHistoryMessages);
+
+      expect(mockedAxios.post).toHaveBeenCalledTimes(1);
+      const callArgs = mockedAxios.post.mock.calls[0];
+      const requestConfig = callArgs[2] as { headers: Record<string, string> };
+
+      // Verify x-ms-agentid is NOT in the headers
+      expect(requestConfig.headers['x-ms-agentid']).toBeUndefined();
+      // But other headers like x-ms-channel-id should still be present
+      expect(requestConfig.headers['x-ms-channel-id']).toBe('test-channel');
+    });
+
     it('should send empty chat history', async () => {
       mockedAxios.post.mockResolvedValue({ status: 200, data: {} });
 

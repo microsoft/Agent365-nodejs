@@ -93,11 +93,11 @@ package-lock.json.bak
 out/
 coverage/
 
-# We should have at some point .vscode, but for not ignore since we don't have standard
-.vscode
 .claude/settings.local.json
 .idea/
 
 # OS-specific files
 .DS_Store
 Thumbs.db
+# Test agent sample apps (keep locally, don't commit to SDK)
+tests-agent/

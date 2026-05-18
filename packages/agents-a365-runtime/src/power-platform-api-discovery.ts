@@ -1,16 +1,21 @@
-export type ClusterCategory =
-  | 'local'
-  | 'dev'
-  | 'test'
-  | 'preprod'
-  | 'firstrelease'
-  | 'prod'
-  | 'gov'
-  | 'high'
-  | 'dod'
-  | 'mooncake'
-  | 'ex'
-  | 'rx';
+/**
+ * Cluster categories for Power Platform API discovery.
+ * String enum provides both compile-time type safety and runtime validation.
+ */
+export enum ClusterCategory {
+  local = 'local',
+  dev = 'dev',
+  test = 'test',
+  preprod = 'preprod',
+  firstrelease = 'firstrelease',
+  prod = 'prod',
+  gov = 'gov',
+  high = 'high',
+  dod = 'dod',
+  mooncake = 'mooncake',
+  ex = 'ex',
+  rx = 'rx',
+}
 
 export class PowerPlatformApiDiscovery {
   readonly clusterCategory: ClusterCategory;
@@ -71,8 +76,8 @@ export class PowerPlatformApiDiscovery {
 
   private _getHexApiSuffixLength(): number {
     switch (this.clusterCategory) {
-    case 'firstrelease':
-    case 'prod':
+    case ClusterCategory.firstrelease:
+    case ClusterCategory.prod:
       return 2;
     default:
       return 1;

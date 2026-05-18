@@ -1,8 +1,10 @@
-// ------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// ------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 
 import { ObservabilityBuilder } from '@microsoft/agents-a365-observability/src/ObservabilityBuilder';
+import { ClusterCategory } from '@microsoft/agents-a365-runtime';
+import { ATTR_SERVICE_NAMESPACE } from '@opentelemetry/semantic-conventions';
+import { trace } from '@opentelemetry/api';
 
 // Mock the Agent365Exporter so we can capture the constructed options without performing network calls.
 jest.mock('@microsoft/agents-a365-observability/src/tracing/exporter/Agent365Exporter', () => {
@@ -42,10 +44,10 @@ describe('ObservabilityBuilder exporterOptions merging', () => {
         exporterTimeoutMilliseconds: 2222,
         maxExportBatchSize: 33,
         // These should be overridden by explicit builder methods below
-        clusterCategory: 'dev' as any,
+        clusterCategory: ClusterCategory.dev,
         tokenResolver: () => 'token-from-exporterOptions'
       })
-      .withClusterCategory('test')
+      .withClusterCategory(ClusterCategory.test)
       .withTokenResolver(() => 'token-from-builder');
 
     const built = builder.build();
@@ -73,5 +75,38 @@ describe('ObservabilityBuilder exporterOptions merging', () => {
     expect(captured.clusterCategory).toBe('prod');
     expect(captured.maxQueueSize).toBe(15);
     expect(captured.scheduledDelayMilliseconds).toBe(5000); // default value
-  });  
+  });
+});
+
+
+describe('ObservabilityBuilder serviceNamespace', () => {
+  let createResourceSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    process.env.ENABLE_A365_OBSERVABILITY_EXPORTER = 'true';
+    // Spy on the private createResource method to capture the resource attributes.
+    createResourceSpy = jest.spyOn(ObservabilityBuilder.prototype as any, 'createResource');
+    // Force the builder to take the NodeSDK code path (which calls createResource)
+    // by making getTracerProvider return a provider without addSpanProcessor/resource.
+    jest.spyOn(trace, 'getTracerProvider').mockReturnValue({} as any);
+  });
+
+  afterEach(() => {
+    delete process.env.ENABLE_A365_OBSERVABILITY_EXPORTER;
+  });
+
+  it('does not include service.namespace when withServiceNamespace is not called', () => {
+    new ObservabilityBuilder().withService('svc').build();
+    expect(createResourceSpy).toHaveBeenCalled();
+    const result = createResourceSpy.mock.results[0].value;
+    // The resource should not contain ATTR_SERVICE_NAMESPACE
+    expect(result?.attributes?.[ATTR_SERVICE_NAMESPACE]).toBeUndefined();
+  });
+
+  it('includes service.namespace when withServiceNamespace is called', () => {
+    new ObservabilityBuilder().withService('svc').withServiceNamespace('ns').build();
+    expect(createResourceSpy).toHaveBeenCalled();
+    const result = createResourceSpy.mock.results[0].value;
+    expect(result?.attributes?.[ATTR_SERVICE_NAMESPACE]).toBe('ns');
+  });
 });

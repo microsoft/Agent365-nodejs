@@ -1,6 +1,49 @@
-// ------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// ------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
+import { IConfigurationProvider } from '@microsoft/agents-a365-runtime';
+import {
+  defaultObservabilityConfigurationProvider,
+  ObservabilityConfiguration
+} from '../configuration';
+import { ExporterEventNames } from '../tracing/exporter/ExporterEventNames';
+
+/**
+ * Custom logger interface for Agent 365 observability
+ * Implement this interface to support logging backends
+ */
+export interface ILogger {
+  /**
+   * Log an informational message
+   * @param message The log message
+   * @param args Optional arguments to include in the log
+   */
+  info(message: string, ...args: unknown[]): void;
+
+  /**
+   * Log a warning message
+   * @param message The log message
+   * @param args Optional arguments to include in the log
+   */
+  warn(message: string, ...args: unknown[]): void;
+
+  /**
+   * Log an error message
+   * @param message The log message
+   * @param args Optional arguments to include in the log
+   */
+  error(message: string, ...args: unknown[]): void;
+
+  /**
+   * Log an event with standardized parameters
+   * @param eventType Standardized event name from ExporterEventNames enum (e.g., ExporterEventNames.EXPORT)
+   * @param isSuccess Whether the operation/event succeeded
+   * @param durationMs Duration of the operation/event in milliseconds
+   * @param message Optional message or additional details about the event, especially useful for errors or failures
+   * @param details Optional key-value pairs with additional context (e.g., correlationId, tenantId, agentId, etc.)
+   */
+  event(eventType: ExporterEventNames, isSuccess: boolean, durationMs: number, message?: string, details?: Record<string, string>): void;
+}
 
 /**
  * Format error object for logging with message and stack trace
@@ -12,47 +55,23 @@ export function formatError(error: unknown): string {
   return String(error);
 }
 
-/**
- * Simple logger for Agent 365 observability
- *
- * Usage:
- *   import logger from './logging';
- *   logger.info('Info message');    // Shows when A365ObservabilityLogLevel includes 'info'
- *   logger.warn('Warning');         // Shows when A365ObservabilityLogLevel includes 'warn'
- *   logger.error('Error');          // Shows when A365ObservabilityLogLevel includes 'error'
- *
- * Environment Variable:
- *   A365ObservabilityLogLevel=none|info|warn|error|info|warn|info|error  (default: none)
- *
- *   Single values:
- *   none = no logging (default)
- *   info = info messages only
- *   warn = warn messages only
- *   error = error messages only
- *
- *   Multiple values (pipe-separated):
- *   info|warn = info and warn messages
- *   warn|error = warn and error messages
- *   info|warn|error = all message types
- */
-
-const LOG_LEVELS = {
+const LOG_LEVELS: Record<string, number> = {
   none: 0,
   info: 1,
   warn: 2,
   error: 3
-} as const;
+};
 
-type LogLevel = keyof typeof LOG_LEVELS;
-
+/**
+ * Parse log level string into a set of enabled log levels.
+ * Supports pipe-separated values like "info|warn|error".
+ */
 function parseLogLevel(level: string): Set<number> {
   const levels = new Set<number>();
-
-  // Split by | to support multiple levels like "info|warn|error"
   const levelStrings = level.toLowerCase().trim().split('|');
 
   for (const levelString of levelStrings) {
-    const normalizedLevel = levelString.trim() as LogLevel;
+    const normalizedLevel = levelString.trim();
     const levelValue = LOG_LEVELS[normalizedLevel];
     if (levelValue !== undefined) {
       levels.add(levelValue);
@@ -67,26 +86,135 @@ function parseLogLevel(level: string): Set<number> {
   return levels;
 }
 
-const enabledLogLevels = parseLogLevel(process.env.A365_OBSERVABILITY_LOG_LEVEL || 'none');
 
-export const logger = {
-  info: (message: string, ...args: unknown[]) => {
-    if (enabledLogLevels.has(LOG_LEVELS.info)) {
+/**
+ * Default console-based logger implementation with configuration provider support.
+ *
+ * Environment Variable:
+ *   A365_OBSERVABILITY_LOG_LEVEL=none|info|warn|error (default: none)
+ *
+ *   Single values:
+ *   none = no logging (default)
+ *   info = info messages only
+ *   warn = warn messages only
+ *   error = error messages only
+ *
+ *   Multiple values (pipe-separated):
+ *   info|warn = info and warn messages
+ *   warn|error = warn and error messages
+ *   info|warn|error = all message types
+ */
+export class DefaultLogger implements ILogger {
+  constructor(
+    private readonly configProvider: IConfigurationProvider<ObservabilityConfiguration> = defaultObservabilityConfigurationProvider
+  ) {}
+
+  private getEnabledLogLevels(): Set<number> {
+    return parseLogLevel(this.configProvider.getConfiguration().observabilityLogLevel);
+  }
+
+  info(message: string, ...args: unknown[]): void {
+    if (this.getEnabledLogLevels().has(LOG_LEVELS.info)) {
       console.log('[INFO]', message, ...args);
     }
-  },
+  }
 
-  warn: (message: string, ...args: unknown[]) => {
-    if (enabledLogLevels.has(LOG_LEVELS.warn)) {
+  warn(message: string, ...args: unknown[]): void {
+    if (this.getEnabledLogLevels().has(LOG_LEVELS.warn)) {
       console.warn('[WARN]', message, ...args);
     }
-  },
+  }
 
-  error: (message: string, ...args: unknown[]) => {
-    if (enabledLogLevels.has(LOG_LEVELS.error)) {
+  error(message: string, ...args: unknown[]): void {
+    if (this.getEnabledLogLevels().has(LOG_LEVELS.error)) {
       console.error('[ERROR]', message, ...args);
     }
   }
+
+  event(eventType: ExporterEventNames, isSuccess: boolean, durationMs: number, message?: string, details?: Record<string, string>): void {
+    const status = isSuccess ? 'succeeded' : 'failed';
+    const logLevelNeeded = isSuccess ? 1 : 3;
+    if (this.getEnabledLogLevels().has(logLevelNeeded)) {
+      const logFn = isSuccess ? console.log : console.error;
+      const messageInfo = message ? ` - ${message}` : '';
+      const detailsInfo = details && Object.keys(details).length > 0 ? ` ${JSON.stringify(details)}` : '';
+      logFn(`[EVENT]: ${eventType} ${status} in ${durationMs}ms${messageInfo}${detailsInfo}`);
+    }
+  }
+}
+
+/**
+ * Global logger instance - can be replaced with a custom logger via setLogger()
+ */
+let globalLogger: ILogger = new DefaultLogger();
+
+/**
+ * Set a custom logger implementation for the observability SDK
+ *
+ * Example with Winston:
+ * ```typescript
+ * import * as winston from 'winston';
+ * import { setLogger } from '@microsoft/agents-a365-observability';
+ *
+ * const winstonLogger = winston.createLogger({
+ *   level: 'info',
+ *   format: winston.format.json(),
+ *   transports: [
+ *     new winston.transports.File({ filename: 'error.log', level: 'error' }),
+ *     new winston.transports.File({ filename: 'combined.log' })
+ *   ]
+ * });
+ *
+ * setLogger({
+ *   info: (msg, ...args) => winstonLogger.info(msg, ...args),
+ *   warn: (msg, ...args) => winstonLogger.warn(msg, ...args),
+ *   error: (msg, ...args) => winstonLogger.error(msg, ...args),
+ *   event: (eventType, isSuccess, durationMs, message, details) => {
+ *     // eventType is ExporterEventNames enum value
+ *     winstonLogger.log({ level: isSuccess ? 'info' : 'error', eventType, isSuccess, durationMs, message, ...details });
+ *   }
+ * });
+ * ```
+ *
+ * @param customLogger The custom logger implementation
+ */
+export function setLogger(customLogger: ILogger): void {
+  if (
+    !customLogger ||
+    typeof customLogger.info !== 'function' ||
+    typeof customLogger.warn !== 'function' ||
+    typeof customLogger.error !== 'function' ||
+    typeof customLogger.event !== 'function'
+  ) {
+    throw new Error('Custom logger must implement ILogger interface with all methods: info, warn, error, and event');
+  }
+  globalLogger = customLogger;
+}
+
+/**
+ * Get the current logger instance
+ */
+export function getLogger(): ILogger {
+  return globalLogger;
+}
+
+/**
+ * Reset to the default console logger (mainly for testing)
+ */
+export function resetLogger(): void {
+  globalLogger = new DefaultLogger();
+}
+
+/**
+ * Default logger instance for backward compatibility.
+ * Delegates to the global logger which can be replaced via setLogger().
+ */
+export const logger: ILogger = {
+  info: (message: string, ...args: unknown[]) => globalLogger.info(message, ...args),
+  warn: (message: string, ...args: unknown[]) => globalLogger.warn(message, ...args),
+  error: (message: string, ...args: unknown[]) => globalLogger.error(message, ...args),
+  event: (eventType: ExporterEventNames, isSuccess: boolean, durationMs: number, message?: string, details?: Record<string, string>) =>
+    globalLogger.event(eventType, isSuccess, durationMs, message, details)
 };
 
 export default logger;

@@ -1,6 +1,5 @@
-// ------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// ------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 
 import { Context, propagation, Span } from '@opentelemetry/api';
 import { SpanProcessor as BaseSpanProcessor } from '@opentelemetry/sdk-trace-base';
@@ -67,6 +66,17 @@ export class SpanProcessor implements BaseSpanProcessor {
     const targetKeys = new Set<string>(GENERIC_ATTRIBUTES);
     if (isInvokeAgent) {
       INVOKE_AGENT_ATTRIBUTES.forEach(key => targetKeys.add(key));
+    }
+
+    // Set telemetry SDK attributes
+    if (!existingAttrs.has(OpenTelemetryConstants.TELEMETRY_SDK_NAME_KEY)) {
+      span.setAttribute(OpenTelemetryConstants.TELEMETRY_SDK_NAME_KEY, OpenTelemetryConstants.TELEMETRY_SDK_NAME_VALUE);
+    }
+    if (!existingAttrs.has(OpenTelemetryConstants.TELEMETRY_SDK_LANGUAGE_KEY)) {
+      span.setAttribute(OpenTelemetryConstants.TELEMETRY_SDK_LANGUAGE_KEY, OpenTelemetryConstants.TELEMETRY_SDK_LANGUAGE_VALUE);
+    }
+    if (!existingAttrs.has(OpenTelemetryConstants.TELEMETRY_SDK_VERSION_KEY)) {
+      span.setAttribute(OpenTelemetryConstants.TELEMETRY_SDK_VERSION_KEY, OpenTelemetryConstants.TELEMETRY_SDK_VERSION_VALUE);
     }
 
     // Copy baggage to span attributes

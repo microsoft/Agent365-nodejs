@@ -37,8 +37,8 @@
     "build:esm": "npx tsc --project tsconfig.esm.json",
     "build:watch": "npx tsc --watch",
     "clean": "npx rimraf dist",
-    "lint": "eslint src/**/*.ts",
-    "lint:fix": "eslint src/**/*.ts --fix",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
@@ -46,10 +46,10 @@
   },
   "dependencies": {
     "@microsoft/agents-a365-observability": "workspace:*",
+    "@microsoft/agents-a365-runtime": "workspace:*",
     "@openai/agents": "catalog:",
     "@opentelemetry/api": "catalog:",
-    "@opentelemetry/instrumentation": "catalog:",
-    "hono": "catalog:"
+    "@opentelemetry/instrumentation": "catalog:"
   },
   "devDependencies": {
     "@eslint/js": "catalog:",
@@ -65,7 +65,13 @@
     "typescript-eslint": "catalog:"
   },
   "peerDependencies": {
-    "@openai/agents": "catalog:"
+    "@openai/agents": "catalog:",
+    "hono": "catalog:"
+  },
+  "peerDependenciesMeta": {
+    "hono": {
+      "optional": true
+    }
   },
   "engines": {
     "node": ">=18.0.0"

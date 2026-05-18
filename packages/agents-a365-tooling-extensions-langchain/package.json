@@ -13,8 +13,8 @@
     "clean": "npx rimraf dist",
     "test": "jest --passWithNoTests",
     "test:watch": "jest --watch",
-    "lint": "eslint src/**/*.ts",
-    "lint:fix": "eslint src/**/*.ts --fix",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
     "prepublishOnly": "npm run clean && npm run build",
     "ci": "npm ci",
     "pack": "node ../../copyFiles.js . && pnpm pack --pack-destination=../"
@@ -34,17 +34,28 @@
     "directory": "packages/agents-a365-tooling-extensions-langchain"
   },
   "dependencies": {
+    "@langchain/core": "catalog:",
     "@langchain/mcp-adapters": "catalog:",
     "@microsoft/agents-a365-runtime": "workspace:*",
     "@microsoft/agents-a365-tooling": "workspace:*",
     "@microsoft/agents-hosting": "catalog:",
     "hono": "catalog:",
-    "langchain": "catalog:"
+    "langchain": "catalog:",
+    "uuid": "catalog:"
+  },
+  "peerDependencies": {
+    "@langchain/langgraph": "catalog:"
+  },
+  "peerDependenciesMeta": {
+    "@langchain/langgraph": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@eslint/js": "catalog:",
     "@types/jest": "catalog:",
     "@types/node": "catalog:",
+    "@types/uuid": "catalog:",
     "@typescript-eslint/eslint-plugin": "catalog:",
     "@typescript-eslint/parser": "catalog:",
     "eslint": "catalog:",
