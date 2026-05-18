@@ -188,6 +188,49 @@ describe('AgenticTokenCacheInstance', () => {
     expect(map.has('agent-new:tenant-new')).toBe(true);
   });
 
+  it('passes authHandlerName to exchangeToken when provided', async () => {
+    const token = makeJwtWithExp(300);
+    const exchangeFn = jest.fn(async (..._args: any[]) => ({ token }));
+    const auth: AuthorizationStub = {
+      exchangeToken: exchangeFn,
+      getToken: async () => ({ token: 'unused' }),
+      signOut: async () => {},
+      onSignInSuccess: () => {},
+      onSignInFailure: () => {}
+    };
+    await AgenticTokenCacheInstance.RefreshObservabilityToken(
+      'agentHandler',
+      'tenantHandler',
+      asTurnContext(makeTurnContext()),
+      auth as any,
+      ['scope.read'],
+      'custom-handler'
+    );
+    expect(exchangeFn).toHaveBeenCalledTimes(1);
+    expect(exchangeFn.mock.calls[0][1]).toBe('custom-handler');
+  });
+
+  it('defaults authHandlerName to "agentic" when not provided', async () => {
+    const token = makeJwtWithExp(300);
+    const exchangeFn = jest.fn(async (..._args: any[]) => ({ token }));
+    const auth: AuthorizationStub = {
+      exchangeToken: exchangeFn,
+      getToken: async () => ({ token: 'unused' }),
+      signOut: async () => {},
+      onSignInSuccess: () => {},
+      onSignInFailure: () => {}
+    };
+    await AgenticTokenCacheInstance.RefreshObservabilityToken(
+      'agentDefault',
+      'tenantDefault',
+      asTurnContext(makeTurnContext()),
+      auth as any,
+      ['scope.read']
+    );
+    expect(exchangeFn).toHaveBeenCalledTimes(1);
+    expect(exchangeFn.mock.calls[0][1]).toBe('agentic');
+  });
+
   it('caps JWT exp claim to 24 hours', async () => {
     const { AgenticTokenCache } = require('@microsoft/agents-a365-observability-hosting');
     const cache = new AgenticTokenCache();
