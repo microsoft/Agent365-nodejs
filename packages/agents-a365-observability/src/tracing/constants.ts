@@ -114,4 +114,44 @@ export class OpenTelemetryConstants {
   public static readonly TELEMETRY_SDK_NAME_VALUE = 'A365ObservabilitySDK';
   public static readonly TELEMETRY_SDK_LANGUAGE_VALUE = 'nodejs';
   public static readonly TELEMETRY_SDK_VERSION_VALUE = LIB_VERSION;
+
+  // Guardrail operation name
+  public static readonly APPLY_GUARDRAIL_OPERATION_NAME = 'apply_guardrail';
+
+  // Guardian attributes
+  public static readonly GUARDIAN_ID_KEY = 'microsoft.guardian.id';
+  public static readonly GUARDIAN_NAME_KEY = 'microsoft.guardian.name';
+  public static readonly GUARDIAN_PROVIDER_NAME_KEY = 'microsoft.guardian.provider.name';
+  public static readonly GUARDIAN_VERSION_KEY = 'microsoft.guardian.version';
+
+  // Security decision attributes
+  public static readonly SECURITY_DECISION_TYPE_KEY = 'microsoft.security.decision.type';
+  public static readonly SECURITY_DECISION_REASON_KEY = 'microsoft.security.decision.reason';
+  public static readonly SECURITY_DECISION_CODE_KEY = 'microsoft.security.decision.code';
+
+  // Security target attributes
+  public static readonly SECURITY_TARGET_TYPE_KEY = 'microsoft.security.target.type';
+  public static readonly SECURITY_TARGET_ID_KEY = 'microsoft.security.target.id';
+
+  // Security policy attributes
+  public static readonly SECURITY_POLICY_ID_KEY = 'microsoft.security.policy.id';
+  public static readonly SECURITY_POLICY_NAME_KEY = 'microsoft.security.policy.name';
+  public static readonly SECURITY_POLICY_VERSION_KEY = 'microsoft.security.policy.version';
+  public static readonly SECURITY_POLICY_DECISION_TYPE_KEY = 'microsoft.security.policy.decision.type';
+
+  // Security content attributes
+  public static readonly SECURITY_CONTENT_INPUT_HASH_KEY = 'microsoft.security.content.input.hash';
+  public static readonly SECURITY_CONTENT_MODIFIED_KEY = 'microsoft.security.content.modified';
+  public static readonly SECURITY_CONTENT_INPUT_VALUE_KEY = 'microsoft.security.content.input.value';
+  public static readonly SECURITY_CONTENT_OUTPUT_VALUE_KEY = 'microsoft.security.content.output.value';
+
+  // Security correlation attributes
+  public static readonly SECURITY_EXTERNAL_EVENT_ID_KEY = 'microsoft.security.external_event_id';
+
+  // Security finding event
+  public static readonly SECURITY_FINDING_EVENT_NAME = 'microsoft.security.finding';
+  public static readonly SECURITY_RISK_CATEGORY_KEY = 'microsoft.security.risk.category';
+  public static readonly SECURITY_RISK_SEVERITY_KEY = 'microsoft.security.risk.severity';
+  public static readonly SECURITY_RISK_SCORE_KEY = 'microsoft.security.risk.score';
+  public static readonly SECURITY_RISK_METADATA_KEY = 'microsoft.security.risk.metadata';
 }

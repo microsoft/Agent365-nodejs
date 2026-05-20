@@ -95,6 +95,7 @@ const GEN_AI_OPERATION_NAMES: ReadonlySet<string> = new Set([
   OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME,   // 'invoke_agent'
   OpenTelemetryConstants.EXECUTE_TOOL_OPERATION_NAME,   // 'execute_tool'
   OpenTelemetryConstants.OUTPUT_MESSAGES_OPERATION_NAME, // 'output_messages'
+  OpenTelemetryConstants.APPLY_GUARDRAIL_OPERATION_NAME, // 'apply_guardrail'
   OpenTelemetryConstants.CHAT_OPERATION_NAME,            // 'chat'
   'Chat',            // InferenceOperationType.CHAT
   'TextCompletion',  // InferenceOperationType.TEXT_COMPLETION

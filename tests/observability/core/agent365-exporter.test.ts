@@ -314,6 +314,87 @@ describe('Agent365Exporter', () => {
     timeoutSpy.mockRestore();
   });
 
+  it('exports ApplyGuardrailScope span with all guardrail attributes and finding event', async () => {
+    mockFetchSequence([200]);
+    const opts = new Agent365ExporterOptions();
+    opts.clusterCategory = 'local';
+    opts.tokenResolver = () => 'tok-guardrail';
+    const exporter = new Agent365Exporter(opts);
+
+    const spans = [
+      {
+        ...makeSpan({
+          [OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY]: 'apply_guardrail',
+          [OpenTelemetryConstants.TENANT_ID_KEY]: tenantId,
+          [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]: agentId,
+          [OpenTelemetryConstants.GEN_AI_AGENT_NAME_KEY]: 'Guardrail Agent',
+          // Guardian attributes
+          ['microsoft.guardian.id']: 'azure-content-safety-001',
+          ['microsoft.guardian.name']: 'Azure Content Safety',
+          ['microsoft.guardian.provider.name']: 'Azure',
+          ['microsoft.guardian.version']: '2.0.0',
+          // Decision attributes
+          ['microsoft.security.decision.type']: 'deny',
+          ['microsoft.security.target.type']: 'llm_input',
+          ['microsoft.security.target.id']: 'msg-12345',
+          ['microsoft.security.decision.reason']: 'Content violates hate speech policy',
+          ['microsoft.security.decision.code']: 'HATE_SPEECH_001',
+          // Policy attributes
+          ['microsoft.security.policy.id']: 'policy-abc',
+          ['microsoft.security.policy.name']: 'Content Safety Policy',
+          ['microsoft.security.policy.version']: '1.2.0',
+          // Content attributes
+          ['microsoft.security.content.input.hash']: 'sha256:abc123def456',
+          ['microsoft.security.content.modified']: false,
+          ['microsoft.security.content.output.value']: 'sanitized-hash-output',
+          ['microsoft.security.external_event_id']: 'ext-event-789',
+        }, 'apply_guardrail Azure Content Safety llm_input'),
+        events: [{
+          name: 'microsoft.security.finding',
+          time: [Math.floor(Date.now() / 1000), 0],
+          attributes: {
+            ['microsoft.security.risk.category']: 'hate_speech',
+            ['microsoft.security.risk.severity']: 'high',
+            ['microsoft.security.policy.decision.type']: 'deny',
+            ['microsoft.security.policy.id']: 'policy-abc',
+            ['microsoft.security.risk.score']: 0.95,
+          },
+        }],
+      } as unknown as ReadableSpan,
+    ];
+
+    const callback = jest.fn();
+    await exporter.export(spans, callback);
+    expect(callback).toHaveBeenCalledWith({ code: ExportResultCode.SUCCESS });
+
+    const fetchCalls = getFetchCalls();
+    expect(fetchCalls.length).toBe(1);
+
+    const bodyJson = JSON.parse(fetchCalls[0][1].body as string);
+    const exportedSpan = bodyJson.resourceSpans[0].scopeSpans[0].spans[0];
+
+    // Verify span name
+    expect(exportedSpan.name).toBe('apply_guardrail Azure Content Safety llm_input');
+
+    // Verify guardrail attributes survived export
+    expect(exportedSpan.attributes['microsoft.guardian.id']).toBe('azure-content-safety-001');
+    expect(exportedSpan.attributes['microsoft.guardian.name']).toBe('Azure Content Safety');
+    expect(exportedSpan.attributes['microsoft.security.decision.type']).toBe('deny');
+    expect(exportedSpan.attributes['microsoft.security.target.type']).toBe('llm_input');
+    expect(exportedSpan.attributes['microsoft.security.policy.id']).toBe('policy-abc');
+    expect(exportedSpan.attributes['microsoft.security.content.input.hash']).toBe('sha256:abc123def456');
+    expect(exportedSpan.attributes['microsoft.security.content.modified']).toBe(false);
+    expect(exportedSpan.attributes['microsoft.security.content.output.value']).toBe('sanitized-hash-output');
+    expect(exportedSpan.attributes['microsoft.security.external_event_id']).toBe('ext-event-789');
+
+    // Verify finding event survived export
+    expect(exportedSpan.events).toHaveLength(1);
+    expect(exportedSpan.events[0].name).toBe('microsoft.security.finding');
+    expect(exportedSpan.events[0].attributes['microsoft.security.risk.category']).toBe('hate_speech');
+    expect(exportedSpan.events[0].attributes['microsoft.security.risk.severity']).toBe('high');
+    expect(exportedSpan.events[0].attributes['microsoft.security.risk.score']).toBe(0.95);
+  });
+
   describe('truncateSpan (span-level size enforcement)', () => {
     const MAX_SPAN_SIZE_BYTES = 250 * 1024;
 
