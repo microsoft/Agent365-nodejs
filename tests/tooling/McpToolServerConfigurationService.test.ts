@@ -703,7 +703,7 @@ describe('McpToolServerConfigurationService', () => {
       const mockToken = createMockJwt();
       resolveAgentIdentitySpy.mockReturnValue('resolved-agent-id');
       axiosGetSpy.mockResolvedValue({
-        data: [{ mcpServerName: 'testServer', url: 'http://test.com' }]
+        data: { mcpServers: [{ mcpServerName: 'testServer', url: 'http://test.com' }] }
       });
 
       // Act
@@ -723,7 +723,7 @@ describe('McpToolServerConfigurationService', () => {
       // Arrange
       const mockToken = createMockJwt();
       resolveAgentIdentitySpy.mockReturnValue('my-agent-id');
-      axiosGetSpy.mockResolvedValue({ data: [] });
+      axiosGetSpy.mockResolvedValue({ data: { mcpServers: [] } });
 
       // Act
       await service.listToolServers(mockContext, mockAuthorization, 'graph', mockToken);
@@ -764,7 +764,7 @@ describe('McpToolServerConfigurationService', () => {
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const axios = require('axios');
         const axiosGetSpy = jest.spyOn(axios, 'get').mockResolvedValue({
-          data: [{ mcpServerName: 'testServer', url: 'http://test.com' }]
+          data: { mcpServers: [{ mcpServerName: 'testServer', url: 'http://test.com' }] }
         });
         jest.spyOn(Utility, 'ValidateAuthToken').mockImplementation(() => {});
 
@@ -803,7 +803,7 @@ describe('McpToolServerConfigurationService', () => {
 
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const axios = require('axios');
-        const axiosGetSpy = jest.spyOn(axios, 'get').mockResolvedValue({ data: [] });
+        const axiosGetSpy = jest.spyOn(axios, 'get').mockResolvedValue({ data: { mcpServers: [] } });
         jest.spyOn(Utility, 'ValidateAuthToken').mockImplementation(() => {});
 
         const mockToken = createMockJwt();
@@ -839,7 +839,7 @@ describe('McpToolServerConfigurationService', () => {
 
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const axios = require('axios');
-        const axiosGetSpy = jest.spyOn(axios, 'get').mockResolvedValue({ data: [] });
+        const axiosGetSpy = jest.spyOn(axios, 'get').mockResolvedValue({ data: { mcpServers: [] } });
         jest.spyOn(Utility, 'ValidateAuthToken').mockImplementation(() => {});
 
         const mockToken = createMockJwt();
@@ -899,7 +899,7 @@ describe('McpToolServerConfigurationService', () => {
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const axios = require('axios');
         const axiosGetSpy = jest.spyOn(axios, 'get').mockResolvedValue({
-          data: [{ mcpServerName: 'gatewayServer', url: 'http://gateway.com' }]
+          data: { mcpServers: [{ mcpServerName: 'gatewayServer', url: 'http://gateway.com' }] }
         });
         jest.spyOn(Utility, 'ValidateAuthToken').mockImplementation(() => {});
 
@@ -935,7 +935,7 @@ describe('McpToolServerConfigurationService', () => {
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const axios = require('axios');
         const axiosGetSpy = jest.spyOn(axios, 'get').mockResolvedValue({
-          data: [{ mcpServerName: 'gatewayServer', url: 'http://gateway.com' }]
+          data: { mcpServers: [{ mcpServerName: 'gatewayServer', url: 'http://gateway.com' }] }
         });
         jest.spyOn(Utility, 'ValidateAuthToken').mockImplementation(() => {});
 
@@ -1106,7 +1106,7 @@ describe('McpToolServerConfigurationService', () => {
 
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const axios = require('axios');
-        const axiosGetSpy = jest.spyOn(axios, 'get').mockResolvedValue({ data: [] });
+        const axiosGetSpy = jest.spyOn(axios, 'get').mockResolvedValue({ data: { mcpServers: [] } });
         jest.spyOn(Utility, 'ValidateAuthToken').mockImplementation(() => {});
 
         const mockToken = createMockJwt();
@@ -1289,7 +1289,7 @@ describe('McpToolServerConfigurationService', () => {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const axios = require('axios');
       jest.spyOn(axios, 'get').mockResolvedValue({
-        data: [{ mcpServerName: 'mailServer', url: 'http://localhost:3001' }]
+        data: { mcpServers: [{ mcpServerName: 'mailServer', url: 'http://localhost:3001' }] }
       });
       getAgenticUserTokenSpy.mockResolvedValue(mockToken);
 
@@ -1307,12 +1307,12 @@ describe('McpToolServerConfigurationService', () => {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const axios = require('axios');
       jest.spyOn(axios, 'get').mockResolvedValue({
-        data: [{
+        data: { mcpServers: [{
           mcpServerName: 'v2ToolsServer',
           url: 'https://v2.example.com/mcp',
           audience: v2Audience,
           scope: 'Tools.ListInvoke.All'
-        }]
+        }] }
       });
       getAgenticUserTokenSpy.mockResolvedValue(v2Token);
 
@@ -1330,10 +1330,10 @@ describe('McpToolServerConfigurationService', () => {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const axios = require('axios');
       jest.spyOn(axios, 'get').mockResolvedValue({
-        data: [
+        data: { mcpServers: [
           { mcpServerName: 'v2Server1', url: 'http://v2-1.example.com', audience: sharedAudience },
           { mcpServerName: 'v2Server2', url: 'http://v2-2.example.com', audience: sharedAudience },
-        ]
+        ] }
       });
       getAgenticUserTokenSpy.mockResolvedValue(sharedToken);
 
@@ -1351,10 +1351,10 @@ describe('McpToolServerConfigurationService', () => {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const axios = require('axios');
       jest.spyOn(axios, 'get').mockResolvedValue({
-        data: [
+        data: { mcpServers: [
           { mcpServerName: 'v1MailServer', url: 'http://v1.example.com' },
           { mcpServerName: 'v2ToolsServer', url: 'http://v2.example.com', audience: v2Audience }
-        ]
+        ] }
       });
       getAgenticUserTokenSpy
         .mockResolvedValueOnce(atgToken)  // V1 ATG scope
@@ -1374,7 +1374,7 @@ describe('McpToolServerConfigurationService', () => {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const axios = require('axios');
       jest.spyOn(axios, 'get').mockResolvedValue({
-        data: [{ mcpServerName: 'mailServer', url: 'http://localhost:3001' }]
+        data: { mcpServers: [{ mcpServerName: 'mailServer', url: 'http://localhost:3001' }] }
       });
       // Discovery token OK; per-server exchange returns null
       getAgenticUserTokenSpy
@@ -1392,7 +1392,7 @@ describe('McpToolServerConfigurationService', () => {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const axios = require('axios');
       jest.spyOn(axios, 'get').mockResolvedValue({
-        data: [{ mcpServerName: 'prodServer', url: 'http://prod.example.com' }]
+        data: { mcpServers: [{ mcpServerName: 'prodServer', url: 'http://prod.example.com' }] }
       });
       getAgenticUserTokenSpy.mockResolvedValue(mockToken);
 
@@ -1412,12 +1412,12 @@ describe('McpToolServerConfigurationService', () => {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const axios = require('axios');
       jest.spyOn(axios, 'get').mockResolvedValue({
-        data: [{
+        data: { mcpServers: [{
           mcpServerName: 'v2Server',
           url: 'https://v2.example.com/mcp',
           audience: v2Audience,
           scope: 'Tools.ListInvoke.All'
-        }]
+        }] }
       });
       getAgenticUserTokenSpy.mockResolvedValue(mockToken);
 
@@ -1495,7 +1495,7 @@ describe('McpToolServerConfigurationService', () => {
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const axios = require('axios');
         jest.spyOn(axios, 'get').mockResolvedValue({
-          data: [{ mcpServerName: 'mailServer', url: 'http://prod.example.com' }]
+          data: { mcpServers: [{ mcpServerName: 'mailServer', url: 'http://prod.example.com' }] }
         });
 
         const servers = await service.listToolServers('agent-id', mockToken);
@@ -1508,7 +1508,7 @@ describe('McpToolServerConfigurationService', () => {
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const axios = require('axios');
         jest.spyOn(axios, 'get').mockResolvedValue({
-          data: [{ mcpServerName: 'v2Server', url: 'http://v2.example.com', audience: v2Audience }]
+          data: { mcpServers: [{ mcpServerName: 'v2Server', url: 'http://v2.example.com', audience: v2Audience }] }
         });
 
         await expect(
@@ -1521,7 +1521,7 @@ describe('McpToolServerConfigurationService', () => {
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const axios = require('axios');
         jest.spyOn(axios, 'get').mockResolvedValue({
-          data: [{ mcpServerName: 'v2Tools', url: 'http://v2tools.example.com', audience: v2Audience }]
+          data: { mcpServers: [{ mcpServerName: 'v2Tools', url: 'http://v2tools.example.com', audience: v2Audience }] }
         });
 
         await expect(
@@ -1535,7 +1535,7 @@ describe('McpToolServerConfigurationService', () => {
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const axios = require('axios');
         jest.spyOn(axios, 'get').mockResolvedValue({
-          data: [{ mcpServerName: 'legacyServer', url: 'http://legacy.example.com', audience: atgAppId }]
+          data: { mcpServers: [{ mcpServerName: 'legacyServer', url: 'http://legacy.example.com', audience: atgAppId }] }
         });
 
         const servers = await service.listToolServers('agent-id', mockToken);
