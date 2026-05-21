@@ -611,19 +611,25 @@ describe("OpenAI Trace Processor Integration Tests", () => {
       // run may surface the tool failure; spans should still be emitted
     }
 
-    await waitForSpans(spans, 2);
+    // Wait for the tool span to appear — the agent may produce multiple spans
+    // and the tool span may arrive after the inference span
+    const startTime = Date.now();
+    const timeout = 15000;
+    let toolSpan: ReadableSpan | undefined;
+    while (!toolSpan && Date.now() - startTime < timeout) {
+      toolSpan = spans.find((s) => s.name === "execute_tool will_throw");
+      if (!toolSpan) await new Promise((resolve) => setTimeout(resolve, 200));
+    }
 
-    // The failing tool should produce an execute_tool span with ERROR status + error.type attribute
-    const errorSpan = spans.find(
-      (s) => s.name === "execute_tool will_throw" && s.attributes[OpenTelemetryConstants.ERROR_TYPE_KEY],
-    );
-    expect(errorSpan).toBeDefined();
-    const errorTypeValue = errorSpan?.attributes[OpenTelemetryConstants.ERROR_TYPE_KEY];
+    expect(toolSpan).toBeDefined();
+    const errorSpan = toolSpan!;
+    expect(errorSpan.attributes[OpenTelemetryConstants.ERROR_TYPE_KEY]).toBeDefined();
+    const errorTypeValue = errorSpan.attributes[OpenTelemetryConstants.ERROR_TYPE_KEY];
     expect(typeof errorTypeValue).toBe("string");
     expect((errorTypeValue as string).length).toBeGreaterThan(0);
     // The Agents SDK wraps tool failures — status code is ERROR, message describes tool failure
-    expect(errorSpan?.status.code).toBe(2); // SpanStatusCode.ERROR
-    expect(errorSpan?.status.message).toContain("tool");
-    console.log(`✅ error.type validated: type="${errorTypeValue}", message="${errorSpan?.status.message}"`);
+    expect(errorSpan.status.code).toBe(2); // SpanStatusCode.ERROR
+    expect(errorSpan.status.message).toContain("tool");
+    console.log(`✅ error.type validated: type="${errorTypeValue}", message="${errorSpan.status.message}"`);
   });
 });
