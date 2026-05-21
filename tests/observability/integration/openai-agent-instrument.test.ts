@@ -192,9 +192,8 @@ describe("OpenAI Trace Processor Integration Tests", () => {
         const parsedInput = JSON.parse(
           inferenceSpan.attributes[OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY] as string,
         );
-        expect(parsedInput.version).toBe("0.1.0");
-        expect(Array.isArray(parsedInput.messages)).toBe(true);
-        const userMsg = parsedInput.messages.find((m: any) => m.role === "user");
+        expect(Array.isArray(parsedInput)).toBe(true);
+        const userMsg = parsedInput.find((m: any) => m.role === "user");
         expect(userMsg).toBeDefined();
         expect(Array.isArray(userMsg.parts)).toBe(true);
         expect(userMsg.parts[0].type).toBe("text");
@@ -204,8 +203,8 @@ describe("OpenAI Trace Processor Integration Tests", () => {
         const parsedOutput = JSON.parse(
           inferenceSpan.attributes[OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY] as string,
         );
-        expect(parsedOutput.version).toBe("0.1.0");
-        const assistantMsg = parsedOutput.messages.find((m: any) => m.role === "assistant");
+        expect(Array.isArray(parsedOutput)).toBe(true);
+        const assistantMsg = parsedOutput.find((m: any) => m.role === "assistant");
         expect(assistantMsg).toBeDefined();
         expect(Array.isArray(assistantMsg.parts)).toBe(true);
         expect(assistantMsg.parts[0].type).toBe("text");

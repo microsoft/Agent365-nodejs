@@ -16,9 +16,7 @@ import {
   UserDetails,
   OpenTelemetryConstants,
   OpenTelemetryScope,
-  InputMessages,
   MessageRole,
-  A365_MESSAGE_SCHEMA_VERSION,
 } from '@microsoft/agents-a365-observability';
 import { safeSerializeToJson } from '@microsoft/agents-a365-observability/src/tracing/util';
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor, ReadableSpan } from '@opentelemetry/sdk-trace-base';
@@ -810,10 +808,10 @@ describe('Request content and message serialization (span attributes)', () => {
 
       const attributes = getLastSpan().attributes;
       const parsed = JSON.parse(attributes[OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY] as string);
-      expect(parsed.version).toBe('0.1.0');
-      expect(parsed.messages).toHaveLength(1);
-      expect(parsed.messages[0].role).toBe('user');
-      expect(parsed.messages[0].parts[0]).toEqual({ type: 'text', content: 'Hello agent' });
+      expect(Array.isArray(parsed)).toBe(true);
+      expect(parsed).toHaveLength(1);
+      expect(parsed[0].role).toBe('user');
+      expect(parsed[0].parts[0]).toEqual({ type: 'text', content: 'Hello agent' });
     });
 
     it('should record a string array as input message attributes', () => {
@@ -822,14 +820,14 @@ describe('Request content and message serialization (span attributes)', () => {
 
       const attributes = getLastSpan().attributes;
       const parsed = JSON.parse(attributes[OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY] as string);
-      expect(parsed.messages).toHaveLength(2);
-      expect(parsed.messages[0].parts[0].content).toBe('msg1');
-      expect(parsed.messages[1].parts[0].content).toBe('msg2');
+      expect(Array.isArray(parsed)).toBe(true);
+      expect(parsed).toHaveLength(2);
+      expect(parsed[0].parts[0].content).toBe('msg1');
+      expect(parsed[1].parts[0].content).toBe('msg2');
     });
 
     it('should record a structured InputMessages wrapper as-is', () => {
-      const wrapper: InputMessages = {
-        version: A365_MESSAGE_SCHEMA_VERSION,
+      const wrapper = {
         messages: [{ role: MessageRole.SYSTEM, parts: [{ type: 'text', content: 'system prompt' }] }],
       };
       const scope = InvokeAgentScope.start({ ...testRequest, content: wrapper }, {}, testAgentDetails);
@@ -837,9 +835,9 @@ describe('Request content and message serialization (span attributes)', () => {
 
       const attributes = getLastSpan().attributes;
       const parsed = JSON.parse(attributes[OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY] as string);
-      expect(parsed.version).toBe('0.1.0');
-      expect(parsed.messages).toHaveLength(1);
-      expect(parsed.messages[0].role).toBe('system');
+      expect(Array.isArray(parsed)).toBe(true);
+      expect(parsed).toHaveLength(1);
+      expect(parsed[0].role).toBe('system');
     });
 
     it('should not set input messages when content is undefined', () => {
@@ -859,9 +857,11 @@ describe('Request content and message serialization (span attributes)', () => {
 
       const attributes = getLastSpan().attributes;
       const parsed = JSON.parse(attributes[OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY] as string);
-      expect(parsed.messages).toHaveLength(1);
-      expect(parsed.messages[0].role).toBe('assistant');
-      expect(parsed.messages[0].parts[0].content).toBe('single output');
+      expect(Array.isArray(parsed)).toBe(true);
+      expect(parsed).toHaveLength(1);
+      expect(parsed[0].role).toBe('assistant');
+      expect(parsed[0].parts[0].content).toBe('single output');
+      expect(parsed[0].finish_reason).toBe('stop');
     });
   });
 

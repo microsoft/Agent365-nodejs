@@ -433,27 +433,27 @@ export interface ChatMessage {
 }
 
 export interface InputMessages {
-  version: typeof A365_MESSAGE_SCHEMA_VERSION;
   messages: ChatMessage[];
 }
 /**
  * An output message produced by a model (OTEL gen-ai semantic conventions).
+ * `finish_reason` defaults to `"stop"` per OTel spec when not provided.
  */
 export interface OutputMessage extends ChatMessage {
   finish_reason?: FinishReason | string;
 }
 
 export interface OutputMessages {
-  version: typeof A365_MESSAGE_SCHEMA_VERSION;
   messages: OutputMessage[];
 }
 
-export const A365_MESSAGE_SCHEMA_VERSION = '0.1.0' as const;
+/** Default finish reason applied when none is provided (per OTel spec). */
+export const DEFAULT_FINISH_REASON = 'stop' as const;
 
-/** Accepted input for `recordInputMessages`. Supports a single string, an array of strings (backward compat), or the versioned wrapper. */
+/** Accepted input for `recordInputMessages`. Supports a single string, an array of strings (backward compat), or the structured wrapper. */
 export type InputMessagesParam = string | string[] | InputMessages;
 
-/** Accepted input for `recordOutputMessages`. Supports a single string, an array of strings (backward compat), or the versioned wrapper. */
+/** Accepted input for `recordOutputMessages`. Supports a single string, an array of strings (backward compat), or the structured wrapper. */
 export type OutputMessagesParam = string | string[] | OutputMessages;
 
 /**

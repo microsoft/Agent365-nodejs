@@ -551,10 +551,10 @@ describe('OpenAIAgentsTraceProcessor', () => {
 
       const value = entry![1] as string;
       const parsed = JSON.parse(value);
-      expect(parsed.version).toBe('0.1.0');
-      expect(parsed.messages).toHaveLength(1);
-      expect(parsed.messages[0].role).toBe('assistant');
-      expect(parsed.messages[0].parts[0]).toEqual({ type: 'text', content: 'Assistant reply' });
+      expect(Array.isArray(parsed)).toBe(true);
+      expect(parsed).toHaveLength(1);
+      expect(parsed[0].role).toBe('assistant');
+      expect(parsed[0].parts[0]).toEqual({ type: 'text', content: 'Assistant reply' });
     });
     it('records structured InputMessages for array _input on response spans', async () => {
       const processor = new OpenAIAgentsTraceProcessor(tracer, {});
@@ -586,11 +586,11 @@ describe('OpenAIAgentsTraceProcessor', () => {
 
       const value = entry![1] as string;
       const parsed = JSON.parse(value);
-      expect(parsed.version).toBe('0.1.0');
-      expect(parsed.messages).toHaveLength(2);
+      expect(Array.isArray(parsed)).toBe(true);
+      expect(parsed).toHaveLength(2);
       expectValidInputMessages(entry![1]);
-      expect(parsed.messages[0]).toEqual({ role: 'user', parts: [{ type: 'text', content: 'Hello user 1' }] });
-      expect(parsed.messages[1]).toEqual({ role: 'user', parts: [{ type: 'text', content: 'Hello user 2' }] });
+      expect(parsed[0]).toEqual({ role: 'user', parts: [{ type: 'text', content: 'Hello user 1' }] });
+      expect(parsed[1]).toEqual({ role: 'user', parts: [{ type: 'text', content: 'Hello user 2' }] });
     });
 
     it('parses stringified array _input and records all messages in structured format', async () => {
@@ -626,12 +626,12 @@ describe('OpenAIAgentsTraceProcessor', () => {
 
       const value = entry![1] as string;
       const parsed = JSON.parse(value);
-      expect(parsed.version).toBe('0.1.0');
-      expect(parsed.messages).toHaveLength(3);
+      expect(Array.isArray(parsed)).toBe(true);
+      expect(parsed).toHaveLength(3);
       expectValidInputMessages(entry![1]);
-      expect(parsed.messages[0].role).toBe('user');
-      expect(parsed.messages[1].role).toBe('user');
-      expect(parsed.messages[2].role).toBe('assistant');
+      expect(parsed[0].role).toBe('user');
+      expect(parsed[1].role).toBe('user');
+      expect(parsed[2].role).toBe('assistant');
     });
 
     it('records structured InputMessages for array input with non standard schema on response spans', async () => {
@@ -664,9 +664,8 @@ describe('OpenAIAgentsTraceProcessor', () => {
 
       const value = entry![1] as string;
       const parsed = JSON.parse(value);
-      expect(parsed.version).toBe('0.1.0');
-      expect(parsed.messages).toBeDefined();
-      expect(parsed.messages.length).toBeGreaterThan(0);
+      expect(Array.isArray(parsed)).toBe(true);
+      expect(parsed.length).toBeGreaterThan(0);
     });
 
     it('records GEN_AI_OUTPUT_MESSAGES in versioned envelope when output is a string', async () => {
@@ -695,7 +694,7 @@ describe('OpenAIAgentsTraceProcessor', () => {
       expect(entry).toBeDefined();
       expectValidOutputMessages(entry![1]);
       const parsed = JSON.parse(entry![1] as string);
-      expect(parsed.messages[0].parts[0].content).toBe('final answer');
+      expect(parsed[0].parts[0].content).toBe('final answer');
     });
 
     it('records structured OutputMessages when output is structured', async () => {
@@ -735,11 +734,11 @@ describe('OpenAIAgentsTraceProcessor', () => {
 
       const value = entry![1] as string;
       const parsed = JSON.parse(value);
-      expect(parsed.version).toBe('0.1.0');
-      expect(parsed.messages).toHaveLength(1);
-      expect(parsed.messages[0].role).toBe('assistant');
+      expect(Array.isArray(parsed)).toBe(true);
+      expect(parsed).toHaveLength(1);
+      expect(parsed[0].role).toBe('assistant');
       expectValidOutputMessages(entry![1]);
-      expect(parsed.messages[0].parts).toEqual([
+      expect(parsed[0].parts).toEqual([
         { type: 'text', content: 'Hello user 1' },
         { type: 'text', content: 'Hello user 2' },
       ]);

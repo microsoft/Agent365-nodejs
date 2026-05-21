@@ -69,7 +69,7 @@ export {
   InputMessagesParam,
   OutputMessagesParam,
   ResponseMessagesParam,
-  A365_MESSAGE_SCHEMA_VERSION,
+  DEFAULT_FINISH_REASON,
   GuardrailDecisionType,
   GuardrailDetails,
   GuardrailFinding,
