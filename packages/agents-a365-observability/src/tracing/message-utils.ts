@@ -88,8 +88,7 @@ export function serializeMessages(wrapper: InputMessages | OutputMessages): stri
             type: 'text',
             content: `[serialization failed: ${wrapper.messages.length} ${wrapper.messages.length === 1 ? 'message' : 'messages'}]`
           }
-        ],
-        finish_reason: 'error'
+        ]
       }
     ]);
   }

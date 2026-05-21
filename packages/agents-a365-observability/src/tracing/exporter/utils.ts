@@ -248,8 +248,7 @@ function serializeOverflowSentinel(totalMessages: number): string {
           type: 'text',
           content: `[truncated: ${totalMessages} ${totalMessages === 1 ? 'message' : 'messages'} exceeded limit]`
         }
-      ],
-      finish_reason: 'error'
+      ]
     }
   ]);
 }

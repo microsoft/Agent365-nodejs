@@ -7,7 +7,6 @@ import {
   OutputMessage,
   InputMessages,
   OutputMessages,
-  DEFAULT_FINISH_REASON,
 } from '@microsoft/agents-a365-observability';
 import {
   isWrappedMessages,
