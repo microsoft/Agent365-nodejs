@@ -1,6 +1,5 @@
-// ------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// ------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 
 /**
  * Node.js 18 polyfills for integration tests.
@@ -10,7 +9,7 @@
  * context. @langchain/core (uuid/rng.ts) references `crypto` directly, so we
  * need to polyfill it here before any test modules are loaded.
  *
- * In Node.js 19+ `crypto` was promoted to a first-class global; this guard
+ * In Node.js 19+, `crypto` was promoted to a first-class global; this guard
  * ensures the polyfill is a no-op on newer runtimes.
  */
 if (typeof globalThis.crypto === "undefined") {
