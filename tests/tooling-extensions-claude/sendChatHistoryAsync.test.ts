@@ -1,14 +1,15 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+// @ts-nocheck - jest.requireMock types don't propagate properly for ESM modules
 import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
 import { TurnContext } from '@microsoft/agents-hosting';
 import { OperationResult } from '../../packages/agents-a365-runtime/src/operation-result';
 import { McpToolRegistrationService } from '../../packages/agents-a365-tooling-extensions-claude/src/McpToolRegistrationService';
-import type { SessionMessage } from '@anthropic-ai/claude-agent-sdk';
 import {
   createMixedMessages,
   createUserMessage,
+  MockSessionMessage,
 } from './fixtures/mockClaudeTypes';
 import axios from 'axios';
 
@@ -16,13 +17,14 @@ import axios from 'axios';
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
-// Mock getSessionMessages from Claude SDK
+// Mock getSessionMessages from Claude SDK (ESM-only module, use requireMock)
 jest.mock('@anthropic-ai/claude-agent-sdk', () => ({
   getSessionMessages: jest.fn(),
 }));
 
-import { getSessionMessages } from '@anthropic-ai/claude-agent-sdk';
-const mockedGetSessionMessages = getSessionMessages as jest.MockedFunction<typeof getSessionMessages>;
+const { getSessionMessages: mockedGetSessionMessages } = jest.requireMock(
+  '@anthropic-ai/claude-agent-sdk'
+) as { getSessionMessages: jest.Mock };
 
 describe('McpToolRegistrationService - sendChatHistoryAsync', () => {
   let service: McpToolRegistrationService;
