@@ -264,7 +264,7 @@ SessionMessage fields are converted to `ChatHistoryMessage` as follows:
 |---------------------|------------------------|-------|
 | `uuid` | `id` | Falls back to generated UUID if empty |
 | `type` | `role` | Normalized: `user`→`user`, `assistant`→`assistant`, `system`→`system` |
-| `message.content` | `content` | Extracts text from string or content blocks; tool calls summarized as `[Tool call: name]` |
+| `message.content` | `content` | Extracts text from string content or `text` content blocks; non-text blocks (e.g., `tool_use`, `tool_result`) are ignored |
 | *(not available)* | `timestamp` | Generated as current UTC time |
 
 Messages with empty extractable content are filtered out.
