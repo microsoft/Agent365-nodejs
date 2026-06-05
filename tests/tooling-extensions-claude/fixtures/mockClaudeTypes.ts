@@ -77,7 +77,7 @@ export function createMessageWithContentBlocks(
 export function createToolUseMessage(toolName: string, input: unknown, uuid?: string): MockSessionMessage {
   return {
     type: 'assistant',
-    uuid: uuid ?? `msg-${Math.random().toString(36).slice(2, 10)}`,
+    uuid: uuid ?? `msg-${randomUUID()}`,
     session_id: 'session-123',
     message: {
       role: 'assistant',
@@ -96,7 +96,7 @@ export function createToolUseMessage(toolName: string, input: unknown, uuid?: st
 export function createToolResultMessage(result: string, uuid?: string): MockSessionMessage {
   return {
     type: 'user',
-    uuid: uuid ?? `msg-${Math.random().toString(36).slice(2, 10)}`,
+    uuid: uuid ?? `msg-${randomUUID()}`,
     session_id: 'session-123',
     message: {
       role: 'user',
