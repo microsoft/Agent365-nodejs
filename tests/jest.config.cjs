@@ -77,6 +77,7 @@ module.exports = {
     '^@microsoft/agents-a365-tooling-extensions-langchain$': '<rootDir>/packages/agents-a365-tooling-extensions-langchain/src',
     '^@microsoft/agents-a365-tooling-extensions-openai$': '<rootDir>/packages/agents-a365-tooling-extensions-openai/src',
     '^@microsoft/agents-a365-notifications$': '<rootDir>/packages/agents-a365-notifications/src',
+    '^@anthropic-ai/claude-agent-sdk$': '<rootDir>/tests/__mocks__/@anthropic-ai/claude-agent-sdk.ts',
     '^@opentelemetry/api$': '<rootDir>/node_modules/@opentelemetry/api'
   },
   
