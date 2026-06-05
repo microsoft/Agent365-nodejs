@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+import { randomUUID } from 'node:crypto';
+
 /**
  * Local type matching the SessionMessage shape from @anthropic-ai/claude-agent-sdk.
  * Defined here to avoid ESM resolution issues in Jest.
@@ -19,7 +21,7 @@ export interface MockSessionMessage {
 export function createUserMessage(content: string, uuid?: string): MockSessionMessage {
   return {
     type: 'user',
-    uuid: uuid ?? `msg-${Math.random().toString(36).slice(2, 10)}`,
+    uuid: uuid ?? `msg-${randomUUID()}`,
     session_id: 'session-123',
     message: { role: 'user', content: content },
     parent_tool_use_id: null
@@ -32,7 +34,7 @@ export function createUserMessage(content: string, uuid?: string): MockSessionMe
 export function createAssistantMessage(content: string, uuid?: string): MockSessionMessage {
   return {
     type: 'assistant',
-    uuid: uuid ?? `msg-${Math.random().toString(36).slice(2, 10)}`,
+    uuid: uuid ?? `msg-${randomUUID()}`,
     session_id: 'session-123',
     message: { role: 'assistant', content: content },
     parent_tool_use_id: null
@@ -45,7 +47,7 @@ export function createAssistantMessage(content: string, uuid?: string): MockSess
 export function createSystemMessage(content: string, uuid?: string): MockSessionMessage {
   return {
     type: 'system',
-    uuid: uuid ?? `msg-${Math.random().toString(36).slice(2, 10)}`,
+    uuid: uuid ?? `msg-${randomUUID()}`,
     session_id: 'session-123',
     message: { role: 'system', content: content },
     parent_tool_use_id: null
@@ -62,7 +64,7 @@ export function createMessageWithContentBlocks(
 ): MockSessionMessage {
   return {
     type: type,
-    uuid: uuid ?? `msg-${Math.random().toString(36).slice(2, 10)}`,
+    uuid: uuid ?? `msg-${randomUUID()}`,
     session_id: 'session-123',
     message: { role: type, content: blocks },
     parent_tool_use_id: null
