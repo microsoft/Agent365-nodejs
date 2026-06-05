@@ -16,7 +16,7 @@ import { getSessionMessages } from '@anthropic-ai/claude-agent-sdk';
 /**
  * Represents a content block within a Claude message payload.
  */
-export interface ContentBlock {
+interface ContentBlock {
   type: string;
   text?: string;
 }
