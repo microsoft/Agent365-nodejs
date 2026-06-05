@@ -7,7 +7,7 @@ settings:
 catalogs:
   default:
     '@anthropic-ai/claude-agent-sdk':
-      specifier: 0.2.59
+      specifier: ^0.2.59
       version: 0.2.59
     '@azure/identity':
       specifier: ^4.12.1

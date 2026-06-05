@@ -210,7 +210,7 @@ private readonly orchestratorName: string = "Claude";
 
 ### Current State
 
-The Claude Agent SDK (`@anthropic-ai/claude-agent-sdk` v0.3.162+) now exposes `getSessionMessages(sessionId, options?)` which returns `SessionMessage[]`. This package provides a Claude-specific `sendChatHistoryAsync` method that mirrors the OpenAI extension's implementation from PR #157.
+The Claude Agent SDK (`@anthropic-ai/claude-agent-sdk` v0.2.59+) now exposes `getSessionMessages(sessionId, options?)` which returns `SessionMessage[]`. This package provides a Claude-specific `sendChatHistoryAsync` method that mirrors the OpenAI extension's implementation from PR #157.
 
 ### Usage
 
