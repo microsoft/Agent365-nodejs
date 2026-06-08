@@ -7,7 +7,6 @@ import {
   OpenTelemetryConstants,
   serializeMessages,
   safeSerializeToJson,
-  A365_MESSAGE_SCHEMA_VERSION,
   MessageRole,
 } from "@microsoft/agents-a365-observability";
 import type {
@@ -114,7 +113,7 @@ export function setInputMessagesAttribute(run: Run, span: Span) {
   }
 
   if (chatMessages.length > 0) {
-    const wrapper: InputMessages = { version: A365_MESSAGE_SCHEMA_VERSION, messages: chatMessages };
+    const wrapper: InputMessages = { messages: chatMessages };
     span.setAttribute(OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY, serializeMessages(wrapper));
   }
 }
@@ -390,7 +389,7 @@ export function setOutputMessagesAttribute(run: Run, span: Span) {
   }
 
   if (outputMessages.length > 0) {
-    const wrapper: OutputMessages = { version: A365_MESSAGE_SCHEMA_VERSION, messages: outputMessages };
+    const wrapper: OutputMessages = { messages: outputMessages };
     span.setAttribute(OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY, serializeMessages(wrapper));
   }
 }

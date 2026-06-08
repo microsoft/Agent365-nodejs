@@ -192,9 +192,8 @@ describe("OpenAI Trace Processor Integration Tests", () => {
         const parsedInput = JSON.parse(
           inferenceSpan.attributes[OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY] as string,
         );
-        expect(parsedInput.version).toBe("0.1.0");
-        expect(Array.isArray(parsedInput.messages)).toBe(true);
-        const userMsg = parsedInput.messages.find((m: any) => m.role === "user");
+        expect(Array.isArray(parsedInput)).toBe(true);
+        const userMsg = parsedInput.find((m: any) => m.role === "user");
         expect(userMsg).toBeDefined();
         expect(Array.isArray(userMsg.parts)).toBe(true);
         expect(userMsg.parts[0].type).toBe("text");
@@ -204,8 +203,8 @@ describe("OpenAI Trace Processor Integration Tests", () => {
         const parsedOutput = JSON.parse(
           inferenceSpan.attributes[OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY] as string,
         );
-        expect(parsedOutput.version).toBe("0.1.0");
-        const assistantMsg = parsedOutput.messages.find((m: any) => m.role === "assistant");
+        expect(Array.isArray(parsedOutput)).toBe(true);
+        const assistantMsg = parsedOutput.find((m: any) => m.role === "assistant");
         expect(assistantMsg).toBeDefined();
         expect(Array.isArray(assistantMsg.parts)).toBe(true);
         expect(assistantMsg.parts[0].type).toBe("text");
@@ -612,19 +611,25 @@ describe("OpenAI Trace Processor Integration Tests", () => {
       // run may surface the tool failure; spans should still be emitted
     }
 
-    await waitForSpans(spans, 2);
+    // Wait for the tool span to appear — the agent may produce multiple spans
+    // and the tool span may arrive after the inference span
+    const startTime = Date.now();
+    const timeout = 15000;
+    let toolSpan: ReadableSpan | undefined;
+    while (!toolSpan && Date.now() - startTime < timeout) {
+      toolSpan = spans.find((s) => s.name === "execute_tool will_throw");
+      if (!toolSpan) await new Promise((resolve) => setTimeout(resolve, 200));
+    }
 
-    // The failing tool should produce an execute_tool span with ERROR status + error.type attribute
-    const errorSpan = spans.find(
-      (s) => s.name === "execute_tool will_throw" && s.attributes[OpenTelemetryConstants.ERROR_TYPE_KEY],
-    );
-    expect(errorSpan).toBeDefined();
-    const errorTypeValue = errorSpan?.attributes[OpenTelemetryConstants.ERROR_TYPE_KEY];
+    expect(toolSpan).toBeDefined();
+    const errorSpan = toolSpan!;
+    expect(errorSpan.attributes[OpenTelemetryConstants.ERROR_TYPE_KEY]).toBeDefined();
+    const errorTypeValue = errorSpan.attributes[OpenTelemetryConstants.ERROR_TYPE_KEY];
     expect(typeof errorTypeValue).toBe("string");
     expect((errorTypeValue as string).length).toBeGreaterThan(0);
     // The Agents SDK wraps tool failures — status code is ERROR, message describes tool failure
-    expect(errorSpan?.status.code).toBe(2); // SpanStatusCode.ERROR
-    expect(errorSpan?.status.message).toContain("tool");
-    console.log(`✅ error.type validated: type="${errorTypeValue}", message="${errorSpan?.status.message}"`);
+    expect(errorSpan.status.code).toBe(2); // SpanStatusCode.ERROR
+    expect(errorSpan.status.message).toContain("tool");
+    console.log(`✅ error.type validated: type="${errorTypeValue}", message="${errorSpan.status.message}"`);
   });
 });

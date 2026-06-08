@@ -3,7 +3,7 @@
 
 import { SpanKind } from '@opentelemetry/api';
 import { OpenTelemetryScope } from './OpenTelemetryScope';
-import { AgentDetails, UserDetails, OutputResponse, Request, SpanDetails, ResponseMessagesParam, A365_MESSAGE_SCHEMA_VERSION } from '../contracts';
+import { AgentDetails, UserDetails, OutputResponse, OutputMessages, Request, SpanDetails, ResponseMessagesParam } from '../contracts';
 import { OpenTelemetryConstants } from '../constants';
 import { normalizeOutputMessages, serializeMessages } from '../message-utils';
 
@@ -94,10 +94,9 @@ export class OutputScope extends OpenTelemetryScope {
       return;
     }
     const normalized = normalizeOutputMessages(messages);
-    const wrapper = { version: A365_MESSAGE_SCHEMA_VERSION, messages: normalized.messages };
     this.setTagMaybe(
       OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY,
-      serializeMessages(wrapper)
+      serializeMessages(normalized)
     );
   }
 
@@ -107,6 +106,6 @@ export class OutputScope extends OpenTelemetryScope {
   private _isRawDict(messages: ResponseMessagesParam): messages is Record<string, unknown> {
     return typeof messages === 'object' && messages !== null
       && !Array.isArray(messages)
-      && !('version' in messages && 'messages' in messages);
+      && !('messages' in messages && Array.isArray((messages as OutputMessages).messages));
   }
 }

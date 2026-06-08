@@ -162,7 +162,7 @@ describe('OpenAI Message Contract Tests', () => {
       const outputValue = getAttrFromArray(attrs, OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY);
       expectValidOutputMessages(outputValue);
 
-      const toolPart = JSON.parse(outputValue as string).messages[0].parts.find((p: any) => p.type === 'tool_call');
+      const toolPart = JSON.parse(outputValue as string)[0].parts.find((p: any) => p.type === 'tool_call');
       expect(toolPart.name).toBe('get_weather');
       expect(toolPart.id).toBe('call_abc');
       expect(toolPart.arguments).toEqual({ city: 'Seattle' });
@@ -172,7 +172,6 @@ describe('OpenAI Message Contract Tests', () => {
   describe('Edge cases', () => {
     it('should return empty messages array for empty input', () => {
       const result = buildStructuredInputMessages([]);
-      expect(result.version).toBe('0.1.0');
       expect(result.messages).toHaveLength(0);
     });
 

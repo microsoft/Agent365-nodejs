@@ -46,7 +46,7 @@ export function validateParentChildRelationship(
 /**
  * Validate A365 message schema on a span's input/output messages.
  * Calls expectValidInputMessages/expectValidOutputMessages from the shared
- * message-schema-validator, which check version "0.1.0", roles, and parts.
+ * message-schema-validator, which check for a plain JSON array of messages with roles and parts.
  */
 export function validateMessageSchema(span: ReadableSpan): void {
   const inputMessages =
@@ -77,17 +77,17 @@ export function validateInputMessageContent(
     span.attributes[OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY] as string;
   expect(raw).toBeDefined();
   const parsed = JSON.parse(raw);
-  expect(parsed.version).toBe("0.1.0");
-  expect(parsed.messages.length).toBeGreaterThan(0);
+  expect(Array.isArray(parsed)).toBe(true);
+  expect(parsed.length).toBeGreaterThan(0);
 
   if (expectations.hasRole) {
     expect(
-      parsed.messages.some((m: any) => m.role === expectations.hasRole),
+      parsed.some((m: any) => m.role === expectations.hasRole),
     ).toBe(true);
   }
   if (expectations.hasPartType) {
     expect(
-      parsed.messages.some((m: any) =>
+      parsed.some((m: any) =>
         m.parts?.some((p: any) => p.type === expectations.hasPartType),
       ),
     ).toBe(true);
@@ -112,17 +112,17 @@ export function validateOutputMessageContent(
     span.attributes[OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY] as string;
   expect(raw).toBeDefined();
   const parsed = JSON.parse(raw);
-  expect(parsed.version).toBe("0.1.0");
-  expect(parsed.messages.length).toBeGreaterThan(0);
+  expect(Array.isArray(parsed)).toBe(true);
+  expect(parsed.length).toBeGreaterThan(0);
 
   if (expectations.hasRole) {
     expect(
-      parsed.messages.some((m: any) => m.role === expectations.hasRole),
+      parsed.some((m: any) => m.role === expectations.hasRole),
     ).toBe(true);
   }
   if (expectations.hasPartType) {
     expect(
-      parsed.messages.some((m: any) =>
+      parsed.some((m: any) =>
         m.parts?.some((p: any) => p.type === expectations.hasPartType),
       ),
     ).toBe(true);
