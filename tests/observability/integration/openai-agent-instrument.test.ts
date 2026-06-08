@@ -607,7 +607,7 @@ describe("OpenAI Trace Processor Integration Tests", () => {
     });
 
     try {
-      await run(agent, "Please call the will_throw tool.");
+      await run(agent, "Please call the will_throw tool.", { maxTurns: 3 });
     } catch {
       // run may surface the tool failure; spans should still be emitted
     }
