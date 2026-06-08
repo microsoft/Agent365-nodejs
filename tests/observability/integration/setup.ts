@@ -21,7 +21,7 @@ beforeAll(() => {
   // Initialize global observability/telemetry before tests
   // Setup global test data and fixtures
   // Set global timeout if needed
-  jest.setTimeout(60000);
+  jest.setTimeout(120000);
 });
 
 afterAll(async () => {

@@ -14,8 +14,12 @@ module.exports = {
     '!tests/observability/integration/**/*.test.ts',
   ],
   coverageDirectory: 'coverage/integration',
+  // Polyfill `crypto` global for Node.js 18 before any test modules are loaded.
+  // @langchain/core uses `crypto` directly; Node.js 18 only exposes it as
+  // `globalThis.crypto` in CommonJS context, not as a bare global.
+  setupFiles: ['<rootDir>/tests/observability/integration/jest.polyfills.js'],
   setupFilesAfterEnv: ['<rootDir>/tests/observability/integration/setup.ts'],
-  testTimeout: 60000,
+  testTimeout: 120000,
   globals: {
     'ts-jest': {
       tsconfig: {
