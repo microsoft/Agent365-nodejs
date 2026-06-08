@@ -5,7 +5,7 @@ import { RuntimeConfiguration } from '@microsoft/agents-a365-runtime';
 import { ObservabilityConfigurationOptions } from './ObservabilityConfigurationOptions';
 
 // Default constants
-const PROD_OBSERVABILITY_SCOPE = 'https://api.powerplatform.com/.default';
+const PROD_OBSERVABILITY_SCOPE = 'api://9b975845-388f-4429-889e-eab1ef63949c/.default';
 
 /**
  * Configuration for observability package.
@@ -44,12 +44,6 @@ export class ObservabilityConfiguration extends RuntimeConfiguration {
     return RuntimeConfiguration.parseEnvBoolean(process.env.ENABLE_A365_OBSERVABILITY_EXPORTER);
   }
 
-  get useCustomDomainForObservability(): boolean {
-    const result = this.observabilityOverrides.useCustomDomainForObservability?.();
-    if (result !== undefined) return result;
-    return RuntimeConfiguration.parseEnvBoolean(process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN);
-  }
-
   get observabilityDomainOverride(): string | null {
     const result = this.observabilityOverrides.observabilityDomainOverride?.();
     if (result !== undefined) {
@@ -67,4 +61,5 @@ export class ObservabilityConfiguration extends RuntimeConfiguration {
       ?? process.env.A365_OBSERVABILITY_LOG_LEVEL
       ?? 'none';
   }
+
 }

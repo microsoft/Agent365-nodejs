@@ -53,7 +53,7 @@ describe('ObservabilityConfiguration', () => {
       const config = new ObservabilityConfiguration({
         observabilityAuthenticationScopes: () => undefined as unknown as string[]
       });
-      expect(config.observabilityAuthenticationScopes).toEqual(['https://api.powerplatform.com/.default']);
+      expect(config.observabilityAuthenticationScopes).toEqual(['api://9b975845-388f-4429-889e-eab1ef63949c/.default']);
     });
 
     it('should fall back to env var when override not provided', () => {
@@ -65,19 +65,19 @@ describe('ObservabilityConfiguration', () => {
     it('should fall back to default when neither override nor env var', () => {
       delete process.env.A365_OBSERVABILITY_SCOPES_OVERRIDE;
       const config = new ObservabilityConfiguration({});
-      expect(config.observabilityAuthenticationScopes).toEqual(['https://api.powerplatform.com/.default']);
+      expect(config.observabilityAuthenticationScopes).toEqual(['api://9b975845-388f-4429-889e-eab1ef63949c/.default']);
     });
 
     it('should fall back to default when env var is empty string', () => {
       process.env.A365_OBSERVABILITY_SCOPES_OVERRIDE = '';
       const config = new ObservabilityConfiguration();
-      expect(config.observabilityAuthenticationScopes).toEqual(['https://api.powerplatform.com/.default']);
+      expect(config.observabilityAuthenticationScopes).toEqual(['api://9b975845-388f-4429-889e-eab1ef63949c/.default']);
     });
 
     it('should fall back to default when env var is whitespace only', () => {
       process.env.A365_OBSERVABILITY_SCOPES_OVERRIDE = '   ';
       const config = new ObservabilityConfiguration();
-      expect(config.observabilityAuthenticationScopes).toEqual(['https://api.powerplatform.com/.default']);
+      expect(config.observabilityAuthenticationScopes).toEqual(['api://9b975845-388f-4429-889e-eab1ef63949c/.default']);
     });
 
     it('should return readonly array', () => {
@@ -127,48 +127,6 @@ describe('ObservabilityConfiguration', () => {
       });
       void config.isObservabilityExporterEnabled;
       void config.isObservabilityExporterEnabled;
-      expect(callCount).toBe(2);
-    });
-  });
-
-  describe('useCustomDomainForObservability', () => {
-    it('should use override function when provided', () => {
-      const config = new ObservabilityConfiguration({
-        useCustomDomainForObservability: () => true
-      });
-      expect(config.useCustomDomainForObservability).toBe(true);
-    });
-
-    it.each([
-      ['true', true],
-      ['1', true],
-      ['yes', true],
-      ['on', true],
-      ['false', false],
-      ['0', false],
-      ['', false]
-    ])('should return %s when env var is "%s"', (envValue, expected) => {
-      process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN = envValue;
-      const config = new ObservabilityConfiguration({});
-      expect(config.useCustomDomainForObservability).toBe(expected);
-    });
-
-    it('should return false when env var is not set', () => {
-      delete process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN;
-      const config = new ObservabilityConfiguration({});
-      expect(config.useCustomDomainForObservability).toBe(false);
-    });
-
-    it('should call override function on each access (dynamic resolution)', () => {
-      let callCount = 0;
-      const config = new ObservabilityConfiguration({
-        useCustomDomainForObservability: () => {
-          callCount++;
-          return true;
-        }
-      });
-      void config.useCustomDomainForObservability;
-      void config.useCustomDomainForObservability;
       expect(callCount).toBe(2);
     });
   });

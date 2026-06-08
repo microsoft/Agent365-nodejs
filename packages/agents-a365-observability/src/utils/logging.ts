@@ -6,6 +6,7 @@ import {
   defaultObservabilityConfigurationProvider,
   ObservabilityConfiguration
 } from '../configuration';
+import { ExporterEventNames } from '../tracing/exporter/ExporterEventNames';
 
 /**
  * Custom logger interface for Agent 365 observability
@@ -32,6 +33,16 @@ export interface ILogger {
    * @param args Optional arguments to include in the log
    */
   error(message: string, ...args: unknown[]): void;
+
+  /**
+   * Log an event with standardized parameters
+   * @param eventType Standardized event name from ExporterEventNames enum (e.g., ExporterEventNames.EXPORT)
+   * @param isSuccess Whether the operation/event succeeded
+   * @param durationMs Duration of the operation/event in milliseconds
+   * @param message Optional message or additional details about the event, especially useful for errors or failures
+   * @param details Optional key-value pairs with additional context (e.g., correlationId, tenantId, agentId, etc.)
+   */
+  event(eventType: ExporterEventNames, isSuccess: boolean, durationMs: number, message?: string, details?: Record<string, string>): void;
 }
 
 /**
@@ -74,6 +85,7 @@ function parseLogLevel(level: string): Set<number> {
 
   return levels;
 }
+
 
 /**
  * Default console-based logger implementation with configuration provider support.
@@ -118,6 +130,17 @@ export class DefaultLogger implements ILogger {
       console.error('[ERROR]', message, ...args);
     }
   }
+
+  event(eventType: ExporterEventNames, isSuccess: boolean, durationMs: number, message?: string, details?: Record<string, string>): void {
+    const status = isSuccess ? 'succeeded' : 'failed';
+    const logLevelNeeded = isSuccess ? 1 : 3;
+    if (this.getEnabledLogLevels().has(logLevelNeeded)) {
+      const logFn = isSuccess ? console.log : console.error;
+      const messageInfo = message ? ` - ${message}` : '';
+      const detailsInfo = details && Object.keys(details).length > 0 ? ` ${JSON.stringify(details)}` : '';
+      logFn(`[EVENT]: ${eventType} ${status} in ${durationMs}ms${messageInfo}${detailsInfo}`);
+    }
+  }
 }
 
 /**
@@ -145,7 +168,11 @@ let globalLogger: ILogger = new DefaultLogger();
  * setLogger({
  *   info: (msg, ...args) => winstonLogger.info(msg, ...args),
  *   warn: (msg, ...args) => winstonLogger.warn(msg, ...args),
- *   error: (msg, ...args) => winstonLogger.error(msg, ...args)
+ *   error: (msg, ...args) => winstonLogger.error(msg, ...args),
+ *   event: (eventType, isSuccess, durationMs, message, details) => {
+ *     // eventType is ExporterEventNames enum value
+ *     winstonLogger.log({ level: isSuccess ? 'info' : 'error', eventType, isSuccess, durationMs, message, ...details });
+ *   }
  * });
  * ```
  *
@@ -156,9 +183,10 @@ export function setLogger(customLogger: ILogger): void {
     !customLogger ||
     typeof customLogger.info !== 'function' ||
     typeof customLogger.warn !== 'function' ||
-    typeof customLogger.error !== 'function'
+    typeof customLogger.error !== 'function' ||
+    typeof customLogger.event !== 'function'
   ) {
-    throw new Error('Custom logger must implement ILogger interface (info, warn, error methods)');
+    throw new Error('Custom logger must implement ILogger interface with all methods: info, warn, error, and event');
   }
   globalLogger = customLogger;
 }
@@ -184,7 +212,9 @@ export function resetLogger(): void {
 export const logger: ILogger = {
   info: (message: string, ...args: unknown[]) => globalLogger.info(message, ...args),
   warn: (message: string, ...args: unknown[]) => globalLogger.warn(message, ...args),
-  error: (message: string, ...args: unknown[]) => globalLogger.error(message, ...args)
+  error: (message: string, ...args: unknown[]) => globalLogger.error(message, ...args),
+  event: (eventType: ExporterEventNames, isSuccess: boolean, durationMs: number, message?: string, details?: Record<string, string>) =>
+    globalLogger.event(eventType, isSuccess, durationMs, message, details)
 };
 
 export default logger;

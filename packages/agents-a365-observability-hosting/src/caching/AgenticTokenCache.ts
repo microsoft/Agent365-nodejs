@@ -29,6 +29,8 @@ export class AgenticTokenCache {
     private readonly _map = new Map<string, CacheEntry>();
     private readonly _defaultRefreshSkewMs = 60_000;
     private readonly _defaultMaxTokenAgeMs = 3_600_000;
+    private readonly _maxCacheSize = 10_000;
+    private readonly _maxExpSeconds = 86_400; // 24 hours
     private readonly _keyLocks = new Map<string, Promise<unknown>>();
     private readonly _configProvider: IConfigurationProvider<ObservabilityConfiguration>;
 
@@ -67,7 +69,8 @@ export class AgenticTokenCache {
         tenantId: string,
         turnContext: TurnContext,
         authorization: Authorization,
-        scopes: string[]
+        scopes: string[],
+        authHandlerName: string = 'agentic'
     ): Promise<void> {
         const key = AgenticTokenCache.makeKey(agentId, tenantId);
         if (!authorization) {
@@ -85,6 +88,12 @@ export class AgenticTokenCache {
                     return;
                 }
                 entry = { scopes: effectiveScopes };
+                if (this._map.size >= this._maxCacheSize) {
+                    const oldest = this._map.keys().next().value;
+                    if (oldest !== undefined) {
+                        this._map.delete(oldest);
+                    }
+                }
                 this._map.set(key, entry);
             }
             if (!Array.isArray(entry.scopes) || entry.scopes.length === 0) {
@@ -100,7 +109,7 @@ export class AgenticTokenCache {
             for (let attempt = 0; attempt <= maxRetries; attempt++) {
                 logger.info(`[AgenticTokenCache] Exchanging token attempt ${attempt + 1}/${maxRetries + 1}`);
                 try {
-                    const tokenResponse = await authorization.exchangeToken(turnContext, 'agentic', { scopes: entry.scopes });
+                    const tokenResponse = await authorization.exchangeToken(turnContext, authHandlerName, { scopes: entry.scopes });
                     if (!tokenResponse?.token) {
                         logger.error('[AgenticTokenCache] Undefined token returned');
                         entry.token = undefined;
@@ -157,7 +166,9 @@ export class AgenticTokenCache {
             const payloadSegment = parts[1];
             const padded = payloadSegment + '='.repeat((4 - (payloadSegment.length % 4)) % 4);
             const json = JSON.parse(Buffer.from(padded, 'base64').toString('utf8')) as { exp?: unknown };
-            return typeof json.exp === 'number' ? json.exp : undefined;
+            if (typeof json.exp !== 'number') return undefined;
+            const maxExp = Math.floor(Date.now() / 1000) + this._maxExpSeconds;
+            return Math.min(json.exp, maxExp);
         } catch {
             return undefined;
         }

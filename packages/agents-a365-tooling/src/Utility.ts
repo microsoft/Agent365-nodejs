@@ -153,7 +153,7 @@ export class Utility {
    *
    * Example:
    *   Utility.GetToolingGatewayForDigitalWorker(agenticAppId)
-   *   // => "https://agent365.svc.cloud.microsoft/agents/{agenticAppId}/mcpServers"
+   *   // => "https://agent365.svc.cloud.microsoft/agents/v2/{agenticAppId}/mcpServers"
    *
    * @param agenticAppId - The unique identifier for the agent identity.
    * @param configProvider - Optional configuration provider. Defaults to defaultToolingConfigurationProvider.
@@ -164,7 +164,7 @@ export class Utility {
     agenticAppId: string,
     configProvider?: IConfigurationProvider<ToolingConfiguration>
   ): string {
-    return `${this.getMcpPlatformBaseUrl(configProvider)}/agents/${agenticAppId}/mcpServers`;
+    return `${this.getMcpPlatformBaseUrl(configProvider)}/agents/v2/${agenticAppId}/mcpServers`;
   }
 
   /**

@@ -44,7 +44,8 @@
   "dependencies": {
     "@microsoft/agents-a365-observability": "workspace:*",
     "@microsoft/agents-a365-runtime": "workspace:*",
-    "@microsoft/agents-hosting": "catalog:"
+    "@microsoft/agents-hosting": "catalog:",
+    "@opentelemetry/api": "catalog:"
   },
   "devDependencies": {
     "@eslint/js": "catalog:",

@@ -66,7 +66,6 @@ The Agent365 SDK currently relies on environment variables for all configuration
 |---------|--------------|---------|------|---------|
 | `observabilityAuthenticationScopes` | `A365_OBSERVABILITY_SCOPES_OVERRIDE` | `['https://api.powerplatform.com/.default']` | `string[]` | ObservabilityConfiguration |
 | `isObservabilityExporterEnabled` | `ENABLE_A365_OBSERVABILITY_EXPORTER` | `false` | `boolean` | ObservabilityConfiguration |
-| `useCustomDomainForObservability` | `A365_OBSERVABILITY_USE_CUSTOM_DOMAIN` | `false` | `boolean` | ObservabilityConfiguration |
 | `observabilityDomainOverride` | `A365_OBSERVABILITY_DOMAIN_OVERRIDE` | `null` | `string \| null` | ObservabilityConfiguration |
 | `observabilityLogLevel` | `A365_OBSERVABILITY_LOG_LEVEL` | `'none'` | `string` | ObservabilityConfiguration |
 
@@ -392,7 +391,6 @@ export type ObservabilityConfigurationOptions = RuntimeConfigurationOptions & {
    */
   observabilityAuthenticationScopes?: () => string[];
   isObservabilityExporterEnabled?: () => boolean;
-  useCustomDomainForObservability?: () => boolean;
   observabilityDomainOverride?: () => string | null;
   observabilityLogLevel?: () => string;
 };
@@ -446,15 +444,6 @@ export class ObservabilityConfiguration extends RuntimeConfiguration {
       return result;
     }
     const value = process.env.ENABLE_A365_OBSERVABILITY_EXPORTER?.toLowerCase() ?? '';
-    return ['true', '1', 'yes', 'on'].includes(value);
-  }
-
-  get useCustomDomainForObservability(): boolean {
-    const result = this.observabilityOverrides.useCustomDomainForObservability?.();
-    if (result !== undefined) {
-      return result;
-    }
-    const value = process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN?.toLowerCase() ?? '';
     return ['true', '1', 'yes', 'on'].includes(value);
   }
 
@@ -666,7 +655,6 @@ packages/agents-a365-observability-extensions-openai/src/
 2. **`tests/observability/tracing/exporter-utils.test.ts`** (NEW)
    - `isAgent365ExporterEnabled()` with all boolean variants
    - `isPerRequestExportEnabled()` with all boolean variants
-   - `useCustomDomainForObservability()` edge cases
    - `getAgent365ObservabilityDomainOverride()` edge cases
    - `resolveAgent365Endpoint()` for all cluster categories
 
@@ -1173,7 +1161,6 @@ These methods remain available for backward compatibility but should not be used
 | `A365_OBSERVABILITY_SCOPES_OVERRIDE` | string (space-sep) | prod scope | observability |
 | `ENABLE_A365_OBSERVABILITY_EXPORTER` | boolean | `false` | observability |
 | `ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT` | boolean | `false` | observability (PerRequestSpanProcessorConfiguration) |
-| `A365_OBSERVABILITY_USE_CUSTOM_DOMAIN` | boolean | `false` | observability |
 | `A365_OBSERVABILITY_DOMAIN_OVERRIDE` | string | `null` | observability |
 | `A365_OBSERVABILITY_LOG_LEVEL` | string | `'none'` | observability |
 | `A365_PER_REQUEST_MAX_TRACES` | number | `1000` | observability (PerRequestSpanProcessorConfiguration) |

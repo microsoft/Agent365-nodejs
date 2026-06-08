@@ -4,8 +4,8 @@
 // ------------------------------------------------------------------------------
 
 import { TurnContext } from '@microsoft/agents-hosting';
-import { ExecutionType, OpenTelemetryConstants } from '@microsoft/agents-a365-observability';
-import {RoleTypes} from '@microsoft/agents-activity';
+import { OpenTelemetryConstants } from '@microsoft/agents-a365-observability';
+import { Utility as RuntimeUtility } from '@microsoft/agents-a365-runtime';
 
 /**
  * TurnContext utility methods.
@@ -20,61 +20,55 @@ function normalizePairs(pairs: Array<[string, string | undefined]>): Array<[stri
 /**
  * Extracts caller-related OpenTelemetry baggage pairs from the TurnContext.
  * @param turnContext The current TurnContext (activity context)
- * @returns Array of [key, value] pairs for caller identity and tenant
+ * @returns Array of [key, value] pairs for caller identity
  */
 export function getCallerBaggagePairs(turnContext: TurnContext): Array<[string, string]> {
   if (!turnContext|| !turnContext.activity?.from) { 
     return [];
   }
   const from = turnContext.activity.from;
-    
+
   const upn = from.agenticUserId;
   const pairs: Array<[string, string | undefined]> = [
-    [OpenTelemetryConstants.GEN_AI_CALLER_ID_KEY, from.aadObjectId],
-    [OpenTelemetryConstants.GEN_AI_CALLER_NAME_KEY, from.name],
-    [OpenTelemetryConstants.GEN_AI_CALLER_UPN_KEY, upn],
-    [OpenTelemetryConstants.GEN_AI_CALLER_TENANT_ID_KEY, from.tenantId],
-    [OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY, from.agenticAppBlueprintId]
+    [OpenTelemetryConstants.USER_ID_KEY, from.aadObjectId],
+    [OpenTelemetryConstants.USER_NAME_KEY, from.name],
+    [OpenTelemetryConstants.USER_EMAIL_KEY, upn],
+    [OpenTelemetryConstants.GEN_AI_CALLER_AGENT_APPLICATION_ID_KEY, from.agenticAppBlueprintId]
   ];
   return normalizePairs(pairs);
 }
 
 /**
- * Extracts the execution type baggage key-value pair based on caller and recipient agentic status.
- * @param turnContext The current TurnContext (activity context)
- * @returns Array of [key, value] for execution type
+ * Resolves the agent instance ID and blueprint ID for embodied (agentic) agents only.
+ * For the non-embodied agent case, we cannot reliably determine whether the token contains an app ID,
+ * or whether the app ID present in the token claims actually corresponds to this agent. Therefore,
+ * we only set agentId and agentBlueprintId for embodied (agentic) agents.
+ * @param turnContext Activity context
+ * @param authToken Auth token for resolving blueprint ID from token claims.
+ * @returns Object with agentId and agentBlueprintId, both undefined for non-embodied agents.
  */
-export function getExecutionTypePair(turnContext: TurnContext): Array<[string, string]> {
-  if (!turnContext || !turnContext.activity?.from || !turnContext.activity?.recipient) { 
-    return [];
-  }
-  const from = turnContext.activity.from;  
-  let executionType = ExecutionType.HumanToAgent;
-
-    if (from.role) {
-      switch (from.role) {
-        case RoleTypes.AgenticUser:
-          executionType = ExecutionType.Agent2Agent;
-          break;
-        case RoleTypes.User:
-          executionType = ExecutionType.HumanToAgent;
-          break;
-        }
-    }
-  return [[OpenTelemetryConstants.GEN_AI_EXECUTION_TYPE_KEY, executionType]];
+export function resolveEmbodiedAgentIds(turnContext: TurnContext, authToken: string): { agentId: string | undefined; agentBlueprintId: string | undefined } {
+  const isAgentic = turnContext?.activity?.isAgenticRequest?.();
+  const rawAgentId = isAgentic ? turnContext.activity.getAgenticInstanceId?.() : undefined;
+  const rawBlueprintId = isAgentic ? RuntimeUtility.getAgentIdFromToken(authToken) : undefined;
+  return {
+    agentId: rawAgentId || undefined,
+    agentBlueprintId: rawBlueprintId || undefined,
+  };
 }
 
 /**
  * Extracts agent/recipient-related OpenTelemetry baggage pairs from the TurnContext.
  * @param turnContext The current TurnContext (activity context)
+ * @param authToken Optional auth token for resolving agent blueprint ID from token claims.
  * @returns Array of [key, value] pairs for agent identity and description
  */
-export function getTargetAgentBaggagePairs(turnContext: TurnContext): Array<[string, string]> {
-  if (!turnContext || !turnContext.activity?.recipient) { 
+export function getTargetAgentBaggagePairs(turnContext: TurnContext, authToken?: string): Array<[string, string]> {
+  if (!turnContext || !turnContext.activity?.recipient) {
     return [];
   }
-  const recipient = turnContext.activity.recipient; 
-  const agentId = recipient.agenticAppId;
+  const recipient = turnContext.activity.recipient;
+  const { agentId } = authToken ? resolveEmbodiedAgentIds(turnContext, authToken) : { agentId: turnContext.activity?.isAgenticRequest?.() ? turnContext.activity.getAgenticInstanceId?.() : undefined };
   const agentName = recipient.name;
   const aadObjectId = recipient.aadObjectId;
   const agentDescription  = recipient.role;
@@ -88,44 +82,52 @@ export function getTargetAgentBaggagePairs(turnContext: TurnContext): Array<[str
 }
 
 /**
- * Extracts the tenant ID baggage key-value pair, attempting to retrieve from ChannelData if necessary.
+ * Extracts the tenant ID baggage key-value pair using the Activity's getAgenticTenantId() helper.
  * @param turnContext The current TurnContext (activity context)
  * @returns Array of [key, value] for tenant ID
  */
 export function getTenantIdPair(turnContext: TurnContext): Array<[string, string]> {
-   let tenantId = turnContext.activity?.recipient?.tenantId;
-
-
-  // If not found, try to extract from channelData. Accepts both object and JSON string.
-  if (!tenantId && turnContext.activity?.channelData) {
-    try {
-      let channelData: unknown = turnContext.activity.channelData;
-      if (typeof channelData === 'string') {
-        channelData = JSON.parse(channelData);
-      }
-      if (
-        typeof channelData === 'object' && channelData !== null) {
-        tenantId = (channelData as { tenant: { id?: string } })?.tenant?.id;
-      }
-    } catch (_err) {
-      // ignore JSON parse errors
-    }
-  }
+  const tenantId = turnContext.activity?.getAgenticTenantId?.();
   return tenantId ? [[OpenTelemetryConstants.TENANT_ID_KEY, tenantId]] : [];
 }
 
 /**
- * Extracts source metadata baggage pairs from the TurnContext.
+ * Extracts channel baggage pairs from the TurnContext.
  * @param turnContext The current TurnContext (activity context)
- * @returns Array of [key, value] pairs for channel name and link
+ * @returns Array of [key, value] pairs for channel name and subchannel description
  */
-export function getSourceMetadataBaggagePairs(turnContext: TurnContext): Array<[string, string]> {
+export function getChannelBaggagePairs(turnContext: TurnContext): Array<[string, string]> {
   if (!turnContext) { 
     return [];
-  }  
+  }
+  
+  let subChannel = turnContext.activity?.channelIdSubChannel as string | undefined;
+  
+  // Try to get subChannel from productContext in channelData if subChannel is not set or empty
+  if ((!subChannel || subChannel.trim() === '') && turnContext.activity?.channelData) {
+    try {
+      const channelData = turnContext.activity.channelData;
+      let channelDataObj: Record<string, unknown> | undefined;
+      
+      // Convert channelData to object if it's a string
+      if (typeof channelData === 'string') {
+        channelDataObj = JSON.parse(channelData);
+      } else if (typeof channelData === 'object') {
+        channelDataObj = channelData as Record<string, unknown>;
+      }
+      
+      // Extract productContext if available
+      if (channelDataObj && typeof channelDataObj.productContext === 'string') {
+        subChannel = channelDataObj.productContext;
+      }
+    } catch {
+      // Silently ignore any parsing errors
+    }
+  }
+  
   const pairs: Array<[string, string | undefined]> = [
-    [OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_NAME_KEY, turnContext.activity?.channelId],
-    [OpenTelemetryConstants.GEN_AI_EXECUTION_SOURCE_DESCRIPTION_KEY, turnContext.activity?.channelIdSubChannel as string | undefined]
+    [OpenTelemetryConstants.CHANNEL_NAME_KEY, turnContext.activity?.channelId],
+    [OpenTelemetryConstants.CHANNEL_LINK_KEY, subChannel]
   ];
   return normalizePairs(pairs);
 }

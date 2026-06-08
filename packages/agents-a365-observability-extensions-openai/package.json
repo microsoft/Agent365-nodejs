@@ -49,8 +49,7 @@
     "@microsoft/agents-a365-runtime": "workspace:*",
     "@openai/agents": "catalog:",
     "@opentelemetry/api": "catalog:",
-    "@opentelemetry/instrumentation": "catalog:",
-    "hono": "catalog:"
+    "@opentelemetry/instrumentation": "catalog:"
   },
   "devDependencies": {
     "@eslint/js": "catalog:",
@@ -66,7 +65,13 @@
     "typescript-eslint": "catalog:"
   },
   "peerDependencies": {
-    "@openai/agents": "catalog:"
+    "@openai/agents": "catalog:",
+    "hono": "catalog:"
+  },
+  "peerDependenciesMeta": {
+    "hono": {
+      "optional": true
+    }
   },
   "engines": {
     "node": ">=18.0.0"

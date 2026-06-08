@@ -145,12 +145,13 @@ export class LangChainTraceInstrumentor {
   private static throwNotInitialized(): never {
     throw new Error(
       "LangChainTraceInstrumentor must be initialized first. "
-      + "Call LangChainTraceInstrumentor.Instrument() before using enable/disable."
+      + "Call LangChainTraceInstrumentor.instrument() before using enable/disable."
     );
   }
 
   /**
-   * Initialize and auto-instrument for LangChain 
+   * Initialize and auto-instrument for LangChain
+   * @param module The CallbackManager module to instrument
    */
   static instrument(module: CallbackManagerModuleType): void {
     LangChainTraceInstrumentorImpl.getInstance().manuallyInstrumentImpl(module);
@@ -186,7 +187,7 @@ export class LangChainTraceInstrumentor {
 
 export function addTracerToHandlers(
   tracer: Tracer,
-  handlers: CallbackManagerModule.Callbacks | undefined
+  handlers: CallbackManagerModule.Callbacks | undefined,
 ): CallbackManagerModule.Callbacks {
   if (handlers == null) {
     return [new LangChainTracer(tracer)];

@@ -3,7 +3,7 @@
 
 import { describe, it, expect, beforeEach, beforeAll, afterAll } from '@jest/globals';
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
-import { trace, context as otelContext } from '@opentelemetry/api';
+import { trace, context as otelContext, TraceFlags } from '@opentelemetry/api';
 import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
 import {
   ParentSpanRef,
@@ -11,12 +11,10 @@ import {
   InvokeAgentScope,
   InferenceScope,
   ExecuteToolScope,
-  InvokeAgentDetails,
   InferenceDetails,
   InferenceOperationType,
   ToolCallDetails,
   AgentDetails,
-  TenantDetails,
 } from '@microsoft/agents-a365-observability';
 
 describe('ParentSpanRef - Explicit Parent Span Support', () => {
@@ -68,12 +66,10 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
     agentId: 'test-agent',
     agentName: 'Test Agent',
     agentDescription: 'A test agent',
-    conversationId: 'test-conv-123'
-  };
-
-  const testTenantDetails: TenantDetails = {
     tenantId: 'test-tenant-456'
   };
+
+  const testRequest = { conversationId: 'test-conv-psr', channel: { name: 'PSRChannel', description: 'https://psr.channel' } };
 
 
   describe('runWithParentSpanRef', () => {
@@ -98,11 +94,11 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
     [
       'InvokeAgentScope',
       (parentRef: ParentSpanRef) => {
-        const invokeAgentDetails: InvokeAgentDetails = {
-          agentId: 'test-agent',
-          agentName: 'Test Agent',
-        };
-        return InvokeAgentScope.start(invokeAgentDetails, testTenantDetails, undefined, undefined, parentRef);
+        return InvokeAgentScope.start(testRequest, {}, {
+            agentId: 'test-agent',
+            agentName: 'Test Agent',
+            tenantId: 'test-tenant-456'
+          }, undefined, { parentContext: parentRef });
       },
       (name: string) => name.toLowerCase().includes('invokeagent') || name.toLowerCase().includes('invoke_agent'),
     ],
@@ -114,7 +110,7 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
           model: 'gpt-4',
           providerName: 'openai',
         };
-        return InferenceScope.start(inferenceDetails, testAgentDetails, testTenantDetails, undefined, undefined, parentRef);
+        return InferenceScope.start(testRequest, inferenceDetails, testAgentDetails, undefined, { parentContext: parentRef });
       },
       (name: string) => name.toLowerCase().includes('chat'),
     ],
@@ -125,7 +121,7 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
           toolName: 'test-tool',
           arguments: '{"param": "value"}',
         };
-        return ExecuteToolScope.start(toolDetails, testAgentDetails, testTenantDetails, undefined, undefined, parentRef);
+        return ExecuteToolScope.start(testRequest, toolDetails, testAgentDetails, undefined, { parentContext: parentRef });
       },
       (name: string) => name.toLowerCase().includes('execute_tool'),
     ],
@@ -162,7 +158,7 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
       const tracer = trace.getTracer('test');
       const rootSpan = tracer.startSpan('root-span');
       const parentSpanContext = rootSpan.spanContext();
-      
+
       const parentRef: ParentSpanRef = {
         traceId: parentSpanContext.traceId,
         spanId: parentSpanContext.spanId,
@@ -174,13 +170,10 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
         // Run a callback with parent context
         runWithParentSpanRef(parentRef, () => {
           // Create a scope inside - it should automatically inherit the parent
-          const invokeAgentDetails: InvokeAgentDetails = {
-            agentId: 'nested-agent',
-          };
-
           const nestedScope = InvokeAgentScope.start(
-            invokeAgentDetails,
-            testTenantDetails
+            testRequest,
+            {},
+            { agentId: 'nested-agent', tenantId: 'test-tenant-456' }
           );
 
           const nestedSpanContext = nestedScope.getSpanContext();
@@ -204,11 +197,7 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
 
   describe('getSpanContext method', () => {
     it('should return the span context from a scope (and be usable as ParentSpanRef)', async () => {
-      const invokeAgentDetails: InvokeAgentDetails = {
-        agentId: 'test-agent',
-      };
-
-      const scope = InvokeAgentScope.start(invokeAgentDetails, testTenantDetails);
+      const scope = InvokeAgentScope.start(testRequest, {}, { agentId: 'test-agent', tenantId: 'test-tenant-456' });
       const spanContext = scope.getSpanContext();
 
       expect(spanContext).toBeDefined();
@@ -226,7 +215,7 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
       const activeParentSpan = trace.wrapSpanContext(spanContext);
       const baseCtx = trace.setSpan(otelContext.active(), activeParentSpan);
       const childScope = otelContext.with(baseCtx, () =>
-        InferenceScope.start(inferenceDetails, testAgentDetails, testTenantDetails, undefined, undefined, parentRef)
+        InferenceScope.start(testRequest, inferenceDetails, testAgentDetails, undefined, { parentContext: parentRef })
       );
       expect(childScope.getSpanContext().traceId).toBe(spanContext.traceId);
 
@@ -238,11 +227,122 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
       const spans = exporter.getFinishedSpans();
       const parentSpan = spans.find(s => s.name.toLowerCase().includes('invoke_agent'));
       const childSpan = spans.find(s => s.name.toLowerCase().includes('chat'));
-      
+
       expect(parentSpan).toBeDefined();
       expect(childSpan).toBeDefined();
       expect(childSpan!.spanContext().traceId).toBe(parentSpan!.spanContext().traceId);
       expect(childSpan!.parentSpanContext?.spanId).toBe(parentSpan!.spanContext().spanId);
+    });
+  });
+
+  describe('traceFlags propagation', () => {
+    it('should record child spans when parentRef.traceFlags is SAMPLED', async () => {
+      const parentRef: ParentSpanRef = {
+        traceId: '0123456789abcdef0123456789abcdef',
+        spanId: '0123456789abcdef',
+        traceFlags: TraceFlags.SAMPLED,
+      };
+
+      runWithParentSpanRef(parentRef, () => {
+        const scope = InvokeAgentScope.start(testRequest, {}, { agentId: 'sampled-agent', tenantId: 'test-tenant-456' });
+        scope.dispose();
+      });
+
+      await flushProvider.forceFlush();
+
+      const spans = exporter.getFinishedSpans();
+      const childSpan = spans.find(s =>
+        s.name.toLowerCase().includes('invokeagent') || s.name.toLowerCase().includes('invoke_agent')
+      );
+
+      expect(childSpan).toBeDefined();
+      expect(childSpan!.spanContext().traceId).toBe(parentRef.traceId);
+      expect(childSpan!.parentSpanContext?.spanId).toBe(parentRef.spanId);
+      expect(childSpan!.spanContext().traceFlags).toBe(TraceFlags.SAMPLED);
+    });
+
+    it('should not record child spans when parentRef.traceFlags is NONE', async () => {
+      const parentRef: ParentSpanRef = {
+        traceId: 'abcdef0123456789abcdef0123456789',
+        spanId: 'abcdef0123456789',
+        traceFlags: TraceFlags.NONE,
+      };
+
+      runWithParentSpanRef(parentRef, () => {
+        const scope = InvokeAgentScope.start(testRequest, {}, { agentId: 'unsampled-agent', tenantId: 'test-tenant-456' });
+        scope.dispose();
+      });
+
+      await flushProvider.forceFlush();
+
+      const spans = exporter.getFinishedSpans();
+      // When traceFlags is NONE, the span should still be created but not recorded/exported
+      const childSpan = spans.find(s =>
+        (s.name.toLowerCase().includes('invokeagent') || s.name.toLowerCase().includes('invoke_agent')) &&
+        s.spanContext().traceId === parentRef.traceId
+      );
+
+      // The span should not be exported when traceFlags is NONE
+      expect(childSpan).toBeUndefined();
+    });
+
+    it('should default to SAMPLED when parentRef.traceFlags is not provided and no active span matches', async () => {
+      const parentRef: ParentSpanRef = {
+        traceId: 'fedcba9876543210fedcba9876543210',
+        spanId: 'fedcba9876543210',
+        // traceFlags is not provided — should default to SAMPLED
+      };
+
+      runWithParentSpanRef(parentRef, () => {
+        const scope = InvokeAgentScope.start(testRequest, {}, { agentId: 'default-sampled-agent', tenantId: 'test-tenant-456' });
+        scope.dispose();
+      });
+
+      await flushProvider.forceFlush();
+
+      const spans = exporter.getFinishedSpans();
+      const childSpan = spans.find(s =>
+        (s.name.toLowerCase().includes('invokeagent') || s.name.toLowerCase().includes('invoke_agent')) &&
+        s.spanContext().traceId === parentRef.traceId
+      );
+
+      // Should be recorded when traceFlags defaults to SAMPLED
+      expect(childSpan).toBeDefined();
+      expect(childSpan!.spanContext().traceFlags).toBe(TraceFlags.SAMPLED);
+    });
+
+    it('should inherit traceFlags from active span when parentRef.traceFlags is not provided but traceId matches', async () => {
+      const tracer = trace.getTracer('test');
+      const rootSpan = tracer.startSpan('active-root-span');
+      const parentSpanContext = rootSpan.spanContext();
+
+      const parentRef: ParentSpanRef = {
+        traceId: parentSpanContext.traceId,
+        spanId: parentSpanContext.spanId,
+        // traceFlags is not provided
+      };
+
+      const baseCtx = trace.setSpan(otelContext.active(), rootSpan);
+      await otelContext.with(baseCtx, async () => {
+        runWithParentSpanRef(parentRef, () => {
+          const scope = InvokeAgentScope.start(testRequest, {}, { agentId: 'inherited-flags-agent', tenantId: 'test-tenant-456' });
+          scope.dispose();
+        });
+      });
+
+      rootSpan.end();
+
+      await flushProvider.forceFlush();
+
+      const spans = exporter.getFinishedSpans();
+      const childSpan = spans.find(s =>
+        (s.name.toLowerCase().includes('invokeagent') || s.name.toLowerCase().includes('invoke_agent')) &&
+        s.spanContext().traceId === parentRef.traceId
+      );
+
+      // Should be recorded with traceFlags inherited from active span
+      expect(childSpan).toBeDefined();
+      expect(childSpan!.spanContext().traceFlags).toBe(parentSpanContext.traceFlags);
     });
   });
 });

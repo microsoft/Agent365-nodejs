@@ -213,7 +213,6 @@ The keyword "Kairo" is legacy and should not appear in any code. Flag and remove
 | `A365_OBSERVABILITY_SCOPES_OVERRIDE` | Override observability auth scopes | Space-separated scope strings |
 | `ENABLE_A365_OBSERVABILITY_EXPORTER` | Enable Agent365 exporter | `true`, `false` (default) |
 | `ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT` | Enable per-request export mode | `true`, `false` (default) |
-| `A365_OBSERVABILITY_USE_CUSTOM_DOMAIN` | Use custom domain for export | `true`, `false` (default) |
 | `A365_OBSERVABILITY_DOMAIN_OVERRIDE` | Custom domain URL override | URL string |
 | `A365_OBSERVABILITY_LOG_LEVEL` | Internal logging level | `none` (default), `error`, `warn`, `info`, `debug` |
 | `A365_PER_REQUEST_MAX_TRACES` | Max buffered traces per request (`PerRequestSpanProcessorConfiguration`) | Number (default: 1000) |

@@ -125,12 +125,14 @@ The foundation for distributed tracing in agent applications. Built on OpenTelem
 
 | Interface | Purpose |
 |-----------|---------|
-| `InvokeAgentDetails` | Agent endpoint, session ID, and invocation metadata |
-| `AgentDetails` | Agent identification and metadata |
-| `TenantDetails` | Tenant identification for multi-tenant scenarios |
+| `Request` | Request payload (channel, conversationId, content, sessionId) |
+| `AgentDetails` | Agent identification and metadata (includes tenantId) |
+| `InvokeAgentScopeDetails` | Details for invoking agent scope |
 | `InferenceDetails` | Model name, tokens, provider information |
 | `ToolCallDetails` | Tool name, arguments, endpoint |
-| `CallerDetails` | Caller identification and context |
+| `CallerDetails` | Wrapper for caller identity: `userDetails` (human) and/or `callerAgentDetails` (A2A) |
+| `UserDetails` | Human caller identification (userId, userEmail, userName, callerClientIp) |
+| `SpanDetails` | Optional span configuration (parentContext, startTime, endTime, spanKind) |
 
 **Usage Example:**
 
@@ -159,10 +161,10 @@ const scope = new BaggageBuilder()
 scope.run(() => {
   // Trace agent invocation
   using agentScope = InvokeAgentScope.start(
-    invokeAgentDetails,
-    tenantDetails,
-    callerAgentDetails,
-    callerDetails
+    { conversationId, channel: { name: 'Teams' } },  // Request
+    { endpoint: { host: 'api.example.com' } },        // InvokeAgentScopeDetails
+    { agentId, agentName, tenantId },                  // AgentDetails
+    { userDetails: { userId, userName } }                // CallerDetails (optional)
   );
 
   // Agent logic here
@@ -315,7 +317,7 @@ export class ObservabilityManager {
 All scope classes implement the `Disposable` interface for automatic span lifecycle management:
 
 ```typescript
-using scope = InvokeAgentScope.start(details, tenantDetails);
+using scope = InvokeAgentScope.start(request, scopeDetails, agentDetails);
 // Span is active
 scope.recordResponse('result');
 // Span automatically ends when scope is disposed

@@ -47,6 +47,10 @@ export class ObservabilityManager {
       builder.withClusterCategory(options.clusterCategory);
     }
 
+    if (options?.configProvider) {
+      builder.withConfigurationProvider(options.configProvider);
+    }
+
     builder.start();
 
     ObservabilityManager.instance = builder;

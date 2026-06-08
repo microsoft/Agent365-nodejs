@@ -10,9 +10,10 @@ import * as Utils from "./Utils";
 type RunWithSpan = { run: Run; span: Span; startTime: number; lastAccessTime: number };
 
 export class LangChainTracer extends BaseTracer {
+  private static readonly MAX_RUNS = 10_000;
   private tracer: Tracer;
-  private runs: Record<string, RunWithSpan> = {};
-  private parentByRunId: Record<string, string | undefined> = {};
+  private runs = new Map<string, RunWithSpan>();
+  private parentByRunId = new Map<string, string | undefined>();
 
 
   constructor(tracer: Tracer) {
@@ -27,7 +28,7 @@ export class LangChainTracer extends BaseTracer {
   }
 
   async onRunCreate(run: Run) {
-    this.parentByRunId[run.id] = run.parent_run_id;
+    this.parentByRunId.set(run.id, run.parent_run_id);
     if (super.onRunCreate) await super.onRunCreate(run);
     this.startTracing(run);
   }
@@ -51,25 +52,44 @@ export class LangChainTracer extends BaseTracer {
       : context.active();
 
     let spanName = run.name;
+    let kind: SpanKind = SpanKind.INTERNAL;
     if (operation === "invoke_agent") {
       spanName = `${operation} ${run.name}`;
+      kind = SpanKind.SERVER;
     } else if (operation === "execute_tool") {
       spanName = `${operation} ${run.name}`;
+      kind = SpanKind.CLIENT;
     } else if (operation === "chat") {
       spanName = `${operation} ${Utils.getModel(run) || run.name}`.trim();
+      kind = SpanKind.CLIENT;
     }
 
-    const startTime = Date.now();
+    if (this.runs.size >= LangChainTracer.MAX_RUNS) {
+      logger.warn(`[LangChainTracer] Max runs (${LangChainTracer.MAX_RUNS}) reached, skipping span`);
+      this.parentByRunId.delete(run.id);
+      return;
+    }
+
+    const startTime = run.start_time ?? Date.now();
     const span = this.tracer.startSpan(spanName, {
-      kind: SpanKind.INTERNAL,
-      attributes: { [OpenTelemetryConstants.GEN_AI_SYSTEM_KEY]: "langchain" },
+      kind,
+      startTime,
+      attributes: { [OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY]: "langchain" },
     }, activeContext);
 
-    this.runs[run.id] = { run, span, startTime, lastAccessTime: startTime };
+    this.runs.set(run.id, { run, span, startTime, lastAccessTime: startTime });
   }
 
   protected async _endTrace(run: Run) {
     if (isTracingSuppressed(context.active())) {
+      // Even when suppressed, end any span that was started before suppression kicked in
+      // to avoid abandoned spans that are never exported or closed.
+      const suppressedEntry = this.runs.get(run.id);
+      if (suppressedEntry) {
+        suppressedEntry.span.end(run.end_time ?? undefined);
+      }
+      this.parentByRunId.delete(run.id);
+      this.runs.delete(run.id);
       return;
     }
     // Skip internal runs
@@ -79,19 +99,22 @@ export class LangChainTracer extends BaseTracer {
       return;
     }
 
-    const entry = this.runs[run.id];
+    const entry = this.runs.get(run.id);
     if (!entry) {
       return;
     }
 
+    const { span } = entry;
     try {
-      const { span } = entry;
       entry.lastAccessTime = Date.now();
 
       if (run.error) {
         span.setStatus({ code: SpanStatusCode.ERROR });
         span.setAttribute(OpenTelemetryConstants.ERROR_MESSAGE_KEY, String(run.error));
-
+        const errorType = (run.error as { name?: string })?.name ?? (run.error as { constructor?: { name?: string } })?.constructor?.name;
+        if (typeof errorType === "string" && errorType.length > 0) {
+          span.setAttribute(OpenTelemetryConstants.ERROR_TYPE_KEY, errorType);
+        }
       } else {
         span.setStatus({ code: SpanStatusCode.OK });
       }
@@ -99,19 +122,30 @@ export class LangChainTracer extends BaseTracer {
       // Set all attributes
       Utils.setOperationTypeAttribute(operation, span);
       Utils.setAgentAttributes(run, span);
-      Utils.setToolAttributes(run, span);
-      Utils.setInputMessagesAttribute(run, span);
-      Utils.setOutputMessagesAttribute(run, span);
-      Utils.setSystemInstructionsAttribute(run, span);
+      if (operation === "invoke_agent") {
+        const callerName = this.findCallerAgentName(run);
+        if (callerName) {
+          span.setAttribute(OpenTelemetryConstants.GEN_AI_CALLER_AGENT_NAME_KEY, callerName);
+        }
+      }
       Utils.setModelAttribute(run, span);
       Utils.setProviderNameAttribute(run, span);
       Utils.setSessionIdAttribute(run, span);
       Utils.setTokenAttributes(run, span);
 
-      span.end();
+      // Content attributes — always recorded (aligned with Python/.NET SDKs)
+      Utils.setToolAttributes(run, span);
+      Utils.setInputMessagesAttribute(run, span);
+      Utils.setOutputMessagesAttribute(run, span);
+      Utils.setSystemInstructionsAttribute(run, span);
+
+    } catch (error) {
+      logger.error(`[LangChainTracer] Error setting span attributes for run ${run.name}: ${error instanceof Error ? error.message : String(error)}`);
+      span.setStatus({ code: SpanStatusCode.ERROR });
     } finally {
-      delete this.runs[run.id];
-      delete this.parentByRunId[run.id];
+      span.end(run.end_time ?? undefined);
+      this.runs.delete(run.id);
+      this.parentByRunId.delete(run.id);
       await super._endTrace(run);
     }
   }
@@ -120,9 +154,21 @@ export class LangChainTracer extends BaseTracer {
     let pid = run.parent_run_id;
 
     while (pid) {
-      const entry = this.runs[pid];
+      const entry = this.runs.get(pid);
       if (entry) return entry.span.spanContext();
-      pid = this.parentByRunId[pid];
+      pid = this.parentByRunId.get(pid);
+    }
+    return undefined;
+  }
+
+  private findCallerAgentName(run: Run): string | undefined {
+    let pid = run.parent_run_id;
+    while (pid) {
+      const entry = this.runs.get(pid);
+      if (entry && Utils.getOperationType(entry.run) === "invoke_agent") {
+        return entry.run.name;
+      }
+      pid = this.parentByRunId.get(pid);
     }
     return undefined;
   }

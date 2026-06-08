@@ -4,7 +4,9 @@
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { SpanKind, SpanStatusCode } from '@opentelemetry/api';
 import { ReadableSpan } from '@opentelemetry/sdk-trace-base';
-import { ClusterCategory } from '@microsoft/agents-a365-runtime';
+import { ClusterCategory, DefaultConfigurationProvider } from '@microsoft/agents-a365-runtime';
+import { ObservabilityConfiguration } from '@microsoft/agents-a365-observability/src/configuration/ObservabilityConfiguration';
+import { OpenTelemetryConstants } from '@microsoft/agents-a365-observability/src/tracing/constants';
 
 describe('exporter/utils', () => {
   const originalEnv = process.env;
@@ -209,6 +211,31 @@ describe('exporter/utils', () => {
       const { isAgent365ExporterEnabled } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
       expect(isAgent365ExporterEnabled()).toBe(false);
     });
+
+    it('should use configProvider override when provided (enabled)', async () => {
+      delete process.env.ENABLE_A365_OBSERVABILITY_EXPORTER;
+      const provider = new DefaultConfigurationProvider(() => new ObservabilityConfiguration({
+        isObservabilityExporterEnabled: () => true,
+      }));
+      const { isAgent365ExporterEnabled } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
+      expect(isAgent365ExporterEnabled(provider)).toBe(true);
+    });
+
+    it('should use configProvider override when provided (disabled)', async () => {
+      process.env.ENABLE_A365_OBSERVABILITY_EXPORTER = 'true';
+      const provider = new DefaultConfigurationProvider(() => new ObservabilityConfiguration({
+        isObservabilityExporterEnabled: () => false,
+      }));
+      const { isAgent365ExporterEnabled } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
+      expect(isAgent365ExporterEnabled(provider)).toBe(false);
+    });
+
+    it('should return false when no env var is set and configProvider has no override', async () => {
+      delete process.env.ENABLE_A365_OBSERVABILITY_EXPORTER;
+      const provider = new DefaultConfigurationProvider(() => new ObservabilityConfiguration());
+      const { isAgent365ExporterEnabled } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
+      expect(isAgent365ExporterEnabled(provider)).toBe(false);
+    });
   });
 
   describe('isPerRequestExportEnabled', () => {
@@ -238,36 +265,6 @@ describe('exporter/utils', () => {
       delete process.env.ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT;
       const { isPerRequestExportEnabled } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
       expect(isPerRequestExportEnabled()).toBe(false);
-    });
-  });
-
-  describe('useCustomDomainForObservability', () => {
-    it.each([
-      { value: 'true', expected: true },
-      { value: 'TRUE', expected: true },
-      { value: '1', expected: true },
-      { value: 'yes', expected: true },
-      { value: 'on', expected: true },
-    ])('should return $expected when A365_OBSERVABILITY_USE_CUSTOM_DOMAIN is "$value"', async ({ value, expected }) => {
-      process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN = value;
-      const { useCustomDomainForObservability } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
-      expect(useCustomDomainForObservability()).toBe(expected);
-    });
-
-    it.each([
-      { value: 'false', expected: false },
-      { value: '0', expected: false },
-      { value: '', expected: false },
-    ])('should return $expected when A365_OBSERVABILITY_USE_CUSTOM_DOMAIN is "$value"', async ({ value, expected }) => {
-      process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN = value;
-      const { useCustomDomainForObservability } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
-      expect(useCustomDomainForObservability()).toBe(expected);
-    });
-
-    it('should return false when env var is not set', async () => {
-      delete process.env.A365_OBSERVABILITY_USE_CUSTOM_DOMAIN;
-      const { useCustomDomainForObservability } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
-      expect(useCustomDomainForObservability()).toBe(false);
     });
   });
 
@@ -339,6 +336,31 @@ describe('exporter/utils', () => {
       const { getAgent365ObservabilityDomainOverride } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
       expect(getAgent365ObservabilityDomainOverride()).toBeNull();
     });
+
+    it('should use configProvider override when provided', async () => {
+      delete process.env.A365_OBSERVABILITY_DOMAIN_OVERRIDE;
+      const provider = new DefaultConfigurationProvider(() => new ObservabilityConfiguration({
+        observabilityDomainOverride: () => 'https://override.example.com',
+      }));
+      const { getAgent365ObservabilityDomainOverride } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
+      expect(getAgent365ObservabilityDomainOverride(provider)).toBe('https://override.example.com');
+    });
+
+    it('should use configProvider override even when env var is set', async () => {
+      process.env.A365_OBSERVABILITY_DOMAIN_OVERRIDE = 'https://env.example.com';
+      const provider = new DefaultConfigurationProvider(() => new ObservabilityConfiguration({
+        observabilityDomainOverride: () => 'https://provider-wins.example.com',
+      }));
+      const { getAgent365ObservabilityDomainOverride } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
+      expect(getAgent365ObservabilityDomainOverride(provider)).toBe('https://provider-wins.example.com');
+    });
+
+    it('should return null when no env var is set and configProvider has no override', async () => {
+      delete process.env.A365_OBSERVABILITY_DOMAIN_OVERRIDE;
+      const provider = new DefaultConfigurationProvider(() => new ObservabilityConfiguration());
+      const { getAgent365ObservabilityDomainOverride } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
+      expect(getAgent365ObservabilityDomainOverride(provider)).toBeNull();
+    });
   });
 
   describe('parseIdentityKey', () => {
@@ -365,7 +387,7 @@ describe('exporter/utils', () => {
   });
 
   describe('partitionByIdentity', () => {
-    const createMockSpan = (name: string, tenantId?: string, agentId?: string): ReadableSpan => ({
+    const createMockSpan = (name: string, tenantId?: string, agentId?: string, operationName?: string): ReadableSpan => ({
       name,
       kind: SpanKind.INTERNAL,
       spanContext: () => ({
@@ -378,8 +400,9 @@ describe('exporter/utils', () => {
       ended: true,
       status: { code: SpanStatusCode.OK },
       attributes: {
-        ...(tenantId !== undefined && { 'tenant.id': tenantId }),
-        ...(agentId !== undefined && { 'gen_ai.agent.id': agentId }),
+        ...(tenantId !== undefined && { [OpenTelemetryConstants.TENANT_ID_KEY]: tenantId }),
+        ...(agentId !== undefined && { [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]: agentId }),
+        ...(operationName !== undefined && { [OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY]: operationName }),
       },
       links: [],
       events: [],
@@ -395,9 +418,9 @@ describe('exporter/utils', () => {
       const { partitionByIdentity } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
 
       const spans = [
-        createMockSpan('span1', 'tenant1', 'agent1'),
-        createMockSpan('span2', 'tenant1', 'agent1'),
-        createMockSpan('span3', 'tenant2', 'agent2'),
+        createMockSpan('span1', 'tenant1', 'agent1', 'invoke_agent'),
+        createMockSpan('span2', 'tenant1', 'agent1', 'chat'),
+        createMockSpan('span3', 'tenant2', 'agent2', 'execute_tool'),
       ];
 
       const result = partitionByIdentity(spans);
@@ -411,8 +434,8 @@ describe('exporter/utils', () => {
       const { partitionByIdentity } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
 
       const spans = [
-        createMockSpan('span1', undefined, 'agent1'),
-        createMockSpan('span2', 'tenant1', 'agent1'),
+        createMockSpan('span1', undefined, 'agent1', 'invoke_agent'),
+        createMockSpan('span2', 'tenant1', 'agent1', 'invoke_agent'),
       ];
 
       const result = partitionByIdentity(spans);
@@ -425,8 +448,8 @@ describe('exporter/utils', () => {
       const { partitionByIdentity } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
 
       const spans = [
-        createMockSpan('span1', 'tenant1', undefined),
-        createMockSpan('span2', 'tenant1', 'agent1'),
+        createMockSpan('span1', 'tenant1', undefined, 'invoke_agent'),
+        createMockSpan('span2', 'tenant1', 'agent1', 'invoke_agent'),
       ];
 
       const result = partitionByIdentity(spans);
@@ -447,14 +470,31 @@ describe('exporter/utils', () => {
       const { partitionByIdentity } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
 
       const spans = [
-        createMockSpan('span1', undefined, undefined),
-        createMockSpan('span2', 'tenant1', undefined),
-        createMockSpan('span3', undefined, 'agent1'),
+        createMockSpan('span1', undefined, undefined, 'invoke_agent'),
+        createMockSpan('span2', 'tenant1', undefined, 'invoke_agent'),
+        createMockSpan('span3', undefined, 'agent1', 'invoke_agent'),
       ];
 
       const result = partitionByIdentity(spans);
 
       expect(result.size).toBe(0);
+    });
+
+    it('should skip spans with missing or unknown gen_ai.operation.name', async () => {
+      const { partitionByIdentity } = await import('@microsoft/agents-a365-observability/src/tracing/exporter/utils');
+
+      const spans = [
+        createMockSpan('genai-span', 'tenant1', 'agent1', 'invoke_agent'),
+        createMockSpan('http-span', 'tenant1', 'agent1', undefined),
+        createMockSpan('db-span', 'tenant1', 'agent1'),
+        createMockSpan('unknown-op', 'tenant1', 'agent1', 'some_random_op'),
+      ];
+
+      const result = partitionByIdentity(spans);
+
+      expect(result.size).toBe(1);
+      expect(result.get('tenant1:agent1')?.length).toBe(1);
+      expect(result.get('tenant1:agent1')?.[0].name).toBe('genai-span');
     });
   });
 });
