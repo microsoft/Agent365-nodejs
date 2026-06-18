@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { trace, SpanKind, Span, SpanStatusCode, context, AttributeValue, SpanContext, TimeInput } from '@opentelemetry/api';
+import { trace, SpanKind, Span, SpanStatusCode, context, AttributeValue, SpanContext, TimeInput, Attributes } from '@opentelemetry/api';
 import { OpenTelemetryConstants } from '../constants';
 import { AgentDetails, UserDetails, SpanDetails, InputMessagesParam, OutputMessagesParam } from '../contracts';
 import { createContextWithParentSpanRef } from '../context/parent-span-context';
@@ -201,6 +201,15 @@ export abstract class OpenTelemetryScope implements Disposable {
     if (value != null) {
       this.span.setAttributes({ [name]: value as string | number | boolean | string[] | number[] });
     }
+  }
+
+  /**
+   * Adds an event to the current span.
+   * @param name The event name
+   * @param attributes Optional event attributes
+   */
+  protected addEvent(name: string, attributes?: Attributes): void {
+    this.span.addEvent(name, attributes);
   }
 
   /**

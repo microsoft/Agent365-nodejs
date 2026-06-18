@@ -48,7 +48,7 @@ describe("LangChain Observability - InvokeAgentScope Attributes", () => {
 
       expect(mockSpan.setAttribute).toHaveBeenCalledWith(
         OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY,
-        JSON.stringify({"version":"0.1.0","messages":[{"role":"user","parts":[{"type":"text","content":"hi"}]}]})
+        JSON.stringify([{"role":"user","parts":[{"type":"text","content":"hi"}]}])
       );
     });
 
@@ -73,7 +73,7 @@ describe("LangChain Observability - InvokeAgentScope Attributes", () => {
 
       expect(mockSpan.setAttribute).toHaveBeenCalledWith(
         OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY,
-        JSON.stringify({"version":"0.1.0","messages":[{"role":"user","parts":[{"type":"text","content":"hello agent"}]}]})
+        JSON.stringify([{"role":"user","parts":[{"type":"text","content":"hello agent"}]}])
       );
     });
 
@@ -98,7 +98,7 @@ describe("LangChain Observability - InvokeAgentScope Attributes", () => {
 
       expect(mockSpan.setAttribute).toHaveBeenCalledWith(
         OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY,
-        JSON.stringify({"version":"0.1.0","messages":[{"role":"assistant","parts":[{"type":"text","content":"Hello! How can I assist you today?"}]}]})
+        JSON.stringify([{"role":"assistant","parts":[{"type":"text","content":"Hello! How can I assist you today?"}]}])
       );
     });
 
@@ -515,7 +515,7 @@ describe("LangChain Observability - v1 Format Coverage", () => {
     const value = getSpanAttribute(mockSpan as any, OpenTelemetryConstants.GEN_AI_INPUT_MESSAGES_KEY);
     expectValidInputMessages(value);
     const parsed = JSON.parse(value as string);
-    expect(parsed.messages[0].parts[0].content).toBe("v1 format message");
+    expect(parsed[0].parts[0].content).toBe("v1 format message");
   });
 
   it("should extract output content from v1 AIMessage constructor format", () => {
@@ -538,8 +538,8 @@ describe("LangChain Observability - v1 Format Coverage", () => {
     const value = getSpanAttribute(mockSpan as any, OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY);
     expectValidOutputMessages(value);
     const parsed = JSON.parse(value as string);
-    expect(parsed.messages[0].role).toBe("assistant");
-    expect(parsed.messages[0].parts[0].content).toBe("v1 AI response");
+    expect(parsed[0].role).toBe("assistant");
+    expect(parsed[0].parts[0].content).toBe("v1 AI response");
   });
 
   it("should not set input attribute when inputs.messages is missing", () => {
@@ -568,8 +568,8 @@ describe("LangChain Observability - v1 Format Coverage", () => {
 
     const value = getSpanAttribute(mockSpan as any, OpenTelemetryConstants.GEN_AI_OUTPUT_MESSAGES_KEY);
     const parsed = JSON.parse(value as string);
-    expect(parsed.messages).toHaveLength(1);
-    expect(parsed.messages[0].role).toBe("assistant");
-    expect(parsed.messages[0].parts[0].content).toBe("ai response");
+    expect(parsed).toHaveLength(1);
+    expect(parsed[0].role).toBe("assistant");
+    expect(parsed[0].parts[0].content).toBe("ai response");
   });
 });

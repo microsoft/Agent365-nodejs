@@ -69,7 +69,12 @@ export {
   InputMessagesParam,
   OutputMessagesParam,
   ResponseMessagesParam,
-  A365_MESSAGE_SCHEMA_VERSION,
+  DEFAULT_FINISH_REASON,
+  GuardrailDecisionType,
+  GuardrailDetails,
+  GuardrailFinding,
+  GuardrailRiskSeverity,
+  GuardrailTargetType,
 } from './tracing/contracts';
 
 // Scopes
@@ -78,6 +83,7 @@ export { ExecuteToolScope } from './tracing/scopes/ExecuteToolScope';
 export { InvokeAgentScope } from './tracing/scopes/InvokeAgentScope';
 export { InferenceScope } from './tracing/scopes/InferenceScope';
 export { OutputScope } from './tracing/scopes/OutputScope';
+export { ApplyGuardrailScope } from './tracing/scopes/ApplyGuardrailScope';
 export { logger, setLogger, getLogger, resetLogger, formatError } from './utils/logging';
 export type { ILogger } from './utils/logging';
 export { safeSerializeToJson } from './tracing/util';

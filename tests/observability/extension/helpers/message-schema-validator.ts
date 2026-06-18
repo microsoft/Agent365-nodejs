@@ -3,12 +3,12 @@
 
 import { expect } from '@jest/globals';
 
-function validateMessageEnvelope(value: unknown): Record<string, unknown> {
-  // Attributes are stored as JSON strings; parse and validate the common envelope.
+function validateMessageArray(value: unknown): Array<Record<string, unknown>> {
+  // Attributes are stored as JSON strings; parse and validate the plain array format.
   expect(typeof value).toBe('string');
   const parsed = JSON.parse(value as string);
-  expect(parsed).toHaveProperty('version', '0.1.0');
-  expect(parsed.messages).toEqual(expect.arrayContaining([expect.anything()]));
+  expect(Array.isArray(parsed)).toBe(true);
+  expect(parsed.length).toBeGreaterThan(0);
   return parsed;
 }
 
@@ -32,8 +32,8 @@ function validateMessagePart(part: Record<string, unknown>): void {
 
 export function expectValidInputMessages(value: unknown): void {
   // Input messages must have a role and at least one valid part.
-  const parsed = validateMessageEnvelope(value);
-  for (const msg of parsed.messages as Array<Record<string, unknown>>) {
+  const parsed = validateMessageArray(value);
+  for (const msg of parsed) {
     expect(typeof msg.role).toBe('string');
     const parts = msg.parts as Array<Record<string, unknown>>;
     expect(parts.length).toBeGreaterThan(0);
@@ -43,8 +43,8 @@ export function expectValidInputMessages(value: unknown): void {
 
 export function expectValidOutputMessages(value: unknown): void {
   // Output messages follow the same structure, with optional finish_reason.
-  const parsed = validateMessageEnvelope(value);
-  for (const msg of parsed.messages as Array<Record<string, unknown>>) {
+  const parsed = validateMessageArray(value);
+  for (const msg of parsed) {
     expect(typeof msg.role).toBe('string');
     const parts = msg.parts as Array<Record<string, unknown>>;
     expect(parts.length).toBeGreaterThan(0);

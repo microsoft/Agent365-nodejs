@@ -411,7 +411,7 @@ export class McpToolServerConfigurationService {
         }
       );
 
-      const rawServers: MCPServerConfig[] = response.data || [];
+      const rawServers: MCPServerConfig[] = response.data?.mcpServers ?? [];
       return rawServers.map(s => ({
         mcpServerName: s.mcpServerName,
         url: s.url,

@@ -53,19 +53,19 @@ describe("LangChain Message Contract Tests", () => {
       expectValidInputMessages(value);
 
       const parsed = JSON.parse(value);
-      const roles = parsed.messages.map((m: Record<string, unknown>) => m.role);
+      const roles = parsed.map((m: Record<string, unknown>) => m.role);
       expect(roles).toEqual(["system", "user", "assistant", "tool"]);
 
-      expect(parsed.messages[0].parts[0].content).toBe("You are a weather assistant.");
-      expect(parsed.messages[1].parts[0].content).toBe("What's the weather in Seattle?");
+      expect(parsed[0].parts[0].content).toBe("You are a weather assistant.");
+      expect(parsed[1].parts[0].content).toBe("What's the weather in Seattle?");
 
-      const aiParts = parsed.messages[2].parts;
+      const aiParts = parsed[2].parts;
       expect(aiParts.find((p: Record<string, unknown>) => p.type === "text").content).toBe("Let me check.");
       const toolCallPart = aiParts.find((p: Record<string, unknown>) => p.type === "tool_call");
       expect(toolCallPart.name).toBe("get_weather");
       expect(toolCallPart.id).toBe("call_1");
 
-      expect(parsed.messages[3].parts[0].content).toBe("Rainy, 45°F");
+      expect(parsed[3].parts[0].content).toBe("Rainy, 45°F");
     });
   });
 
@@ -81,8 +81,8 @@ describe("LangChain Message Contract Tests", () => {
       expectValidOutputMessages(value);
 
       const parsed = JSON.parse(value);
-      expect(parsed.messages[0].role).toBe("assistant");
-      expect(parsed.messages[0].parts[0].content).toBe("Hello!");
+      expect(parsed[0].role).toBe("assistant");
+      expect(parsed[0].parts[0].content).toBe("Hello!");
     });
 
     it("should map AIMessage with tool_calls in output via generations", () => {
@@ -99,7 +99,7 @@ describe("LangChain Message Contract Tests", () => {
       const value = getOutputAttr();
       expectValidOutputMessages(value);
 
-      const toolPart = JSON.parse(value).messages[0].parts.find((p: Record<string, unknown>) => p.type === "tool_call");
+      const toolPart = JSON.parse(value)[0].parts.find((p: Record<string, unknown>) => p.type === "tool_call");
       expect(toolPart.name).toBe("search");
       expect(toolPart.id).toBe("call_456");
     });
