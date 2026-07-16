@@ -81,6 +81,14 @@ overrides:
   # Zod
   "zod": "^4.1.12"
 
+  # fast-uri - security remediation. Forces a patched release that fixes two URI
+  # normalization issues: percent-encoded authority-delimiter decoding (fixed in
+  # 3.1.2) and percent-encoded path-separator / dot-segment decoding (fixed in
+  # 3.1.1). Pinned within the 3.x line to satisfy ajv@8's "fast-uri: ^3.0.1"
+  # requirement. Remove once the transitive parents (ajv /
+  # @modelcontextprotocol/sdk) resolve a patched fast-uri by default.
+  "fast-uri": "^3.1.2"
+
   # Development dependencies - align versions
   "@types/uuid": "^9.0.0"
   "uuid": "^10.0.0"
