@@ -15,6 +15,15 @@ export { BaggageBuilder, BaggageScope } from './tracing/middleware/BaggageBuilde
 // Per-request export utilities
 export { runWithExportToken, updateExportToken, getExportToken } from './tracing/context/token-context';
 
+// Request-local invocation identity utilities
+export {
+  InvocationIdentityResolutionSource,
+  ResolvedInvocationIdentity,
+  createContextWithResolvedInvocationIdentity,
+  getResolvedInvocationIdentity,
+  runWithResolvedInvocationIdentity,
+} from './tracing/context/invocation-identity-context';
+
 // Parent span context utilities
 export { ParentSpanRef, runWithParentSpanRef, createContextWithParentSpanRef } from './tracing/context/parent-span-context';
 

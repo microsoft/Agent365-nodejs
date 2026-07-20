@@ -12,7 +12,12 @@ import {
   extractContextFromHeaders,
   runWithExtractedTraceContext,
   InvokeAgentScope,
+  InvocationIdentityResolutionSource,
+  InvocationRole,
+  OpenTelemetryConstants,
+  runWithResolvedInvocationIdentity,
 } from '@microsoft/agents-a365-observability';
+import { SpanProcessor } from '../../../packages/agents-a365-observability/src/tracing/processors/SpanProcessor';
 
 describe('Trace Context Propagation', () => {
   let provider: BasicTracerProvider;
@@ -28,15 +33,17 @@ describe('Trace Context Propagation', () => {
     propagation.setGlobalPropagator(new W3CTraceContextPropagator());
 
     exporter = new InMemorySpanExporter();
+    const identityProcessor = new SpanProcessor();
     const processor = new SimpleSpanProcessor(exporter);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const globalProvider: any = trace.getTracerProvider();
     if (globalProvider && typeof globalProvider.addSpanProcessor === 'function') {
+      globalProvider.addSpanProcessor(identityProcessor);
       globalProvider.addSpanProcessor(processor);
       flushProvider = globalProvider;
     } else {
-      provider = new BasicTracerProvider({ spanProcessors: [processor] });
+      provider = new BasicTracerProvider({ spanProcessors: [identityProcessor, processor] });
       trace.setGlobalTracerProvider(provider);
       flushProvider = provider;
     }
@@ -152,6 +159,43 @@ describe('Trace Context Propagation', () => {
 
       const span = exporter.getFinishedSpans().find(s => s.name.toLowerCase().includes('invoke_agent'));
       expect(span!.parentSpanContext?.spanId).toBe(spanId);
+    });
+
+    it('combines an extracted parent with local resolved identity', async () => {
+      const traceId = '1af7651916cd43dd8448eb211c80319c';
+      const spanId = 'c7ad6b7169203331';
+      const humanOid = '11111111-1111-4111-8111-111111111111';
+      const targetAgentId = '77777777-7777-4777-8777-777777777777';
+      const tenantId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+      const extractedCtx = extractContextFromHeaders({ traceparent: `00-${traceId}-${spanId}-01` });
+
+      await runWithResolvedInvocationIdentity({
+        role: InvocationRole.Human,
+        humanOid,
+        targetAgentId,
+        tenantId,
+        resolutionSource: InvocationIdentityResolutionSource.Composite,
+      }, async () => {
+        const scope = InvokeAgentScope.start(
+          {},
+          {},
+          { agentId: ' ', tenantId: ' ' },
+          undefined,
+          { parentContext: extractedCtx },
+        );
+        scope.dispose();
+      });
+
+      await flushProvider.forceFlush();
+
+      const span = exporter.getFinishedSpans().find(
+        candidate => candidate.spanContext().traceId === traceId
+          && candidate.name.toLowerCase().includes('invoke_agent'),
+      );
+      expect(span?.parentSpanContext?.spanId).toBe(spanId);
+      expect(span?.attributes[OpenTelemetryConstants.USER_ID_KEY]).toBe(humanOid);
+      expect(span?.attributes[OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]).toBe(targetAgentId);
+      expect(span?.attributes[OpenTelemetryConstants.TENANT_ID_KEY]).toBe(tenantId);
     });
   });
 
