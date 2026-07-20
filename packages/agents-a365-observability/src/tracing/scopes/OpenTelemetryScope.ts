@@ -8,6 +8,14 @@ import { createContextWithParentSpanRef } from '../context/parent-span-context';
 import { isParentSpanRef } from '../context/trace-context-propagation';
 import { normalizeInputMessages, normalizeOutputMessages, serializeMessages } from '../message-utils';
 import logger from '../../utils/logging';
+import {
+  createContextWithResolvedInvocationIdentity,
+  getResolvedInvocationIdentity,
+} from '../context/invocation-identity-context';
+import {
+  INVOCATION_IDENTITY_ATTRIBUTE_KEYS,
+  isBlankIdentityAttributeValue,
+} from '../invocation-identity-attributes';
 
 /**
  * Base class for OpenTelemetry tracing scopes
@@ -21,6 +29,7 @@ export abstract class OpenTelemetryScope implements Disposable {
   private customEndTime?: TimeInput;
   private errorType?: string;
   private hasEnded = false;
+  private readonly hasResolvedInvocationIdentity: boolean;
 
   /**
    * Initializes a new instance of the OpenTelemetryScope class
@@ -45,8 +54,12 @@ export abstract class OpenTelemetryScope implements Disposable {
     const spanLinks = spanDetails?.spanLinks;
     const kind = spanDetails?.spanKind ?? SpanKind.CLIENT;
 
+    const activeContext = context.active();
+    const resolvedInvocationIdentity = getResolvedInvocationIdentity(activeContext);
+    this.hasResolvedInvocationIdentity = resolvedInvocationIdentity !== undefined;
+
     // Determine the context to use for span creation
-    let currentContext = context.active();
+    let currentContext = activeContext;
     if (parentContext) {
       if (isParentSpanRef(parentContext)) {
         // Existing ParentSpanRef path (backward compatible)
@@ -56,6 +69,13 @@ export abstract class OpenTelemetryScope implements Disposable {
         // OTel Context path (from extractContextFromHeaders or propagation.extract)
         currentContext = parentContext;
       }
+    }
+
+    if (resolvedInvocationIdentity) {
+      currentContext = createContextWithResolvedInvocationIdentity(
+        currentContext,
+        resolvedInvocationIdentity,
+      );
     }
 
     logger.info(`[A365Observability] Starting span: ${spanName}, operation: ${operationName} for tenantId: ${agentDetails?.tenantId || 'unknown'}, agentId: ${agentDetails?.agentId || 'unknown'}`);
@@ -151,7 +171,7 @@ export abstract class OpenTelemetryScope implements Disposable {
     if (Array.isArray(attributes)) {
       for (const [key, value] of attributes as Array<[string, AttributeValue]>) {
         if (!key || typeof key !== 'string' || !key.trim()) continue;
-        this.span.setAttribute(key, value);
+        this.setSpanAttribute(key, value);
       }
     } else if (
       typeof attributes === 'object' &&
@@ -161,13 +181,13 @@ export abstract class OpenTelemetryScope implements Disposable {
     ) {
       for (const [key, value] of attributes as Iterable<[string, AttributeValue]>) {
         if (!key || typeof key !== 'string' || !key.trim()) continue;
-        this.span.setAttribute(key, value);
+        this.setSpanAttribute(key, value);
       }
     } else if (
       typeof attributes === 'object') {
       for (const key of Object.keys(attributes)) {
         if (!key || typeof key !== 'string' || !key.trim()) continue;
-        this.span.setAttribute(key, (attributes as Record<string, AttributeValue>)[key]);
+        this.setSpanAttribute(key, (attributes as Record<string, AttributeValue>)[key]);
       }
     }
   }
@@ -199,8 +219,20 @@ export abstract class OpenTelemetryScope implements Disposable {
    */
   protected setTagMaybe<T extends string | number | boolean | string[] | number[]>(name: string, value: T | null | undefined): void {
     if (value != null) {
-      this.span.setAttributes({ [name]: value as string | number | boolean | string[] | number[] });
+      this.setSpanAttribute(name, value);
     }
+  }
+
+  private setSpanAttribute(name: string, value: AttributeValue): void {
+    if (
+      this.hasResolvedInvocationIdentity
+      && INVOCATION_IDENTITY_ATTRIBUTE_KEYS.has(name)
+      && isBlankIdentityAttributeValue(value)
+    ) {
+      return;
+    }
+
+    this.span.setAttribute(name, value);
   }
 
   /**

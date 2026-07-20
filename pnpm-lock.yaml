@@ -388,6 +388,9 @@ importers:
       '@microsoft/agents-a365-runtime':
         specifier: workspace:*
         version: link:../agents-a365-runtime
+      '@microsoft/agents-activity':
+        specifier: 'catalog:'
+        version: 1.4.2
       '@microsoft/agents-hosting':
         specifier: 'catalog:'
         version: 1.4.2
