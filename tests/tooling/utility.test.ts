@@ -240,6 +240,117 @@ describe('Utility - GetToolRequestHeaders x-ms-agentid', () => {
   });
 });
 
+describe('Utility - GetToolRequestHeaders x-ms-usermessage', () => {
+  it('should add x-ms-usermessage header when turnContext.activity.text is present', () => {
+    const mockContext = {
+      activity: {
+        text: 'What is the weather today?',
+      },
+    } as unknown as TurnContext;
+
+    const headers = Utility.GetToolRequestHeaders(undefined, mockContext);
+    expect(headers['x-ms-usermessage']).toBe('What is the weather today?');
+  });
+
+  it('should omit x-ms-usermessage header when activity.text is missing', () => {
+    const mockContext = {
+      activity: {},
+    } as unknown as TurnContext;
+
+    const headers = Utility.GetToolRequestHeaders(undefined, mockContext);
+    expect(headers['x-ms-usermessage']).toBeUndefined();
+  });
+
+  it('should omit x-ms-usermessage header when activity.text is empty string', () => {
+    const mockContext = {
+      activity: {
+        text: '',
+      },
+    } as unknown as TurnContext;
+
+    const headers = Utility.GetToolRequestHeaders(undefined, mockContext);
+    expect(headers['x-ms-usermessage']).toBeUndefined();
+  });
+
+  it('should omit x-ms-usermessage header when turnContext is undefined', () => {
+    const headers = Utility.GetToolRequestHeaders(undefined, undefined);
+    expect(headers['x-ms-usermessage']).toBeUndefined();
+  });
+
+  it('should sanitize non-breaking spaces to regular spaces', () => {
+    const mockContext = {
+      activity: {
+        text: 'hello\u00A0world\u202Ftest',
+      },
+    } as unknown as TurnContext;
+
+    const headers = Utility.GetToolRequestHeaders(undefined, mockContext);
+    expect(headers['x-ms-usermessage']).toBe('hello world test');
+  });
+
+  it('should strip diacritics from characters', () => {
+    const mockContext = {
+      activity: {
+        text: 'café résumé señor',
+      },
+    } as unknown as TurnContext;
+
+    const headers = Utility.GetToolRequestHeaders(undefined, mockContext);
+    expect(headers['x-ms-usermessage']).toBe('cafe resume senor');
+  });
+
+  it('should convert smart quotes and dashes to ASCII equivalents', () => {
+    const mockContext = {
+      activity: {
+        text: '\u201CHello\u201D \u2018world\u2019 foo\u2013bar baz\u2014qux and\u2026more',
+      },
+    } as unknown as TurnContext;
+
+    const headers = Utility.GetToolRequestHeaders(undefined, mockContext);
+    expect(headers['x-ms-usermessage']).toBe('"Hello" \'world\' foo-bar baz-qux and...more');
+  });
+
+  it('should replace non-ASCII characters with spaces', () => {
+    const mockContext = {
+      activity: {
+        text: 'hello \u4E16\u754C world',
+      },
+    } as unknown as TurnContext;
+
+    const headers = Utility.GetToolRequestHeaders(undefined, mockContext);
+    expect(headers['x-ms-usermessage']).toBe('hello world');
+  });
+
+  it('should collapse multiple whitespace into single space', () => {
+    const mockContext = {
+      activity: {
+        text: 'hello   world   test',
+      },
+    } as unknown as TurnContext;
+
+    const headers = Utility.GetToolRequestHeaders(undefined, mockContext);
+    expect(headers['x-ms-usermessage']).toBe('hello world test');
+  });
+
+  it('should coexist with all other headers', () => {
+    const mockContext = {
+      activity: {
+        channelId: 'msteams',
+        channelIdSubChannel: 'personal',
+        text: 'Find my files',
+      },
+    } as unknown as TurnContext;
+
+    const headers = Utility.GetToolRequestHeaders('my-token', mockContext, { orchestratorName: 'Claude' });
+
+    expect(headers['Authorization']).toBe('Bearer my-token');
+    expect(headers['x-ms-channel-id']).toBe('msteams');
+    expect(headers['x-ms-subchannel-id']).toBe('personal');
+    expect(headers['User-Agent']).toContain('Claude');
+    expect(headers['x-ms-usermessage']).toBe('Find my files');
+  });
+});
+
 describe('Utility - GetChatHistoryEndpoint', () => {
   const originalEnv = process.env;
 
