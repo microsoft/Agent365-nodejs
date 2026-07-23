@@ -98,8 +98,6 @@ const GEN_AI_OPERATION_NAMES: ReadonlySet<string> = new Set([
   OpenTelemetryConstants.APPLY_GUARDRAIL_OPERATION_NAME, // 'apply_guardrail'
   OpenTelemetryConstants.CHAT_OPERATION_NAME,            // 'chat'
   'Chat',            // InferenceOperationType.CHAT
-  'TextCompletion',  // InferenceOperationType.TEXT_COMPLETION
-  'GenerateContent', // InferenceOperationType.GENERATE_CONTENT
 ]);
 
 /**
