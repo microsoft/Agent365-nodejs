@@ -6,3 +6,4 @@ export * from './McpToolServerConfigurationService';
 export * from './contracts';
 export * from './models';
 export * from './configuration';
+export * from './defender';
