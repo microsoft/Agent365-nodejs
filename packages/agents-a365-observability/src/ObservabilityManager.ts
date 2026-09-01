@@ -1,6 +1,5 @@
-// ------------------------------------------------------------------------------
-// Copyright (c) Microsoft Corporation. All rights reserved.
-// ------------------------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
 
 import { ObservabilityBuilder, BuilderOptions } from './ObservabilityBuilder';
 
@@ -35,8 +34,16 @@ export class ObservabilityManager {
   public static start(options?: BuilderOptions): ObservabilityBuilder {
     const builder = new ObservabilityBuilder();
 
+    if (options?.exporterOptions) {
+      builder.withExporterOptions(options.exporterOptions);
+    }
+
     if (options?.serviceName) {
       builder.withService(options.serviceName, options.serviceVersion);
+    }
+
+    if (options?.serviceNamespace) {
+      builder.withServiceNamespace(options.serviceNamespace);
     }
 
     if (options?.tokenResolver) {
@@ -49,6 +56,10 @@ export class ObservabilityManager {
 
     if (options?.configProvider) {
       builder.withConfigurationProvider(options.configProvider);
+    }
+
+    if (options?.customLogger) {
+      builder.withCustomLogger(options.customLogger);
     }
 
     builder.start();
