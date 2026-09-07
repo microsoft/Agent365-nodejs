@@ -89,8 +89,7 @@ overrides:
   # @modelcontextprotocol/sdk) resolve a patched fast-uri by default.
   "fast-uri": "^3.1.2"
 
-  # axios - security remediation (S360 [SFI-ES5.2] 1ES Open Source Vulnerabilities).
-  # Forces the transitive axios@1.15.2 up to the patched 1.16.0, which fixes:
+  # axios - security remediation. Forces the transitive axios@1.15.2 up to the patched 1.16.0, which fixes:
   # CVE-2026-44486 (Proxy-Authorization header leak on re-evaluated redirect),
   # CVE-2026-44487 (Proxy-Authorization credential leak across HTTP->HTTPS
   # redirect), CVE-2026-44488 (unbounded resource allocation / no throttling),
@@ -100,8 +99,7 @@ overrides:
   # by default.
   "axios": "^1.16.0"
 
-  # protobufjs - security remediation (S360 [SFI-ES5.2] 1ES Open Source
-  # Vulnerabilities). Forces the transitive protobufjs@7.5.5 up to the patched
+  # protobufjs - security remediation . Forces the transitive protobufjs@7.5.5 up to the patched
   # 7.5.6, which fixes: CVE-2026-44289 (denial of service via unbounded
   # protobuf recursion), CVE-2026-44291 (code-generation gadget after
   # prototype pollution), and CVE-2026-44293 (code injection through bytes
@@ -110,23 +108,20 @@ overrides:
   # patched protobufjs by default.
   "protobufjs": "^7.5.6"
 
-  # langsmith - security remediation (S360 [SFI-ES5.2] 1ES Open Source
-  # Vulnerabilities). Forces the transitive langsmith@0.5.25 up to the patched
+  # langsmith - security remediation . Forces the transitive langsmith@0.5.25 up to the patched
   # 0.8.0, which fixes CVE-2026-45134 (public prompt pull deserializes
   # untrusted manifests without a trust-boundary warning). Remove once the
   # transitive parents (langchain) resolve a patched langsmith by default.
   "langsmith": "^0.8.0"
 
-  # @grpc/grpc-js - security remediation (S360 [SFI-ES5.2] 1ES Open Source
-  # Vulnerabilities). Forces the transitive @grpc/grpc-js@1.14.3 up to the
+  # @grpc/grpc-js - security remediation . Forces the transitive @grpc/grpc-js@1.14.3 up to the
   # patched 1.14.4, which fixes: CVE-2026-48068 (server crash via a malformed
   # request) and CVE-2026-48069 (client/server crash via a malformed
   # compressed message). Remove once the transitive parents (OpenTelemetry
   # OTLP exporters) resolve a patched @grpc/grpc-js by default.
   "@grpc/grpc-js": "^1.14.4"
 
-  # ws - security remediation (S360 [SFI-ES5.2] 1ES Open Source
-  # Vulnerabilities). Forces the transitive ws@8.20.0 up to the patched
+  # ws - security remediation . Forces the transitive ws@8.20.0 up to the patched
   # 8.21.0, which fixes CVE-2026-48779 (memory exhaustion DoS from tiny
   # fragments and data chunks). Remove once the transitive parents resolve a
   # patched ws by default.
