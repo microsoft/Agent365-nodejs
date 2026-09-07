@@ -105,6 +105,53 @@ Required variables: `A365_DEFENDER_RTP_TENANT_ID`, `A365_DEFENDER_RTP_CLIENT_ID`
 for your environment. `A365_DEFENDER_RTP_TOKEN_SCOPE` defaults to
 `api://<customer-app-id>/.default`.
 
+### Microsoft Purview DLP and audit
+
+Purview data loss prevention is disabled by default. When enabled, each turn's content is submitted
+to the Microsoft Graph `processContent` endpoint, which applies matching Purview DLP policies and
+writes the Purview audit event. Use the two gates `enforcePrompt` (inbound prompt) and
+`enforceResponse` (model response); `guardTurn` composes both around a response generator.
+
+```typescript
+import {
+  PurviewDlpClient,
+  ToolingConfiguration,
+} from '@microsoft/agents-a365-tooling';
+
+const configuration = new ToolingConfiguration({
+  isPurviewDlpEnabled: () => true,
+});
+const purview = new PurviewDlpClient({
+  configProvider: { getConfiguration: () => configuration },
+});
+
+// Delegated (AgentApplication) agents evaluate as /me using the agentic user token.
+const answer = await purview.guardTurn(
+  {
+    applicationId,
+    agentName,
+    sessionId,
+    messages: [userMessage],
+  },
+  { authorization: this.authorization, authHandlerName: 'agentic', turnContext },
+  () => model.invoke(userMessage),
+);
+```
+
+Set `ENABLE_A365_PURVIEW_DLP=true` to enable it via environment-based configuration. The client
+supports the same authentication styles as the Defender client — a pre-acquired Microsoft Graph
+token, a host-provided token callback, customer client credentials, and Blueprint to Agent Identity
+FMI authentication — plus a delegated agentic-user context. Delegated evaluation targets `/me`;
+app-only contexts (client credentials and FMI) target `/users/{sponsorUserId}` and require a
+`sponsorUserId`. The Graph resource scope defaults to `https://graph.microsoft.com/.default`.
+
+A `restrictAccess` block action is enforced. Transport, authentication, and protocol failures (and
+`processingErrors` returned by Graph) produce `evaluated: false` and follow `purviewDlpFailClosed`
+(default is fail open; set `A365_PURVIEW_DLP_FAIL_MODE=closed` to block on failure). Content sent to
+Purview is truncated to `A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS` (default 100000) with the
+`isTruncated` flag set. Override the Graph host with `A365_PURVIEW_DLP_GRAPH_BASE_URL` (default
+`https://graph.microsoft.com/beta`).
+
 ## Support
 
 For issues, questions, or feedback:

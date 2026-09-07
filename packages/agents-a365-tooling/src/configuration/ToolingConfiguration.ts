@@ -10,6 +10,10 @@ const MCP_PLATFORM_PROD_BASE_URL = 'https://agent365.svc.cloud.microsoft';
 const PROD_MCP_PLATFORM_AUTHENTICATION_SCOPE = 'ea9ffc3e-8a23-4a7d-836d-234d7c7565c1/.default';
 const DEFAULT_DEFENDER_RTP_TIMEOUT_MILLISECONDS = 10000;
 const DEFAULT_DEFENDER_RTP_MAX_CONTENT_CHARACTERS = 20000;
+const PURVIEW_DLP_PROD_GRAPH_BASE_URL = 'https://graph.microsoft.com/beta';
+const PURVIEW_DLP_GRAPH_DEFAULT_SCOPE = 'https://graph.microsoft.com/.default';
+const DEFAULT_PURVIEW_DLP_TIMEOUT_MILLISECONDS = 10000;
+const DEFAULT_PURVIEW_DLP_MAX_CONTENT_CHARACTERS = 100000;
 
 /**
  * Resolve the OAuth scope to request for a given MCP server.
@@ -194,6 +198,86 @@ export class ToolingConfiguration extends RuntimeConfiguration {
 
     if (!Number.isInteger(maximum) || maximum <= 0) {
       throw new Error('defenderRtpMaxContentCharacters must be a positive integer.');
+    }
+    return maximum;
+  }
+
+  /**
+   * Whether SDK content wrappers evaluate agent content with Microsoft Purview DLP + audit.
+   */
+  get isPurviewDlpEnabled(): boolean {
+    const override = this.toolingOverrides.isPurviewDlpEnabled?.();
+    if (override !== undefined) return override;
+
+    return RuntimeConfiguration.parseEnvBoolean(process.env.ENABLE_A365_PURVIEW_DLP);
+  }
+
+  /**
+   * Microsoft Graph base URL that hosts the Purview `processContent` endpoint.
+   */
+  get purviewDlpGraphBaseUrl(): string {
+    const override = this.toolingOverrides.purviewDlpGraphBaseUrl?.();
+    if (override?.trim()) return normalizeUrl(override);
+
+    const envValue = process.env.A365_PURVIEW_DLP_GRAPH_BASE_URL?.trim();
+    if (envValue) return normalizeUrl(envValue);
+
+    return PURVIEW_DLP_PROD_GRAPH_BASE_URL;
+  }
+
+  /**
+   * OAuth resource scope requested for the Microsoft Graph `processContent` call.
+   */
+  get purviewDlpAuthenticationScope(): string {
+    const override = this.toolingOverrides.purviewDlpAuthenticationScope?.()?.trim();
+    if (override) return override;
+
+    const envValue = process.env.A365_PURVIEW_DLP_AUTHENTICATION_SCOPE?.trim();
+    if (envValue) return envValue;
+
+    return PURVIEW_DLP_GRAPH_DEFAULT_SCOPE;
+  }
+
+  /**
+   * Maximum duration of one synchronous Purview DLP evaluation request.
+   */
+  get purviewDlpTimeoutMilliseconds(): number {
+    const override = this.toolingOverrides.purviewDlpTimeoutMilliseconds?.();
+    const timeout = override
+      ?? RuntimeConfiguration.parseEnvInt(
+        process.env.A365_PURVIEW_DLP_TIMEOUT_MILLISECONDS,
+        DEFAULT_PURVIEW_DLP_TIMEOUT_MILLISECONDS,
+      );
+
+    if (!Number.isInteger(timeout) || timeout <= 0) {
+      throw new Error('purviewDlpTimeoutMilliseconds must be a positive integer.');
+    }
+    return timeout;
+  }
+
+  /**
+   * Whether an unavailable Purview verdict blocks the inspected content.
+   */
+  get purviewDlpFailClosed(): boolean {
+    const override = this.toolingOverrides.purviewDlpFailClosed?.();
+    if (override !== undefined) return override;
+
+    return process.env.A365_PURVIEW_DLP_FAIL_MODE?.trim().toLowerCase() === 'closed';
+  }
+
+  /**
+   * Maximum characters retained in each content string sent to Purview.
+   */
+  get purviewDlpMaxContentCharacters(): number {
+    const override = this.toolingOverrides.purviewDlpMaxContentCharacters?.();
+    const maximum = override
+      ?? RuntimeConfiguration.parseEnvInt(
+        process.env.A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS,
+        DEFAULT_PURVIEW_DLP_MAX_CONTENT_CHARACTERS,
+      );
+
+    if (!Number.isInteger(maximum) || maximum <= 0) {
+      throw new Error('purviewDlpMaxContentCharacters must be a positive integer.');
     }
     return maximum;
   }

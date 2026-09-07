@@ -48,4 +48,29 @@ export type ToolingConfigurationOptions = RuntimeConfigurationOptions & {
    * Maximum characters retained in each content string sent to Defender.
    */
   defenderRtpMaxContentCharacters?: () => number;
+  /**
+   * Opts SDK content wrappers into Microsoft Purview DLP + audit evaluation.
+   * Disabled by default.
+   */
+  isPurviewDlpEnabled?: () => boolean;
+  /**
+   * Override for the Microsoft Graph base URL used by the Purview processContent endpoint.
+   */
+  purviewDlpGraphBaseUrl?: () => string;
+  /**
+   * Override for the Microsoft Graph OAuth resource scope used by Purview DLP.
+   */
+  purviewDlpAuthenticationScope?: () => string;
+  /**
+   * Override for the Purview DLP HTTP timeout in milliseconds.
+   */
+  purviewDlpTimeoutMilliseconds?: () => number;
+  /**
+   * Whether unavailable Purview validation blocks the content. Defaults to false (fail open).
+   */
+  purviewDlpFailClosed?: () => boolean;
+  /**
+   * Maximum characters retained in each content string sent to Purview.
+   */
+  purviewDlpMaxContentCharacters?: () => number;
 };
