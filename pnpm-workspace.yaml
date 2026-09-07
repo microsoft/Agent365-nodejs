@@ -28,7 +28,7 @@ catalog:
   "@microsoft/agents-activity": "^1.3.1"
 
   # Hono - required peer dependency for MCP SDK and OpenAI agents
-  "hono": "^4.11.7"
+  "hono": "^4.12.25"
 
   # Model Context Protocol SDK
   "@modelcontextprotocol/sdk": "^1.26.0"
@@ -116,6 +116,21 @@ overrides:
   # untrusted manifests without a trust-boundary warning). Remove once the
   # transitive parents (langchain) resolve a patched langsmith by default.
   "langsmith": "^0.8.0"
+
+  # @grpc/grpc-js - security remediation (S360 [SFI-ES5.2] 1ES Open Source
+  # Vulnerabilities). Forces the transitive @grpc/grpc-js@1.14.3 up to the
+  # patched 1.14.4, which fixes: CVE-2026-48068 (server crash via a malformed
+  # request) and CVE-2026-48069 (client/server crash via a malformed
+  # compressed message). Remove once the transitive parents (OpenTelemetry
+  # OTLP exporters) resolve a patched @grpc/grpc-js by default.
+  "@grpc/grpc-js": "^1.14.4"
+
+  # ws - security remediation (S360 [SFI-ES5.2] 1ES Open Source
+  # Vulnerabilities). Forces the transitive ws@8.20.0 up to the patched
+  # 8.21.0, which fixes CVE-2026-48779 (memory exhaustion DoS from tiny
+  # fragments and data chunks). Remove once the transitive parents resolve a
+  # patched ws by default.
+  "ws": "^8.21.0"
 
   # Development dependencies - align versions
   "@types/uuid": "^9.0.0"
