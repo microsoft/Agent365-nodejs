@@ -121,11 +121,11 @@ overrides:
   # OTLP exporters) resolve a patched @grpc/grpc-js by default.
   "@grpc/grpc-js": "^1.14.4"
 
-  # ws - security remediation . Forces the transitive ws@8.20.0 up to the patched
-  # 8.21.0, which fixes CVE-2026-48779 (memory exhaustion DoS from tiny
+  # ws - security remediation. Forces the transitive ws@8.20.0 up to the patched
+  # 8.21.3, which fixes CVE-2026-48779 (memory exhaustion DoS from tiny
   # fragments and data chunks). Remove once the transitive parents resolve a
   # patched ws by default.
-  "ws": "^8.21.0"
+  "ws": "^8.21.3"
 
   # Development dependencies - align versions
   "@types/uuid": "^9.0.0"
