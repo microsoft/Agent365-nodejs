@@ -13,6 +13,8 @@
     "test:watch": "npm run test:watch --workspaces --if-present",
     "test:integration": "node --experimental-vm-modules ./node_modules/.bin/jest --config jest.integration.config.cjs",
     "test:integration:watch": "node --experimental-vm-modules ./node_modules/.bin/jest --config jest.integration.config.cjs --watch",
+    "smoke:defender-rtp": "npm run build --workspace=@microsoft/agents-a365-runtime && npm run build --workspace=@microsoft/agents-a365-tooling && node tests/tooling/integration/defender-rtp-live-smoke.mjs",
+    "demo:defender-rtp": "npm run build --workspace=@microsoft/agents-a365-runtime && npm run build --workspace=@microsoft/agents-a365-tooling && node tests/tooling/integration/defender-rtp-agent-demo.mjs",
     "lint": "npm run lint --workspaces --if-present",
     "lint:fix": "npm run lint:fix --workspaces --if-present",
     "ci": "npm run ci --workspaces --if-present",
