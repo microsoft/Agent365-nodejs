@@ -138,7 +138,7 @@ describe('Agent365Exporter', () => {
     expect(fetchCalls.length).toBe(1);
     const urlArg = fetchCalls[0][0];
     const headersArg = fetchCalls[0][1].headers;
-    expect(urlArg).toBe(`${expectedUrl}/observability/tenants/${tenantId}/otlp/agents/${agentId}/traces?api-version=1`);
+    expect(urlArg).toBe(`${expectedUrl}/observabilityService/tenants/${tenantId}/otlp/agents/${agentId}/traces?api-version=1`);
     expect(headersArg['x-ms-tenant-id']).toBe(tenantId);
     expect(headersArg['authorization']).toBe(`Bearer ${token}`);
   });
@@ -193,7 +193,7 @@ describe('Agent365Exporter', () => {
     const urlArg = fetchCalls[0][0] as string;
     const headersArg = fetchCalls[0][1].headers as Record<string, string>;
 
-    expect(urlArg).toBe(`${expectedBaseUrl}/observability/tenants/${tenantId}/otlp/agents/${agentId}/traces?api-version=1`);
+    expect(urlArg).toBe(`${expectedBaseUrl}/observabilityService/tenants/${tenantId}/otlp/agents/${agentId}/traces?api-version=1`);
     expect(headersArg['x-ms-tenant-id']).toBe(tenantId);
     expect(headersArg['authorization']).toBe(`Bearer ${token}`);
   });
@@ -218,7 +218,7 @@ describe('Agent365Exporter', () => {
     expect(fetchCalls.length).toBe(1);
     const urlArg = fetchCalls[0][0];
     const headersArg = fetchCalls[0][1].headers;
-    expect(urlArg).toBe(`https://agent365.svc.cloud.microsoft/observability/tenants/${tenantId}/otlp/agents/${agentId}/traces?api-version=1`);
+    expect(urlArg).toBe(`https://agent365.svc.cloud.microsoft/observabilityService/tenants/${tenantId}/otlp/agents/${agentId}/traces?api-version=1`);
     expect(headersArg['x-ms-tenant-id']).toBe(tenantId);
     expect(headersArg['authorization']).toBe(`Bearer ${token}`);
   });
@@ -229,13 +229,19 @@ describe('Agent365Exporter', () => {
     // Intentionally omit tokenResolver
     expect(() => new Agent365Exporter(opts)).toThrow(/tokenResolver must be provided/);
   });
-  it('uses S2S endpoint path when useS2SEndpoint is true', async () => {
+  it('defaults the legacy endpoint option to S2S', () => {
+    expect(new Agent365ExporterOptions().useS2SEndpoint).toBe(true);
+  });
+
+  it.each([undefined, false, true])('always uses S2S when useS2SEndpoint is %s', async (useS2SEndpoint) => {
     mockFetchSequence([200]);
     const token = 'tok-s2s';
     const opts = new Agent365ExporterOptions();
     opts.clusterCategory = 'prod';
     opts.tokenResolver = () => token;
-    opts.useS2SEndpoint = true;
+    if (useS2SEndpoint !== undefined) {
+      opts.useS2SEndpoint = useS2SEndpoint;
+    }
 
     const exporter = new Agent365Exporter(opts);
     const spans = [
@@ -259,14 +265,14 @@ describe('Agent365Exporter', () => {
     expect(headersArg['x-ms-tenant-id']).toBe(tenantId);
   });
 
-  it('uses S2S endpoint path with domain override and sets x-ms-tenant-id', async () => {
+  it.each([false, true])('uses S2S with a domain override and legacy option %s', async (useS2SEndpoint) => {
     mockFetchSequence([200]);
     process.env.A365_OBSERVABILITY_DOMAIN_OVERRIDE = 'https://custom.domain';
     const token = 'tok-s2s-custom';
     const opts = new Agent365ExporterOptions();
     opts.clusterCategory = 'prod';
     opts.tokenResolver = () => token;
-    opts.useS2SEndpoint = true;
+    opts.useS2SEndpoint = useS2SEndpoint;
 
     const exporter = new Agent365Exporter(opts);
     const spans = [
@@ -288,6 +294,25 @@ describe('Agent365Exporter', () => {
     expect(headersArg['x-ms-tenant-id']).toBe(tenantId);
   });
 
+
+  it.each([401, 403, 404])('does not fall back to OBO when S2S returns %s', async (status) => {
+    mockFetchSequence([status]);
+    const opts = new Agent365ExporterOptions();
+    opts.tokenResolver = () => 'test-obs-token';
+    opts.useS2SEndpoint = false;
+    const exporter = new Agent365Exporter(opts);
+    const callback = jest.fn();
+
+    await exporter.export([makeSpan({
+      [OpenTelemetryConstants.TENANT_ID_KEY]: tenantId,
+      [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]: agentId,
+    })], callback);
+
+    expect(callback).toHaveBeenCalledWith({ code: ExportResultCode.FAILED });
+    const calls = getFetchCalls();
+    expect(calls).toHaveLength(1);
+    expect(calls[0][0]).toBe(`https://agent365.svc.cloud.microsoft/observabilityService/tenants/${tenantId}/otlp/agents/${agentId}/traces?api-version=1`);
+  });
 
   it('passes httpRequestTimeoutMilliseconds to fetch AbortSignal.timeout', async () => {
     const customTimeout = 12345;
@@ -1028,12 +1053,13 @@ describe('Agent365Exporter', () => {
       contextManager = undefined;
     });
 
-    it('acquires export token from OTel Context when per-request export is enabled', async () => {
+    it.each([false, true])('uses S2S with a per-request context token and legacy option %s', async (useS2SEndpoint) => {
       mockFetchSequence([200]);
       process.env.ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT = 'true';
 
       const opts = new Agent365ExporterOptions();
       opts.clusterCategory = 'local';
+      opts.useS2SEndpoint = useS2SEndpoint;
 
       const exporter = new Agent365Exporter(opts);
       const spans = [
@@ -1049,9 +1075,9 @@ describe('Agent365Exporter', () => {
 
       expect(callback).toHaveBeenCalledWith({ code: ExportResultCode.SUCCESS });
 
-      // Verify export was attempted (should be greater than 0 when enabled)
       const fetchCalls = getFetchCalls();
-      expect(fetchCalls.length).toBeGreaterThan(0);
+      expect(fetchCalls).toHaveLength(1);
+      expect(fetchCalls[0][0]).toBe(`https://agent365.svc.cloud.microsoft/observabilityService/tenants/${tenantId}/otlp/agents/${agentId}/traces?api-version=1`);
 
       // Verify token came from OTel Context (per-request mode)
       const headersArg = fetchCalls[0][1].headers as Record<string, string>;
