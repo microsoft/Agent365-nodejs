@@ -15,6 +15,26 @@ npm install @microsoft/agents-a365-observability
 
 For detailed usage examples and implementation guidance, see the [Microsoft Agent 365 Observability Documentation](https://learn.microsoft.com/microsoft-agent-365/developer/observability?tabs=nodejs).
 
+### OBS endpoint
+
+All exports use `/observabilityService/tenants/{tenantId}/otlp/agents/{agentId}/traces?api-version=1`,
+including batch and per-request exports from AI Teammate and OBO workloads. The exporter
+never falls back to `/observability`. The `useS2SEndpoint` option is deprecated and ignored,
+including when set to `false`; domain overrides change the host, not this route.
+
+Endpoint selection does not acquire or convert tokens. Supply an **app-only** OBS token
+for the exporting tenant and agent identity with `Agent365.Observability.OtelWrite`
+application permission. The S2S service rejects delegated (`scp`) tokens, including
+AI Teammate user tokens. Keep workload authentication
+(such as OBO for MCP or Microsoft Graph) separate from OBS authentication. An authorization
+failure is not a reason to retry telemetry on the OBO route.
+
+When using the hosting token cache, call
+`RefreshObservabilityToken(agentId, tenantId, appOnlyTokenResolver)`. The old
+`TurnContext`/`Authorization` overload throws rather than acquiring a delegated OBS token.
+S2S ingestion may remove unverified user attribution; routing a workload through S2S
+does not establish that its caller identity is trusted.
+
 ## Support
 
 For issues, questions, or feedback:

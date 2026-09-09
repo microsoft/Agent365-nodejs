@@ -107,17 +107,29 @@ const agentPairs = getTargetAgentBaggagePairs(turnContext);
 
 ### AgenticTokenCacheInstance ([AgenticTokenCache.ts](../src/caching/AgenticTokenCache.ts))
 
-Token caching for improved performance:
+Cache app-only OBS tokens independently of the workload's AI Teammate or OBO
+authorization. The former overload accepting `TurnContext` and `Authorization`
+now throws rather than acquiring a delegated token incompatible with S2S.
 
 ```typescript
 import { AgenticTokenCacheInstance } from '@microsoft/agents-a365-observability-hosting';
 
-// Cache token with key
-AgenticTokenCacheInstance.set('cache-key', 'token-value', ttlMs);
+// acquireAppOnlyObsToken is your app-only token acquisition callback.
+// It receives (agentId, tenantId, scopes) and returns the final OBS access token.
+await AgenticTokenCacheInstance.RefreshObservabilityToken(
+  agentId, tenantId, acquireAppOnlyObsToken
+);
 
-// Retrieve cached token
-const token = AgenticTokenCacheInstance.get('cache-key');
+const token = AgenticTokenCacheInstance.getObservabilityToken(agentId, tenantId);
 ```
+
+For a blueprint-backed agent, acquire a blueprint exchange assertion with
+`fmi_path=agentId`, then use it as `client_assertion` in an instance
+`client_credentials` request for the OBS `/.default` scope. Do not send the
+intermediate assertion, a blueprint token, or a `user_fic`/OBO token to OBS.
+The final token's application identity must match `agentId`; it needs the
+`Agent365.Observability.OtelWrite` application permission. Acquisition failures
+propagate to the caller and never trigger delegated authentication.
 
 ## Tenant ID Resolution
 

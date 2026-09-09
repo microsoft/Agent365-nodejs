@@ -90,8 +90,7 @@ interface MappedSpan {
  * Observability span exporter for Agent365:
  * - Partitions spans by (tenantId, agentId)
  * - Builds OTLP-like JSON: resourceSpans -> scopeSpans -> spans
- * - POSTs per group to https://{endpoint}/observability/tenants/{tenantId}/otlp/agents/{agentId}/traces?api-version=1
- *   or, when useS2SEndpoint is true, https://{endpoint}/observabilityService/tenants/{tenantId}/otlp/agents/{agentId}/traces?api-version=1
+ * - POSTs per group to https://{endpoint}/observabilityService/tenants/{tenantId}/otlp/agents/{agentId}/traces?api-version=1
  * - Adds Bearer token via token_resolver(agentId, tenantId)
  */
 export class Agent365Exporter implements SpanExporter {
@@ -189,9 +188,8 @@ export class Agent365Exporter implements SpanExporter {
       logger.info(`[Agent365Exporter] Split ${spans.length} spans into ${chunks.length} chunks for tenantId: ${tenantId}, agentId: ${agentId}`);
     }
 
-    // Select endpoint path based on S2S flag (includes tenantId in path)
-    const servicePrefix = this.options.useS2SEndpoint ? '/observabilityService' : '/observability';
-    const endpointRelativePath = `${servicePrefix}/tenants/${encodeURIComponent(tenantId)}/otlp/agents/${encodeURIComponent(agentId)}/traces`;
+    // OBS routing is independent of the agent's workload authentication flow.
+    const endpointRelativePath = `/observabilityService/tenants/${encodeURIComponent(tenantId)}/otlp/agents/${encodeURIComponent(agentId)}/traces`;
 
     let url: string;
     const domainOverride = getAgent365ObservabilityDomainOverride(this.configProvider);

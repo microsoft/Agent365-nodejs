@@ -6,7 +6,8 @@
 import { ClusterCategory } from '@microsoft/agents-a365-runtime';
 
 /**
- * A function that resolves and returns an authentication token for the given agent and tenant.
+ * A function that resolves an app-only OBS token for the given agent and tenant.
+ * Delegated (scp) tokens are not accepted by the S2S service.
  * Implementations may perform synchronous lookup (e.g., in-memory cache) or asynchronous network calls.
  * Return null if a token cannot be provided; exporter will log and proceed without an authorization header.
  */
@@ -21,7 +22,7 @@ export type TokenResolver = (agentId: string, tenantId: string) => string | null
  * @property {ClusterCategory | string} clusterCategory Environment / cluster category (e.g. ClusterCategory.preprod, ClusterCategory.prod, default to ClusterCategory.prod).
  * @property {TokenResolver} [tokenResolver] Optional delegate to obtain an auth token. If omitted the exporter will
  *           fall back to reading the cached token (AgenticTokenCacheInstance.getObservabilityToken).
- * @property {boolean} [useS2SEndpoint] When true, exporter will POST to the S2S path (/observabilityService/tenants/{tenantId}/otlp/agents/{agentId}/traces).
+ * @property {boolean} [useS2SEndpoint] Deprecated compatibility option. Export always uses the S2S path, even when false.
  * @property {number} maxQueueSize Maximum span queue size before drops occur (passed to BatchSpanProcessor).
  * @property {number} scheduledDelayMilliseconds Delay between automatic batch flush attempts.
  * @property {number} exporterTimeoutMilliseconds Maximum time (ms) the BatchSpanProcessor waits for the entire export() call to complete before giving up. Covers partitioning, token resolution, and all HTTP retries.
@@ -35,8 +36,8 @@ export class Agent365ExporterOptions {
   /** Optional delegate to resolve auth token used by exporter */
   public tokenResolver?: TokenResolver; // Optional if ENABLE_A365_OBSERVABILITY_EXPORTER is false
 
-  /** When true, use S2S endpoint path for export. */
-  public useS2SEndpoint: boolean = false;
+  /** @deprecated Export always uses /observabilityService. This option is ignored. */
+  public useS2SEndpoint: boolean = true;
 
   /** Maximum span queue size before new spans are dropped. */
   public maxQueueSize: number = 2048;
