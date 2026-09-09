@@ -34,6 +34,7 @@ export class OpenTelemetryConstants {
   public static readonly GEN_AI_CLIENT_OPERATION_DURATION_METRIC_NAME = 'gen_ai.client.operation.duration';
   public static readonly GEN_AI_CLIENT_TOKEN_USAGE_METRIC_NAME = 'gen_ai.client.token.usage';
   public static readonly GEN_AI_OPERATION_NAME_KEY = 'gen_ai.operation.name';
+  public static readonly INVOCATION_ROLE_KEY = 'microsoft.a365.invocation.role';
   public static readonly GEN_AI_REQUEST_MAX_TOKENS_KEY = 'gen_ai.request.max_tokens';
   public static readonly GEN_AI_REQUEST_MODEL_KEY = 'gen_ai.request.model';
   public static readonly GEN_AI_REQUEST_TEMPERATURE_KEY = 'gen_ai.request.temperature';

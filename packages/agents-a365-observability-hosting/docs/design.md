@@ -4,7 +4,9 @@ This document describes the architecture and design of the `@microsoft/agents-a3
 
 ## Overview
 
-The observability hosting package provides hosting-specific utilities for integrating observability with the Microsoft Agents Hosting SDK. It bridges the gap between `TurnContext` and OpenTelemetry baggage/scope creation.
+The observability hosting package provides hosting-specific utilities for integrating observability with the Microsoft Agents Hosting SDK. It bridges the gap between `TurnContext`, request-local invocation identity, and OpenTelemetry baggage/scope creation.
+
+See [Automatic Invocation Identity](invocation-identity.md) for the opt-in caller and target identity feature.
 
 ## Architecture
 
@@ -24,6 +26,11 @@ The observability hosting package provides hosting-specific utilities for integr
 │  │ Extract baggage     │───▶│ Populate builder    │            │
 │  │ pairs from context  │    │ from context        │            │
 │  └─────────────────────┘    └─────────────────────┘            │
+│                                                                  │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ InvocationIdentityMiddleware + Resolver                   │  │
+│  │ Validated claims/Activity → private OTel context          │  │
+│  └───────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -34,6 +41,18 @@ The observability hosting package provides hosting-specific utilities for integr
 ```
 
 ## Key Components
+
+### InvocationIdentityMiddleware
+
+The opt-in middleware resolves identity once per turn, enters a private OpenTelemetry context, and runs downstream middleware and agent logic inside that context. It never places resolved identity into W3C baggage.
+
+```typescript
+new ObservabilityHostingManager().configure(adapter, {
+  enableInvocationIdentity: true,
+});
+```
+
+The core `SpanProcessor` reads the resolved identity from the supplied parent context and stamps human, caller-agent, target-agent, tenant, and invocation-role attributes onto every local span.
 
 ### BaggageBuilderUtils ([BaggageBuilderUtils.ts](../src/utils/BaggageBuilderUtils.ts))
 
@@ -183,6 +202,12 @@ async function onMessage(turnContext: TurnContext, turnState: TurnState) {
 ```
 src/
 ├── index.ts                              # Public API exports
+├── identity/
+│   └── InvocationIdentityResolver.ts     # Trusted identity classification
+├── middleware/
+│   ├── InvocationIdentityMiddleware.ts   # Per-turn identity context
+│   ├── BaggageMiddleware.ts
+│   └── OutputLoggingMiddleware.ts
 ├── utils/
 │   ├── BaggageBuilderUtils.ts            # BaggageBuilder population utilities
 │   ├── TurnContextUtils.ts               # Low-level extraction functions
@@ -196,4 +221,4 @@ src/
 - `@microsoft/agents-a365-observability` - BaggageBuilder, OpenTelemetryConstants
 - `@microsoft/agents-a365-runtime` - Runtime utilities
 - `@microsoft/agents-hosting` - TurnContext type
-- `@microsoft/agents-activity` - RoleTypes enum
+- `@microsoft/agents-activity` - Activity and role contracts

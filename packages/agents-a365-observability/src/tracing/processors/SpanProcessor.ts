@@ -6,6 +6,24 @@ import { SpanProcessor as BaseSpanProcessor } from '@opentelemetry/sdk-trace-bas
 import { ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import { OpenTelemetryConstants } from '../constants';
 import { GENERIC_ATTRIBUTES, INVOKE_AGENT_ATTRIBUTES } from './util';
+import { getResolvedInvocationIdentity } from '../context/invocation-identity-context';
+import {
+  getInvocationIdentityAttributes,
+  hasNonBlankIdentityAttribute,
+  INVOCATION_IDENTITY_ATTRIBUTE_KEYS,
+} from '../invocation-identity-attributes';
+import { diagnoseInvocationIdentitySpan } from '../diagnostics/invocation-identity-diagnostics';
+
+interface SpanWithAttributes {
+  attributes?: Record<string, unknown>;
+  _attributes?: Record<string, unknown>;
+  name?: string;
+}
+
+function getSpanAttributes(span: Span): Record<string, unknown> {
+  const spanRecord = span as Span & SpanWithAttributes;
+  return spanRecord.attributes ?? spanRecord._attributes ?? {};
+}
 
 /**
  * Span processor that propagates baggage key/value pairs to span attributes.
@@ -15,6 +33,8 @@ import { GENERIC_ATTRIBUTES, INVOKE_AGENT_ATTRIBUTES } from './util';
  * For other operations, it applies only generic attributes.
  */
 export class SpanProcessor implements BaseSpanProcessor {
+  private readonly identityEnrichedSpans = new WeakSet<object>();
+
   /**
    * Called when a span is started.
    * Copies relevant baggage entries to span attributes.
@@ -25,16 +45,24 @@ export class SpanProcessor implements BaseSpanProcessor {
       return;
     }
 
-    // Get existing span attributes
-    const existingAttrs = new Set<string>();
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const spanRecord = span as any;
-      if (spanRecord.attributes) {
-        Object.keys(spanRecord.attributes).forEach(key => existingAttrs.add(key));
+    const spanAttributes = getSpanAttributes(span);
+    const existingAttrs = new Set<string>(Object.keys(spanAttributes));
+    const identity = getResolvedInvocationIdentity(ctx);
+
+    if (identity) {
+      for (const [key, value] of getInvocationIdentityAttributes(identity)) {
+        if (value === undefined || hasNonBlankIdentityAttribute(spanAttributes[key])) {
+          continue;
+        }
+
+        try {
+          span.setAttribute(key, value);
+        } catch {
+          // Span enrichment must not interrupt application execution.
+        }
       }
-    } catch {
-      // Ignore errors accessing span attributes
+
+      this.identityEnrichedSpans.add(span as object);
     }
 
     // Get all baggage entries
@@ -53,11 +81,9 @@ export class SpanProcessor implements BaseSpanProcessor {
     // Determine if this is an invoke_agent operation
     const operationName =
       baggageMap.get(OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY) ||
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (span as any).attributes?.[OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY];
+      spanAttributes[OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const spanName = (span as any).name || '';
+    const spanName = (span as Span & SpanWithAttributes).name || '';
     const isInvokeAgent =
       operationName === OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME ||
       spanName.startsWith(OpenTelemetryConstants.INVOKE_AGENT_OPERATION_NAME);
@@ -81,6 +107,10 @@ export class SpanProcessor implements BaseSpanProcessor {
 
     // Copy baggage to span attributes
     for (const key of targetKeys) {
+      if (identity && INVOCATION_IDENTITY_ATTRIBUTE_KEYS.has(key)) {
+        continue;
+      }
+
       // Skip if attribute already exists
       if (existingAttrs.has(key)) {
         continue;
@@ -102,8 +132,10 @@ export class SpanProcessor implements BaseSpanProcessor {
   /**
    * Called when a span is ended.
    */
-  onEnd(_span: ReadableSpan): void {
-    // No-op for this processor
+  onEnd(span: ReadableSpan): void {
+    if (this.identityEnrichedSpans.has(span as object)) {
+      diagnoseInvocationIdentitySpan(span);
+    }
   }
 
   /**
