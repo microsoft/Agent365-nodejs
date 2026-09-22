@@ -22,9 +22,11 @@ including batch and per-request exports from AI Teammate and OBO workloads. The 
 never falls back to `/observability`. The `useS2SEndpoint` option is deprecated and ignored,
 including when set to `false`; domain overrides change the host, not this route.
 
-Endpoint selection does not acquire or convert tokens. Supply an **app-only** OBS token
-for the exporting tenant and agent identity with `Agent365.Observability.OtelWrite`
-application permission. The S2S service rejects delegated (`scp`) tokens, including
+Endpoint selection does not acquire or convert tokens. Supply an **app-only** OBS
+resolver for the exporting tenant and agent identity. Eligible Agent 365-registered
+instances can use roleless app tokens when service policy permits; an
+`Agent365.Observability.OtelWrite` grant is not a universal prerequisite.
+The S2S service rejects delegated (`scp`) tokens, including
 AI Teammate user tokens. Keep workload authentication
 (such as OBO for MCP or Microsoft Graph) separate from OBS authentication. An authorization
 failure is not a reason to retry telemetry on the OBO route.
@@ -34,6 +36,43 @@ When using the hosting token cache, call
 `TurnContext`/`Authorization` overload throws rather than acquiring a delegated OBS token.
 S2S ingestion may remove unverified user attribution; routing a workload through S2S
 does not establish that its caller identity is trusted.
+
+### Migrating per-request authentication
+
+Batch and per-request exports both call the configured `tokenResolver` with the
+exporting agent and tenant IDs. Configure it with `withTokenResolver(...)` or
+`exporterOptions.tokenResolver`; the explicit builder method takes precedence.
+The callback must acquire or refresh an app-only OBS token independently of
+workload authentication.
+
+```typescript
+import { ObservabilityManager, type TokenResolver } from '@microsoft/agents-a365-observability';
+
+function startObservability(resolveAppOnlyObsToken: TokenResolver): void {
+  ObservabilityManager.configure(builder => {
+    builder.withService('my-agent').withTokenResolver(resolveAppOnlyObsToken);
+  }).start();
+}
+```
+
+Enabling `ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT` changes span buffering,
+not credential selection. `runWithExportToken`, `updateExportToken`, and
+`getExportToken` remain available for custom export integrations, but
+`Agent365Exporter` never uses their context token, even when it looks app-only.
+Existing callers must provide the OBS resolver instead of relying on a workload
+token in context.
+
+**Resolvers must cache.** The exporter invokes the resolver on every export
+batch, and once per identity group when spans partition across tenants or
+agents. In per-request mode that is roughly one call per request. Resolvers
+should cache the acquired app-only token and refresh only as it approaches
+expiry. `AgenticTokenCache` in `@microsoft/agents-a365-observability-hosting`
+implements this pattern; the sample `observability-token-service.ts` files show
+a minimal single-identity variant.
+
+An enabled Agent 365 exporter without a resolver fails configuration. A resolver
+failure or empty token fails export without an HTTP request or delegated fallback.
+Console-only configuration does not require an OBS resolver.
 
 ## Support
 

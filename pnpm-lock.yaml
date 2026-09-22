@@ -84,6 +84,9 @@ catalogs:
     '@typescript-eslint/parser':
       specifier: ^8.47.0
       version: 8.59.1
+    axios:
+      specifier: ^1.15.2
+      version: 1.15.2
     cross-env:
       specifier: ^7.0.3
       version: 7.0.3
@@ -490,6 +493,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
         version: 1.29.0(@cfworker/json-schema@4.1.1)(zod@4.3.6)
+      axios:
+        specifier: 'catalog:'
+        version: 1.15.2
       express:
         specifier: 'catalog:'
         version: 5.2.1

@@ -7,11 +7,12 @@ import type { Authorization, TurnContext } from '@microsoft/agents-hosting';
 
 const obsScopes = ['api://9b975845-388f-4429-889e-eab1ef63949c/.default'];
 
-function makeJwtWithExp(expSecondsFromNow: number): string {
+function makeJwtWithExp(expSecondsFromNow: number, claims: Record<string, unknown> = {}): string {
   const header = Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url');
   const payload = Buffer.from(JSON.stringify({
     exp: Math.floor(Date.now() / 1000) + expSecondsFromNow,
-    roles: ['Agent365.Observability.OtelWrite'],
+    idtyp: 'app',
+    ...claims,
   })).toString('base64url');
   return `${header}.${payload}.test-signature`;
 }
@@ -55,6 +56,24 @@ describe('AgenticTokenCache app-only OBS authentication', () => {
     await cache.RefreshObservabilityToken('agent', 'tenant', resolver);
 
     expect(resolver).toHaveBeenCalledWith('agent', 'tenant', scopes);
+  });
+
+  it.each([
+    { description: 'absent', roles: undefined },
+    { description: 'empty', roles: [] },
+  ])('caches an explicitly app-only token with $description roles', async ({ roles }) => {
+    const token = makeJwtWithExp(300, { roles });
+    await cache.RefreshObservabilityToken('agent', 'tenant', () => token);
+    expect(cache.getObservabilityToken('agent', 'tenant')).toBe(token);
+  });
+
+  it('deduplicates concurrent roleless-token acquisitions for the same identity', async () => {
+    const token = makeJwtWithExp(300);
+    const resolver = jest.fn(async () => token);
+    await Promise.all(Array.from({ length: 8 }, () =>
+      cache.RefreshObservabilityToken('agent', 'tenant', resolver)));
+    expect(resolver).toHaveBeenCalledTimes(1);
+    expect(cache.getObservabilityToken('agent', 'tenant')).toBe(token);
   });
 
   it('fails for an empty scope configuration without requesting a token', async () => {
@@ -134,8 +153,8 @@ describe('AgenticTokenCache app-only OBS authentication', () => {
     expect(cache.getObservabilityToken('agent', 'tenant')).toBeNull();
   });
 
-  it('treats a near-expiry token as expired', async () => {
-    await cache.RefreshObservabilityToken('agent', 'tenant', () => makeJwtWithExp(30));
+  it.each([-30, 0, 30])('does not return a token expiring in %s seconds', async (seconds) => {
+    await cache.RefreshObservabilityToken('agent', 'tenant', () => makeJwtWithExp(seconds));
     expect(cache.getObservabilityToken('agent', 'tenant')).toBeNull();
   });
 
@@ -174,12 +193,14 @@ describe('AgenticTokenCache app-only OBS authentication', () => {
 
   it('evicts the oldest token when the cache reaches capacity', async () => {
     const token = makeJwtWithExp(300);
-    for (let i = 0; i <= 10_000; i++) {
-      await cache.RefreshObservabilityToken(`agent-${i}`, 'tenant', () => token);
+    const capacity = cache['_maxCacheSize'];
+    const resolver = () => token;
+    for (let i = 0; i <= capacity; i++) {
+      await cache.RefreshObservabilityToken(`agent-${i}`, 'tenant', resolver);
     }
     expect(cache.getObservabilityToken('agent-0', 'tenant')).toBeNull();
     expect(cache.getObservabilityToken('agent-1', 'tenant')).toBe(token);
-    expect(cache.getObservabilityToken('agent-10000', 'tenant')).toBe(token);
+    expect(cache.getObservabilityToken(`agent-${capacity}`, 'tenant')).toBe(token);
   });
 
   it('caps token lifetime to 24 hours', async () => {

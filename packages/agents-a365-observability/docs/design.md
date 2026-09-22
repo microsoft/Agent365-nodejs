@@ -47,7 +47,7 @@ import { ObservabilityManager } from '@microsoft/agents-a365-observability';
 ObservabilityManager.start({
   serviceName: 'my-agent',
   serviceVersion: '1.0.0',
-  tokenResolver: async (agentId, tenantId) => getAuthToken(),
+  tokenResolver: async (agentId, tenantId) => getAppOnlyObsToken(agentId, tenantId),
   clusterCategory: 'prod'
 });
 
@@ -65,6 +65,12 @@ const instance = ObservabilityManager.getInstance();
 // Shutdown
 await ObservabilityManager.shutdown();
 ```
+
+The configured app-only OBS resolver is required in both batch and per-request
+modes. The builder merges resolver options consistently, with `withTokenResolver`
+taking precedence over `exporterOptions.tokenResolver`. Request context is retained
+for tracing, but its token is not consumed by `Agent365Exporter`. See the
+[per-request migration guide](../README.md#migrating-per-request-authentication).
 
 ### ObservabilityBuilder ([ObservabilityBuilder.ts](../src/ObservabilityBuilder.ts))
 

@@ -127,9 +127,38 @@ For a blueprint-backed agent, acquire a blueprint exchange assertion with
 `fmi_path=agentId`, then use it as `client_assertion` in an instance
 `client_credentials` request for the OBS `/.default` scope. Do not send the
 intermediate assertion, a blueprint token, or a `user_fic`/OBO token to OBS.
-The final token's application identity must match `agentId`; it needs the
-`Agent365.Observability.OtelWrite` application permission. Acquisition failures
-propagate to the caller and never trigger delegated authentication.
+The final token's application identity must match `agentId`, its tenant must
+match `tenantId`, and its audience must be OBS. An eligible Agent 365-registered
+instance can use a roleless app token when service policy permits; an
+`Agent365.Observability.OtelWrite` grant is not a universal prerequisite. Entra
+identity creation alone does not establish instance registration or service access.
+The resolver must validate app-only identity (explicit `idtyp=app` for a roleless
+token), reject delegated `scp` tokens, and check audience and lifetime before
+returning a token. The cache does not perform token authentication or authorization.
+Acquisition failures propagate to the caller and never trigger delegated authentication.
+
+When migrating, replace only the OBS refresh call, not workload MCP/Graph/OBO
+authorization. Configure an OBS resolver in both batch and per-request modes.
+It should refresh the app-only cache at export time before returning its token,
+so long-running requests do not depend on a token acquired at turn start:
+
+```typescript
+builder.withTokenResolver(async (agentId, tenantId) => {
+  await AgenticTokenCacheInstance.RefreshObservabilityToken(
+    agentId, tenantId, acquireAppOnlyObsToken
+  );
+  return AgenticTokenCacheInstance.getObservabilityToken(agentId, tenantId);
+});
+```
+
+`Agent365Exporter` ignores tokens in `runWithExportToken`; those context helpers
+remain available for custom exporters, not as an OBS authentication fallback.
+An enabled exporter without an explicit resolver fails configuration.
+Both modes use the S2S OTLP
+route even if the deprecated `useS2SEndpoint` option is false. Missing tokens and
+failed acquisition report export failure without sending a request; HTTP
+401/403/404 never select an OBO fallback. Check instance registration and service
+policy rather than adding OBS permissions automatically.
 
 ## Tenant ID Resolution
 

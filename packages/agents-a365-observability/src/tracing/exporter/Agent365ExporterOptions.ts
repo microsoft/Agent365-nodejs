@@ -9,7 +9,8 @@ import { ClusterCategory } from '@microsoft/agents-a365-runtime';
  * A function that resolves an app-only OBS token for the given agent and tenant.
  * Delegated (scp) tokens are not accepted by the S2S service.
  * Implementations may perform synchronous lookup (e.g., in-memory cache) or asynchronous network calls.
- * Return null if a token cannot be provided; exporter will log and proceed without an authorization header.
+ * Used in both batch and per-request modes, independently of workload token context.
+ * Return null if a token cannot be provided; export fails without sending an HTTP request.
  */
 export type TokenResolver = (agentId: string, tenantId: string) => string | null | Promise<string | null>;
 
@@ -20,8 +21,8 @@ export type TokenResolver = (agentId: string, tenantId: string) => string | null
  * defaults so callers can usually construct without arguments and override selectively.
  *
  * @property {ClusterCategory | string} clusterCategory Environment / cluster category (e.g. ClusterCategory.preprod, ClusterCategory.prod, default to ClusterCategory.prod).
- * @property {TokenResolver} [tokenResolver] Optional delegate to obtain an auth token. If omitted the exporter will
- *           fall back to reading the cached token (AgenticTokenCacheInstance.getObservabilityToken).
+ * @property {TokenResolver} [tokenResolver] App-only OBS token resolver required when constructing Agent365Exporter.
+ *           There is no implicit cache lookup or request-context token fallback.
  * @property {boolean} [useS2SEndpoint] Deprecated compatibility option. Export always uses the S2S path, even when false.
  * @property {number} maxQueueSize Maximum span queue size before drops occur (passed to BatchSpanProcessor).
  * @property {number} scheduledDelayMilliseconds Delay between automatic batch flush attempts.
@@ -33,8 +34,8 @@ export class Agent365ExporterOptions {
   /** Environment / cluster category (e.g. ClusterCategory.preprod, ClusterCategory.prod). */
   public clusterCategory: ClusterCategory | string = ClusterCategory.prod;
 
-  /** Optional delegate to resolve auth token used by exporter */
-  public tokenResolver?: TokenResolver; // Optional if ENABLE_A365_OBSERVABILITY_EXPORTER is false
+  /** Required by Agent365Exporter in every mode; a console-only builder may omit it. */
+  public tokenResolver?: TokenResolver;
 
   /** @deprecated Export always uses /observabilityService. This option is ignored. */
   public useS2SEndpoint: boolean = true;

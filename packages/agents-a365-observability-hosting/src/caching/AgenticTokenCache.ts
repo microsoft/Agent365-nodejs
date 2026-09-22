@@ -3,9 +3,12 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------------------------
 
-import { TurnContext, Authorization } from '@microsoft/agents-hosting';
-import { logger, formatError, ObservabilityConfiguration, defaultObservabilityConfigurationProvider, TokenResolver } from '@microsoft/agents-a365-observability';
-import { IConfigurationProvider } from '@microsoft/agents-a365-runtime';
+import type { TurnContext, Authorization } from '@microsoft/agents-hosting';
+import {
+    logger, formatError, defaultObservabilityConfigurationProvider,
+    type ObservabilityConfiguration, type TokenResolver,
+} from '@microsoft/agents-a365-observability';
+import type { IConfigurationProvider } from '@microsoft/agents-a365-runtime';
 
 /** Acquires an app-only OBS token; must not perform user_fic or OBO authentication. */
 export type ObservabilityTokenResolver = (

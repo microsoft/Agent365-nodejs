@@ -78,6 +78,14 @@ Both `Agent365.Observability.OtelWrite` (Delegated) and `Agent365.Observability.
   deprecated and ignored, even when `false`. Batch and per-request exports no longer
   select or fall back to `/observability`. Provide an app-only OBS token independently
   of your agent's workload auth; the S2S service rejects delegated `scp` tokens.
+- **Per-request OBS requires the configured app-only resolver** - Both export modes
+  use `withTokenResolver(...)` or `exporterOptions.tokenResolver`, with the builder
+  method taking precedence. `Agent365Exporter` no longer reads tokens from
+  `runWithExportToken`/`updateExportToken`. Missing resolvers fail configuration;
+  empty tokens or acquisition failures fail export without delegated fallback.
+  The exporter invokes the resolver on every export batch, so resolvers must
+  cache the acquired token and refresh only near expiry.
+  Workload OBO and custom-exporter context helpers are otherwise unchanged.
 - **Hosting OBS token cache requires an app-only resolver** -
   `RefreshObservabilityToken(agentId, tenantId, tokenResolver)` replaces the
   `TurnContext`/`Authorization` overload, which now throws without exchanging a

@@ -17,12 +17,10 @@ import {
   statusName,
   resolveAgent365Endpoint,
   getAgent365ObservabilityDomainOverride,
-  isPerRequestExportEnabled,
   truncateSpan,
   estimateSpanBytes,
   chunkBySize,
 } from './utils';
-import { getExportToken } from '../context/token-context';
 import logger, { formatError } from '../../utils/logging';
 import { Agent365ExporterOptions } from './Agent365ExporterOptions';
 import { ExporterEventNames } from './ExporterEventNames';
@@ -109,8 +107,14 @@ export class Agent365Exporter implements SpanExporter {
       throw new Error('Agent365ExporterOptions must be provided (was null/undefined)');
     }
 
-    if (!isPerRequestExportEnabled() && !options.tokenResolver) {
-      throw new Error('Agent365Exporter tokenResolver must be provided for batch export');
+    if (typeof options.tokenResolver !== 'function') {
+      throw new Error(
+        'Agent365Exporter requires an app-only OBS tokenResolver. '
+        + 'Per-request export now requires withTokenResolver(...) or '
+        + 'Agent365ExporterOptions.tokenResolver; it no longer reads tokens from '
+        + 'runWithExportToken. Resolvers should cache the acquired token; see '
+        + 'AgenticTokenCache in @microsoft/agents-a365-observability-hosting.',
+      );
     }
     this.options = options;
     this.configProvider = configProvider;
@@ -205,36 +209,20 @@ export class Agent365Exporter implements SpanExporter {
       'content-type': 'application/json'
     };
 
-    let token: string | null = null;
-    let tokenNotResolvedReason: string | null = null;
-    if (isPerRequestExportEnabled()) {
-      // For per-request export, get token from OTel Context
-      token = getExportToken() ?? null;
-      if (!token) {
-        tokenNotResolvedReason = 'No token available in OTel Context for per-request export';
-      }
-    } else {
-      // For batch export, use tokenResolver
-      if (!this.options.tokenResolver) {
-        tokenNotResolvedReason = 'tokenResolver is undefined';
-      } else {
-        const tokenResult = this.options.tokenResolver(agentId, tenantId);
-        token = tokenResult instanceof Promise ? await tokenResult : tokenResult;
-        if (token) {
-          logger.info('[Agent365Exporter] Token resolved successfully via tokenResolver');
-        } else {
-          tokenNotResolvedReason = 'No token resolved via tokenResolver';
-        }
-      }
+    if (typeof this.options.tokenResolver !== 'function') {
+      // Defensive: constructor already rejects a missing resolver; this catches mutation of options after construction.
+      throw new Error('Agent365Exporter tokenResolver was cleared after construction');
     }
+    const token = await this.options.tokenResolver(agentId, tenantId);
 
-    if (token) {
+    if (token?.trim()) {
+      logger.info('[Agent365Exporter] Token resolved successfully via app-only tokenResolver');
       headers['authorization'] = `Bearer ${token}`;
     }
     else {
-      const skipReason = tokenNotResolvedReason || 'Token not resolved for export request';
+      const skipReason = 'No token resolved via app-only tokenResolver';
       logger.event(ExporterEventNames.EXPORT_GROUP, false, 0, `skip exporting: ${skipReason}`, { tenantId, agentId });
-      return;
+      throw new Error(skipReason);
     }
 
     // Always include tenant id header
