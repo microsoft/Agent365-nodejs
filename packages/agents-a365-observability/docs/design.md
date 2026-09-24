@@ -68,7 +68,8 @@ await ObservabilityManager.shutdown();
 
 The configured app-only OBS resolver is required in both batch and per-request
 modes. The builder merges resolver options consistently, with `withTokenResolver`
-taking precedence over `exporterOptions.tokenResolver`. Request context is retained
+taking precedence over `exporterOptions.tokenResolver`. `ObservabilityManager.start(options)`
+forwards both `tokenResolver` and `exporterOptions` to the builder. Request context is retained
 for tracing, but its token is not consumed by `Agent365Exporter`. See the
 [per-request migration guide](../README.md#migrating-per-request-authentication).
 

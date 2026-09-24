@@ -85,6 +85,8 @@ Both `Agent365.Observability.OtelWrite` (Delegated) and `Agent365.Observability.
   empty tokens or acquisition failures fail export without delegated fallback.
   The exporter invokes the resolver on every export batch, so resolvers must
   cache the acquired token and refresh only near expiry.
+  `ObservabilityManager.start(options)` now forwards `options.exporterOptions`,
+  which it previously ignored.
   Workload OBO and custom-exporter context helpers are otherwise unchanged.
 - **Hosting OBS token cache requires an app-only resolver** -
   `RefreshObservabilityToken(agentId, tenantId, tokenResolver)` replaces the

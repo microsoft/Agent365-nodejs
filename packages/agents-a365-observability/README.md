@@ -41,7 +41,8 @@ does not establish that its caller identity is trusted.
 
 Batch and per-request exports both call the configured `tokenResolver` with the
 exporting agent and tenant IDs. Configure it with `withTokenResolver(...)` or
-`exporterOptions.tokenResolver`; the explicit builder method takes precedence.
+`exporterOptions.tokenResolver`; both also work through `ObservabilityManager.start(options)`,
+and `withTokenResolver`/`tokenResolver` takes precedence.
 The callback must acquire or refresh an app-only OBS token independently of
 workload authentication.
 
