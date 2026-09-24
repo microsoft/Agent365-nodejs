@@ -10,6 +10,9 @@ catalog:
   # Azure packages
   "@azure/identity": "^4.12.1"
 
+  # HTTP client
+  "axios": "^1.16.0"
+
   # Express framework
   "express": "^5.2.0"
 

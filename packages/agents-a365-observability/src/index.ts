@@ -5,6 +5,7 @@
 export { ObservabilityManager } from './ObservabilityManager';
 export { ObservabilityBuilder as Builder, BuilderOptions } from './ObservabilityBuilder';
 export { Agent365ExporterOptions } from './tracing/exporter/Agent365ExporterOptions';
+export type { TokenResolver } from './tracing/exporter/Agent365ExporterOptions';
 // Tracing constants
 export { OpenTelemetryConstants } from './tracing/constants';
 export { ExporterEventNames } from './tracing/exporter/ExporterEventNames';

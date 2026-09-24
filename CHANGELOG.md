@@ -74,6 +74,24 @@ Both `Agent365.Observability.OtelWrite` (Delegated) and `Agent365.Observability.
 
 ### Breaking Changes (`@microsoft/agents-a365-observability`)
 
+- **OBS exports always use `/observabilityService`** - The `useS2SEndpoint` option is
+  deprecated and ignored, even when `false`. Batch and per-request exports no longer
+  select or fall back to `/observability`. Provide an app-only OBS token independently
+  of your agent's workload auth; the S2S service rejects delegated `scp` tokens.
+- **Per-request OBS requires the configured app-only resolver** - Both export modes
+  use `withTokenResolver(...)` or `exporterOptions.tokenResolver`, with the builder
+  method taking precedence. `Agent365Exporter` no longer reads tokens from
+  `runWithExportToken`/`updateExportToken`. Missing resolvers fail configuration;
+  empty tokens or acquisition failures fail export without delegated fallback.
+  The exporter invokes the resolver on every export batch, so resolvers must
+  cache the acquired token and refresh only near expiry.
+  `ObservabilityManager.start(options)` now forwards `options.exporterOptions`,
+  which it previously ignored.
+  Workload OBO and custom-exporter context helpers are otherwise unchanged.
+- **Hosting OBS token cache requires an app-only resolver** -
+  `RefreshObservabilityToken(agentId, tenantId, tokenResolver)` replaces the
+  `TurnContext`/`Authorization` overload, which now throws without exchanging a
+  user token. Token acquisition failures propagate instead of appearing successful.
 - **`InvokeAgentDetails` renamed to `InvokeAgentScopeDetails`** — Now contains only scope-level config (`endpoint`). Agent identity (`AgentDetails`) is a separate parameter. `sessionId` moved to `Request`.
 - **`InvokeAgentScope.start()` — new signature.** `start(request, invokeScopeDetails, agentDetails, callerDetails?, spanDetails?)`. Tenant ID is derived from `agentDetails.tenantId` (required). `userDetails` and `callerAgentDetails` are wrapped in `CallerDetails`. Span options grouped in `SpanDetails`.
 - **`InferenceScope.start()` — new signature.** `start(request, details, agentDetails, userDetails?, spanDetails?)`. Tenant ID derived from `agentDetails.tenantId` (required).

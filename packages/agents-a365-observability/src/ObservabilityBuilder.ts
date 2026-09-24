@@ -150,12 +150,7 @@ export class ObservabilityBuilder {
     return this;
   }
 
-  private createBatchProcessor(): BatchSpanProcessor {
-    if (!isAgent365ExporterEnabled(this.options.configProvider)) {
-      logger.info('[ObservabilityBuilder] Agent 365 exporter not enabled. Using ConsoleSpanExporter for BatchSpanProcessor.');      
-      return new BatchSpanProcessor(new ConsoleSpanExporter());
-    }
-
+  private createExporterOptions(): Agent365ExporterOptions {
     const opts = new Agent365ExporterOptions();
     if (this.options.exporterOptions) {
       Object.assign(opts, this.options.exporterOptions);
@@ -164,6 +159,16 @@ export class ObservabilityBuilder {
     if (this.options.tokenResolver) {
       opts.tokenResolver = this.options.tokenResolver;
     }
+    return opts;
+  }
+
+  private createBatchProcessor(): BatchSpanProcessor {
+    if (!isAgent365ExporterEnabled(this.options.configProvider)) {
+      logger.info('[ObservabilityBuilder] Agent 365 exporter not enabled. Using ConsoleSpanExporter for BatchSpanProcessor.');
+      return new BatchSpanProcessor(new ConsoleSpanExporter());
+    }
+
+    const opts = this.createExporterOptions();
     return new BatchSpanProcessor(new Agent365Exporter(opts, this.options.configProvider), {
       maxQueueSize: opts.maxQueueSize,
       scheduledDelayMillis: opts.scheduledDelayMilliseconds,
@@ -178,14 +183,7 @@ export class ObservabilityBuilder {
       return new PerRequestSpanProcessor(new ConsoleSpanExporter());
     }
 
-    const opts = new Agent365ExporterOptions();
-    if (this.options.exporterOptions) {
-      Object.assign(opts, this.options.exporterOptions);
-    }
-    opts.clusterCategory = this.options.clusterCategory || opts.clusterCategory || ClusterCategory.prod;
-    
-    // For per-request export, token is retrieved from OTel Context by Agent365Exporter
-    // using getExportToken(), so no tokenResolver is needed here
+    const opts = this.createExporterOptions();
     return new PerRequestSpanProcessor(new Agent365Exporter(opts, this.options.configProvider));
   }
 

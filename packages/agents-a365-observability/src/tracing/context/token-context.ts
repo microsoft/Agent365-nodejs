@@ -19,6 +19,8 @@ interface TokenHolder {
 /**
  * Run a function within a Context that carries the per-request export token.
  * This keeps the token only in OTel Context (ALS), never in any registry.
+ * These helpers remain available for custom export integrations. Agent365Exporter
+ * does not consume this token; configure its app-only tokenResolver in every mode.
  *
  * The token can be updated later via `updateExportToken()` before the trace
  * is flushed — useful when the callback is long-running and the original

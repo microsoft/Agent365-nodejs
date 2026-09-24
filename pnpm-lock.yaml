@@ -495,6 +495,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
         version: 1.29.0(@cfworker/json-schema@4.1.1)(zod@4.3.6)
+      axios:
+        specifier: ^1.16.0
+        version: 1.20.0
       express:
         specifier: 'catalog:'
         version: 5.2.1

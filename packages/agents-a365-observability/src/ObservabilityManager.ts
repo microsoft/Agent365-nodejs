@@ -43,6 +43,10 @@ export class ObservabilityManager {
       builder.withTokenResolver(options.tokenResolver);
     }
 
+    if (options?.exporterOptions) {
+      builder.withExporterOptions(options.exporterOptions);
+    }
+
     if (options?.clusterCategory) {
       builder.withClusterCategory(options.clusterCategory);
     }

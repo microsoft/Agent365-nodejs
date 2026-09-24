@@ -1,265 +1,223 @@
-// ------------------------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
-// ------------------------------------------------------------------------------
 
-import { AgenticTokenCacheInstance } from '@microsoft/agents-a365-observability-hosting';
+import { AgenticTokenCache, ObservabilityTokenResolver } from '@microsoft/agents-a365-observability-hosting';
+import { ObservabilityConfiguration } from '@microsoft/agents-a365-observability';
+import type { Authorization, TurnContext } from '@microsoft/agents-hosting';
 
-interface TurnContextStub { activity: { id: string } }
-interface AuthorizationStub {
-  exchangeToken: (...args: any[]) => Promise<{ token: string | undefined }>
-  getToken: (...args: any[]) => Promise<{ token: string }>
-  signOut: () => Promise<void> | void
-  onSignInSuccess: () => void
-  onSignInFailure: () => void
-}
-interface SequenceStep { token?: string; error?: unknown }
+const obsScopes = ['api://9b975845-388f-4429-889e-eab1ef63949c/.default'];
 
-const makeTurnContext = (): TurnContextStub => ({ activity: { id: 'a1' } });
-
-// Helper to cast our minimal stub to the SDK TurnContext type expected by the cache
-const asTurnContext = (stub: TurnContextStub): import('@microsoft/agents-hosting').TurnContext => {
-  return stub as unknown as import('@microsoft/agents-hosting').TurnContext;
-};
-
-function makeJwtWithExp(expSecondsFromNow: number): string {
+function makeJwtWithExp(expSecondsFromNow: number, claims: Record<string, unknown> = {}): string {
   const header = Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url');
-  const exp = Math.floor(Date.now() / 1000) + expSecondsFromNow;
-  const payload = Buffer.from(JSON.stringify({ exp })).toString('base64url');
-  return `${header}.${payload}.sig`;
+  const payload = Buffer.from(JSON.stringify({
+    exp: Math.floor(Date.now() / 1000) + expSecondsFromNow,
+    idtyp: 'app',
+    ...claims,
+  })).toString('base64url');
+  return `${header}.${payload}.test-signature`;
 }
 
-function makeAuthorizationMock(sequence: SequenceStep[]): AuthorizationStub {
-  let call = 0;
-  const authLike: AuthorizationStub = {
-    exchangeToken: async () => {
-      const current = sequence[Math.min(call, sequence.length - 1)];
-      call++;
-      if (current.error) throw current.error;
-      return { token: current.token || '' };
-    },
-    getToken: async () => ({ token: 'unused' }),
-    signOut: async () => {},
-    onSignInSuccess: () => {},
-    onSignInFailure: () => {}
-  };
-  return authLike;
-}
+describe('AgenticTokenCache app-only OBS authentication', () => {
+  let cache: AgenticTokenCache;
 
-describe('AgenticTokenCacheInstance', () => {
   beforeEach(() => {
-    AgenticTokenCacheInstance.invalidateAll();
+    cache = new AgenticTokenCache();
     jest.useFakeTimers();
   });
+
   afterEach(() => {
     jest.useRealTimers();
   });
 
   it('returns null when no entry exists', () => {
-    const token = AgenticTokenCacheInstance.getObservabilityToken('agentX', 'tenantY');
-    expect(token).toBeNull();
+    expect(cache.getObservabilityToken('agent', 'tenant')).toBeNull();
   });
 
-  it('exchanges and caches token on first call', async () => {
+  it('passes exporting identity and configured OBS scopes to an app-only resolver', async () => {
     const token = makeJwtWithExp(300);
-    const auth = makeAuthorizationMock([{ token }]);
-    await AgenticTokenCacheInstance.RefreshObservabilityToken(
-      'agentA',
-      'tenantA',
-      asTurnContext(makeTurnContext()),
-      auth as any,
-      ['scope.read']
-    );
-    const tokenReturned = AgenticTokenCacheInstance.getObservabilityToken('agentA', 'tenantA');
-    expect(tokenReturned).not.toBeNull();
-    expect(tokenReturned).toBe(token);
+    const resolver = jest.fn<ReturnType<ObservabilityTokenResolver>, Parameters<ObservabilityTokenResolver>>(() => token);
+
+    await cache.RefreshObservabilityToken('agent', 'tenant', resolver);
+
+    expect(resolver).toHaveBeenCalledTimes(1);
+    expect(resolver).toHaveBeenCalledWith('agent', 'tenant', obsScopes);
+    expect(cache.getObservabilityToken('agent', 'tenant')).toBe(token);
   });
 
-  it('retries on retriable error then succeeds', async () => {
-    const token = makeJwtWithExp(300);
-    const retriableErr = { status: 500, message: 'server error' };
-    const sequence: SequenceStep[] = [
-      { error: retriableErr },
-      { token }
-    ];
-    let call = 0;
-    const exchangeFn = jest.fn(async () => {
-      const current = sequence[Math.min(call, sequence.length - 1)];
-      call++;
-      if (current.error) throw current.error;
-      return { token: current.token };
+  it('uses a configuration provider for app-only scopes', async () => {
+    const scopes = ['api://custom-obs/.default'];
+    cache = new AgenticTokenCache({
+      getConfiguration: () => new ObservabilityConfiguration({
+        observabilityAuthenticationScopes: () => scopes,
+      }),
     });
-    const auth: AuthorizationStub = {
-      exchangeToken: exchangeFn,
-      getToken: async () => ({ token: 'unused' }),
-      signOut: async () => {},
-      onSignInSuccess: () => {},
-      onSignInFailure: () => {}
+    const resolver = jest.fn(() => makeJwtWithExp(300));
+
+    await cache.RefreshObservabilityToken('agent', 'tenant', resolver);
+
+    expect(resolver).toHaveBeenCalledWith('agent', 'tenant', scopes);
+  });
+
+  it.each([
+    { description: 'absent', roles: undefined },
+    { description: 'empty', roles: [] },
+  ])('caches an explicitly app-only token with $description roles', async ({ roles }) => {
+    const token = makeJwtWithExp(300, { roles });
+    await cache.RefreshObservabilityToken('agent', 'tenant', () => token);
+    expect(cache.getObservabilityToken('agent', 'tenant')).toBe(token);
+  });
+
+  it('deduplicates concurrent roleless-token acquisitions for the same identity', async () => {
+    const token = makeJwtWithExp(300);
+    const resolver = jest.fn(async () => token);
+    await Promise.all(Array.from({ length: 8 }, () =>
+      cache.RefreshObservabilityToken('agent', 'tenant', resolver)));
+    expect(resolver).toHaveBeenCalledTimes(1);
+    expect(cache.getObservabilityToken('agent', 'tenant')).toBe(token);
+  });
+
+  it('fails for an empty scope configuration without requesting a token', async () => {
+    cache = new AgenticTokenCache({
+      getConfiguration: () => new ObservabilityConfiguration({
+        observabilityAuthenticationScopes: () => [],
+      }),
+    });
+    const resolver = jest.fn(() => makeJwtWithExp(300));
+    await expect(cache.RefreshObservabilityToken('agent', 'tenant', resolver)).rejects.toThrow('No valid scopes');
+    expect(resolver).not.toHaveBeenCalled();
+  });
+
+  it.each(['agentic', 'obo'])('rejects legacy %s user authorization without exchanging a token', async (handler) => {
+    const exchangeToken = jest.fn();
+    const authorization: Authorization = {
+      exchangeToken,
+      getToken: jest.fn(),
+      signOut: jest.fn(),
+      onSignInSuccess: jest.fn(),
+      onSignInFailure: jest.fn(),
     };
-    const p = AgenticTokenCacheInstance.RefreshObservabilityToken(
-      'agentB',
-      'tenantB',
-      asTurnContext(makeTurnContext()),
-      auth as any,
-      ['scope.read']
-    );
-    await (jest as any).advanceTimersByTimeAsync?.(1000) || jest.advanceTimersByTime(1000);
-    await p;
-    const tokenReturned = AgenticTokenCacheInstance.getObservabilityToken('agentB', 'tenantB');
-    expect(tokenReturned).not.toBeNull();
-    expect(tokenReturned).toBe(token);
-    expect(exchangeFn).toHaveBeenCalledTimes(2);
+    const context = {} as TurnContext;
+
+    await expect(cache.RefreshObservabilityToken(
+      'agent', 'tenant', context, authorization, obsScopes, handler,
+    )).rejects.toThrow('S2S OBS requires an app-only token resolver');
+
+    expect(exchangeToken).not.toHaveBeenCalled();
+    expect(cache.getObservabilityToken('agent', 'tenant')).toBeNull();
   });
 
-  it('stops on non-retriable error and leaves token null', async () => {
-    const nonRetriableErr = { status: 400, message: 'bad request' };
-    const auth = makeAuthorizationMock([
-      { error: nonRetriableErr },
-      { token: makeJwtWithExp(300) } // should not be used
-    ]);
-    await AgenticTokenCacheInstance.RefreshObservabilityToken(
-      'agentC',
-      'tenantC',
-      asTurnContext(makeTurnContext()),
-      auth as any,
-      ['scope.read']
-    );
-    const token = AgenticTokenCacheInstance.getObservabilityToken('agentC', 'tenantC');
-    expect(token).toBeNull();
+  it.each([['', 'tenant'], ['agent', ' ']])('rejects empty identity (%s, %s)', async (agent, tenant) => {
+    const resolver = jest.fn(() => makeJwtWithExp(300));
+    await expect(cache.RefreshObservabilityToken(agent, tenant, resolver)).rejects.toThrow('Agent and tenant IDs');
+    expect(resolver).not.toHaveBeenCalled();
   });
 
-  it('treats near-expiry token as expired (skew refresh)', async () => {
-    const auth = makeAuthorizationMock([{ token: makeJwtWithExp(30) }]);
-    await AgenticTokenCacheInstance.RefreshObservabilityToken(
-      'agentD',
-      'tenantD',
-      asTurnContext(makeTurnContext()),
-      auth as any,
-      ['scope.read']
-    );
-    const token = AgenticTokenCacheInstance.getObservabilityToken('agentD', 'tenantD');
-    expect(token).toBeNull();
+  it('retries a transient acquisition failure then caches the app-only token', async () => {
+    const token = makeJwtWithExp(300);
+    const resolver = jest.fn()
+      .mockRejectedValueOnce({ status: 500, message: 'service unavailable' })
+      .mockResolvedValueOnce(token);
+
+    const pending = cache.RefreshObservabilityToken('agent', 'tenant', resolver);
+    await jest.advanceTimersByTimeAsync(1000);
+    await pending;
+
+    expect(resolver).toHaveBeenCalledTimes(2);
+    expect(cache.getObservabilityToken('agent', 'tenant')).toBe(token);
   });
 
-  it('returns cached token before expiry then invalid after advancing time', async () => {
-    const auth = makeAuthorizationMock([{ token: makeJwtWithExp(120) }]);
-    await AgenticTokenCacheInstance.RefreshObservabilityToken(
-      'agentE',
-      'tenantE',
-      asTurnContext(makeTurnContext()),
-      auth as any,
-      ['scope.read']
-    );
-    const tokenBefore = AgenticTokenCacheInstance.getObservabilityToken('agentE', 'tenantE');
-    expect(tokenBefore).not.toBeNull();
+  it('surfaces a permanent acquisition failure and clears stale tokens', async () => {
+    await cache.RefreshObservabilityToken('agent', 'tenant', () => makeJwtWithExp(120));
     jest.advanceTimersByTime(61_000);
-    const tokenAfter = AgenticTokenCacheInstance.getObservabilityToken('agentE', 'tenantE');
-    expect(tokenAfter).toBeNull();
+    const error = new Error('permission denied');
+    const resolver = jest.fn().mockRejectedValue(error);
+
+    await expect(cache.RefreshObservabilityToken('agent', 'tenant', resolver)).rejects.toBe(error);
+
+    expect(resolver).toHaveBeenCalledTimes(1);
+    expect(cache.getObservabilityToken('agent', 'tenant')).toBeNull();
   });
 
-  it('evicts oldest entry when cache exceeds max size', async () => {
-    const { AgenticTokenCache } = require('@microsoft/agents-a365-observability-hosting');
-    const cache = new AgenticTokenCache();
-    const map = (cache as any)._map as Map<string, any>;
+  it('surfaces exhausted transient failures without caching a token', async () => {
+    const error = { status: 503, message: 'service unavailable' };
+    const resolver = jest.fn().mockRejectedValue(error);
+    const pending = expect(cache.RefreshObservabilityToken('agent', 'tenant', resolver)).rejects.toBe(error);
+    await jest.advanceTimersByTimeAsync(1000);
+    await pending;
+    expect(resolver).toHaveBeenCalledTimes(3);
+    expect(cache.getObservabilityToken('agent', 'tenant')).toBeNull();
+  });
 
-    // Pre-fill the map to capacity
-    const MAX = (cache as any)._maxCacheSize as number;
-    for (let i = 0; i < MAX; i++) {
-      map.set(`agent-${i}:tenant-${i}`, { scopes: ['s'], token: `t-${i}`, acquiredOn: Date.now() });
+  it.each([null, '', ' '])('surfaces an empty resolver result (%s)', async (token) => {
+    await expect(cache.RefreshObservabilityToken('agent', 'tenant', () => token)).rejects.toThrow('returned no token');
+    expect(cache.getObservabilityToken('agent', 'tenant')).toBeNull();
+  });
+
+  it.each([-30, 0, 30])('does not return a token expiring in %s seconds', async (seconds) => {
+    await cache.RefreshObservabilityToken('agent', 'tenant', () => makeJwtWithExp(seconds));
+    expect(cache.getObservabilityToken('agent', 'tenant')).toBeNull();
+  });
+
+  it('reuses a cached token and refreshes after expiry skew', async () => {
+    const token = makeJwtWithExp(120);
+    const resolver = jest.fn(() => token);
+    await cache.RefreshObservabilityToken('agent', 'tenant', resolver);
+    await cache.RefreshObservabilityToken('agent', 'tenant', resolver);
+    expect(resolver).toHaveBeenCalledTimes(1);
+    expect(cache.getObservabilityToken('agent', 'tenant')).toBe(token);
+    jest.advanceTimersByTime(61_000);
+    expect(cache.getObservabilityToken('agent', 'tenant')).toBeNull();
+    resolver.mockReturnValue(makeJwtWithExp(300));
+    await cache.RefreshObservabilityToken('agent', 'tenant', resolver);
+    expect(resolver).toHaveBeenCalledTimes(2);
+  });
+
+  it('isolates tokens by agent and tenant', async () => {
+    const resolver = (agent: string, tenant: string) => `${agent}-${tenant}`;
+    await cache.RefreshObservabilityToken('one', 'tenant-a', resolver);
+    await cache.RefreshObservabilityToken('two', 'tenant-a', resolver);
+    await cache.RefreshObservabilityToken('one', 'tenant-b', resolver);
+    expect(cache.getObservabilityToken('one', 'tenant-a')).toBe('one-tenant-a');
+    expect(cache.getObservabilityToken('two', 'tenant-a')).toBe('two-tenant-a');
+    expect(cache.getObservabilityToken('one', 'tenant-b')).toBe('one-tenant-b');
+  });
+
+  it('uses a fresh fallback TTL when an opaque token replaces an expired JWT', async () => {
+    await cache.RefreshObservabilityToken('agent', 'tenant', () => makeJwtWithExp(120));
+    jest.advanceTimersByTime(61_000);
+    await cache.RefreshObservabilityToken('agent', 'tenant', () => 'opaque-app-only-token');
+    expect(cache.getObservabilityToken('agent', 'tenant')).toBe('opaque-app-only-token');
+    jest.advanceTimersByTime(3_600_000);
+    expect(cache.getObservabilityToken('agent', 'tenant')).toBeNull();
+  });
+
+  it('evicts the oldest token when the cache reaches capacity', async () => {
+    const token = makeJwtWithExp(300);
+    const capacity = cache['_maxCacheSize'];
+    const resolver = () => token;
+    for (let i = 0; i <= capacity; i++) {
+      await cache.RefreshObservabilityToken(`agent-${i}`, 'tenant', resolver);
     }
-    expect(map.size).toBe(MAX);
-
-    // Insert one more via RefreshObservabilityToken
-    const token = makeJwtWithExp(300);
-    const auth = makeAuthorizationMock([{ token }]);
-    await cache.RefreshObservabilityToken(
-      'agent-new',
-      'tenant-new',
-      asTurnContext(makeTurnContext()),
-      auth as any,
-      ['scope.read']
-    );
-
-    // Size should still be at MAX (oldest evicted, new one added)
-    expect(map.size).toBe(MAX);
-    // First entry should have been evicted
-    expect(map.has('agent-0:tenant-0')).toBe(false);
-    // New entry should exist
-    expect(map.has('agent-new:tenant-new')).toBe(true);
+    expect(cache.getObservabilityToken('agent-0', 'tenant')).toBeNull();
+    expect(cache.getObservabilityToken('agent-1', 'tenant')).toBe(token);
+    expect(cache.getObservabilityToken(`agent-${capacity}`, 'tenant')).toBe(token);
   });
 
-  it('passes authHandlerName to exchangeToken when provided', async () => {
-    const token = makeJwtWithExp(300);
-    const exchangeFn = jest.fn(async (..._args: any[]) => ({ token }));
-    const auth: AuthorizationStub = {
-      exchangeToken: exchangeFn,
-      getToken: async () => ({ token: 'unused' }),
-      signOut: async () => {},
-      onSignInSuccess: () => {},
-      onSignInFailure: () => {}
-    };
-    await AgenticTokenCacheInstance.RefreshObservabilityToken(
-      'agentHandler',
-      'tenantHandler',
-      asTurnContext(makeTurnContext()),
-      auth as any,
-      ['scope.read'],
-      'custom-handler'
-    );
-    expect(exchangeFn).toHaveBeenCalledTimes(1);
-    expect(exchangeFn.mock.calls[0][1]).toBe('custom-handler');
+  it('caps token lifetime to 24 hours', async () => {
+    const token = makeJwtWithExp(48 * 60 * 60);
+    await cache.RefreshObservabilityToken('agent', 'tenant', () => token);
+    jest.advanceTimersByTime(24 * 60 * 60 * 1000);
+    expect(cache.getObservabilityToken('agent', 'tenant')).toBeNull();
   });
 
-  it('defaults authHandlerName to "agentic" when not provided', async () => {
+  it('invalidates one token independently, then all tokens', async () => {
     const token = makeJwtWithExp(300);
-    const exchangeFn = jest.fn(async (..._args: any[]) => ({ token }));
-    const auth: AuthorizationStub = {
-      exchangeToken: exchangeFn,
-      getToken: async () => ({ token: 'unused' }),
-      signOut: async () => {},
-      onSignInSuccess: () => {},
-      onSignInFailure: () => {}
-    };
-    await AgenticTokenCacheInstance.RefreshObservabilityToken(
-      'agentDefault',
-      'tenantDefault',
-      asTurnContext(makeTurnContext()),
-      auth as any,
-      ['scope.read']
-    );
-    expect(exchangeFn).toHaveBeenCalledTimes(1);
-    expect(exchangeFn.mock.calls[0][1]).toBe('agentic');
-  });
-
-  it('caps JWT exp claim to 24 hours', async () => {
-    const { AgenticTokenCache } = require('@microsoft/agents-a365-observability-hosting');
-    const cache = new AgenticTokenCache();
-
-    // Create JWT with exp 48 hours from now
-    const farFutureExp = Math.floor(Date.now() / 1000) + (48 * 60 * 60);
-    const header = Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url');
-    const payload = Buffer.from(JSON.stringify({ exp: farFutureExp })).toString('base64url');
-    const farFutureToken = `${header}.${payload}.sig`;
-
-    const auth = makeAuthorizationMock([{ token: farFutureToken }]);
-    await cache.RefreshObservabilityToken(
-      'agent-exp',
-      'tenant-exp',
-      asTurnContext(makeTurnContext()),
-      auth as any,
-      ['scope.read']
-    );
-
-    const map = (cache as any)._map as Map<string, any>;
-    const entry = map.get('agent-exp:tenant-exp');
-    expect(entry).toBeDefined();
-    expect(entry.expiresOn).toBeDefined();
-
-    // The expiresOn should be capped to ~24 hours from now (not 48 hours)
-    const maxAllowed = Date.now() + (24 * 60 * 60 * 1000) + 5000; // 24h + small tolerance
-    expect(entry.expiresOn).toBeLessThanOrEqual(maxAllowed);
-    // And should be well below the 48-hour uncapped value
-    const uncapped = farFutureExp * 1000;
-    expect(entry.expiresOn).toBeLessThan(uncapped);
+    await cache.RefreshObservabilityToken('one', 'tenant', () => token);
+    await cache.RefreshObservabilityToken('two', 'tenant', () => token);
+    cache.invalidateToken('one', 'tenant');
+    expect(cache.getObservabilityToken('one', 'tenant')).toBeNull();
+    expect(cache.getObservabilityToken('two', 'tenant')).toBe(token);
+    cache.invalidateAll();
+    expect(cache.getObservabilityToken('two', 'tenant')).toBeNull();
   });
 });

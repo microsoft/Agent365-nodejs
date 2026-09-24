@@ -19,7 +19,7 @@ type TraceBuffer = {
   spans: ReadableSpan[];
   openCount: number;
   rootEnded: boolean;
-  rootCtx?: Context; // holds the request Context (with token in ALS)
+  rootCtx?: Context; // preserves request-local baggage and custom exporter state
   startedAtMs: number;
   rootEndedAtMs?: number;
   droppedSpans: number;
@@ -29,8 +29,8 @@ type FlushReason = 'trace_completed' | 'root_ended_grace' | 'max_trace_age' | 'f
 
 /**
  * Buffers spans per trace and exports once the request completes.
- * Token is not stored; we export under the saved request Context so that getExportToken()
- * can read the token from the active OpenTelemetry Context at export time.
+ * Exports under the saved request Context to preserve request-local state.
+ * Agent365Exporter acquires credentials through its own app-only resolver, not this Context.
  */
 export class PerRequestSpanProcessor implements SpanProcessor {
   private traces = new Map<string, TraceBuffer>();
@@ -101,7 +101,7 @@ export class PerRequestSpanProcessor implements SpanProcessor {
 
     // Capture a context to export under.
     // - Use the first seen context as a fallback.
-    // - If/when the root span starts, prefer its context (contains token via ALS).
+    // - If/when the root span starts, prefer its request-local context.
     if (isRootSpan(span)) {
       buf.rootCtx = ctx;
     } else {
@@ -231,7 +231,7 @@ export class PerRequestSpanProcessor implements SpanProcessor {
       `[PerRequestSpanProcessor] Flushing trace traceId=${traceId} reason=${reason} spans=${spans.length} rootEnded=${trace.rootEnded}`
     );
 
-    // Must have captured the root context to access the token
+    // Restore the original request context for baggage and custom exporters.
     if (!trace.rootCtx) {
       logger.error(`[PerRequestSpanProcessor] Missing rootCtx for trace ${traceId}, cannot export spans`);
       return;
@@ -240,7 +240,7 @@ export class PerRequestSpanProcessor implements SpanProcessor {
     await this.acquireExportSlot();
 
     try {
-      // Export under the original request Context so exporter can read the token from context.active()
+      // Credentials are selected by the exporter, independently of this request context.
       await new Promise<void>((resolve) => {
         try {
           context.with(trace.rootCtx as Context, () => {
