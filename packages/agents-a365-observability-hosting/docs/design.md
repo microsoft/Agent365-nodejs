@@ -135,10 +135,10 @@ match `tenantId`, and its audience must be OBS. An eligible Agent 365-registered
 instance can use a roleless app token when service policy permits; an
 `Agent365.Observability.OtelWrite` grant is not a universal prerequisite. Entra
 identity creation alone does not establish instance registration or service access.
-The resolver must validate app-only identity (`idtyp=app`, non-empty `roles`, or, when
-`idtyp` is absent, a non-empty `oid` equal to `sub`), reject delegated `scp` tokens, and
-check audience and lifetime before returning a token. The cache does not perform token
-authentication or authorization.
+The resolver must validate app-only identity: accept `idtyp=app`, or, when `idtyp` is absent,
+either a non-empty `roles` array or a non-empty `oid` equal to `sub`; reject any other `idtyp`
+value. It must also reject delegated `scp` tokens, and check audience and lifetime before
+returning a token. The cache does not perform token authentication or authorization.
 Acquisition failures propagate to the caller and never trigger delegated authentication.
 
 When migrating, replace only the OBS refresh call, not workload MCP/Graph/OBO
