@@ -30,6 +30,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `RefreshObservabilityToken` throws when acquisition fails; call it from the
   exporter's `tokenResolver` or wrap it in try/catch on the request path.
 
+### Fixed (`@microsoft/agents-a365-observability`)
+
+- **`@opentelemetry/core` is now a declared dependency** - The exporter imports it at
+  runtime, so installs where npm did not hoist another copy failed with
+  `MODULE_NOT_FOUND` when loading the exporter.
+
 ## [1.0.0] - 2026-04-30
 
 ### Breaking Changes (`@microsoft/agents-a365-tooling`)

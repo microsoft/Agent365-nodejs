@@ -40,6 +40,7 @@
   "dependencies": {
     "@microsoft/agents-a365-runtime": "workspace:*",
     "@opentelemetry/api": "catalog:",
+    "@opentelemetry/core": "catalog:",
     "@opentelemetry/exporter-trace-otlp-http": "catalog:",
     "@opentelemetry/instrumentation": "catalog:",
     "@opentelemetry/resources": "catalog:",
