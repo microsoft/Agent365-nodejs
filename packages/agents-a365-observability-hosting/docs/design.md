@@ -108,8 +108,11 @@ const agentPairs = getTargetAgentBaggagePairs(turnContext);
 ### AgenticTokenCacheInstance ([AgenticTokenCache.ts](../src/caching/AgenticTokenCache.ts))
 
 Cache app-only OBS tokens independently of the workload's AI Teammate or OBO
-authorization. The former overload accepting `TurnContext` and `Authorization`
-now throws rather than acquiring a delegated token incompatible with S2S.
+authorization. The `TurnContext`/`Authorization` overload was removed in 2.0.0:
+TypeScript callers get a compile error, and untyped callers get a one-time error log
+and no token instead of a delegated token that S2S rejects. `RefreshObservabilityToken`
+throws when acquisition fails; call it from the exporter's `tokenResolver` or wrap it in
+try/catch on the request path.
 
 ```typescript
 import { AgenticTokenCacheInstance } from '@microsoft/agents-a365-observability-hosting';
@@ -132,9 +135,10 @@ match `tenantId`, and its audience must be OBS. An eligible Agent 365-registered
 instance can use a roleless app token when service policy permits; an
 `Agent365.Observability.OtelWrite` grant is not a universal prerequisite. Entra
 identity creation alone does not establish instance registration or service access.
-The resolver must validate app-only identity (explicit `idtyp=app` for a roleless
-token), reject delegated `scp` tokens, and check audience and lifetime before
-returning a token. The cache does not perform token authentication or authorization.
+The resolver must validate app-only identity (`idtyp=app`, non-empty `roles`, or, when
+`idtyp` is absent, a non-empty `oid` equal to `sub`), reject delegated `scp` tokens, and
+check audience and lifetime before returning a token. The cache does not perform token
+authentication or authorization.
 Acquisition failures propagate to the caller and never trigger delegated authentication.
 
 When migrating, replace only the OBS refresh call, not workload MCP/Graph/OBO

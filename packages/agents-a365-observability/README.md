@@ -32,8 +32,10 @@ AI Teammate user tokens. Keep workload authentication
 failure is not a reason to retry telemetry on the OBO route.
 
 When using the hosting token cache, call
-`RefreshObservabilityToken(agentId, tenantId, appOnlyTokenResolver)`. The old
-`TurnContext`/`Authorization` overload throws rather than acquiring a delegated OBS token.
+`RefreshObservabilityToken(agentId, tenantId, appOnlyTokenResolver)`. It throws when the
+resolver fails or returns no token, so call it from your exporter `tokenResolver` or wrap
+it in try/catch on the request path. The `TurnContext`/`Authorization` overload was removed
+in 2.0.0; JavaScript callers that still pass it get a one-time error log and no token.
 S2S ingestion may remove unverified user attribution; routing a workload through S2S
 does not establish that its caller identity is trusted.
 

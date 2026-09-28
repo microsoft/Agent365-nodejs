@@ -3,7 +3,6 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------------------------
 
-import type { TurnContext, Authorization } from '@microsoft/agents-hosting';
 import {
     logger, formatError, defaultObservabilityConfigurationProvider,
     type ObservabilityConfiguration, type TokenResolver,
@@ -42,6 +41,7 @@ export class AgenticTokenCache {
     private readonly _maxCacheSize = 10_000;
     private readonly _maxExpSeconds = 86_400; // 24 hours
     private readonly _keyLocks = new Map<string, Promise<unknown>>();
+    private _removedOverloadLogged = false;
     private readonly _configProvider: IConfigurationProvider<ObservabilityConfiguration>;
 
     /**
@@ -78,33 +78,20 @@ export class AgenticTokenCache {
      * Refreshes an app-only OBS token independently of the current user's authorization.
      * The resolver receives the configured OBS scopes and must acquire a token for
      * the exporting agent identity, not its blueprint or the workload's user.
+     *
+     * @throws When the resolver fails or returns no token. Call this from the exporter's
+     * `tokenResolver`, where a failure fails that export, or wrap it in try/catch on the
+     * request path.
      */
     public async RefreshObservabilityToken(
         agentId: string,
         tenantId: string,
         tokenResolver: ObservabilityTokenResolver
-    ): Promise<void>;
-
-    /** @deprecated User token exchange cannot authenticate S2S OBS. Pass an app-only token resolver instead. */
-    public async RefreshObservabilityToken(
-        agentId: string,
-        tenantId: string,
-        turnContext: TurnContext,
-        authorization: Authorization,
-        scopes: string[],
-        authHandlerName?: string
-    ): Promise<void>;
-
-    public async RefreshObservabilityToken(
-        agentId: string,
-        tenantId: string,
-        resolverOrContext: ObservabilityTokenResolver | TurnContext,
-        _authorization?: Authorization,
-        _scopes?: string[],
-        _authHandlerName?: string
     ): Promise<void> {
-        if (typeof resolverOrContext !== 'function') {
-            throw new Error('[AgenticTokenCache] S2S OBS requires an app-only token resolver. Use RefreshObservabilityToken(agentId, tenantId, tokenResolver); delegated user token exchange is no longer supported.');
+        if (typeof tokenResolver !== 'function') {
+            // Untyped callers can still pass the TurnContext/Authorization overload removed in 2.0.0.
+            this.logRemovedOverloadOnce();
+            return;
         }
         if (!agentId?.trim() || !tenantId?.trim()) {
             throw new Error('[AgenticTokenCache] Agent and tenant IDs are required');
@@ -138,7 +125,7 @@ export class AgenticTokenCache {
             for (let attempt = 0; attempt <= maxRetries; attempt++) {
                 logger.info(`[AgenticTokenCache] Acquiring app-only token attempt ${attempt + 1}/${maxRetries + 1}`);
                 try {
-                    const token = await resolverOrContext(agentId, tenantId, [...entry.scopes]);
+                    const token = await tokenResolver(agentId, tenantId, [...entry.scopes]);
                     if (!token?.trim()) {
                         throw new Error('[AgenticTokenCache] App-only token resolver returned no token');
                     }
@@ -231,6 +218,14 @@ export class AgenticTokenCache {
             }
         }
         return false;
+    }
+
+    private logRemovedOverloadOnce(): void {
+        if (this._removedOverloadLogged) {
+            return;
+        }
+        this._removedOverloadLogged = true;
+        logger.error('[AgenticTokenCache] RefreshObservabilityToken(agentId, tenantId, turnContext, authorization, ...) was removed in 2.0.0 and does nothing; S2S OBS needs an app-only token. Call RefreshObservabilityToken(agentId, tenantId, tokenResolver) instead.');
     }
 
     private sleep(ms: number): Promise<void> {

@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 import { AgenticTokenCache, ObservabilityTokenResolver } from '@microsoft/agents-a365-observability-hosting';
-import { ObservabilityConfiguration } from '@microsoft/agents-a365-observability';
+import { ObservabilityConfiguration, resetLogger, setLogger } from '@microsoft/agents-a365-observability';
 import type { Authorization, TurnContext } from '@microsoft/agents-hosting';
 
 const obsScopes = ['api://9b975845-388f-4429-889e-eab1ef63949c/.default'];
@@ -87,7 +87,7 @@ describe('AgenticTokenCache app-only OBS authentication', () => {
     expect(resolver).not.toHaveBeenCalled();
   });
 
-  it.each(['agentic', 'obo'])('rejects legacy %s user authorization without exchanging a token', async (handler) => {
+  it.each(['agentic', 'obo'])('ignores the removed %s user-authorization overload without exchanging a token', async (handler) => {
     const exchangeToken = jest.fn();
     const authorization: Authorization = {
       exchangeToken,
@@ -97,13 +97,31 @@ describe('AgenticTokenCache app-only OBS authentication', () => {
       onSignInFailure: jest.fn(),
     };
     const context = {} as TurnContext;
+    const error = jest.fn();
+    setLogger({ info: jest.fn(), warn: jest.fn(), error, event: jest.fn() });
+    // Untyped (JavaScript) callers can still reach the removed overload at runtime.
+    const untypedRefresh = cache.RefreshObservabilityToken.bind(cache) as unknown as (...args: unknown[]) => Promise<void>;
 
-    await expect(cache.RefreshObservabilityToken(
-      'agent', 'tenant', context, authorization, obsScopes, handler,
-    )).rejects.toThrow('S2S OBS requires an app-only token resolver');
+    try {
+      await expect(untypedRefresh('agent', 'tenant', context, authorization, obsScopes, handler)).resolves.toBeUndefined();
+      await expect(untypedRefresh('agent', 'tenant', context, authorization, obsScopes, handler)).resolves.toBeUndefined();
 
-    expect(exchangeToken).not.toHaveBeenCalled();
-    expect(cache.getObservabilityToken('agent', 'tenant')).toBeNull();
+      expect(exchangeToken).not.toHaveBeenCalled();
+      expect(cache.getObservabilityToken('agent', 'tenant')).toBeNull();
+      expect(error.mock.calls.filter(([message]) => String(message).includes('was removed in 2.0.0'))).toHaveLength(1);
+    } finally {
+      resetLogger();
+    }
+  });
+
+  it('no longer types the removed TurnContext/Authorization overload', async () => {
+    setLogger({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), event: jest.fn() });
+    try {
+      // @ts-expect-error The TurnContext/Authorization overload was removed in 2.0.0; callers must pass a token resolver.
+      await cache.RefreshObservabilityToken('agent', 'tenant', {} as TurnContext, {} as Authorization, obsScopes);
+    } finally {
+      resetLogger();
+    }
   });
 
   it.each([['', 'tenant'], ['agent', ' ']])('rejects empty identity (%s, %s)', async (agent, tenant) => {
