@@ -120,6 +120,7 @@ The foundation for distributed tracing in agent applications. Built on OpenTelem
 | `InferenceScope` | Trace LLM/AI model inference calls |
 | `ExecuteToolScope` | Trace tool execution operations |
 | `BaggageBuilder` | Fluent API for context propagation across async boundaries |
+| `ResolvedInvocationIdentity` | Process-local validated caller and target identity for span enrichment |
 
 **Data Classes:**
 
@@ -180,6 +181,8 @@ Framework-specific instrumentations that integrate with the observability core:
 |---------|---------|------------|
 | `observability-extensions-openai` | Instrument OpenAI Agents SDK | [design.md](../packages/agents-a365-observability-extensions-openai/docs/design.md) |
 | `observability-hosting` | Hosting-specific observability utilities | [design.md](../packages/agents-a365-observability-hosting/docs/design.md) |
+
+The hosting package can opt into automatic invocation identity resolution through `ObservabilityHostingManager.configure(adapter, { enableInvocationIdentity: true })`. Resolved identity remains process-local and is applied to core and extension spans by the observability span processor.
 
 ### 4. Tooling (`@microsoft/agents-a365-tooling`)
 

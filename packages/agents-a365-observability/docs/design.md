@@ -29,12 +29,20 @@ The observability package provides OpenTelemetry-based distributed tracing infra
            ▼                  ▼                  ▼
 ┌──────────────────┐ ┌──────────────────┐ ┌──────────────────┐
 │  SpanProcessor   │ │ BatchSpanProcessor│ │ Agent365Exporter │
-│ (Baggage to      │ │  (OTEL SDK)      │ │ (HTTP export)    │
-│  attributes)     │ │                  │ │                  │
+│ (Local identity │ │  (OTEL SDK)      │ │ (HTTP export)    │
+│  + baggage)      │ │                  │ │                  │
 └──────────────────┘ └──────────────────┘ └──────────────────┘
 ```
 
 ## Key Components
+
+### Request-local invocation identity
+
+The core package exposes `ResolvedInvocationIdentity` and context create/get/run helpers. Hosting middleware stores one frozen identity in a private OpenTelemetry context key for the duration of a turn.
+
+`SpanProcessor` stamps the identity onto every span created under that context. Existing nonblank span values win, blank identity values cannot erase resolved values, and identity-related baggage is ignored whenever local resolved identity exists.
+
+When an explicit remote parent context is supplied to an SDK scope, `OpenTelemetryScope` combines that remote trace parent with the current local identity before starting the span.
 
 ### ObservabilityManager ([ObservabilityManager.ts](../src/ObservabilityManager.ts))
 

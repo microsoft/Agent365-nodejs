@@ -17,8 +17,32 @@ import {
   Request,
   SpanDetails,
   InvokeAgentScopeDetails,
+  InvocationRole,
+  ResolvedInvocationIdentity,
+  getResolvedInvocationIdentity,
 } from '@microsoft/agents-a365-observability';
 import { resolveEmbodiedAgentIds } from './TurnContextUtils';
+
+function hasNonBlankValue(value: unknown): boolean {
+  return typeof value === 'string'
+    ? value.trim().length > 0
+    : value !== null && value !== undefined;
+}
+
+function mergeResolvedAgentDetails(
+  resolved: AgentDetails | undefined,
+  explicit: AgentDetails,
+): AgentDetails {
+  const merged = { ...(resolved ?? {}) } as Record<string, unknown>;
+
+  for (const [key, value] of Object.entries(explicit)) {
+    if (hasNonBlankValue(value)) {
+      merged[key] = value;
+    }
+  }
+
+  return merged as unknown as AgentDetails;
+}
 
 /**
  * Unified utilities to populate scope tags from a TurnContext.
@@ -49,6 +73,11 @@ export class ScopeUtils {
    * @returns Agent details built from recipient properties; otherwise undefined.
    */
   public static deriveAgentDetails(turnContext: TurnContext, authToken: string): AgentDetails | undefined {
+    const resolvedIdentity = getResolvedInvocationIdentity();
+    if (resolvedIdentity) {
+      return ScopeUtils.deriveResolvedAgentDetails(turnContext, resolvedIdentity);
+    }
+
     const recipient = turnContext?.activity?.recipient;
     if (!recipient) return undefined;
     const { agentId, agentBlueprintId } = resolveEmbodiedAgentIds(turnContext, authToken);
@@ -70,6 +99,27 @@ export class ScopeUtils {
    * @returns Agent details built from caller (from) properties; otherwise undefined.
    */
   public static deriveCallerAgent(turnContext: TurnContext): AgentDetails | undefined {
+    const resolvedIdentity = getResolvedInvocationIdentity();
+    if (resolvedIdentity) {
+      const hasCallerAgent = resolvedIdentity.callerAgentUserOid
+        || resolvedIdentity.callerAgentBlueprintId
+        || resolvedIdentity.callerAgentInstanceId;
+      if (!hasCallerAgent) {
+        return undefined;
+      }
+
+      const from = turnContext?.activity?.from;
+      return {
+        agentId: resolvedIdentity.callerAgentInstanceId,
+        agentAUID: resolvedIdentity.callerAgentUserOid,
+        agentBlueprintId: resolvedIdentity.callerAgentBlueprintId,
+        agentName: from?.name,
+        agentDescription: from?.role,
+        agentEmail: from?.agenticUserId,
+        tenantId: resolvedIdentity.tenantId,
+      } as AgentDetails;
+    }
+
     const from = turnContext?.activity?.from;
     if (!from) return undefined;
     return {
@@ -90,6 +140,20 @@ export class ScopeUtils {
    * @returns User details when available; otherwise undefined.
    */
   public static deriveCallerDetails(turnContext: TurnContext): UserDetails | undefined {
+    const resolvedIdentity = getResolvedInvocationIdentity();
+    if (resolvedIdentity) {
+      if (!resolvedIdentity.humanOid) {
+        return undefined;
+      }
+
+      const from = turnContext?.activity?.from;
+      return {
+        userId: resolvedIdentity.humanOid,
+        userName: resolvedIdentity.role === InvocationRole.Human ? from?.name : undefined,
+        tenantId: resolvedIdentity.tenantId,
+      };
+    }
+
     const from = turnContext?.activity?.from;
     if (!from) return undefined;
     return {
@@ -202,10 +266,13 @@ export class ScopeUtils {
     };
 
     // Build caller info with both human caller and caller agent details
-    const callerDetails: CallerDetails = {
-      userDetails: caller,
-      callerAgentDetails: callerAgent,
-    };
+    const callerDetails: CallerDetails | undefined =
+      getResolvedInvocationIdentity() && !caller && !callerAgent
+        ? undefined
+        : {
+          userDetails: caller,
+          callerAgentDetails: callerAgent,
+        };
 
     const spanDetailsObj: SpanDetails | undefined = (startTime || endTime || spanKind)
       ? { startTime, endTime, spanKind }
@@ -230,6 +297,10 @@ export class ScopeUtils {
   private static buildInvokeAgentDetailsCore(details: AgentDetails, turnContext: TurnContext, authToken: string): AgentDetails {
     const derivedAgentDetails = ScopeUtils.deriveAgentDetails(turnContext, authToken);
 
+    if (getResolvedInvocationIdentity()) {
+      return mergeResolvedAgentDetails(derivedAgentDetails, details);
+    }
+
     // Merge derived agent identity into details
     const mergedAgent: AgentDetails = {
       ...details,
@@ -237,6 +308,31 @@ export class ScopeUtils {
     };
 
     return mergedAgent;
+  }
+
+  private static deriveResolvedAgentDetails(
+    turnContext: TurnContext,
+    identity: ResolvedInvocationIdentity,
+  ): AgentDetails | undefined {
+    const recipient = turnContext?.activity?.recipient;
+    const hasResolvedTarget = identity.targetAgentId
+      || identity.targetAgentAuid
+      || identity.targetAgentBlueprintId
+      || identity.tenantId;
+
+    if (!recipient && !hasResolvedTarget) {
+      return undefined;
+    }
+
+    return {
+      agentId: identity.targetAgentId,
+      agentName: recipient?.name,
+      agentAUID: identity.targetAgentAuid,
+      agentBlueprintId: identity.targetAgentBlueprintId,
+      agentEmail: recipient?.agenticUserId,
+      agentDescription: recipient?.role,
+      tenantId: identity.tenantId,
+    } as AgentDetails;
   }
 
   /**

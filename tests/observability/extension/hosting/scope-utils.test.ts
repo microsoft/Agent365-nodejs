@@ -16,12 +16,32 @@ jest.mock('@microsoft/agents-a365-runtime', () => {
 });
 
 import { ScopeUtils } from '../../../../packages/agents-a365-observability-hosting/src/utils/ScopeUtils';
-import { InferenceScope, InvokeAgentScope, ExecuteToolScope, OpenTelemetryConstants, OpenTelemetryScope } from '@microsoft/agents-a365-observability';
-import { SpanKind } from '@opentelemetry/api';
+import {
+  ExecuteToolScope,
+  InferenceScope,
+  InvocationIdentityResolutionSource,
+  InvocationRole,
+  InvokeAgentScope,
+  OpenTelemetryConstants,
+  OpenTelemetryScope,
+  runWithResolvedInvocationIdentity,
+} from '@microsoft/agents-a365-observability';
+import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
+import { context as otelContext, SpanKind } from '@opentelemetry/api';
 import { RoleTypes } from '@microsoft/agents-activity';
 import type { TurnContext } from '@microsoft/agents-hosting';
 
 const testAuthToken = 'mock-auth-token';
+const HUMAN_OID = '11111111-1111-4111-8111-111111111111';
+const CALLER_AGENT_USER_OID = '44444444-4444-4444-8444-444444444444';
+const CALLER_AGENT_BLUEPRINT_ID = '55555555-5555-4555-8555-555555555555';
+const CALLER_AGENT_INSTANCE_ID = '66666666-6666-4666-8666-666666666666';
+const TARGET_AGENT_ID = '77777777-7777-4777-8777-777777777777';
+const TARGET_AGENT_BLUEPRINT_ID = '88888888-8888-4888-8888-888888888888';
+const TARGET_AGENT_AUID = '99999999-9999-4999-8999-999999999999';
+const TENANT_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const EXPLICIT_TARGET_AGENT_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+const EXPLICIT_TARGET_BLUEPRINT_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 
 function makeTurnContext(
   text?: string,
@@ -315,5 +335,123 @@ describe('ScopeUtils spanKind forwarding', () => {
     );
     scope?.dispose();
     spy.mockRestore();
+  });
+});
+
+describe('ScopeUtils resolved invocation identity', () => {
+  let contextManager: AsyncLocalStorageContextManager;
+
+  beforeAll(() => {
+    contextManager = new AsyncLocalStorageContextManager();
+    contextManager.enable();
+    otelContext.setGlobalContextManager(contextManager);
+  });
+
+  afterAll(() => {
+    contextManager.disable();
+    otelContext.disable();
+  });
+
+  test('uses resolved identity and retains both delegated human and immediate agent', async () => {
+    const ctx = makeTurnContext('invoke message', 'teams', 'https://teams', 'conv-resolved');
+    ctx.activity.from!.role = RoleTypes.AgenticUser;
+
+    await runWithResolvedInvocationIdentity({
+      role: InvocationRole.Agent,
+      humanOid: HUMAN_OID,
+      callerAgentUserOid: CALLER_AGENT_USER_OID,
+      callerAgentBlueprintId: CALLER_AGENT_BLUEPRINT_ID,
+      callerAgentInstanceId: CALLER_AGENT_INSTANCE_ID,
+      targetAgentId: TARGET_AGENT_ID,
+      targetAgentBlueprintId: TARGET_AGENT_BLUEPRINT_ID,
+      targetAgentAuid: TARGET_AGENT_AUID,
+      tenantId: TENANT_ID,
+      resolutionSource: InvocationIdentityResolutionSource.Composite,
+    }, async () => {
+      expect(ScopeUtils.deriveAgentDetails(ctx, testAuthToken)).toEqual({
+        agentId: TARGET_AGENT_ID,
+        agentName: 'Agent One',
+        agentAUID: TARGET_AGENT_AUID,
+        agentBlueprintId: TARGET_AGENT_BLUEPRINT_ID,
+        agentEmail: 'agent-upn@contoso.com',
+        agentDescription: 'assistant',
+        tenantId: TENANT_ID,
+      });
+      expect(ScopeUtils.deriveCallerAgent(ctx)).toEqual({
+        agentId: CALLER_AGENT_INSTANCE_ID,
+        agentAUID: CALLER_AGENT_USER_OID,
+        agentBlueprintId: CALLER_AGENT_BLUEPRINT_ID,
+        agentName: 'Test User',
+        agentDescription: RoleTypes.AgenticUser,
+        agentEmail: 'user@contoso.com',
+        tenantId: TENANT_ID,
+      });
+
+      const userDetails = ScopeUtils.deriveCallerDetails(ctx);
+      expect(userDetails).toEqual({
+        userId: HUMAN_OID,
+        userName: undefined,
+        tenantId: TENANT_ID,
+      });
+      expect(userDetails).not.toHaveProperty('userEmail');
+
+      const start = jest.spyOn(InvokeAgentScope, 'start');
+      const scope = ScopeUtils.populateInvokeAgentScopeFromTurnContext(
+        { agentId: TARGET_AGENT_ID },
+        {},
+        ctx,
+        testAuthToken,
+      );
+      expect(start).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        {
+          userDetails: {
+            userId: HUMAN_OID,
+            userName: undefined,
+            tenantId: TENANT_ID,
+          },
+          callerAgentDetails: expect.objectContaining({
+            agentId: CALLER_AGENT_INSTANCE_ID,
+            agentAUID: CALLER_AGENT_USER_OID,
+            agentBlueprintId: CALLER_AGENT_BLUEPRINT_ID,
+          }),
+        },
+        undefined,
+      );
+      scope.dispose();
+      start.mockRestore();
+    });
+  });
+
+  test('lets explicit nonblank target details win and fills blanks from resolved identity', async () => {
+    const ctx = makeTurnContext();
+
+    await runWithResolvedInvocationIdentity({
+      role: InvocationRole.Human,
+      humanOid: HUMAN_OID,
+      targetAgentId: TARGET_AGENT_ID,
+      targetAgentBlueprintId: TARGET_AGENT_BLUEPRINT_ID,
+      targetAgentAuid: TARGET_AGENT_AUID,
+      tenantId: TENANT_ID,
+      resolutionSource: InvocationIdentityResolutionSource.Composite,
+    }, async () => {
+      const result = ScopeUtils.buildInvokeAgentDetails({
+        agentId: EXPLICIT_TARGET_AGENT_ID,
+        agentName: 'Explicit Agent',
+        agentAUID: '   ',
+        agentBlueprintId: EXPLICIT_TARGET_BLUEPRINT_ID,
+        tenantId: '',
+      }, ctx, testAuthToken);
+
+      expect(result).toMatchObject({
+        agentId: EXPLICIT_TARGET_AGENT_ID,
+        agentName: 'Explicit Agent',
+        agentAUID: TARGET_AGENT_AUID,
+        agentBlueprintId: EXPLICIT_TARGET_BLUEPRINT_ID,
+        tenantId: TENANT_ID,
+      });
+    });
   });
 });
