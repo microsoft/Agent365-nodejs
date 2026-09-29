@@ -26,9 +26,7 @@ export enum InvocationRole {
  * Represents different operation for types for model inference
  */
 export enum InferenceOperationType {
-  CHAT = 'Chat',
-  TEXT_COMPLETION = 'TextCompletion',
-  GENERATE_CONTENT = 'GenerateContent'
+  CHAT = 'Chat'
 }
 
 /**
