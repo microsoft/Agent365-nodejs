@@ -103,9 +103,24 @@ describe('ObservabilityBuilder configProvider', () => {
     expect(capturedConfigProvider()).toBeUndefined();
   });
 
-  it('ObservabilityManager.start() passes configProvider through to exporter', () => {
+  it('ObservabilityManager.start() applies all simplified options', () => {
     const provider = makeProvider(true);
-    ObservabilityManager.start({ serviceName: 'svc', tokenResolver: () => 't', configProvider: provider });
+    const customLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), event: jest.fn() };
+    const namespaceSpy = jest.spyOn(ObservabilityBuilder.prototype, 'withServiceNamespace');
+
+    ObservabilityManager.start({
+      serviceName: 'svc',
+      serviceNamespace: 'demo',
+      tokenResolver: () => 't',
+      exporterOptions: { useS2SEndpoint: true, maxQueueSize: 7 },
+      customLogger,
+      configProvider: provider,
+    });
+
     expect(capturedConfigProvider()).toBe(provider);
+    expect(capturedOpts().useS2SEndpoint).toBe(true);
+    expect(capturedOpts().maxQueueSize).toBe(7);
+    expect(capturedLogger).toBe(customLogger);
+    expect(namespaceSpy).toHaveBeenCalledWith('demo');
   });
 });
