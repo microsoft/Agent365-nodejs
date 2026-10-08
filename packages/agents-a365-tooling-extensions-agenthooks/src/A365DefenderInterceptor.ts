@@ -176,13 +176,20 @@ export class A365DefenderInterceptor implements Interceptor {
 
     try {
       const pending: unknown = this.onEvaluated(result);
-      if (pending instanceof Promise) {
-        pending.catch(() => undefined);
+      // Any thenable, including a promise from another realm, which `instanceof Promise` misses.
+      if (isThenable(pending)) {
+        Promise.resolve(pending).catch(() => undefined);
       }
     } catch (_error) {
       // Ignored by design.
     }
   }
+}
+
+function isThenable(value: unknown): value is PromiseLike<unknown> {
+  return (typeof value === 'object' || typeof value === 'function')
+    && value !== null
+    && typeof (value as { then?: unknown }).then === 'function';
 }
 
 function describeError(error: unknown): string {

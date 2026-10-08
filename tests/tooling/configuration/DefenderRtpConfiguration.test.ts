@@ -96,4 +96,22 @@ describe('Defender RTP tooling configuration', () => {
     expect(() => new ToolingConfiguration({ defenderRtpMaxContentCharacters: () => -1 }).defenderRtpMaxContentCharacters)
       .toThrow('defenderRtpMaxContentCharacters must be a positive integer.');
   });
+
+  it.each([
+    ['open', false],
+    [' Open ', false],
+    ['', false],
+    ['closed', true],
+    [' CLOSED ', true],
+  ])('reads A365_DEFENDER_RTP_FAIL_MODE=%j', (mode, failClosed) => {
+    process.env.A365_DEFENDER_RTP_FAIL_MODE = mode;
+
+    expect(new ToolingConfiguration().defenderRtpFailClosed).toBe(failClosed);
+  });
+
+  it.each(['clsoed', 'fail-closed', 'true', 'block'])('rejects A365_DEFENDER_RTP_FAIL_MODE=%s rather than failing open', (mode) => {
+    process.env.A365_DEFENDER_RTP_FAIL_MODE = mode;
+
+    expect(() => new ToolingConfiguration().defenderRtpFailClosed).toThrow("A365_DEFENDER_RTP_FAIL_MODE must be 'open' or 'closed'.");
+  });
 });

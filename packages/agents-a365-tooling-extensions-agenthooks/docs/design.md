@@ -66,7 +66,8 @@ new A365DefenderInterceptor(
 - An exception from `resolveCall` or `evaluateHookContext` (an invalid context or identity) is never a verdict:
   it becomes `DefenderRtpClient.unavailable(...)`, which follows the fail mode.
 - `onEvaluated` receives every evaluation, including the ones without a verdict (correlation id, latency, error),
-  for logging; its errors and rejected promises are ignored so logging cannot change a verdict.
+  for logging; its errors and rejections (of any thenable it returns, including a promise from another realm) are
+  ignored so logging cannot change a verdict.
 
 ### toVerdict
 

@@ -333,7 +333,7 @@ const customConfig = new ToolingConfiguration({
 | `mcpPlatformAuthenticationScope` | `MCP_PLATFORM_AUTHENTICATION_SCOPE` | Production scope | OAuth scope for MCP platform auth |
 | `isDefenderRtpEnabled` | `ENABLE_A365_DEFENDER_RTP` | `false` | Enables Defender RTP (`DefenderRtpClient`) |
 | `defenderRtpEndpoint` | `A365_DEFENDER_RTP_ENDPOINT` | None (required when enabled) | Defender prevention endpoint |
-| `defenderRtpFailClosed` | `A365_DEFENDER_RTP_FAIL_MODE` | `false` (open) | `closed` blocks when no verdict is obtained |
+| `defenderRtpFailClosed` | `A365_DEFENDER_RTP_FAIL_MODE` | `false` (open) | `closed` blocks when no verdict is obtained; values other than `open` and `closed` throw |
 | `defenderRtpTimeoutMilliseconds` | `A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS` | `10000` | Timeout of each evaluation |
 | `defenderRtpAuthenticationScope` | `A365_DEFENDER_RTP_AUTHENTICATION_SCOPE` | Defender API scope | OAuth scope of the Defender token |
 | `defenderRtpMaxContentCharacters` | `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` | `20000` | Maximum characters of each content string; the request carries at most four times as much content |
@@ -370,7 +370,7 @@ src/
 | `MCP_PLATFORM_AUTHENTICATION_SCOPE` | OAuth scope for MCP platform | Production scope |
 | `ENABLE_A365_DEFENDER_RTP` | Enables Defender RTP | `false` |
 | `A365_DEFENDER_RTP_ENDPOINT` | Defender prevention endpoint (`https://<host>/v1/protection/evaluate`) | None |
-| `A365_DEFENDER_RTP_FAIL_MODE` | `closed` blocks when no verdict is obtained | `open` |
+| `A365_DEFENDER_RTP_FAIL_MODE` | `closed` blocks when no verdict is obtained; values other than `open` and `closed` are rejected | `open` |
 | `A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS` | Timeout of each evaluation | `10000` |
 | `A365_DEFENDER_RTP_AUTHENTICATION_SCOPE` | OAuth scope of the Defender token | Defender API scope |
 | `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` | Maximum characters of each content string; the request carries at most four times as much content | `20000` |

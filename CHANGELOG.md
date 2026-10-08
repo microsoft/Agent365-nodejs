@@ -54,7 +54,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   authority as Observability S2S export. The endpoint and the token authority must be `https`.
 - Every call sends a unique `x-ms-correlation-id`. One deadline covers the token acquisition and the
   request. When no verdict is obtained, the result follows `A365_DEFENDER_RTP_FAIL_MODE` (fail open
-  by default), and a `400` reports the failed validation rules.
+  by default; a value other than `open` or `closed` is rejected), and a `400` reports the failed
+  validation rules.
 - Content under decision that does not fit (longer than `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS`,
   or beyond its share of the copy), or whose keys become one once made well formed, is sent incomplete.
   Defender's block of the copy stands, but its allow does not cover the rest: the result is marked

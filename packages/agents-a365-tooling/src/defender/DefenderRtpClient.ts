@@ -710,6 +710,7 @@ export class DefenderRtpClient {
     }
 
     DefenderRtpClient.endpoint(configuration);
+    void configuration.defenderRtpFailClosed;
     void configuration.defenderRtpTimeoutMilliseconds;
     void configuration.defenderRtpMaxContentCharacters;
   }

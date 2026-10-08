@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+import { runInNewContext } from 'node:vm';
 import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 import { AgentContext, AgentContextBuilder, Interceptor, proceeds } from '@responsibleai/agent-hooks';
 import { DefaultConfigurationProvider } from '@microsoft/agents-a365-runtime';
@@ -278,6 +279,39 @@ describe('A365DefenderInterceptor under the agent-hooks emitter', () => {
 
     expect(proceeds(record)).toBe(true);
     expect(record.verdict.reason).toBeUndefined();
+  });
+
+  it('handles a rejected promise from another realm or a thenable returned by the evaluation listener', async () => {
+    const unhandled: unknown[] = [];
+    const onUnhandled = (reason: unknown): void => {
+      unhandled.push(reason);
+    };
+    const rejections: unknown[] = [];
+    const listeners = [
+      () => runInNewContext('Promise.reject(new Error("logger failed"))'),
+      () => ({
+        then: (_resolve: unknown, reject: (error: Error) => void) => {
+          rejections.push(reject);
+          reject(new Error('logger failed'));
+        },
+      }),
+    ];
+    process.on('unhandledRejection', onUnhandled);
+    try {
+      for (const listener of listeners) {
+        const { emitter } = harness(() => json({ decision: 'allow' }), { onEvaluated: listener as () => void });
+
+        const record = await emitter.emitUnchecked(builder('s-9').input('hello'));
+
+        expect(proceeds(record)).toBe(true);
+      }
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    } finally {
+      process.off('unhandledRejection', onUnhandled);
+    }
+
+    expect(rejections).toHaveLength(1);
+    expect(unhandled).toEqual([]);
   });
 
   it('blocks a Defender deny whose transform has another shape as a detection', async () => {

@@ -1250,6 +1250,15 @@ describe('DefenderRtpClient', () => {
       }
     });
 
+    it('rejects an unknown fail mode when enabled, rather than failing open', () => {
+      process.env.A365_DEFENDER_RTP_FAIL_MODE = 'clsoed';
+
+      expect(() => new DefenderRtpClient({ configProvider: defenderConfiguration() }))
+        .toThrow("A365_DEFENDER_RTP_FAIL_MODE must be 'open' or 'closed'.");
+      expect(() => new DefenderRtpClient({ configProvider: defenderConfiguration({ isDefenderRtpEnabled: () => false }) }))
+        .not.toThrow();
+    });
+
     it('checks the endpoint again when the configuration changes', async () => {
       let enabled = false;
       const endpoint = fakeEndpoint(allow);

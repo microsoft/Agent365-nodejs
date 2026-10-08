@@ -180,12 +180,23 @@ export class ToolingConfiguration extends RuntimeConfiguration {
   /**
    * Whether an evaluation that returns no verdict (timeout, transport, authentication or HTTP
    * error) blocks the action (`A365_DEFENDER_RTP_FAIL_MODE=closed`). Defaults to false: fail open.
+   * `A365_DEFENDER_RTP_FAIL_MODE` accepts `open` or `closed` (any case); any other value throws, so
+   * a typo cannot silently turn fail-closed into fail-open.
    */
   get defenderRtpFailClosed(): boolean {
     const override = this.toolingOverrides.defenderRtpFailClosed?.();
     if (override !== undefined) return override;
 
-    return process.env.A365_DEFENDER_RTP_FAIL_MODE?.trim().toLowerCase() === 'closed';
+    const mode = process.env.A365_DEFENDER_RTP_FAIL_MODE?.trim().toLowerCase();
+    if (!mode || mode === 'open') {
+      return false;
+    }
+
+    if (mode === 'closed') {
+      return true;
+    }
+
+    throw new Error("A365_DEFENDER_RTP_FAIL_MODE must be 'open' or 'closed'.");
   }
 
   /**
