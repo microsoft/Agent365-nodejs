@@ -48,6 +48,8 @@ export interface RecordedCall {
   method: string;
   authorization: string | null;
   correlationId: string | null;
+  /** How the request handles a redirect. */
+  redirect: RequestRedirect | undefined;
   /** The request body as sent. */
   raw: string;
   body: Record<string, any>;
@@ -67,6 +69,7 @@ export function fakeEndpoint(
       method: init.method ?? 'GET',
       authorization: headers.get('authorization'),
       correlationId: headers.get('x-ms-correlation-id'),
+      redirect: init.redirect,
       raw,
       body,
     });

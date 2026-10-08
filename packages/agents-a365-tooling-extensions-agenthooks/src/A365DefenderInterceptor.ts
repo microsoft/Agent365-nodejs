@@ -12,6 +12,7 @@ import {
 const INVALID_REASON_CHARACTERS = /[^A-Za-z0-9_.-]/g;
 const MAX_ERROR_CHARACTERS = 200;
 const NO_IDENTITY_ERROR = 'no agent identity was resolved';
+const HOST_ERROR_PREFIX = 'host_error:';
 
 /** The agent identity and credentials for the Defender call of one emitted context. */
 export interface A365DefenderCall {
@@ -102,8 +103,9 @@ export class A365DefenderInterceptor implements Interceptor {
       return { decision: 'allow' };
     }
 
+    const verdict = A365DefenderInterceptor.toVerdict(result);
     this.notify(result);
-    return A365DefenderInterceptor.toVerdict(result);
+    return verdict;
   }
 
   /**
@@ -122,8 +124,9 @@ export class A365DefenderInterceptor implements Interceptor {
 
     const name = A365DefenderInterceptor.NAME;
     const labels = result.verdict?.resultLabels?.length ? [...result.verdict.resultLabels] : undefined;
+    // agent-hooks reserves `host_error:` for the host, and rejects a verdict that uses it.
     const defenderWarnings: Warning[] = (result.verdict?.warnings ?? []).map((warning) => ({
-      reason: warning.reason ?? `${name}:warning`,
+      reason: warning.reason && !warning.reason.startsWith(HOST_ERROR_PREFIX) ? warning.reason : `${name}:warning`,
       message: warning.message ?? '',
     }));
     // An allow of a truncated copy does not cover the rest of the content, so it is not a verdict.
@@ -168,21 +171,28 @@ export class A365DefenderInterceptor implements Interceptor {
       };
   }
 
-  /** Logging must not affect the verdict, so listener errors are ignored. */
+  /**
+   * Hands the evaluation to the listener after the verdict is returned, off the interceptor's timed
+   * path, so a slow listener cannot delay the action. Its errors and rejections are ignored, so
+   * logging cannot change a verdict.
+   */
   private notify(result: DefenderRtpEvaluationResult): void {
-    if (!this.onEvaluated) {
+    const listener = this.onEvaluated;
+    if (!listener) {
       return;
     }
 
-    try {
-      const pending: unknown = this.onEvaluated(result);
-      // Any thenable, including a promise from another realm, which `instanceof Promise` misses.
-      if (isThenable(pending)) {
-        Promise.resolve(pending).catch(() => undefined);
+    setImmediate(() => {
+      try {
+        const pending: unknown = listener(result);
+        // Any thenable, including a promise from another realm, which `instanceof Promise` misses.
+        if (isThenable(pending)) {
+          Promise.resolve(pending).catch(() => undefined);
+        }
+      } catch (_error) {
+        // Ignored by design.
       }
-    } catch (_error) {
-      // Ignored by design.
-    }
+    });
   }
 }
 

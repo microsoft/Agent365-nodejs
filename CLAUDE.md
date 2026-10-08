@@ -213,7 +213,7 @@ The keyword "Kairo" is legacy and should not appear in any code. Flag and remove
 | `CLUSTER_CATEGORY` | Environment classification | `local`, `dev`, `test`, `preprod`, `prod`, `gov`, `high`, `dod`, `mooncake`, `ex`, `rx` |
 | `MCP_PLATFORM_ENDPOINT` | MCP platform base URL | URL string |
 | `MCP_PLATFORM_AUTHENTICATION_SCOPE` | MCP platform auth scope | Scope string |
-| `ENABLE_A365_DEFENDER_RTP` | Enable Defender real-time protection (`DefenderRtpClient`) | `true`, `false` (default) |
+| `ENABLE_A365_DEFENDER_RTP` | Enable Defender real-time protection (`DefenderRtpClient`) | `true`, `false` (default); also 1/0, yes/no, on/off; other values are rejected |
 | `A365_DEFENDER_RTP_ENDPOINT` | Defender prevention endpoint (required when enabled) | URL string |
 | `A365_DEFENDER_RTP_FAIL_MODE` | Behavior when no Defender verdict is obtained | `open` (default), `closed`; other values are rejected |
 | `A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS` | Timeout of each Defender evaluation | Number (default: 10000, at most 2147481647) |

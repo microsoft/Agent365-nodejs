@@ -338,11 +338,14 @@ export class DefenderRtpClient {
     }
 
     // Defender requires tenant.id to equal the token's tenant, and the token is always the agent's,
-    // so a different tenant id could only be rejected. Its other fields describe that tenant, so
-    // they are dropped with it.
+    // so a different tenant id could only be rejected. The host's tenant name describes that tenant,
+    // so it is kept only when the ids match; no other tenant field is copied.
     const tenantId = wellFormed(agent.tenantId);
-    const tenant = asObject(copyJson(source['tenant']));
-    const hostTenantId = readString(tenant?.['id']);
+    const tenantNode = asRecord(source['tenant']);
+    const hostTenantId = stringOf(tenantNode?.['id']);
+    const tenantName = !hostTenantId || hostTenantId.toLowerCase() === tenantId.toLowerCase()
+      ? stringOf(tenantNode?.['name'])
+      : undefined;
     const hook: JsonObject = {
       spec: DefenderRtpClient.AGENT_HOOKS_SPEC,
       interception_point: point,
@@ -350,9 +353,7 @@ export class DefenderRtpClient {
       sequence: isNonNegativeInteger(source['sequence']) ? source['sequence'] : this.nextSequence(sessionId),
       agent: preparedAgent,
       session,
-      tenant: !hostTenantId || hostTenantId.toLowerCase() === tenantId.toLowerCase()
-        ? { ...tenant, id: tenantId }
-        : { id: tenantId },
+      tenant: tenantName ? { id: tenantId, name: tenantName } : { id: tenantId },
     };
 
     const actor = source['actor'] == null && agent.userId
@@ -367,8 +368,8 @@ export class DefenderRtpClient {
       };
     }
 
-    // A request id that is not a string is left out, like other identity fields of another shape.
-    const requestId = source['request_id'] == null ? stringOf(agent.requestId) || undefined : stringOf(source['request_id']);
+    // A request id that is not a string falls back like a missing one.
+    const requestId = stringOf(source['request_id']) || stringOf(agent.requestId) || undefined;
     if (requestId !== undefined) {
       hook['request_id'] = requestId;
     }
@@ -547,6 +548,8 @@ export class DefenderRtpClient {
             [DefenderRtpClient.CORRELATION_ID_HEADER]: correlationId,
           },
           body: JSON.stringify(hook),
+          // A redirect must not carry the context and token elsewhere: it fails like any transport error.
+          redirect: 'error',
           signal,
         });
       } catch (error) {
@@ -1163,12 +1166,6 @@ function fitContent(value: unknown, budget: Budget): Json | undefined {
   }
 
   return fitted;
-}
-
-/** A whole JSON copy of an identity or protocol value, with well-formed strings. */
-function copyJson(value: unknown): Json | undefined {
-  const fitted = fitJson(value, { remaining: Number.POSITIVE_INFINITY, maxString: Number.POSITIVE_INFINITY, cut: false });
-  return fitted === DROPPED ? undefined : fitted;
 }
 
 /**

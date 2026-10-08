@@ -46,7 +46,8 @@ connection for the agent identity's assertion (`getAgenticApplicationToken`) and
 `client_credentials` request. No user token is needed, so the same path works for user turns, autonomous runs,
 agent-to-agent calls and startup. The client caches the token per agent, tenant and scope until five minutes
 before it expires; `DefenderRtpClient.prefetchAccessToken` acquires it ahead of the first evaluation. The
-Defender endpoint and the token authority must be `https` URLs.
+Defender endpoint and the token authority must be `https` URLs, and neither request follows a redirect, so the
+context, the token and the agent identity's assertion are never sent anywhere else.
 
 ### Prerequisites
 
@@ -80,8 +81,8 @@ Like any other failure, a `403` follows the fail mode.
 - Identity and protocol fields (`spec`, the agent, session, tenant, actor, sequence, request and tool call ids) are
   kept or filled in, and normalized where Defender requires it: a UTC timestamp, a lowercase framework name,
   `tenant.id` set to the agent's tenant, and `target` equal to the point's field. Optional fields of another shape
-  (for example a `model` that is a string, or a `request_id` that isn't one) are left out rather than failing the
-  evaluation.
+  (for example a `model` that is a string) are left out rather than failing the evaluation, and a `request_id` that
+  isn't a string falls back to the agent's request id, like a missing one.
 - Every string and object key is well formed: a lone UTF-16 surrogate becomes U+FFFD, because Defender's JSON
   parser rejects it and the request would fail. When two keys of one object become equal that way, only the first
   is sent; in the content under decision, that makes the copy incomplete (see [Verdicts](#verdicts)).
@@ -146,12 +147,14 @@ if (!proceeds(record)) {
 }
 ```
 
-The call resolver runs for each emitted context that Defender evaluates. An emitter can also be created once per
-process, with a resolver that looks the turn up by `context.session.id`; its interceptor timeout is fixed then, so
-if the Defender timeout can change per request, pass an `interceptorTimeoutMilliseconds` above the largest value (or
-keep creating the emitter per turn). `createProtectionEmitter` uses `enforce` mode and the `parallel/strictest`
-profile, so an action proceeds only when every registered interceptor allows it, and keeps the last 1000
-interception records in memory (drain them with `takeRecords()` or forward them with `setRecordSink()`).
+The call resolver runs for each emitted context that Defender evaluates. The evaluation callback runs after the
+verdict is returned, off the interceptor's timed path, so a slow logger never delays the action. An emitter can
+also be created once per process, with a resolver that looks the turn up by `context.session.id`; its interceptor
+timeout is fixed then, so if the Defender timeout can change per request, pass an `interceptorTimeoutMilliseconds`
+above the largest value (or keep creating the emitter per turn). `createProtectionEmitter` uses `enforce` mode and
+the `parallel/strictest` profile, so an action proceeds only when every registered interceptor allows it, and keeps
+the last 1000 interception records in memory (drain them with `takeRecords()` or forward them with
+`setRecordSink()`).
 
 > **Use `createProtectionEmitter`, or set the interceptor timeout above the Defender timeout.** An
 > `InterceptionEmitter` constructed directly uses the agent-hooks default interceptor timeout of 5 seconds, below the
@@ -164,7 +167,8 @@ interception records in memory (drain them with `takeRecords()` or forward them 
 ## Verdicts
 
 - A Defender `allow` keeps Defender's warnings (for example `prevention_annotated`) and threat labels
-  (`result_labels`) on the agent-hooks verdict.
+  (`result_labels`) on the agent-hooks verdict. A warning reason in the `host_error:` namespace, which agent-hooks
+  reserves for the host, becomes `defender:warning`.
 - A Defender `deny` (or `transform`, which this version cannot apply) becomes a deny with reason
   `defender:block[:<reason>]`, Defender's message, and the correlation id as evidence
   (`urn:a365:defender:<correlation id>`).
@@ -195,7 +199,7 @@ Defender logs each evaluation under it. A `400` reports the failed validation ru
 
 | Variable | Meaning |
 |---|---|
-| `ENABLE_A365_DEFENDER_RTP` | `true` to call Defender; otherwise the interceptor allows everything without a call |
+| `ENABLE_A365_DEFENDER_RTP` | `true` (or 1, yes, on) to call Defender; `false` (or 0, no, off) or unset leaves it off, and the interceptor allows everything without a call. Any other value fails at startup |
 | `A365_DEFENDER_RTP_ENDPOINT` | the prevention endpoint, `https://<host>/v1/protection/evaluate` (required when enabled; `https` only) |
 | `A365_DEFENDER_RTP_FAIL_MODE` | `closed` blocks when no verdict is obtained; `open` (the default) allows. Any other value is rejected, so a typo can't silently fail open |
 | `A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS` | deadline of each evaluation, token acquisition included (default 10000, at most 2147481647) |

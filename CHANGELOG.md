@@ -52,7 +52,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`api://86a21212-634e-4553-b3d6-e477e4c9d9ec`, role `RealtimeProtection.Evaluate.All`), resolved
   by a `DefenderRtpTokenResolver` and cached per agent, tenant and scope;
   `DefenderRtpTokenResolvers.fromAgenticConnection` uses the agent's Agents SDK connection, the same
-  authority as Observability S2S export. The endpoint and the token authority must be `https`.
+  authority as Observability S2S export. The endpoint and the token authority must be `https`, and
+  neither request follows a redirect.
 - Every call sends a unique `x-ms-correlation-id`. One deadline covers the token acquisition and the
   request. When no verdict is obtained, the result follows `A365_DEFENDER_RTP_FAIL_MODE` (fail open
   by default; a value other than `open` or `closed` is rejected), and a `400` reports the failed
@@ -67,7 +68,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Configured with `ENABLE_A365_DEFENDER_RTP`, `A365_DEFENDER_RTP_ENDPOINT`,
   `A365_DEFENDER_RTP_FAIL_MODE`, `A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS` (default 10000),
   `A365_DEFENDER_RTP_AUTHENTICATION_SCOPE` and `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS`
-  (default 20000), or the matching `ToolingConfiguration` overrides. No new dependency.
+  (default 20000), or the matching `ToolingConfiguration` overrides. `ENABLE_A365_DEFENDER_RTP`
+  and `A365_DEFENDER_RTP_FAIL_MODE` accept only known values, so a typo fails at startup instead
+  of silently turning protection off or failing open. No new dependency.
 
 ### Added (`@microsoft/agents-a365-tooling-extensions-agenthooks`, new, preview)
 

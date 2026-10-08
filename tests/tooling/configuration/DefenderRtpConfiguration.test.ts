@@ -120,6 +120,22 @@ describe('Defender RTP tooling configuration', () => {
     expect(new ToolingConfiguration().defenderRtpFailClosed).toBe(failClosed);
   });
 
+  it.each([
+    ['true', true], ['1', true], ['YES', true], [' on ', true],
+    ['false', false], ['0', false], ['No', false], ['off', false], ['', false],
+  ])('reads ENABLE_A365_DEFENDER_RTP=%j', (value, enabled) => {
+    process.env.ENABLE_A365_DEFENDER_RTP = value;
+
+    expect(new ToolingConfiguration().isDefenderRtpEnabled).toBe(enabled);
+  });
+
+  it.each(['enabled', 'ture', '2', 'y'])('rejects ENABLE_A365_DEFENDER_RTP=%s rather than leaving protection off', (value) => {
+    process.env.ENABLE_A365_DEFENDER_RTP = value;
+
+    expect(() => new ToolingConfiguration().isDefenderRtpEnabled)
+      .toThrow('ENABLE_A365_DEFENDER_RTP must be true or false (or 1/0, yes/no, on/off).');
+  });
+
   it.each(['clsoed', 'fail-closed', 'true', 'block'])('rejects A365_DEFENDER_RTP_FAIL_MODE=%s rather than failing open', (mode) => {
     process.env.A365_DEFENDER_RTP_FAIL_MODE = mode;
 

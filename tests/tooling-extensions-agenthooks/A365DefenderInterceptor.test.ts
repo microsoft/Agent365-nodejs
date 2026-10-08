@@ -83,11 +83,15 @@ function harness(
 const builder = (sessionId: string, agentName?: string): AgentContextBuilder =>
   new AgentContextBuilder({ agentId: AGENT_ID, framework: 'agent-framework', sessionId, agentName });
 
+/** Waits until the evaluation listener, which runs after the verdict is returned, has run. */
+const settle = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
+
 describe('A365DefenderInterceptor under the agent-hooks emitter', () => {
   it('forwards the emitted context and allows', async () => {
     const { emitter, calls, evaluations } = harness(() => json({ decision: 'allow' }));
 
     const record = await emitter.emitUnchecked(builder('conversation:activity', 'SampleAgent').input('Find flights to Paris'));
+    await settle();
 
     expect(proceeds(record)).toBe(true);
     expect(record.verdict.decision).toBe('allow');
@@ -240,6 +244,7 @@ describe('A365DefenderInterceptor under the agent-hooks emitter', () => {
 
     const allowed = await open.emitter.emitUnchecked(builder('s-7').input('hello'));
     const denied = await closed.emitter.emitUnchecked(builder('s-7').input('hello'));
+    await settle();
 
     expect(proceeds(allowed)).toBe(true);
     expect(allowed.verdict.warnings).toEqual([{ reason: 'defender:unverified', message: 'no agent identity was resolved' }]);
@@ -276,9 +281,33 @@ describe('A365DefenderInterceptor under the agent-hooks emitter', () => {
     });
 
     const record = await emitter.emitUnchecked(builder('s-9').input('hello'));
+    await settle();
 
     expect(proceeds(record)).toBe(true);
     expect(record.verdict.reason).toBeUndefined();
+  });
+
+  it('returns the verdict before the evaluation listener runs, so a slow listener cannot delay it', async () => {
+    const order: string[] = [];
+    const { emitter } = harness(() => json({ decision: 'allow' }), {
+      onEvaluated: () => {
+        order.push('listener');
+        const until = Date.now() + 500;
+        while (Date.now() < until) {
+          // A slow, synchronous logger.
+        }
+      },
+    });
+
+    const started = Date.now();
+    const record = await emitter.emitUnchecked(builder('s-14').input('hello'));
+    const elapsed = Date.now() - started;
+    order.push('verdict');
+    await settle();
+
+    expect(proceeds(record)).toBe(true);
+    expect(elapsed).toBeLessThan(500);
+    expect(order).toEqual(['verdict', 'listener']);
   });
 
   it('handles a rejected promise from another realm or a thenable returned by the evaluation listener', async () => {
@@ -323,6 +352,21 @@ describe('A365DefenderInterceptor under the agent-hooks emitter', () => {
 
     expect(proceeds(record)).toBe(false);
     expect(record.verdict.reason).toBe('defender:block:prevention_blocked');
+  });
+
+  it('keeps an allow whose Defender warning uses the reason namespace reserved for the host', async () => {
+    const { emitter } = harness(() => json({
+      decision: 'allow',
+      warnings: [{ reason: 'host_error:spoofed', message: 'Noted.' }, { reason: 'prevention_annotated', message: 'Kept.' }],
+    }));
+
+    const record = await emitter.emitUnchecked(builder('s-13').input('hello'));
+
+    expect(proceeds(record)).toBe(true);
+    expect(record.verdict.warnings).toEqual([
+      { reason: 'defender:warning', message: 'Noted.' },
+      { reason: 'prevention_annotated', message: 'Kept.' },
+    ]);
   });
 });
 
@@ -400,6 +444,7 @@ describe('A365DefenderInterceptor with content longer than the limit', () => {
     const { emitter, evaluations } = harness(denyBlockMe);
 
     const record = await emitter.emitUnchecked(builder('s-long').input(PADDED));
+    await settle();
 
     expect(proceeds(record)).toBe(true);
     expect(record.verdict.warnings).toEqual([{ reason: 'defender:unverified', message: TRUNCATED_ERROR }]);
@@ -424,6 +469,7 @@ describe('A365DefenderInterceptor with content longer than the limit', () => {
     }));
 
     const record = await emitter.emitUnchecked(builder('s-long').input(PADDED));
+    await settle();
 
     expect(proceeds(record)).toBe(false);
     expect(record.verdict.reason).toBe('defender:block:prevention_redacted');

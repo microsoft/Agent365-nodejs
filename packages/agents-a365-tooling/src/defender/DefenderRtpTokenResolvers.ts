@@ -65,6 +65,8 @@ export class DefenderRtpTokenResolvers {
           client_assertion: assertion,
           scope: scopes.join(' '),
         }),
+        // A redirect would resend the client assertion to another URL, so it fails the request instead.
+        redirect: 'error',
         signal,
       };
       const response = fetchImplementation ? await fetchImplementation(url, init) : await fetch(url, init);

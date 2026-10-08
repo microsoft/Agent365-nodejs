@@ -32,8 +32,8 @@ dependency, so core tooling users do not take one on.
 │  1. Allow other points, and everything while Defender RTP is off     │
 │  2. resolveCall(context) ─► A365DefenderCall (identity + tokens)     │
 │  3. DefenderRtpClient.evaluateHookContext(...)                       │
-│  4. onEvaluated(result) for logging (errors ignored)                 │
-│  5. toVerdict(result) ─► agent-hooks Verdict                         │
+│  4. toVerdict(result) ─► agent-hooks Verdict, returned               │
+│  5. onEvaluated(result) afterwards, for logging (errors ignored)     │
 └──────────────────────────────────────────────────────────────────────┘
                                  │
                                  ▼
@@ -66,14 +66,16 @@ new A365DefenderInterceptor(
 - An exception from `resolveCall` or `evaluateHookContext` (an invalid context or identity) is never a verdict:
   it becomes `DefenderRtpClient.unavailable(...)`, which follows the fail mode.
 - `onEvaluated` receives every evaluation, including the ones without a verdict (correlation id, latency, error),
-  for logging; its errors and rejections (of any thenable it returns, including a promise from another realm) are
-  ignored so logging cannot change a verdict.
+  for logging. It runs after the verdict is returned, on a later turn of the event loop, off the interceptor's
+  timed path, so a slow listener cannot delay the action or push it past the emitter's timeout. Its errors and
+  rejections (of any thenable it returns, including a promise from another realm) are ignored so logging cannot
+  change a verdict.
 
 ### toVerdict
 
 | Defender result | agent-hooks verdict |
 |---|---|
-| evaluated, `allow` | `allow` with Defender's warnings and `result_labels` |
+| evaluated, `allow` | `allow` with Defender's warnings and `result_labels`; a warning reason in the `host_error:` namespace, which agent-hooks reserves for the host, becomes `defender:warning` |
 | evaluated, `deny` or `transform` | `deny`, reason `defender:block[:<reason>]`, Defender's message, evidence `urn:a365:defender:<correlation id>`, labels |
 | not evaluated, fail open | `allow` with warning `defender:unverified` carrying the error |
 | not evaluated, fail closed | `deny`, reason `runtime_error:defender_unverified`, same warning |

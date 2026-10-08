@@ -173,15 +173,15 @@ if (result && !result.allowed) { /* block: result.blockReason */ }
   sessions; a session seen again after that resumes above every number given to a dropped session, so its
   sequence keeps increasing. `spec` is `agent-hooks/0.1`, the timestamp is UTC, `agent.framework` matches
   `^[a-z0-9_-]+$`, `target` equals the point's field, `tool_call`/`tool_result` carry only spec members, and
-  loosely filled optional fields (extensions, model, tools, messages, actor) are repaired or dropped. `tenant.id`
-  is always the agent's tenant, because Defender requires it to equal the token's tenant (a different host tenant
-  is replaced, with its other fields). `agent.id`, `actor`, `request_id` and `model` are filled from
+  loosely filled optional fields (extensions, model, tools, messages, actor) are repaired or dropped. `tenant`
+  carries only `id`, always the agent's tenant because Defender requires it to equal the token's tenant, and the
+  host's `name` when the host's tenant id matches. `agent.id`, `actor`, `request_id` and `model` are filled from
   `DefenderRtpAgentContext` when the context has none. `session` and `trace` carry only their spec members of the
   right shape (`id`, a UTC `started_at` and a non-negative integer `turn`; string `trace_id` and `span_id`). Every
   optional field is shape-checked before it is read: one of another shape (for example a `model` or `actor` that
-  is a string, a `request_id` that is not a string, or an `a365` extension that is not an object) is left out,
-  never indexed, so it cannot fail an evaluation; a `session` that is not an object has no `session.id`, which is
-  required. Every string and object key is well formed: a lone UTF-16 surrogate becomes U+FFFD
+  is a string, or an `a365` extension that is not an object) is left out, never indexed, so it cannot fail an
+  evaluation; a `request_id` that is not a string falls back to the agent's request id like a missing one, and a
+  `session` that is not an object has no `session.id`, which is required. Every string and object key is well formed: a lone UTF-16 surrogate becomes U+FFFD
   (`String.prototype.toWellFormed`, with a fallback on Node.js 18), because `JSON.stringify` would write it as a
   `\uD8xx` escape that Defender's JSON parser rejects, failing the request. When two keys of one object become
   equal that way, only the first is sent, and in the content under decision the copy counts as incomplete.
@@ -225,7 +225,9 @@ if (result && !result.allowed) { /* block: result.blockReason */ }
   acquisition is never cached. Within five minutes of expiry, evaluations keep using the still-valid cached token
   while it is refreshed in the background, so a slow or failed early refresh neither delays nor fails them
   (`prefetchAccessToken` waits for the refresh and reports its failure). The endpoint and the token authority must
-  be absolute `https` URLs.
+  be absolute `https` URLs with a host; each is parsed once and requests go to the parsed URL. Neither request
+  follows a redirect (`redirect: 'error'`), so the context, the token and the assertion are never sent elsewhere;
+  a redirect fails like any transport error.
 - **Correlation**: every call sends a unique `x-ms-correlation-id`, returned as `result.correlationId`.
 - **Verdicts**: `allow` proceeds (warnings and `resultLabels` are kept); `deny` and `transform` block. Members of
   another shape in a response (a `transform` that is not an object, warnings or labels that are not arrays) are
@@ -346,7 +348,7 @@ const customConfig = new ToolingConfiguration({
 | `mcpPlatformEndpoint` | `MCP_PLATFORM_ENDPOINT` | `https://agent365.svc.cloud.microsoft` | Base URL for MCP platform |
 | `useToolingManifest` | `NODE_ENV` | `false` | Use local manifest (true if NODE_ENV='development') |
 | `mcpPlatformAuthenticationScope` | `MCP_PLATFORM_AUTHENTICATION_SCOPE` | Production scope | OAuth scope for MCP platform auth |
-| `isDefenderRtpEnabled` | `ENABLE_A365_DEFENDER_RTP` | `false` | Enables Defender RTP (`DefenderRtpClient`) |
+| `isDefenderRtpEnabled` | `ENABLE_A365_DEFENDER_RTP` | `false` | Enables Defender RTP (`DefenderRtpClient`); accepts true/false, 1/0, yes/no or on/off, and any other value throws |
 | `defenderRtpEndpoint` | `A365_DEFENDER_RTP_ENDPOINT` | None (required when enabled) | Defender prevention endpoint |
 | `defenderRtpFailClosed` | `A365_DEFENDER_RTP_FAIL_MODE` | `false` (open) | `closed` blocks when no verdict is obtained; values other than `open` and `closed` throw |
 | `defenderRtpTimeoutMilliseconds` | `A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS` | `10000` | Timeout of each evaluation; at most 2147481647, as Node fires a longer timer after 1 ms |
@@ -383,7 +385,7 @@ src/
 | `NODE_ENV` | Controls useToolingManifest (dev mode) | Production |
 | `MCP_PLATFORM_ENDPOINT` | Base URL for MCP platform | `https://agent365.svc.cloud.microsoft` |
 | `MCP_PLATFORM_AUTHENTICATION_SCOPE` | OAuth scope for MCP platform | Production scope |
-| `ENABLE_A365_DEFENDER_RTP` | Enables Defender RTP | `false` |
+| `ENABLE_A365_DEFENDER_RTP` | Enables Defender RTP (true/false, 1/0, yes/no or on/off; other values are rejected) | `false` |
 | `A365_DEFENDER_RTP_ENDPOINT` | Defender prevention endpoint (`https://<host>/v1/protection/evaluate`) | None |
 | `A365_DEFENDER_RTP_FAIL_MODE` | `closed` blocks when no verdict is obtained; values other than `open` and `closed` are rejected | `open` |
 | `A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS` | Timeout of each evaluation (at most 2147481647) | `10000` |

@@ -122,13 +122,24 @@ export class ToolingConfiguration extends RuntimeConfiguration {
 
   /**
    * Whether Microsoft Defender for AI real-time protection is enabled. When false,
-   * `DefenderRtpClient` evaluates nothing and makes no calls.
+   * `DefenderRtpClient` evaluates nothing and makes no calls. `ENABLE_A365_DEFENDER_RTP` accepts
+   * true/false, 1/0, yes/no or on/off (any case; blank means false); any other value throws.
    */
   get isDefenderRtpEnabled(): boolean {
     const override = this.toolingOverrides.isDefenderRtpEnabled?.();
     if (override !== undefined) return override;
 
-    return RuntimeConfiguration.parseEnvBoolean(process.env.ENABLE_A365_DEFENDER_RTP);
+    // Strict, so a typo fails at startup instead of silently turning protection off.
+    const value = process.env.ENABLE_A365_DEFENDER_RTP?.trim().toLowerCase();
+    if (!value || ['false', '0', 'no', 'off'].includes(value)) {
+      return false;
+    }
+
+    if (['true', '1', 'yes', 'on'].includes(value)) {
+      return true;
+    }
+
+    throw new Error('ENABLE_A365_DEFENDER_RTP must be true or false (or 1/0, yes/no, on/off).');
   }
 
   /**

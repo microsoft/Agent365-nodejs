@@ -107,6 +107,7 @@ describe('DefenderRtpClient', () => {
       const [call] = calls;
       expect(call.method).toBe('POST');
       expect(call.url).toBe(ENDPOINT);
+      expect(call.redirect).toBe('error');
       expect(call.authorization).toBe(`Bearer ${await tokens.resolve(AGENT_ID, TENANT_ID, [])}`);
       expect(call.correlationId).toMatch(UUID);
       expect(calls[1].correlationId).not.toBe(call.correlationId);
@@ -139,14 +140,16 @@ describe('DefenderRtpClient', () => {
       const agent = { ...AGENT, tenantId };
       const actor = { id: 'svc', kind: 'service' };
 
-      await client.evaluateHookContext({ ...inputContext('one'), tenant: { id: tenantId.toUpperCase(), name: 'Contoso' }, actor }, agent, tokens.resolve);
+      await client.evaluateHookContext({ ...inputContext('one'), tenant: { id: tenantId.toUpperCase(), name: 'Contoso', region: 'x', items: new Array(1000).fill('y') }, actor }, agent, tokens.resolve);
       await client.evaluateHookContext({ ...inputContext('two'), tenant: { id: 'other-tenant', name: 'Fabrikam' } }, agent, tokens.resolve);
       await client.evaluateHookContext({ ...inputContext('three'), tenant: { name: 'Contoso' } }, agent, tokens.resolve);
+      await client.evaluateHookContext({ ...inputContext('four'), tenant: 'contoso' }, agent, tokens.resolve);
 
       expect(calls.map((call) => call.body.tenant)).toEqual([
         { id: tenantId, name: 'Contoso' },
         { id: tenantId },
         { id: tenantId, name: 'Contoso' },
+        { id: tenantId },
       ]);
       expect(calls[0].body.actor).toEqual(actor);
     });
@@ -449,7 +452,7 @@ describe('DefenderRtpClient', () => {
       expect(contractErrors(body)).toEqual([]);
       expect(body.model).toBeUndefined();
       expect(body.actor).toBeUndefined();
-      expect(body.request_id).toBeUndefined();
+      expect(body.request_id).toBe('activity-id');
       expect(body.tenant).toEqual({ id: TENANT_ID });
       expect(body.tools).toEqual([{ name: 'FetchPage' }]);
       expect(body.messages).toBeUndefined();
@@ -1554,6 +1557,13 @@ describe('DefenderRtpClient', () => {
         .not.toThrow();
     });
 
+    it('rejects an unknown ENABLE_A365_DEFENDER_RTP value at construction', () => {
+      process.env.ENABLE_A365_DEFENDER_RTP = 'enabled';
+
+      expect(() => new DefenderRtpClient())
+        .toThrow('ENABLE_A365_DEFENDER_RTP must be true or false (or 1/0, yes/no, on/off).');
+    });
+
     it('checks the endpoint again when the configuration changes', async () => {
       let enabled = false;
       const endpoint = fakeEndpoint(allow);
@@ -1586,10 +1596,10 @@ describe('DefenderRtpTokenResolvers.fromAgenticConnection', () => {
         return 'fmi-assertion';
       },
     };
-    const requests: Array<{ url: string; form: URLSearchParams }> = [];
+    const requests: Array<{ url: string; form: URLSearchParams; redirect: RequestRedirect | undefined }> = [];
     const resolver = DefenderRtpTokenResolvers.fromAgenticConnection(connection, {
       fetchImplementation: (async (url: string, init: RequestInit) => {
-        requests.push({ url, form: new URLSearchParams(String(init.body)) });
+        requests.push({ url, form: new URLSearchParams(String(init.body)), redirect: init.redirect });
         return json({ access_token: 'defender-token', token_type: 'Bearer' });
       }) as unknown as typeof fetch,
     });
@@ -1600,6 +1610,7 @@ describe('DefenderRtpTokenResolvers.fromAgenticConnection', () => {
     expect(assertions).toEqual([`${TENANT_ID}|${AGENT_ID}`]);
     expect(requests).toHaveLength(1);
     expect(requests[0].url).toBe(`https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/token`);
+    expect(requests[0].redirect).toBe('error');
     expect(Object.fromEntries(requests[0].form)).toEqual({
       grant_type: 'client_credentials',
       client_id: AGENT_ID,
