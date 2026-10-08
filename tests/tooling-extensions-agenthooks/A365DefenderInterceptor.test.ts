@@ -478,11 +478,17 @@ describe('A365DefenderInterceptor.toVerdict', () => {
   it('maps a not-evaluated result by the fail mode', () => {
     expect(A365DefenderInterceptor.toVerdict({ ...base, allowed: true, evaluated: false, error: 'request timeout' }))
       .toEqual({ decision: 'allow', warnings: [{ reason: 'defender:unverified', message: 'request timeout' }] });
+    expect(A365DefenderInterceptor.toVerdict({ ...base, allowed: false, evaluated: false, blockReason: 'Not verified.' }))
+      .toEqual({
+        decision: 'deny',
+        reason: 'runtime_error:defender_unverified',
+        message: 'Not verified.',
+        warnings: [{ reason: 'defender:unverified', message: 'no verdict was returned' }],
+      });
     expect(A365DefenderInterceptor.toVerdict({ ...base, allowed: false, evaluated: false }))
       .toEqual({
         decision: 'deny',
         reason: 'runtime_error:defender_unverified',
-        message: 'Security validation is unavailable and this agent is configured to fail closed.',
         warnings: [{ reason: 'defender:unverified', message: 'no verdict was returned' }],
       });
   });

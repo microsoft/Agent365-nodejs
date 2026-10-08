@@ -78,7 +78,7 @@ const INCOMPLETE_FAIL_CLOSED_REASON =
 const COLLIDED_KEYS_ERROR =
   'content has object keys that are equal once made well formed; Defender evaluated an incomplete copy';
 const UNSCANNED_TOOL_ERROR =
-  `the called tool was not among the first ${MAX_CALLED_TOOL_SCAN} tool declarations; Defender evaluated an incomplete copy`;
+  `the called tool was not among the first ${MAX_CALLED_TOOL_SCAN} tool declarations; Defender evaluated without its declaration`;
 
 /** Why the copy leaves out part of what Defender needs to decide. */
 type Incomplete = 'truncated' | 'collided' | 'tool_truncated' | 'tool_unscanned';
@@ -287,9 +287,10 @@ export class DefenderRtpClient {
    * Every string is well formed (a lone surrogate becomes U+FFFD, which Defender's JSON parser
    * requires) and at most `maxCharacters` long, and the copy carries at most four times that much
    * content. The content under decision comes first, with up to half of it (it is sent twice, as
-   * `target` too); then the tool call arguments at `post_tool_call`, the tool declarations (the called
-   * tool first, always declared), the newest messages, extensions and any other fields share what it
-   * leaves, in that order. Every copied element counts at least one character, and lists and objects
+   * `target` too); then, at a tool call, the called tool's declaration (always present, its name
+   * copied whole); then the tool call arguments at `post_tool_call`, the other tool declarations, the
+   * newest messages, extensions and any other fields share what is left, in that order. Every copied
+   * element counts at least one character, and lists and objects
    * are read only as far as the budget reaches, so a huge context is never scanned whole. `incomplete`
    * tells whether, and why, the copy leaves part of the content under decision out: it was cut, or two
    * of its keys became one once made well formed. Optional fields of an unexpected shape are left out,
@@ -424,13 +425,19 @@ export class DefenderRtpClient {
     }
 
     const rest: Budget = { remaining: 2 * decision.remaining, maxString: maxCharacters, cut: false };
+    // At a tool call, Defender decides with the called tool's declaration, so it is charged next.
+    const toolList: unknown[] = Array.isArray(source['tools']) ? source['tools'] : [];
+    const calledTool = toolName === undefined ? undefined : fitCalledTool(toolList, toolName, source['extensions'], rest);
     if (point === 'post_tool_call') {
       (hook['tool_call'] as JsonObject)['args'] = toArguments(fitContent(toolCall?.['args'], rest));
     }
 
-    const tools = fitTools(source['tools'], toolName, source['extensions'], rest);
-    if (tools.declarations) {
-      hook['tools'] = tools.declarations;
+    const declarations = [
+      ...(calledTool ? [calledTool.declaration] : []),
+      ...fitOtherTools(toolList, calledTool?.index ?? -1, rest),
+    ];
+    if (declarations.length > 0) {
+      hook['tools'] = declarations;
     }
 
     const messages = fitMessages(source['messages'], rest);
@@ -472,7 +479,7 @@ export class DefenderRtpClient {
     }
 
     hook['target'] = targetOf(hook);
-    const incomplete = decision.cut ? 'truncated' : decision.collided ? 'collided' : tools.calledTool;
+    const incomplete = decision.cut ? 'truncated' : decision.collided ? 'collided' : calledTool?.incomplete;
     return incomplete ? { hook, incomplete } : { hook };
   }
 
@@ -498,8 +505,8 @@ export class DefenderRtpClient {
     const errors: Record<Incomplete, string> = {
       truncated: `content exceeded A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS (${maxCharacters}); Defender evaluated a truncated copy`,
       collided: COLLIDED_KEYS_ERROR,
-      tool_truncated: 'the called tool\'s description or schema did not fit A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS '
-        + `(${maxCharacters}); Defender evaluated a truncated copy`,
+      tool_truncated: `the called tool's declaration exceeded A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS (${maxCharacters}); `
+        + 'Defender evaluated a truncated copy',
       tool_unscanned: UNSCANNED_TOOL_ERROR,
     };
     return {
@@ -764,21 +771,14 @@ export class DefenderRtpClient {
     void configuration.defenderRtpMaxContentCharacters;
   }
 
-  /** The configured endpoint, which must be an absolute https URL so the token is never sent in plaintext. */
+  /** The configured endpoint as an absolute https URL, so the token is never sent in plaintext. */
   private static endpoint(configuration: ToolingConfiguration): string {
-    const endpoint = configuration.defenderRtpEndpoint;
-    let protocol: string | undefined;
-    try {
-      protocol = new URL(endpoint).protocol;
-    } catch (_error) {
-      protocol = undefined;
-    }
-
-    if (protocol !== 'https:') {
+    const url = parseHttpsUrl(configuration.defenderRtpEndpoint);
+    if (!url) {
       throw new Error('A365_DEFENDER_RTP_ENDPOINT must be an absolute https URL.');
     }
 
-    return endpoint;
+    return url.href;
   }
 
   private static requireArguments(agent: DefenderRtpAgentContext, tokenResolver: DefenderRtpTokenResolver): void {
@@ -800,55 +800,55 @@ export class DefenderRtpClient {
 // ---- module helpers ----------------------------------------------------------------------------
 
 /**
- * Tool declarations as Defender accepts them (a name, a string description, an object schema), within
- * the budget. At a tool call, the called tool's declaration comes first and is always present: it is
- * looked for by name among the first 10000 entries, and otherwise declared by name, with the host's
- * `extensions.a365.tool.description`. Defender decides on the call with it, so `calledTool` tells
- * whether Defender misses part of it: its description or schema was cut (`tool_truncated`), or the
- * search stopped at that limit (`tool_unscanned`); a tool absent from a list searched to the end is
- * not. The other declarations follow in host order, reading only as many entries as the budget can
- * hold, so a huge list is never scanned whole.
+ * The called tool's declaration, which Defender decides a tool call with. It is searched for by name
+ * only among the first 10000 entries of `tools`; otherwise it is declared by name with the host's
+ * `extensions.a365.tool.description`. Its name is copied whole, without cost, and its description and
+ * schema within the budget. `incomplete` tells whether Defender misses part of it: its description or
+ * schema was cut (`tool_truncated`), or the list is longer than 10000 entries and the tool is not
+ * among the first 10000 (`tool_unscanned`); a tool absent from a shorter list is neither.
  */
-function fitTools(
-  tools: unknown,
-  calledTool: string | undefined,
+function fitCalledTool(
+  list: unknown[],
+  name: string,
   extensions: unknown,
   budget: Budget,
-): { declarations?: JsonObject[]; calledTool?: 'tool_truncated' | 'tool_unscanned' } {
-  const list: unknown[] = Array.isArray(tools) ? tools : [];
-  const declarations: JsonObject[] = [];
-  let incomplete: 'tool_truncated' | 'tool_unscanned' | undefined;
-  let called = -1;
-  if (calledTool !== undefined) {
-    const searched = Math.min(list.length, MAX_CALLED_TOOL_SCAN);
-    for (let index = 0; index < searched; index += 1) {
-      const tool = list[index];
-      if (isObject(tool) && stringOf(tool['name']) === calledTool) {
-        called = index;
-        break;
-      }
+): { declaration: JsonObject; index: number; incomplete?: 'tool_truncated' | 'tool_unscanned' } {
+  let index = -1;
+  const searched = Math.min(list.length, MAX_CALLED_TOOL_SCAN);
+  for (let entry = 0; entry < searched; entry += 1) {
+    const tool = list[entry];
+    if (isObject(tool) && stringOf(tool['name']) === name) {
+      index = entry;
+      break;
     }
-
-    // The name is always declared; whether the description or schema is cut is tracked on its own.
-    const declared = called >= 0 ? list[called] as Record<string, unknown> : calledToolFromExtensions(extensions);
-    const wasCut = budget.cut;
-    budget.cut = false;
-    budget.remaining = Math.max(0, budget.remaining - (1 + 'name'.length + calledTool.length));
-    declarations.push(describeTool(calledTool, declared, budget));
-    if (budget.cut) {
-      incomplete = 'tool_truncated';
-    } else if (called < 0 && list.length > MAX_CALLED_TOOL_SCAN) {
-      incomplete = 'tool_unscanned';
-    }
-
-    budget.cut = wasCut || budget.cut;
   }
 
+  // Whether this declaration is cut is tracked apart from the rest of the context.
+  const wasCut = budget.cut;
+  budget.cut = false;
+  const declaration = describeTool(
+    name,
+    index >= 0 ? list[index] as Record<string, unknown> : calledToolFromExtensions(extensions),
+    budget,
+  );
+  const cut = budget.cut;
+  budget.cut = wasCut || cut;
+  const incomplete = cut ? 'tool_truncated' : index < 0 && list.length > MAX_CALLED_TOOL_SCAN ? 'tool_unscanned' : undefined;
+  return incomplete ? { declaration, index, incomplete } : { declaration, index };
+}
+
+/**
+ * The other tool declarations (a name, a string description, an object schema) in host order, skipping
+ * the called tool's entry, within the budget: only as many entries are read as it can hold, so a huge
+ * list is never scanned whole.
+ */
+function fitOtherTools(list: unknown[], calledIndex: number, budget: Budget): JsonObject[] {
+  const declarations: JsonObject[] = [];
   const readable = Math.min(list.length, Math.floor(budget.remaining / MIN_TOOL_DECLARATION_COST));
   for (let index = 0; index < readable && budget.remaining > 0; index += 1) {
     const tool = list[index];
     const name = isObject(tool) ? stringOf(tool['name']) : undefined;
-    if (index === called || !isObject(tool) || !name) {
+    if (index === calledIndex || !isObject(tool) || !name) {
       continue;
     }
 
@@ -862,10 +862,7 @@ function fitTools(
     declarations.push(describeTool(name, tool, budget));
   }
 
-  return {
-    ...(declarations.length > 0 ? { declarations } : {}),
-    ...(incomplete ? { calledTool: incomplete } : {}),
-  };
+  return declarations;
 }
 
 /** A declaration of `name` with the tool's string description and object schema, as far as they fit. */
@@ -1411,6 +1408,16 @@ function utcInstant(value: unknown): string | undefined {
 
   const parsed = Date.parse(TIMESTAMP_WITHOUT_OFFSET.test(value) ? `${value}Z` : value);
   return Number.isNaN(parsed) ? undefined : new Date(parsed).toISOString();
+}
+
+/** `value` parsed as an absolute https URL with a host (`https:host` reads as `https://host`), or undefined. */
+function parseHttpsUrl(value: string): URL | undefined {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && url.hostname ? url : undefined;
+  } catch (_error) {
+    return undefined;
+  }
 }
 
 function singleLine(value: string, maxCharacters: number): string {

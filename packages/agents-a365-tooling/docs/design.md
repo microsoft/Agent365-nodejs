@@ -193,11 +193,13 @@ if (result && !result.allowed) { /* block: result.blockReason */ }
     other values count their length (at least one character, so empty strings and nulls count too); each array,
     object, tool declaration and message counts one more; and tool declarations and messages count their keys.
   - The content under decision comes first and may use half of the total, as it is sent twice (`target` mirrors
-    it). Twice what it leaves goes to the rest of the context, in this order: the tool call arguments at
-    `post_tool_call`, the tool declarations, the newest messages, extensions, then any other fields.
+    it). Twice what it leaves goes to the rest of the context, in this order: at a tool call, the called tool's
+    declaration; the tool call arguments at `post_tool_call`; the other tool declarations; the newest messages;
+    extensions; then any other fields.
   - At a tool call, Defender decides with the called tool's declaration, so it is copied first and always
-    present. It is searched for by name among the first 10000 declarations, and otherwise declared by name, with
-    `extensions.a365.tool.description`. The other declarations follow in host order.
+    present, its name whole and without cost. It is searched for by name among the first 10000 declarations, and
+    otherwise declared by name, with `extensions.a365.tool.description`. The other declarations follow in host
+    order.
   - Lists and objects are read only as far as the budget reaches, so a huge one is never scanned whole: the
     called tool is searched for among at most 10000 declarations and the others are read only as far as they
     could fit, the history is read newest first and stops before a message without a role or content, and keys
@@ -208,9 +210,9 @@ if (result && !result.allowed) { /* block: result.blockReason */ }
   `pre_tool_call`, `tool_result.value` at `post_tool_call`, `output.content`) was cut (a string longer than the
   limit, nesting deeper than 32 levels, or more content than its share), or two of its keys became one once made
   well formed, Defender saw only part of it. The same holds at a tool call when the called tool's description or
-  schema was cut, or the tool was not among the first 10000 declarations searched (a tool absent from a list
-  searched to the end is not). A block (`deny` or `transform`) still stands, but an allow does not cover the
-  rest: the result is `truncated: true`, `allowed` follows `defenderRtpFailClosed`, and `error` says why.
+  schema was cut, or the list is longer than 10000 declarations and the tool is not among the first 10000 (a tool
+  absent from a list of at most 10000 is not). A block (`deny` or `transform`) still stands, but an allow does not
+  cover the rest: the result is `truncated: true`, `allowed` follows `defenderRtpFailClosed`, and `error` says why.
   Otherwise content padded past the limit would be authorized unseen. Trimming elsewhere (other tool
   declarations, extensions, messages) does not count.
 - **Authentication**: always the agent identity's app-only token in the agent's tenant, for the Defender API

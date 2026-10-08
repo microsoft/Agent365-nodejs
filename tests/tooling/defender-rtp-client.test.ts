@@ -723,7 +723,7 @@ describe('DefenderRtpClient', () => {
       expect(contractErrors(body)).toEqual([]);
       expect(body.tools.map((tool: { name: string }) => tool.name)).toEqual(['tool-7', 'tool-0', 'tool-1', 'tool-2', 'tool-3']);
       expect(body.tools[0].description).toBe('d'.repeat(60));
-      expect(body.tools[4].description).toBe(`${'d'.repeat(25)}...[truncated 35 chars]`);
+      expect(body.tools[4].description).toBe(`${'d'.repeat(36)}...[truncated 24 chars]`);
       expect(result?.truncated).toBeUndefined();
     });
 
@@ -782,18 +782,43 @@ describe('DefenderRtpClient', () => {
             allowed: false,
             evaluated: true,
             truncated: true,
-            error: 'the called tool was not among the first 10000 tool declarations; Defender evaluated an incomplete copy',
+            error: 'the called tool was not among the first 10000 tool declarations; Defender evaluated without its declaration',
             blockReason: 'The content could not be fully validated by Microsoft Defender for AI, and this agent is configured to fail closed.',
           });
         },
       );
 
-      it('is declared by name, without counting as truncation, when a list searched to the end leaves it out', async () => {
+      it.each([
+        [10_000, undefined],
+        [10_001, true],
+      ])('without the called tool, a list of %d declarations counts as truncated: %s', async (count, truncated) => {
         const { client, calls, tokens } = create(allow, { defenderRtpFailClosed: () => true });
 
-        const result = await client.evaluateHookContext(callTo('pre_tool_call', decoys(10_000)), AGENT, tokens.resolve);
+        const result = await client.evaluateHookContext(callTo('pre_tool_call', decoys(count)), AGENT, tokens.resolve);
 
         expect(calls[0].body.tools[0]).toEqual({ name: 'SendMail' });
+        expect(result?.truncated).toBe(truncated);
+        expect(result?.allowed).toBe(truncated === undefined);
+      });
+
+      it('is charged before the tool call arguments at post_tool_call', async () => {
+        const { client, calls, tokens } = create(allow, {
+          defenderRtpMaxContentCharacters: () => 100,
+          defenderRtpFailClosed: () => true,
+        });
+        const context = {
+          ...envelope('post_tool_call'), target: 'r'.repeat(50),
+          tool_call: { id: 'call-1', name: 'SendMail', args: { a: 'a'.repeat(90), b: 'b'.repeat(90), c: 'c'.repeat(90) } },
+          tool_result: { value: 'r'.repeat(50), is_error: false },
+          tools: [{ name: 'SendMail', description: 'd'.repeat(90) }],
+        };
+
+        const result = await client.evaluateHookContext(context, AGENT, tokens.resolve);
+
+        // 300 after the result: the description takes 101, so the arguments get 199 and the last one is cut.
+        const body = calls[0].body;
+        expect(body.tools).toEqual([{ name: 'SendMail', description: 'd'.repeat(90) }]);
+        expect(body.tool_call.args).toEqual({ a: 'a'.repeat(90), b: 'b'.repeat(90), c: 'c'.repeat(15) });
         expect(result).toMatchObject({ allowed: true, evaluated: true });
         expect(result?.truncated).toBeUndefined();
       });
@@ -814,7 +839,7 @@ describe('DefenderRtpClient', () => {
           allowed: false,
           evaluated: true,
           truncated: true,
-          error: 'the called tool\'s description or schema did not fit A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS (100); '
+          error: 'the called tool\'s declaration exceeded A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS (100); '
             + 'Defender evaluated a truncated copy',
           blockReason: 'The content is too long to be fully validated by Microsoft Defender for AI, and this agent is configured to fail closed.',
         });
@@ -835,15 +860,15 @@ describe('DefenderRtpClient', () => {
 
       const result = await client.evaluateHookContext(context, AGENT, tokens.resolve);
 
-      // 400 in all: the result is sent twice (100), the arguments take 92, the tools 85, the messages 76,
-      // and the extensions get the last 47.
+      // 400 in all: the result is sent twice (100), the called tool's description takes 71, the arguments 92,
+      // the messages 76, and the extensions get the last 61.
       const body = calls[0].body;
       expect(contractErrors(body)).toEqual([]);
       expect(body.tool_result.value).toBe('r'.repeat(50));
       expect(body.tool_call.args).toEqual({ q: 'a'.repeat(90) });
       expect(body.tools).toEqual([{ name: 'FetchPage', description: 'd'.repeat(60) }]);
       expect(body.messages).toEqual([{ role: 'user', content: 'm'.repeat(60) }]);
-      expect(body.extensions).toEqual({ a365: { note: `${'n'.repeat(15)}...[truncated 75 chars]` } });
+      expect(body.extensions).toEqual({ a365: { note: `${'n'.repeat(29)}...[truncated 61 chars]` } });
       expect(body.custom_field).toBeUndefined();
       expect(result?.truncated).toBeUndefined();
     });
@@ -917,7 +942,7 @@ describe('DefenderRtpClient', () => {
         allowed: true,
         evaluated: true,
         truncated: true,
-        error: 'the called tool was not among the first 10000 tool declarations; Defender evaluated an incomplete copy',
+        error: 'the called tool was not among the first 10000 tool declarations; Defender evaluated without its declaration',
       });
     });
 
@@ -1506,10 +1531,18 @@ describe('DefenderRtpClient', () => {
     });
 
     it('requires an absolute https endpoint URL', () => {
-      for (const endpoint of ['prevention/evaluate', 'http://prevention.example.test/v1/protection/evaluate']) {
+      for (const endpoint of ['prevention/evaluate', 'http://prevention.example.test/v1/protection/evaluate', 'https:', 'https://']) {
         expect(() => new DefenderRtpClient({ configProvider: defenderConfiguration({ defenderRtpEndpoint: () => endpoint }) }))
           .toThrow('A365_DEFENDER_RTP_ENDPOINT must be an absolute https URL.');
       }
+    });
+
+    it('calls the endpoint at its parsed absolute URL', async () => {
+      const { client, calls, tokens } = create(allow, { defenderRtpEndpoint: () => 'https:prevention.example.test/v1/protection/evaluate' });
+
+      await client.evaluateHookContext(inputContext('hello'), AGENT, tokens.resolve);
+
+      expect(calls[0].url).toBe(ENDPOINT);
     });
 
     it('rejects an unknown fail mode when enabled, rather than failing open', () => {
@@ -1685,18 +1718,22 @@ describe('DefenderRtpTokenResolvers.fromAgenticConnection', () => {
     const connection = { getAgenticApplicationToken: async () => 'fmi-assertion' };
     expect(() => DefenderRtpTokenResolvers.fromAgenticConnection({} as never))
       .toThrow('connection must provide getAgenticApplicationToken.');
-    for (const authority of ['http://login.example.test', 'login.example.test']) {
+    for (const authority of ['http://login.example.test', 'login.example.test', 'https:', 'https://']) {
       expect(() => DefenderRtpTokenResolvers.fromAgenticConnection(connection, { authority }))
         .toThrow('authority must be an absolute https URL.');
     }
   });
 
-  it('removes trailing slashes from the authority', async () => {
+  it.each([
+    ['https://login.example.test///', 'https://login.example.test'],
+    ['https:login.example.test', 'https://login.example.test'],
+    ['https://login.example.test/custom/?q=1#fragment', 'https://login.example.test/custom'],
+  ])('builds the token endpoint from the parsed authority %s', async (authority, base) => {
     const urls: string[] = [];
     const resolver = DefenderRtpTokenResolvers.fromAgenticConnection(
       { getAgenticApplicationToken: async () => 'fmi-assertion' },
       {
-        authority: 'https://login.example.test///',
+        authority,
         fetchImplementation: (async (url: string) => {
           urls.push(url);
           return json({ access_token: 'defender-token' });
@@ -1706,6 +1743,6 @@ describe('DefenderRtpTokenResolvers.fromAgenticConnection', () => {
 
     await resolver(AGENT_ID, TENANT_ID, [DEFENDER_SCOPE], new AbortController().signal);
 
-    expect(urls).toEqual([`https://login.example.test/${TENANT_ID}/oauth2/v2.0/token`]);
+    expect(urls).toEqual([`${base}/${TENANT_ID}/oauth2/v2.0/token`]);
   });
 });

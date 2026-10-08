@@ -38,10 +38,13 @@ export class DefenderRtpTokenResolvers {
       throw new TypeError('connection must provide getAgenticApplicationToken.');
     }
 
-    const authority = trimTrailingSlashes(options.authority ?? DEFAULT_AUTHORITY);
-    if (!isHttpsUrl(authority)) {
+    const authorityUrl = parseHttpsUrl(options.authority ?? DEFAULT_AUTHORITY);
+    if (!authorityUrl) {
       throw new TypeError('authority must be an absolute https URL.');
     }
+
+    // The parsed origin and path, so the token endpoint is built from what was validated.
+    const authority = trimTrailingSlashes(`${authorityUrl.origin}${authorityUrl.pathname}`);
 
     const fetchImplementation = options.fetchImplementation;
     return async (agentId, tenantId, scopes, signal) => {
@@ -85,11 +88,13 @@ export class DefenderRtpTokenResolvers {
   }
 }
 
-function isHttpsUrl(value: string): boolean {
+/** `value` parsed as an absolute https URL with a host (`https:host` reads as `https://host`), or undefined. */
+function parseHttpsUrl(value: string): URL | undefined {
   try {
-    return new URL(value).protocol === 'https:';
+    const url = new URL(value);
+    return url.protocol === 'https:' && url.hostname ? url : undefined;
   } catch (_error) {
-    return false;
+    return undefined;
   }
 }
 

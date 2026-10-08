@@ -11,7 +11,6 @@ import {
 
 const INVALID_REASON_CHARACTERS = /[^A-Za-z0-9_.-]/g;
 const MAX_ERROR_CHARACTERS = 200;
-const FAIL_CLOSED_MESSAGE = 'Security validation is unavailable and this agent is configured to fail closed.';
 const NO_IDENTITY_ERROR = 'no agent identity was resolved';
 
 /** The agent identity and credentials for the Defender call of one emitted context. */
@@ -163,7 +162,8 @@ export class A365DefenderInterceptor implements Interceptor {
       : {
         decision: 'deny',
         reason: `runtime_error:${name}_unverified`,
-        message: result.blockReason ?? FAIL_CLOSED_MESSAGE,
+        // The client sets the reason when it fails closed.
+        ...(result.blockReason ? { message: result.blockReason } : {}),
         warnings: unverified,
       };
   }

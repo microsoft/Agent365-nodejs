@@ -92,13 +92,13 @@ Like any other failure, a `403` follows the fail mode.
   content, and lists and objects are read only as far as the budget reaches. The content under decision (the message,
   the tool call arguments, the tool result or the reply) comes first; it is sent twice (`target` mirrors it), so it
   can use up to twice the limit. The rest of the context shares what it leaves, in this order, and is trimmed
-  first: the tool call arguments at `post_tool_call`, the tool declarations, the newest messages, extensions,
-  then any other fields.
-- At a tool call, Defender decides with the called tool's declaration, so it comes first and is always present.
-  It is searched for by name among the first 10000 declarations, and otherwise declared by name, with
-  `extensions.a365.tool.description`. When it lies beyond those 10000, or its own description or schema had to
-  be cut, the copy counts as incomplete (see [Verdicts](#verdicts)); a tool that is simply absent from a shorter
-  list does not.
+  first: at a tool call, the called tool's declaration; the tool call arguments at `post_tool_call`; the other tool
+  declarations; the newest messages; extensions; then any other fields.
+- At a tool call, Defender decides with the called tool's declaration, so it comes first and is always present, its
+  name copied whole. It is searched for by name among the first 10000 declarations, and otherwise declared by name,
+  with `extensions.a365.tool.description`. When the list is longer and the tool is not among those 10000, or its own
+  description or schema had to be cut, the copy counts as incomplete (see [Verdicts](#verdicts)); a tool that is
+  simply absent from a list of at most 10000 does not.
 
 ## Usage
 
