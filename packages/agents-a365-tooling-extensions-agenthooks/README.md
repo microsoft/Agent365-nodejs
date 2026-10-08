@@ -92,9 +92,13 @@ Like any other failure, a `403` follows the fail mode.
   content, and lists and objects are read only as far as the budget reaches. The content under decision (the message,
   the tool call arguments, the tool result or the reply) comes first; it is sent twice (`target` mirrors it), so it
   can use up to twice the limit. The rest of the context shares what it leaves, in this order, and is trimmed
-  first: the tool call arguments at `post_tool_call`, the tool declarations (the called tool first, always
-  declared, from `extensions.a365.tool` when the declarations leave it out), the newest messages, extensions,
+  first: the tool call arguments at `post_tool_call`, the tool declarations, the newest messages, extensions,
   then any other fields.
+- At a tool call, Defender decides with the called tool's declaration, so it comes first and is always present.
+  It is searched for by name among the first 10000 declarations, and otherwise declared by name, with
+  `extensions.a365.tool.description`. When it lies beyond those 10000, or its own description or schema had to
+  be cut, the copy counts as incomplete (see [Verdicts](#verdicts)); a tool that is simply absent from a shorter
+  list does not.
 
 ## Usage
 
@@ -181,7 +185,8 @@ interception records in memory (drain them with `takeRecords()` or forward them 
   content (for example base64-encoded files in tool results) should raise the limit; evaluating long content in
   chunks is a planned follow-up. The same applies when two keys of the content under decision become one once made
   well formed, so one value is left out of the copy, with the error
-  `content has object keys that are equal once made well formed; Defender evaluated an incomplete copy`.
+  `content has object keys that are equal once made well formed; Defender evaluated an incomplete copy`, and when
+  the called tool's declaration is incomplete (see [What Defender receives](#what-defender-receives)).
 
 Every call sends a unique `x-ms-correlation-id`, returned as `DefenderRtpEvaluationResult.correlationId`;
 Defender logs each evaluation under it. A `400` reports the failed validation rules in `error`.

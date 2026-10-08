@@ -237,6 +237,29 @@ describe('DefenderRtpClient', () => {
       expect(body.actor).toEqual({ id: 'user' });
     });
 
+    it('copies only the spec members of session and trace, and only of the right shape', async () => {
+      const { client, calls, tokens } = create(allow);
+      const shapes = [
+        {
+          session: { id: 's-1', started_at: '2026-10-07T12:00:00+02:00', turn: 3, extra: { x: 1 } },
+          trace: { trace_id: 't-1', span_id: 'span-1', baggage: 'x' },
+        },
+        { session: { id: 's-2', started_at: 'yesterday', turn: -1 }, trace: { trace_id: 42, span_id: 'span-2' } },
+        { session: { id: 's-3', started_at: 5, turn: 1.5 }, trace: 'invalid' },
+      ];
+
+      for (const shape of shapes) {
+        await client.evaluateHookContext({ ...inputContext('hello'), ...shape }, AGENT, tokens.resolve);
+      }
+
+      expect(calls.map((call) => [call.body.session, call.body.trace])).toEqual([
+        [{ id: 's-1', started_at: '2026-10-07T10:00:00.000Z', turn: 3 }, { trace_id: 't-1', span_id: 'span-1' }],
+        [{ id: 's-2' }, { span_id: 'span-2' }],
+        [{ id: 's-3' }, undefined],
+      ]);
+      expect(calls.every((call) => contractErrors(call.body).length === 0)).toBe(true);
+    });
+
     it('keeps numbering a session upward after it is no longer tracked', async () => {
       const { client, calls, tokens } = create(allow);
       const withoutSequence = (sessionId: string): Record<string, any> => {
@@ -337,7 +360,6 @@ describe('DefenderRtpClient', () => {
         tool_call: { id: id('call'), name: toolName, args: { query: 'q'.repeat(150) } },
         extensions: { a365: { note: 'n'.repeat(150) }, [`x${'y'.repeat(100)}`]: { note: 'left out' } },
         request_id: id('request'),
-        custom_field: 'kept',
         [`z${'z'.repeat(100)}`]: 'left out',
       };
 
@@ -350,8 +372,9 @@ describe('DefenderRtpClient', () => {
       expect(body.tool_call).toEqual({ id: id('call'), name: toolName, args: { query: clamped('q') } });
       expect(body.target).toEqual(body.tool_call.args);
       expect(body.tools).toEqual([{ name: toolName }]);
-      expect(body.extensions).toEqual({ a365: { note: clamped('n') } });
-      expect(body.custom_field).toBe('kept');
+      expect(Object.keys(body.extensions)).toEqual(['a365']);
+      expect(body.extensions.a365.note).toMatch(/^n+\.\.\.\[truncated \d+ chars\]$/);
+      expect(body.extensions.a365.note.length).toBeLessThanOrEqual(100);
       expect(Object.keys(body).filter((key) => key.startsWith('zz'))).toEqual([]);
       expect(body.agent).toEqual({ id: AGENT_ID, framework: 'agent-framework', name: id('SampleAgent') });
       expect(body.session).toEqual({ id: id('conversation') });
@@ -360,6 +383,15 @@ describe('DefenderRtpClient', () => {
       expect(body.spec).toBe('agent-hooks/0.1');
       expect(body.timestamp).toBe('2026-10-07T10:00:00.000Z');
       expect(result).toMatchObject({ allowed: true, evaluated: true, truncated: true });
+    });
+
+    it('copies other fields as they are', async () => {
+      const { client, calls, tokens } = create(allow);
+
+      await client.evaluateHookContext({ ...inputContext('hello'), custom_field: { kept: ['a', 1, null, true] } }, AGENT, tokens.resolve);
+
+      expect(contractErrors(calls[0].body)).toEqual([]);
+      expect(calls[0].body.custom_field).toEqual({ kept: ['a', 1, null, true] });
     });
 
     it('does not split a surrogate pair when clamping', async () => {
@@ -603,7 +635,7 @@ describe('DefenderRtpClient', () => {
 
     it('does not count truncation outside the content under decision', async () => {
       const { client, tokens } = create(denyBlockMe, { defenderRtpFailClosed: () => true });
-      const toolCall = { ...contextWith('pre_tool_call', 'short'), tools: [{ name: 'SendMail', description: PADDED }] };
+      const toolCall = { ...contextWith('pre_tool_call', 'short'), tools: [{ name: 'OtherTool', description: PADDED }] };
       const toolResult = {
         ...contextWith('post_tool_call', 'short'),
         tool_call: { id: 'call-1', name: 'FetchPage', args: { body: PADDED } },
@@ -714,6 +746,81 @@ describe('DefenderRtpClient', () => {
       ]);
     });
 
+    describe('the called tool', () => {
+      const decoys = (count: number): Array<Record<string, string>> =>
+        Array.from({ length: count }, (_, index) => ({ name: `decoy-${index}`, description: 'A decoy.' }));
+      const called = { name: 'SendMail', description: 'Sends mail.', schema: { type: 'object' } };
+      const callTo = (point: string, tools: unknown[]): Record<string, any> => point === 'pre_tool_call'
+        ? toolCallWith({ query: 'x' }, { tools })
+        : {
+          ...envelope('post_tool_call'), target: 'ok', tools,
+          tool_call: { id: 'call-1', name: 'SendMail', args: {} }, tool_result: { value: 'ok', is_error: false },
+        };
+
+      it('is copied first from a padded list', async () => {
+        const { client, calls, tokens } = create(allow, { defenderRtpFailClosed: () => true });
+
+        const result = await client.evaluateHookContext(callTo('pre_tool_call', [...decoys(9_999), called]), AGENT, tokens.resolve);
+
+        const body = calls[0].body;
+        expect(contractErrors(body)).toEqual([]);
+        expect(body.tools[0]).toEqual(called);
+        expect(body.tools[1]).toEqual({ name: 'decoy-0', description: 'A decoy.' });
+        expect(result).toMatchObject({ allowed: true, evaluated: true });
+        expect(result?.truncated).toBeUndefined();
+      });
+
+      it.each(['pre_tool_call', 'post_tool_call'])(
+        'leaves the verdict at %s unverified when it lies beyond the first 10000 declarations',
+        async (point) => {
+          const { client, calls, tokens } = create(allow, { defenderRtpFailClosed: () => true });
+
+          const result = await client.evaluateHookContext(callTo(point, [...decoys(10_000), called]), AGENT, tokens.resolve);
+
+          expect(calls[0].body.tools[0]).toEqual({ name: 'SendMail' });
+          expect(result).toMatchObject({
+            allowed: false,
+            evaluated: true,
+            truncated: true,
+            error: 'the called tool was not among the first 10000 tool declarations; Defender evaluated an incomplete copy',
+            blockReason: 'The content could not be fully validated by Microsoft Defender for AI, and this agent is configured to fail closed.',
+          });
+        },
+      );
+
+      it('is declared by name, without counting as truncation, when a list searched to the end leaves it out', async () => {
+        const { client, calls, tokens } = create(allow, { defenderRtpFailClosed: () => true });
+
+        const result = await client.evaluateHookContext(callTo('pre_tool_call', decoys(10_000)), AGENT, tokens.resolve);
+
+        expect(calls[0].body.tools[0]).toEqual({ name: 'SendMail' });
+        expect(result).toMatchObject({ allowed: true, evaluated: true });
+        expect(result?.truncated).toBeUndefined();
+      });
+
+      it.each([
+        ['description', { ...called, description: 'd'.repeat(150) }],
+        ['schema', { ...called, schema: { type: 'object', description: 's'.repeat(150) } }],
+      ])('leaves the verdict unverified when its %s is cut', async (_part, tool) => {
+        const { client, calls, tokens } = create(allow, {
+          defenderRtpMaxContentCharacters: () => 100,
+          defenderRtpFailClosed: () => true,
+        });
+
+        const result = await client.evaluateHookContext(callTo('pre_tool_call', [tool]), AGENT, tokens.resolve);
+
+        expect(calls[0].body.tools[0].name).toBe('SendMail');
+        expect(result).toMatchObject({
+          allowed: false,
+          evaluated: true,
+          truncated: true,
+          error: 'the called tool\'s description or schema did not fit A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS (100); '
+            + 'Defender evaluated a truncated copy',
+          blockReason: 'The content is too long to be fully validated by Microsoft Defender for AI, and this agent is configured to fail closed.',
+        });
+      });
+    });
+
     it('fills what the content under decision leaves in order: arguments, tools, messages, extensions, other fields', async () => {
       const { client, calls, tokens } = create(allow, { defenderRtpMaxContentCharacters: () => 100 });
       const context = {
@@ -742,7 +849,6 @@ describe('DefenderRtpClient', () => {
     });
 
     it.each([
-      ['name-only tools', () => ({ tools: Array.from({ length: HUGE }, (_, index) => ({ name: `t${index}` })) })],
       ['empty messages', () => ({ messages: Array.from({ length: HUGE }, () => ({ role: 'user', content: '' })) })],
       ['messages with null content', () => ({ messages: Array.from({ length: HUGE }, () => ({ role: 'user', content: null })) })],
       ['nulls in an extension', () => ({ extensions: { a365: { items: new Array(HUGE).fill(null) } } })],
@@ -793,7 +899,7 @@ describe('DefenderRtpClient', () => {
       return { list, reads: () => reads };
     };
 
-    it('reads only as many tools as the budget can hold, declaring the called tool by name when it lies beyond', async () => {
+    it('searches the first 10000 tools for the called tool and reads only as many others as the budget can hold', async () => {
       const { client, calls, tokens } = create(allow);
       const tools = counted([
         ...Array.from({ length: HUGE }, (_, index) => ({ name: `t${index}` })),
@@ -805,8 +911,14 @@ describe('DefenderRtpClient', () => {
       const body = calls[0].body;
       expect(contractErrors(body)).toEqual([]);
       expect(body.tools[0]).toEqual({ name: 'SendMail' });
+      expect(body.tools[1]).toEqual({ name: 't0' });
       expect(tools.reads()).toBeLessThan(40_000);
-      expect(result?.truncated).toBeUndefined();
+      expect(result).toMatchObject({
+        allowed: true,
+        evaluated: true,
+        truncated: true,
+        error: 'the called tool was not among the first 10000 tool declarations; Defender evaluated an incomplete copy',
+      });
     });
 
     it('reads only as many messages as the budget can hold, newest first', async () => {

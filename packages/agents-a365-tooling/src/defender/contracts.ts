@@ -104,10 +104,12 @@ export interface DefenderRtpEvaluationResult {
   /** Whether Defender returned a verdict. */
   evaluated: boolean;
   /**
-   * True when Defender evaluated a copy that leaves part of the content under decision out: a string
-   * longer than `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS`, more content than its share of the copy,
-   * or object keys that are equal once made well formed. A block of the copy stands; an allow does not
-   * cover the rest, so `allowed` then follows the fail mode and `error` says why.
+   * True when Defender evaluated a copy that leaves part of what it decides on out: a string of the content
+   * under decision longer than `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS`, more content than its share of
+   * the copy, object keys that are equal once made well formed, or, at a tool call, a cut description or
+   * schema of the called tool, or a called tool not among the first 10000 declarations searched. A block of
+   * the copy stands; an allow does not cover the rest, so `allowed` then follows the fail mode and `error`
+   * says why.
    */
   truncated?: boolean;
   /** The agent-hooks interception point that was evaluated. */

@@ -83,7 +83,9 @@ new A365DefenderInterceptor(
 Content under decision that does not fit (longer than `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS`, or beyond its
 share of the copy's total), or whose keys collide once made well formed, reaches Defender only as an incomplete
 copy, so an allow of it does not cover the rest; treating it as authoritative would let padding carry a payload
-past the limit unseen. A `transform` maps to a deny, so on a truncated copy it blocks like a `deny`.
+past the limit unseen. The same holds at a tool call for the called tool's declaration, when its description or
+schema was cut or it was not among the first 10000 declarations searched. A `transform` maps to a deny, so on a
+truncated copy it blocks like a `deny`.
 
 `transform` blocks because this version cannot apply the rewrite, and releasing the original content would defeat
 it. The `runtime_error:` prefix is the agent-hooks convention for decision-runtime failures, so a fail-closed

@@ -38,6 +38,9 @@ const MAX_COPY_DEPTH = 32;
 /** The least a tool declaration costs: the declaration, its `name` key and a one-character name. */
 const MIN_TOOL_DECLARATION_COST = 1 + 'name'.length + 1;
 
+/** The most tool declarations searched, by name only, for the called tool's. */
+const MAX_CALLED_TOOL_SCAN = 10_000;
+
 /** Fields rebuilt or copied whole; any other top-level field shares what is left of the budget. */
 const BUILT_FIELDS: ReadonlySet<string> = new Set([
   'spec', 'interception_point', 'timestamp', 'sequence', 'agent', 'session', 'target', 'tenant', 'actor',
@@ -74,6 +77,11 @@ const INCOMPLETE_FAIL_CLOSED_REASON =
   'The content could not be fully validated by Microsoft Defender for AI, and this agent is configured to fail closed.';
 const COLLIDED_KEYS_ERROR =
   'content has object keys that are equal once made well formed; Defender evaluated an incomplete copy';
+const UNSCANNED_TOOL_ERROR =
+  `the called tool was not among the first ${MAX_CALLED_TOOL_SCAN} tool declarations; Defender evaluated an incomplete copy`;
+
+/** Why the copy leaves out part of what Defender needs to decide. */
+type Incomplete = 'truncated' | 'collided' | 'tool_truncated' | 'tool_unscanned';
 const TRANSFORM_REASON =
   'Microsoft Defender for AI asked to rewrite this content, which this SDK version does not apply yet.';
 const DEFAULT_BLOCK_REASON = 'Blocked by Microsoft Defender for AI.';
@@ -291,17 +299,28 @@ export class DefenderRtpClient {
     context: DefenderRtpHookContext,
     agent: DefenderRtpAgentContext,
     maxCharacters: number,
-  ): { hook: JsonObject; incomplete?: 'truncated' | 'collided' } {
+  ): { hook: JsonObject; incomplete?: Incomplete } {
     const source = context as Record<string, unknown>;
     const point = source['interception_point'] as DefenderRtpInterceptionPoint;
 
-    // Identity and protocol fields are copied whole: they carry no content, and Defender validates them.
+    // Identity and protocol fields carry no content and are not budgeted; Defender validates them, so
+    // only their spec members of the right shape are copied.
     const agentNode = asRecord(source['agent']);
     const agentId = firstNonEmpty(stringOf(agent.agentObjectId), stringOf(agentNode?.['id']), stringOf(agent.agentId));
-    const session = asObject(copyJson(source['session']));
-    const sessionId = readString(session?.['id']);
+    const sessionNode = asRecord(source['session']);
+    const sessionId = stringOf(sessionNode?.['id']);
     requireString(agentId, 'agent.id');
     requireString(sessionId, 'session.id');
+    const session: JsonObject = { id: sessionId };
+    const startedAt = utcInstant(sessionNode?.['started_at']);
+    if (startedAt) {
+      session['started_at'] = startedAt;
+    }
+
+    const turn = sessionNode?.['turn'];
+    if (isNonNegativeInteger(turn)) {
+      session['turn'] = turn;
+    }
 
     const preparedAgent: JsonObject = {
       id: agentId,
@@ -329,7 +348,7 @@ export class DefenderRtpClient {
       timestamp: this.utcTimestamp(source['timestamp']),
       sequence: isNonNegativeInteger(source['sequence']) ? source['sequence'] : this.nextSequence(sessionId),
       agent: preparedAgent,
-      session: session as JsonObject,
+      session,
       tenant: !hostTenantId || hostTenantId.toLowerCase() === tenantId.toLowerCase()
         ? { ...tenant, id: tenantId }
         : { id: tenantId },
@@ -359,9 +378,11 @@ export class DefenderRtpClient {
       hook['model'] = { id: modelId };
     }
 
-    const trace = copyJson(source['trace']);
-    if (trace !== undefined) {
-      hook['trace'] = trace;
+    const trace = asRecord(source['trace']);
+    const traceId = stringOf(trace?.['trace_id']);
+    const spanId = stringOf(trace?.['span_id']);
+    if (traceId || spanId) {
+      hook['trace'] = { ...(traceId ? { trace_id: traceId } : {}), ...(spanId ? { span_id: spanId } : {}) };
     }
 
     // The content under decision first: it is sent twice (`target` mirrors it), so it may use half of
@@ -408,8 +429,8 @@ export class DefenderRtpClient {
     }
 
     const tools = fitTools(source['tools'], toolName, source['extensions'], rest);
-    if (tools) {
-      hook['tools'] = tools;
+    if (tools.declarations) {
+      hook['tools'] = tools.declarations;
     }
 
     const messages = fitMessages(source['messages'], rest);
@@ -451,19 +472,20 @@ export class DefenderRtpClient {
     }
 
     hook['target'] = targetOf(hook);
-    const incomplete = decision.cut ? 'truncated' : decision.collided ? 'collided' : undefined;
+    const incomplete = decision.cut ? 'truncated' : decision.collided ? 'collided' : tools.calledTool;
     return incomplete ? { hook, incomplete } : { hook };
   }
 
   /**
-   * Defender saw only part of the content under decision: it was cut, or two of its keys became one.
-   * A block still stands, but an allow does not cover the rest, so the action follows the fail mode
-   * instead, as if no verdict had been obtained: otherwise content padded past the limit would be
-   * authorized unseen.
+   * Defender saw only part of what it decides on: the content under decision was cut or two of its
+   * keys became one, or the called tool's declaration was cut or not searched for to the end. A block
+   * still stands, but an allow does not cover the rest, so the action follows the fail mode instead,
+   * as if no verdict had been obtained: otherwise content padded past the limit would be authorized
+   * unseen.
    */
   private static ofIncompleteContent(
     result: DefenderRtpEvaluationResult,
-    incomplete: 'truncated' | 'collided',
+    incomplete: Incomplete,
     maxCharacters: number,
     configuration: ToolingConfiguration,
   ): DefenderRtpEvaluationResult {
@@ -472,15 +494,20 @@ export class DefenderRtpClient {
     }
 
     const failClosed = configuration.defenderRtpFailClosed;
-    const truncated = incomplete === 'truncated';
+    const tooLong = incomplete === 'truncated' || incomplete === 'tool_truncated';
+    const errors: Record<Incomplete, string> = {
+      truncated: `content exceeded A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS (${maxCharacters}); Defender evaluated a truncated copy`,
+      collided: COLLIDED_KEYS_ERROR,
+      tool_truncated: 'the called tool\'s description or schema did not fit A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS '
+        + `(${maxCharacters}); Defender evaluated a truncated copy`,
+      tool_unscanned: UNSCANNED_TOOL_ERROR,
+    };
     return {
       ...result,
       truncated: true,
       allowed: !failClosed,
-      error: truncated
-        ? `content exceeded A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS (${maxCharacters}); Defender evaluated a truncated copy`
-        : COLLIDED_KEYS_ERROR,
-      ...(failClosed ? { blockReason: truncated ? TRUNCATED_FAIL_CLOSED_REASON : INCOMPLETE_FAIL_CLOSED_REASON } : {}),
+      error: errors[incomplete],
+      ...(failClosed ? { blockReason: tooLong ? TRUNCATED_FAIL_CLOSED_REASON : INCOMPLETE_FAIL_CLOSED_REASON } : {}),
     };
   }
 
@@ -723,9 +750,7 @@ export class DefenderRtpClient {
 
   /** Defender requires an RFC 3339 UTC instant; a timestamp without an offset is read as UTC. */
   private utcTimestamp(value: unknown): string {
-    const text = typeof value === 'string' ? value : undefined;
-    const parsed = text ? Date.parse(TIMESTAMP_WITHOUT_OFFSET.test(text) ? `${text}Z` : text) : Number.NaN;
-    return new Date(Number.isNaN(parsed) ? this.now() : parsed).toISOString();
+    return utcInstant(value) ?? new Date(this.now()).toISOString();
   }
 
   private static validate(configuration: ToolingConfiguration): void {
@@ -776,84 +801,100 @@ export class DefenderRtpClient {
 
 /**
  * Tool declarations as Defender accepts them (a name, a string description, an object schema), within
- * the budget. Only as many entries as the budget can hold are read, so a huge list is never scanned
- * whole. The called tool comes first and is always declared: from `tools`, or by name with the host's
- * `extensions.a365.tool.description` when the entries read leave it out or its declaration does not fit.
+ * the budget. At a tool call, the called tool's declaration comes first and is always present: it is
+ * looked for by name among the first 10000 entries, and otherwise declared by name, with the host's
+ * `extensions.a365.tool.description`. Defender decides on the call with it, so `calledTool` tells
+ * whether Defender misses part of it: its description or schema was cut (`tool_truncated`), or the
+ * search stopped at that limit (`tool_unscanned`); a tool absent from a list searched to the end is
+ * not. The other declarations follow in host order, reading only as many entries as the budget can
+ * hold, so a huge list is never scanned whole.
  */
 function fitTools(
   tools: unknown,
   calledTool: string | undefined,
   extensions: unknown,
   budget: Budget,
-): JsonObject[] | undefined {
+): { declarations?: JsonObject[]; calledTool?: 'tool_truncated' | 'tool_unscanned' } {
   const list: unknown[] = Array.isArray(tools) ? tools : [];
-  const readable = Math.min(list.length, Math.floor(budget.remaining / MIN_TOOL_DECLARATION_COST));
   const declarations: JsonObject[] = [];
-  const add = (tool: unknown): boolean => {
+  let incomplete: 'tool_truncated' | 'tool_unscanned' | undefined;
+  let called = -1;
+  if (calledTool !== undefined) {
+    const searched = Math.min(list.length, MAX_CALLED_TOOL_SCAN);
+    for (let index = 0; index < searched; index += 1) {
+      const tool = list[index];
+      if (isObject(tool) && stringOf(tool['name']) === calledTool) {
+        called = index;
+        break;
+      }
+    }
+
+    // The name is always declared; whether the description or schema is cut is tracked on its own.
+    const declared = called >= 0 ? list[called] as Record<string, unknown> : calledToolFromExtensions(extensions);
+    const wasCut = budget.cut;
+    budget.cut = false;
+    budget.remaining = Math.max(0, budget.remaining - (1 + 'name'.length + calledTool.length));
+    declarations.push(describeTool(calledTool, declared, budget));
+    if (budget.cut) {
+      incomplete = 'tool_truncated';
+    } else if (called < 0 && list.length > MAX_CALLED_TOOL_SCAN) {
+      incomplete = 'tool_unscanned';
+    }
+
+    budget.cut = wasCut || budget.cut;
+  }
+
+  const readable = Math.min(list.length, Math.floor(budget.remaining / MIN_TOOL_DECLARATION_COST));
+  for (let index = 0; index < readable && budget.remaining > 0; index += 1) {
+    const tool = list[index];
     const name = isObject(tool) ? stringOf(tool['name']) : undefined;
-    if (!isObject(tool) || !name) {
-      return true;
+    if (index === called || !isObject(tool) || !name) {
+      continue;
     }
 
     // The declaration, its `name` key and the name.
     const cost = 1 + 'name'.length + name.length;
     if (budget.remaining < cost) {
-      return false;
+      break;
     }
 
     budget.remaining -= cost;
-    const declaration: JsonObject = { name };
-    if (typeof tool['description'] === 'string') {
-      const description = fitEntry('description', tool['description'], budget);
-      if (Array.isArray(description)) {
-        declaration['description'] = description[1];
-      }
-    }
+    declarations.push(describeTool(name, tool, budget));
+  }
 
-    if (isObject(tool['schema'])) {
-      const schema = fitEntry('schema', tool['schema'], budget);
-      if (Array.isArray(schema) && isObject(schema[1])) {
-        declaration['schema'] = schema[1] as JsonObject;
-      }
-    }
-
-    declarations.push(declaration);
-    return true;
+  return {
+    ...(declarations.length > 0 ? { declarations } : {}),
+    ...(incomplete ? { calledTool: incomplete } : {}),
   };
-
-  let called = -1;
-  for (let index = 0; calledTool !== undefined && index < readable; index += 1) {
-    const tool = list[index];
-    if (isObject(tool) && stringOf(tool['name']) === calledTool) {
-      called = index;
-      break;
-    }
-  }
-
-  if (calledTool !== undefined && (called < 0 || !add(list[called]))) {
-    declarations.push(toolFromExtensions(extensions, calledTool, budget));
-  }
-
-  for (let index = 0; index < readable && budget.remaining > 0; index += 1) {
-    if (index !== called && !add(list[index])) {
-      break;
-    }
-  }
-
-  return declarations.length > 0 ? declarations : undefined;
 }
 
-/** The called tool's declaration, with the host's `extensions.a365.tool.description` if it fits. */
-function toolFromExtensions(extensions: unknown, toolName: string, budget: Budget): JsonObject {
-  const a365 = isObject(extensions) ? extensions[A365_EXTENSION] : undefined;
-  const tool = isObject(a365) ? a365['tool'] : undefined;
-  const description = isObject(tool) && typeof tool['description'] === 'string' ? tool['description'] : '';
-  if (!description) {
-    return { name: toolName };
+/** A declaration of `name` with the tool's string description and object schema, as far as they fit. */
+function describeTool(name: string, tool: Record<string, unknown>, budget: Budget): JsonObject {
+  const declaration: JsonObject = { name };
+  if (typeof tool['description'] === 'string') {
+    const description = fitEntry('description', tool['description'], budget);
+    if (Array.isArray(description)) {
+      declaration['description'] = description[1];
+    }
   }
 
-  const fitted = fitEntry('description', description, budget);
-  return Array.isArray(fitted) && fitted[1] !== '' ? { name: toolName, description: fitted[1] } : { name: toolName };
+  if (isObject(tool['schema'])) {
+    const schema = fitEntry('schema', tool['schema'], budget);
+    if (Array.isArray(schema) && isObject(schema[1])) {
+      declaration['schema'] = schema[1] as JsonObject;
+    }
+  }
+
+  return declaration;
+}
+
+/** The called tool's declaration from the host's `extensions.a365.tool`: its description, if any. */
+function calledToolFromExtensions(extensions: unknown): Record<string, unknown> {
+  const a365 = isObject(extensions) ? extensions[A365_EXTENSION] : undefined;
+  const tool = isObject(a365) ? a365['tool'] : undefined;
+  return isObject(tool) && typeof tool['description'] === 'string' && tool['description']
+    ? { description: tool['description'] }
+    : {};
 }
 
 /**
@@ -1360,6 +1401,16 @@ function truncationMarker(removedCharacters: number): string {
 function surrogateSafeEnd(value: string, end: number): number {
   const code = value.charCodeAt(end - 1);
   return code >= 0xd800 && code <= 0xdbff ? end - 1 : end;
+}
+
+/** An RFC 3339 UTC instant, or undefined when `value` is not a date; a time without an offset is read as UTC. */
+function utcInstant(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const parsed = Date.parse(TIMESTAMP_WITHOUT_OFFSET.test(value) ? `${value}Z` : value);
+  return Number.isNaN(parsed) ? undefined : new Date(parsed).toISOString();
 }
 
 function singleLine(value: string, maxCharacters: number): string {

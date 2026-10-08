@@ -59,6 +59,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   validation rules.
 - Content under decision that does not fit (longer than `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS`,
   or beyond its share of the copy), or whose keys become one once made well formed, is sent incomplete.
+  At a tool call, the called tool's declaration is copied first, searched for among the first 10000
+  declarations; it is incomplete too when its description or schema is cut or it lies beyond them.
   Defender's block of the copy stands, but its allow does not cover the rest: the result is marked
   `truncated` and follows the fail mode, so padded content cannot be authorized unseen.
 - `tenant.id` is always the agent's tenant, which Defender requires to match the token's tenant.
