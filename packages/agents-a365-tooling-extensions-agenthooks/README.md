@@ -45,29 +45,28 @@ Defender endpoint and the token authority must be `https` URLs.
 
 ### Prerequisites
 
-- **The agent identity has the `RealtimeProtection.Evaluate.All` application role on the Defender API**
-  (`86a21212-634e-4553-b3d6-e477e4c9d9ec`). Once
-  [microsoft/Agent365-devTools#485](https://github.com/microsoft/Agent365-devTools/pull/485) ships, `a365 setup all`
-  grants it to the agent blueprint as an inheritable permission, so every agent identity under the blueprint
-  inherits it. Until then, an administrator grants it manually, for example by assigning the role to the agent
-  identity with Microsoft Graph:
+Defender accepts only callers whose app-only token carries the application permission
+`RealtimeProtection.Evaluate.All` on the Defender API (`86a21212-634e-4553-b3d6-e477e4c9d9ec`).
+[microsoft/Agent365-devTools#485](https://github.com/microsoft/Agent365-devTools/pull/485) adds this to
+`a365 setup`. Until it ships, a tenant administrator grants it once per agent blueprint, and every agent identity
+created from the blueprint inherits it:
 
-  ```http
-  POST https://graph.microsoft.com/v1.0/servicePrincipals/{agent-identity-id}/appRoleAssignments
-  Content-Type: application/json
+1. If the tenant has no service principal for the Defender API yet, create one:
+   `az ad sp create --id 86a21212-634e-4553-b3d6-e477e4c9d9ec`.
+2. Assign the app role to the blueprint's service principal:
+   `POST https://graph.microsoft.com/v1.0/servicePrincipals/{blueprint-sp-object-id}/appRoleAssignments` with
+   `principalId` (the blueprint SP), `resourceId` (the Defender API SP) and `appRoleId` (the id of
+   `RealtimeProtection.Evaluate.All` in that SP's `appRoles`). Requires Global Administrator or Privileged Role
+   Administrator.
+3. Make it inheritable:
+   `POST https://graph.microsoft.com/beta/applications/microsoft.graph.agentIdentityBlueprint/{blueprint-object-id}/inheritablePermissions`
+   with
+   `{"resourceAppId":"86a21212-634e-4553-b3d6-e477e4c9d9ec","inheritableScopes":{"@odata.type":"#microsoft.graph.allAllowedScopes","kind":"allAllowed"},"inheritableRoles":{"@odata.type":"#microsoft.graph.allAllowedRoles","kind":"allAllowed"}}`.
+   Requires Agent ID Administrator or Global Administrator.
 
-  {
-    "principalId": "{agent-identity-id}",
-    "resourceId": "{id of the Defender API service principal in the tenant}",
-    "appRoleId": "{id of the RealtimeProtection.Evaluate.All app role}"
-  }
-  ```
+The tenant must also be onboarded to Defender for AI; otherwise Defender returns 403.
 
-  `GET https://graph.microsoft.com/v1.0/servicePrincipals(appId='86a21212-634e-4553-b3d6-e477e4c9d9ec')?$select=id,appRoles`
-  returns the Defender API service principal's `id` and its app roles.
-- **The agent's tenant is onboarded to Microsoft Defender for AI.**
-
-Without either, Defender answers `403`, which follows the fail mode.
+Like any other failure, a `403` follows the fail mode.
 
 ## Usage
 
