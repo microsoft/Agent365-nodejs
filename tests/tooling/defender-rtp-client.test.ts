@@ -670,6 +670,25 @@ describe('DefenderRtpClient', () => {
       expect(result?.truncated).toBeUndefined();
     });
 
+    it('declares the called tool first when the tools leave it out', async () => {
+      const { client, calls, tokens } = create(allow);
+      const context = {
+        ...toolCallWith({ url: 'https://example.test' }),
+        tool_call: { id: 'call-1', name: 'FetchPage', args: { url: 'https://example.test' } },
+        tools: [{ name: 'SearchFlights', description: 'Searches flights.' }],
+        extensions: { a365: { tool: { description: 'Fetches a web page.' } } },
+      };
+
+      await client.evaluateHookContext(context, AGENT, tokens.resolve);
+
+      const body = calls[0].body;
+      expect(contractErrors(body)).toEqual([]);
+      expect(body.tools).toEqual([
+        { name: 'FetchPage', description: 'Fetches a web page.' },
+        { name: 'SearchFlights', description: 'Searches flights.' },
+      ]);
+    });
+
     it('fills what the content under decision leaves in order: arguments, tools, messages, extensions, other fields', async () => {
       const { client, calls, tokens } = create(allow, { defenderRtpMaxContentCharacters: () => 100 });
       const context = {
@@ -730,6 +749,43 @@ describe('DefenderRtpClient', () => {
       expect(depthOf(body.tool_call.args)).toBe(32);
       expect(body.target).toEqual(body.tool_call.args);
       expect(result?.truncated).toBe(true);
+    });
+
+    it.each([false, true])(
+      'treats keys that become one once made well formed as an incomplete copy (fail closed: %s)',
+      async (failClosed) => {
+        const { client, calls, tokens } = create(
+          (body) => JSON.stringify(body).includes('BLOCK_ME') ? json({ decision: 'deny' }) : json({ decision: 'allow' }),
+          { defenderRtpFailClosed: () => failClosed },
+        );
+        const args = { message: { '\uFFFD': 'harmless', '\uD800': 'BLOCK_ME' } };
+
+        const result = await client.evaluateHookContext(toolCallWith(args), AGENT, tokens.resolve);
+
+        const body = calls[0].body;
+        expect(contractErrors(body)).toEqual([]);
+        expect(body.tool_call.args).toEqual({ message: { '\uFFFD': 'harmless' } });
+        expect(result).toMatchObject({
+          allowed: !failClosed,
+          evaluated: true,
+          truncated: true,
+          error: 'content has object keys that are equal once made well formed; Defender evaluated an incomplete copy',
+        });
+        expect(result?.blockReason).toBe(failClosed
+          ? 'The content could not be fully validated by Microsoft Defender for AI, and this agent is configured to fail closed.'
+          : undefined);
+      },
+    );
+
+    it('does not count keys that become one outside the content under decision', async () => {
+      const { client, calls, tokens } = create(allow, { defenderRtpFailClosed: () => true });
+      const context = { ...toolCallWith({ query: 'x' }), messages: [{ role: 'user', content: 'hi', 'n\uFFFD': 1, 'n\uD800': 2 }] };
+
+      const result = await client.evaluateHookContext(context, AGENT, tokens.resolve);
+
+      expect(calls[0].body.messages).toEqual([{ role: 'user', content: 'hi', 'n\uFFFD': 1 }]);
+      expect(result).toMatchObject({ allowed: true, evaluated: true });
+      expect(result?.truncated).toBeUndefined();
     });
 
     it('copies shared values but rejects a circular reference', async () => {

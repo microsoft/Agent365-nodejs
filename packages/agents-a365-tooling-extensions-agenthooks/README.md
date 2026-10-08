@@ -82,14 +82,16 @@ Like any other failure, a `403` follows the fail mode.
   `tenant.id` set to the agent's tenant, and `target` equal to the point's field. Optional fields of another shape
   (for example a `model` that is a string) are left out rather than failing the evaluation.
 - Every string and object key is well formed: a lone UTF-16 surrogate becomes U+FFFD, because Defender's JSON
-  parser rejects it and the request would fail.
+  parser rejects it and the request would fail. When two keys of one object become equal that way, only the first
+  is sent; in the content under decision, that makes the copy incomplete (see [Verdicts](#verdicts)).
 - Each content string is at most `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` (default 20000) long, cut with a
   `...[truncated N chars]` marker, and nesting deeper than 32 levels is cut.
 - The copy carries at most four times that limit of content in total. The content under decision (the message,
   the tool call arguments, the tool result or the reply) comes first; it is sent twice (`target` mirrors it), so it
   can use up to twice the limit. The rest of the context shares what it leaves, in this order, and is trimmed
-  first: the tool call arguments at `post_tool_call`, the tool declarations (the called tool first), the newest
-  messages, extensions, then any other fields.
+  first: the tool call arguments at `post_tool_call`, the tool declarations (the called tool first, always
+  declared, from `extensions.a365.tool` when the declarations leave it out), the newest messages, extensions,
+  then any other fields.
 
 ## Usage
 
@@ -173,7 +175,9 @@ interception records in memory (drain them with `takeRecords()` or forward them 
   `content exceeded A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS (<limit>); Defender evaluated a truncated copy`.
   Otherwise padding could push a payload past the limit and have it authorized unseen. Agents that handle long
   content (for example base64-encoded files in tool results) should raise the limit; evaluating long content in
-  chunks is a planned follow-up.
+  chunks is a planned follow-up. The same applies when two keys of the content under decision become one once made
+  well formed, so one value is left out of the copy, with the error
+  `content has object keys that are equal once made well formed; Defender evaluated an incomplete copy`.
 
 Every call sends a unique `x-ms-correlation-id`, returned as `DefenderRtpEvaluationResult.correlationId`;
 Defender logs each evaluation under it. A `400` reports the failed validation rules in `error`.

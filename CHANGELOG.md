@@ -56,7 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   request. When no verdict is obtained, the result follows `A365_DEFENDER_RTP_FAIL_MODE` (fail open
   by default), and a `400` reports the failed validation rules.
 - Content under decision that does not fit (longer than `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS`,
-  or beyond its share of the copy) is sent truncated.
+  or beyond its share of the copy), or whose keys become one once made well formed, is sent incomplete.
   Defender's block of the copy stands, but its allow does not cover the rest: the result is marked
   `truncated` and follows the fail mode, so padded content cannot be authorized unseen.
 - `tenant.id` is always the agent's tenant, which Defender requires to match the token's tenant.

@@ -179,7 +179,8 @@ if (result && !result.allowed) { /* block: result.blockReason */ }
   cannot fail an evaluation; a `session` that is not an object has no `session.id`, which is required. Every
   string and object key is well formed: a lone UTF-16 surrogate becomes U+FFFD
   (`String.prototype.toWellFormed`, with a fallback on Node.js 18), because `JSON.stringify` would write it as a
-  `\uD8xx` escape that Defender's JSON parser rejects, failing the request.
+  `\uD8xx` escape that Defender's JSON parser rejects, failing the request. When two keys of one object become
+  equal that way, only the first is sent, and in the content under decision the copy counts as incomplete.
 - **Size**: the copy is built while reading the context, field by field, never by serializing it whole. Each
   content string (input and output content, tool arguments and results, tool descriptions and schemas, messages,
   extensions, other fields) is cut to at most `defenderRtpMaxContentCharacters`, ending with a
@@ -187,16 +188,18 @@ if (result && !result.allowed) { /* block: result.blockReason */ }
   carries at most four times `defenderRtpMaxContentCharacters` of content: strings, keys and other values count
   their length, and each array or object one. The content under decision comes first and may use half of that,
   as it is sent twice (`target` mirrors it); twice what it leaves goes to the rest of the context, in this order:
-  the tool call arguments at `post_tool_call`, the tool declarations (the called tool first), the newest
-  messages, extensions, then any other fields. Identifiers and protocol fields (`spec`, `timestamp`, `agent`,
+  the tool call arguments at `post_tool_call`, the tool declarations (the called tool first and always declared,
+  from `extensions.a365.tool` when `tools` leaves it out), the newest messages, extensions, then any other fields.
+  Identifiers and protocol fields (`spec`, `timestamp`, `agent`,
   `session`, `tenant`, `actor`, `model`, `request_id`, `trace`, tool call ids and names, `input.role`) are sent
   whole and do not count.
 - **Truncated content**: when the content under decision (`input.content`, `tool_call.args` at
   `pre_tool_call`, `tool_result.value` at `post_tool_call`, `output.content`) was cut (a string longer than the
-  limit, nesting deeper than 32 levels, or more content than its share), Defender saw only part of it. A block
-  (`deny` or `transform`) still stands, but an allow does not cover the rest: the result is `truncated: true`,
-  `allowed` follows `defenderRtpFailClosed`, and `error` says why. Otherwise content padded past the limit would
-  be authorized unseen. Trimming elsewhere (tool declarations, extensions, messages) does not count.
+  limit, nesting deeper than 32 levels, or more content than its share), or two of its keys became one once made
+  well formed, Defender saw only part of it. A block (`deny` or `transform`) still stands, but an allow does not
+  cover the rest: the result is `truncated: true`, `allowed` follows `defenderRtpFailClosed`, and `error` says
+  why. Otherwise content padded past the limit would be authorized unseen. Trimming elsewhere (tool
+  declarations, extensions, messages) does not count.
 - **Authentication**: always the agent identity's app-only token in the agent's tenant, for the Defender API
   (`api://86a21212-634e-4553-b3d6-e477e4c9d9ec/.default`, app role `RealtimeProtection.Evaluate.All`).
   `DefenderRtpTokenResolver` is `(agentId, tenantId, scopes, signal) => token`;

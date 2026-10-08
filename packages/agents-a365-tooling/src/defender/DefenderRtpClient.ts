@@ -60,11 +60,17 @@ interface Budget {
   maxString: number;
   /** Set when something was cut or left out. */
   cut: boolean;
+  /** Set when two keys of one object became the same once made well formed, and one was left out. */
+  collided?: boolean;
 }
 
 const FAIL_CLOSED_REASON = 'Security validation is unavailable and this agent is configured to fail closed.';
 const TRUNCATED_FAIL_CLOSED_REASON =
   'The content is too long to be fully validated by Microsoft Defender for AI, and this agent is configured to fail closed.';
+const INCOMPLETE_FAIL_CLOSED_REASON =
+  'The content could not be fully validated by Microsoft Defender for AI, and this agent is configured to fail closed.';
+const COLLIDED_KEYS_ERROR =
+  'content has object keys that are equal once made well formed; Defender evaluated an incomplete copy';
 const TRANSFORM_REASON =
   'Microsoft Defender for AI asked to rewrite this content, which this SDK version does not apply yet.';
 const DEFAULT_BLOCK_REASON = 'Blocked by Microsoft Defender for AI.';
@@ -184,12 +190,12 @@ export class DefenderRtpClient {
     const endpoint = DefenderRtpClient.endpoint(configuration);
     signal?.throwIfAborted();
     const maxCharacters = configuration.defenderRtpMaxContentCharacters;
-    const { hook, truncated } = this.prepare(context, agent, maxCharacters);
+    const { hook, incomplete } = this.prepare(context, agent, maxCharacters);
     const sessionId = readString(asObject(hook['session'])?.['id']);
     const started = this.now();
     const deadline = createDeadline(configuration.defenderRtpTimeoutMilliseconds, signal);
     const complete = (result: DefenderRtpEvaluationResult): DefenderRtpEvaluationResult =>
-      truncated ? DefenderRtpClient.ofTruncatedContent(result, maxCharacters, configuration) : result;
+      incomplete ? DefenderRtpClient.ofIncompleteContent(result, incomplete, maxCharacters, configuration) : result;
     try {
       let token: string;
       try {
@@ -269,15 +275,16 @@ export class DefenderRtpClient {
    * requires) and at most `maxCharacters` long, and the copy carries at most four times that much
    * content. The content under decision comes first, with up to half of it (it is sent twice, as
    * `target` too); then the tool call arguments at `post_tool_call`, the tool declarations (the called
-   * tool first), the newest messages, extensions and any other fields share what it leaves, in that
-   * order. `truncated` tells whether the content under decision was cut. Optional fields of an
-   * unexpected shape are left out, never indexed.
+   * tool first, always declared), the newest messages, extensions and any other fields share what it
+   * leaves, in that order. `incomplete` tells whether, and why, the copy leaves part of the content
+   * under decision out: it was cut, or two of its keys became one once made well formed. Optional
+   * fields of an unexpected shape are left out, never indexed.
    */
   private prepare(
     context: DefenderRtpHookContext,
     agent: DefenderRtpAgentContext,
     maxCharacters: number,
-  ): { hook: JsonObject; truncated: boolean } {
+  ): { hook: JsonObject; incomplete?: 'truncated' | 'collided' } {
     const source = context as Record<string, unknown>;
     const point = source['interception_point'] as DefenderRtpInterceptionPoint;
 
@@ -392,8 +399,7 @@ export class DefenderRtpClient {
       (hook['tool_call'] as JsonObject)['args'] = toArguments(fitContent(toolCall?.['args'], rest));
     }
 
-    const tools = fitTools(source['tools'], toolName, rest)
-      ?? (toolName === undefined ? undefined : [toolFromExtensions(source['extensions'], toolName, rest)]);
+    const tools = fitTools(source['tools'], toolName, source['extensions'], rest);
     if (tools) {
       hook['tools'] = tools;
     }
@@ -410,32 +416,36 @@ export class DefenderRtpClient {
 
     // Other fields are copied as they are, without replacing a field built above.
     const built = new Set([...BUILT_FIELDS, ...POINT_FIELDS[point]]);
+    const names = new Set([...built, ...Object.keys(hook)]);
     for (const key in source) {
       if (!Object.prototype.hasOwnProperty.call(source, key) || built.has(key) || key.length > maxCharacters) {
         continue;
       }
 
-      const entry = fitEntry(key, source[key], rest);
+      const entry = fitEntry(key, source[key], rest, 0, [], names);
       if (entry === DROPPED) {
         break;
       }
 
-      if (entry && !Object.prototype.hasOwnProperty.call(hook, entry[0])) {
+      if (entry) {
         Object.defineProperty(hook, entry[0], { value: entry[1], enumerable: true, writable: true, configurable: true });
       }
     }
 
     hook['target'] = targetOf(hook);
-    return { hook, truncated: decision.cut };
+    const incomplete = decision.cut ? 'truncated' : decision.collided ? 'collided' : undefined;
+    return incomplete ? { hook, incomplete } : { hook };
   }
 
   /**
-   * Defender saw only the start of the content under decision. A block still stands, but an allow
-   * does not cover the rest, so the action follows the fail mode instead, as if no verdict had been
-   * obtained: otherwise content padded past the limit would be authorized unseen.
+   * Defender saw only part of the content under decision: it was cut, or two of its keys became one.
+   * A block still stands, but an allow does not cover the rest, so the action follows the fail mode
+   * instead, as if no verdict had been obtained: otherwise content padded past the limit would be
+   * authorized unseen.
    */
-  private static ofTruncatedContent(
+  private static ofIncompleteContent(
     result: DefenderRtpEvaluationResult,
+    incomplete: 'truncated' | 'collided',
     maxCharacters: number,
     configuration: ToolingConfiguration,
   ): DefenderRtpEvaluationResult {
@@ -444,13 +454,15 @@ export class DefenderRtpClient {
     }
 
     const failClosed = configuration.defenderRtpFailClosed;
+    const truncated = incomplete === 'truncated';
     return {
       ...result,
       truncated: true,
       allowed: !failClosed,
-      error: `content exceeded A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS (${maxCharacters}); `
-        + 'Defender evaluated a truncated copy',
-      ...(failClosed ? { blockReason: TRUNCATED_FAIL_CLOSED_REASON } : {}),
+      error: truncated
+        ? `content exceeded A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS (${maxCharacters}); Defender evaluated a truncated copy`
+        : COLLIDED_KEYS_ERROR,
+      ...(failClosed ? { blockReason: truncated ? TRUNCATED_FAIL_CLOSED_REASON : INCOMPLETE_FAIL_CLOSED_REASON } : {}),
     };
   }
 
@@ -738,14 +750,17 @@ export class DefenderRtpClient {
 // ---- module helpers ----------------------------------------------------------------------------
 
 /**
- * Tool declarations as Defender accepts them (a name, a string description, an object schema),
- * within the budget, the current tool's first.
+ * Tool declarations as Defender accepts them (a name, a string description, an object schema), within
+ * the budget. The called tool comes first and is always declared: from `tools`, or by name with the
+ * host's `extensions.a365.tool.description` when `tools` leaves it out or its declaration does not fit.
  */
-function fitTools(tools: unknown, currentTool: string | undefined, budget: Budget): JsonObject[] | undefined {
-  if (!Array.isArray(tools)) {
-    return undefined;
-  }
-
+function fitTools(
+  tools: unknown,
+  calledTool: string | undefined,
+  extensions: unknown,
+  budget: Budget,
+): JsonObject[] | undefined {
+  const list: unknown[] = Array.isArray(tools) ? tools : [];
   const declarations: JsonObject[] = [];
   const add = (tool: unknown): boolean => {
     const name = isObject(tool) ? stringOf(tool['name']) : undefined;
@@ -777,14 +792,16 @@ function fitTools(tools: unknown, currentTool: string | undefined, budget: Budge
     return true;
   };
 
-  const current = currentTool === undefined
+  const called = calledTool === undefined
     ? -1
-    : tools.findIndex((tool) => isObject(tool) && stringOf(tool['name']) === currentTool);
-  if (current < 0 || add(tools[current])) {
-    for (let index = 0; index < tools.length && budget.remaining > 0; index += 1) {
-      if (index !== current && !add(tools[index])) {
-        break;
-      }
+    : list.findIndex((tool) => isObject(tool) && stringOf(tool['name']) === calledTool);
+  if (calledTool !== undefined && (called < 0 || !add(list[called]))) {
+    declarations.push(toolFromExtensions(extensions, calledTool, budget));
+  }
+
+  for (let index = 0; index < list.length && budget.remaining > 0; index += 1) {
+    if (index !== called && !add(list[index])) {
+      break;
     }
   }
 
@@ -814,6 +831,7 @@ function fitExtensions(extensions: unknown, budget: Budget): JsonObject | undefi
   }
 
   const entries: Array<[string, Json]> = [];
+  const seen = new Set<string>();
   for (const key in extensions) {
     if (!Object.prototype.hasOwnProperty.call(extensions, key)
       || key.length > budget.maxString
@@ -821,7 +839,7 @@ function fitExtensions(extensions: unknown, budget: Budget): JsonObject | undefi
       continue;
     }
 
-    const entry = fitEntry(key, extensions[key], budget);
+    const entry = fitEntry(key, extensions[key], budget, 0, [], seen);
     if (entry === DROPPED) {
       break;
     }
@@ -860,12 +878,13 @@ function fitMessages(messages: unknown, budget: Budget): JsonObject[] | undefine
     }
 
     const entries: Array<[string, Json]> = [['role', role], ['content', fitted ?? '']];
+    const seen = new Set(['role', 'content']);
     for (const key in message) {
       if (!Object.prototype.hasOwnProperty.call(message, key) || key === 'role' || key === 'content') {
         continue;
       }
 
-      const entry = fitEntry(key, message[key], budget);
+      const entry = fitEntry(key, message[key], budget, 0, [], seen);
       if (entry === DROPPED) {
         break;
       }
@@ -1128,12 +1147,13 @@ function fitJson(value: unknown, budget: Budget, depth = 0, ancestors: object[] 
     }
 
     const entries: Array<[string, Json]> = [];
+    const seen = new Set<string>();
     for (const key in node) {
       if (!Object.prototype.hasOwnProperty.call(node, key)) {
         continue;
       }
 
-      const entry = fitEntry(key, (node as Record<string, unknown>)[key], budget, depth + 1, ancestors);
+      const entry = fitEntry(key, (node as Record<string, unknown>)[key], budget, depth + 1, ancestors, seen);
       if (entry === DROPPED) {
         budget.cut = true;
         break;
@@ -1150,17 +1170,28 @@ function fitJson(value: unknown, budget: Budget, depth = 0, ancestors: object[] 
   }
 }
 
-/** A property within the budget: `undefined` when JSON leaves it out, `DROPPED` when it does not fit. */
+/**
+ * A property within the budget: `undefined` when JSON leaves it out, `DROPPED` when it does not fit. A
+ * key that `seen` already holds (two keys became one once made well formed) is left out, and the budget
+ * records the collision, since the copy then misses one of the values.
+ */
 function fitEntry(
   key: string,
   value: unknown,
   budget: Budget,
   depth = 0,
   ancestors: object[] = [],
+  seen?: Set<string>,
 ): [string, Json] | undefined | Dropped {
   const name = fitString(key, budget);
   if (name === DROPPED) {
     return DROPPED;
+  }
+
+  if (seen?.has(name)) {
+    budget.remaining += Math.max(1, name.length);
+    budget.collided = true;
+    return undefined;
   }
 
   const fitted = fitJson(value, budget, depth, ancestors);
@@ -1174,6 +1205,7 @@ function fitEntry(
     return undefined;
   }
 
+  seen?.add(name);
   return [name, fitted];
 }
 
