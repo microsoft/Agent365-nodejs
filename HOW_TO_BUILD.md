@@ -19,6 +19,7 @@ nodejs/
 │   ├── agents-a365-notifications/                    # @microsoft/agents-a365-notifications
 │   ├── agents-a365-observability/                    # @microsoft/agents-a365-observability
 │   ├── agents-a365-tooling/                          # @microsoft/agents-a365-tooling
+│   ├── agents-a365-tooling-extensions-agenthooks/    # @microsoft/agents-a365-tooling-extensions-agenthooks
 │   ├── agents-a365-tooling-extensions-claude/        # @microsoft/agents-a365-tooling-extensions-claude
 │   ├── agents-a365-tooling-extensions-langchain/     # @microsoft/agents-a365-tooling-extensions-langchain
 │   └── agents-a365-tooling-extensions-openai/        # @microsoft/agents-a365-tooling-extensions-openai
@@ -75,6 +76,7 @@ After building and packing, you'll find these `.tgz` files in the `nodejs/` dire
 - `microsoft-agents-a365-notifications-{version}.tgz`
 - `microsoft-agents-a365-observability-{version}.tgz`
 - `microsoft-agents-a365-tooling-{version}.tgz`
+- `microsoft-agents-a365-tooling-extensions-agenthooks-{version}.tgz`
 - `microsoft-agents-a365-tooling-extensions-claude-{version}.tgz`
 - `microsoft-agents-a365-tooling-extensions-langchain-{version}.tgz`
 - `microsoft-agents-a365-tooling-extensions-openai-{version}.tgz`

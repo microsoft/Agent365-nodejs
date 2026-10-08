@@ -30,6 +30,7 @@
     "@microsoft/agents-a365-observability-extensions-openai": "workspace:*",
     "@microsoft/agents-a365-observability-hosting": "workspace:*",
     "@microsoft/agents-a365-runtime": "workspace:*",
+    "@microsoft/agents-a365-tooling": "workspace:*",
     "@microsoft/agents-hosting": "catalog:",
     "@modelcontextprotocol/sdk": "catalog:",
     "@openai/agents": "catalog:",

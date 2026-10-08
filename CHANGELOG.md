@@ -36,6 +36,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   runtime, so installs where npm did not hoist another copy failed with
   `MODULE_NOT_FOUND` when loading the exporter.
 
+### Added (`@microsoft/agents-a365-tooling`)
+
+- **Microsoft Defender for AI real-time protection client (opt-in)** -
+  `DefenderRtpClient.evaluateHookContext` sends an agent-hooks/0.1 context to the Defender
+  prevention endpoint (`POST .../v1/protection/evaluate`) at the four points Defender evaluates
+  (`input`, `pre_tool_call`, `post_tool_call`, `output`) and returns its verdict (`deny` and
+  `transform` block). A copy of the context is fitted to Defender's request validation, with every
+  content string clamped; the host's context is not modified.
+- Calls carry the agent identity's own app-only token for the Defender API
+  (`api://86a21212-634e-4553-b3d6-e477e4c9d9ec`, role `RealtimeProtection.Evaluate.All`), resolved
+  by a `DefenderRtpTokenResolver` and cached per agent, tenant and scope;
+  `DefenderRtpTokenResolvers.fromAgenticConnection` uses the agent's Agents SDK connection, the same
+  authority as Observability S2S export. The endpoint and the token authority must be `https`.
+- Every call sends a unique `x-ms-correlation-id`. One deadline covers the token acquisition and the
+  request. When no verdict is obtained, the result follows `A365_DEFENDER_RTP_FAIL_MODE` (fail open
+  by default), and a `400` reports the failed validation rules.
+- Configured with `ENABLE_A365_DEFENDER_RTP`, `A365_DEFENDER_RTP_ENDPOINT`,
+  `A365_DEFENDER_RTP_FAIL_MODE`, `A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS` (default 10000),
+  `A365_DEFENDER_RTP_AUTHENTICATION_SCOPE` and `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS`
+  (default 20000), or the matching `ToolingConfiguration` overrides. No new dependency.
+
+### Added (`@microsoft/agents-a365-tooling-extensions-agenthooks`, new, preview)
+
+- **`A365DefenderInterceptor`** - An agent-hooks interceptor (`@responsibleai/agent-hooks`, pinned to
+  the `0.1.0-alpha.5` prerelease) that sends each emitted context Defender evaluates through
+  `DefenderRtpClient` and maps the verdict, with a callback for each evaluation;
+  `createProtectionEmitter` (`enforce`, `parallel/strictest`) and `addA365Defender`. Requires
+  Node.js 20 or later.
+
 ## [1.0.0] - 2026-04-30
 
 ### Breaking Changes (`@microsoft/agents-a365-tooling`)

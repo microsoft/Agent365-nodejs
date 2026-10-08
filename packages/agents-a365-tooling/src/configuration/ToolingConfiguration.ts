@@ -8,6 +8,14 @@ import { MCPServerConfig } from '../contracts';
 // Constants for tooling-specific settings
 const MCP_PLATFORM_PROD_BASE_URL = 'https://agent365.svc.cloud.microsoft';
 const PROD_MCP_PLATFORM_AUTHENTICATION_SCOPE = 'ea9ffc3e-8a23-4a7d-836d-234d7c7565c1/.default';
+const DEFAULT_DEFENDER_RTP_TIMEOUT_MILLISECONDS = 10000;
+const DEFAULT_DEFENDER_RTP_MAX_CONTENT_CHARACTERS = 20000;
+
+/** Application id of the Defender API, which grants `RealtimeProtection.Evaluate.All`. */
+export const DEFENDER_RTP_API_APP_ID = '86a21212-634e-4553-b3d6-e477e4c9d9ec';
+
+/** Default Defender RTP token scope: the Defender API. */
+export const DEFAULT_DEFENDER_RTP_AUTHENTICATION_SCOPE = `api://${DEFENDER_RTP_API_APP_ID}/.default`;
 
 /**
  * Resolve the OAuth scope to request for a given MCP server.
@@ -105,6 +113,97 @@ export class ToolingConfiguration extends RuntimeConfiguration {
     if (envValue) return envValue;
 
     return PROD_MCP_PLATFORM_AUTHENTICATION_SCOPE;
+  }
+
+  /**
+   * Whether Microsoft Defender for AI real-time protection is enabled. When false,
+   * `DefenderRtpClient` evaluates nothing and makes no calls.
+   */
+  get isDefenderRtpEnabled(): boolean {
+    const override = this.toolingOverrides.isDefenderRtpEnabled?.();
+    if (override !== undefined) return override;
+
+    return RuntimeConfiguration.parseEnvBoolean(process.env.ENABLE_A365_DEFENDER_RTP);
+  }
+
+  /**
+   * Defender prevention endpoint (`POST .../v1/protection/evaluate`, agent-hooks/0.1 contract), an absolute
+   * https URL. There is no default: it is required when Defender RTP is enabled, and empty otherwise.
+   */
+  get defenderRtpEndpoint(): string {
+    const override = this.toolingOverrides.defenderRtpEndpoint?.();
+    if (override?.trim()) return normalizeUrl(override);
+
+    const envValue = process.env.A365_DEFENDER_RTP_ENDPOINT?.trim();
+    if (envValue) return normalizeUrl(envValue);
+
+    if (this.isDefenderRtpEnabled) {
+      throw new Error(
+        'defenderRtpEndpoint is required when Defender RTP is enabled. '
+        + 'Set A365_DEFENDER_RTP_ENDPOINT or provide a configuration override.',
+      );
+    }
+    return '';
+  }
+
+  /**
+   * OAuth scope of the Defender API token. The token must carry the `RealtimeProtection.Evaluate.All`
+   * app role. Defaults to the Defender API (`api://86a21212-634e-4553-b3d6-e477e4c9d9ec/.default`).
+   */
+  get defenderRtpAuthenticationScope(): string {
+    const override = this.toolingOverrides.defenderRtpAuthenticationScope?.()?.trim();
+    if (override) return override;
+
+    const envValue = process.env.A365_DEFENDER_RTP_AUTHENTICATION_SCOPE?.trim();
+    if (envValue) return envValue;
+
+    return DEFAULT_DEFENDER_RTP_AUTHENTICATION_SCOPE;
+  }
+
+  /**
+   * Deadline in milliseconds of each Defender evaluation, token acquisition included (default 10000).
+   */
+  get defenderRtpTimeoutMilliseconds(): number {
+    const override = this.toolingOverrides.defenderRtpTimeoutMilliseconds?.();
+    const timeout = override
+      ?? RuntimeConfiguration.parseEnvInt(
+        process.env.A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS,
+        DEFAULT_DEFENDER_RTP_TIMEOUT_MILLISECONDS,
+      );
+
+    if (!Number.isInteger(timeout) || timeout <= 0) {
+      throw new Error('defenderRtpTimeoutMilliseconds must be a positive integer.');
+    }
+    return timeout;
+  }
+
+  /**
+   * Whether an evaluation that returns no verdict (timeout, transport, authentication or HTTP
+   * error) blocks the action (`A365_DEFENDER_RTP_FAIL_MODE=closed`). Defaults to false: fail open.
+   */
+  get defenderRtpFailClosed(): boolean {
+    const override = this.toolingOverrides.defenderRtpFailClosed?.();
+    if (override !== undefined) return override;
+
+    return process.env.A365_DEFENDER_RTP_FAIL_MODE?.trim().toLowerCase() === 'closed';
+  }
+
+  /**
+   * Maximum characters of each content string sent to Defender (default 20000); longer strings are
+   * truncated. Identifiers and protocol fields are sent unchanged.
+   */
+  get defenderRtpMaxContentCharacters(): number {
+    const override = this.toolingOverrides.defenderRtpMaxContentCharacters?.();
+    const maximum = override
+      ?? RuntimeConfiguration.parseEnvInt(
+        process.env.A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS,
+        DEFAULT_DEFENDER_RTP_MAX_CONTENT_CHARACTERS,
+      );
+
+    if (!Number.isInteger(maximum) || maximum <= 0) {
+      throw new Error('defenderRtpMaxContentCharacters must be a positive integer.');
+    }
+    return maximum;
   }
 
   /**

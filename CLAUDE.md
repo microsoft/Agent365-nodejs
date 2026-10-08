@@ -73,16 +73,18 @@ cd packages && pnpm pack --workspaces
 
 ### Monorepo Structure
 
-This is a pnpm workspace monorepo with 9 packages in `packages/`:
+This is a pnpm workspace monorepo with 11 packages in `packages/`:
 
 ```
 packages/
 ├── agents-a365-runtime/                    # Core utilities (no external deps)
 ├── agents-a365-observability/              # OpenTelemetry tracing (depends on runtime)
 ├── agents-a365-observability-hosting/      # Hosting-specific observability
+├── agents-a365-observability-extensions-langchain/  # LangChain instrumentation
 ├── agents-a365-observability-extensions-openai/  # OpenAI instrumentation
 ├── agents-a365-notifications/              # Agent notification services
-├── agents-a365-tooling/                    # MCP server configuration
+├── agents-a365-tooling/                    # MCP server configuration, Defender RTP client
+├── agents-a365-tooling-extensions-agenthooks/  # agent-hooks interceptor for Defender RTP
 ├── agents-a365-tooling-extensions-claude/  # Claude/Anthropic integration
 ├── agents-a365-tooling-extensions-langchain/  # LangChain integration
 └── agents-a365-tooling-extensions-openai/  # OpenAI Agents SDK integration
@@ -92,7 +94,7 @@ packages/
 ```
 runtime ──► observability ──► observability-hosting ──► observability-extensions-openai
    │
-   └─────────► tooling ──► tooling-extensions-* (claude, langchain, openai)
+   └─────────► tooling ──► tooling-extensions-* (agenthooks, claude, langchain, openai)
    │
    └─────────► notifications
 ```
@@ -174,6 +176,7 @@ MCP tool server discovery and configuration:
   - Prod mode (default): Discovers from Agent365 gateway endpoint
 - **`Utility`**: Header composition, token validation, URL construction
 - **Interfaces**: `MCPServerConfig`, `McpClientTool`, `ToolOptions`
+- **`DefenderRtpClient`**: Microsoft Defender for AI real-time protection (opt-in, `ENABLE_A365_DEFENDER_RTP`). `evaluateHookContext` sends a copy of an agent-hooks/0.1 context, fitted to Defender's request validation, to the Defender prevention endpoint at `input`, `pre_tool_call`, `post_tool_call` and `output`, with the agent identity's app-only token (`DefenderRtpTokenResolvers.fromAgenticConnection`) and a unique `x-ms-correlation-id`, and returns the verdict; failures follow `A365_DEFENDER_RTP_FAIL_MODE`. No agent-hooks dependency: `A365DefenderInterceptor` in `agents-a365-tooling-extensions-agenthooks` drives it from an agent-hooks emitter.
 
 ### Notifications (`@microsoft/agents-a365-notifications`)
 Extends `AgentApplication` with notification handlers via declaration merging:
@@ -199,7 +202,7 @@ The keyword "Kairo" is legacy and should not appear in any code. Flag and remove
 ### Code Standards
 - **Unused variables**: Prefix with `_` to avoid ESLint errors (configured in `eslint.config.mjs`)
 - **Module format**: This is an ESM project (`"type": "module"` in root `package.json`)
-- **Node.js version**: Requires Node.js >= 18.0.0
+- **Node.js version**: Requires Node.js >= 18.0.0 (`agents-a365-tooling-extensions-agenthooks` requires >= 20, like its `@responsibleai/agent-hooks` native core)
 - **Dependency versions**: Never specify version constraints directly in `package.json` files. All dependency versions must be defined in the `catalog:` section of `pnpm-workspace.yaml` and referenced using `catalog:` in package.json files. This applies to `dependencies`, `devDependencies`, and `peerDependencies`.
 
 ## Environment Variables
@@ -210,6 +213,12 @@ The keyword "Kairo" is legacy and should not appear in any code. Flag and remove
 | `CLUSTER_CATEGORY` | Environment classification | `local`, `dev`, `test`, `preprod`, `prod`, `gov`, `high`, `dod`, `mooncake`, `ex`, `rx` |
 | `MCP_PLATFORM_ENDPOINT` | MCP platform base URL | URL string |
 | `MCP_PLATFORM_AUTHENTICATION_SCOPE` | MCP platform auth scope | Scope string |
+| `ENABLE_A365_DEFENDER_RTP` | Enable Defender real-time protection (`DefenderRtpClient`) | `true`, `false` (default) |
+| `A365_DEFENDER_RTP_ENDPOINT` | Defender prevention endpoint (required when enabled) | URL string |
+| `A365_DEFENDER_RTP_FAIL_MODE` | Behavior when no Defender verdict is obtained | `open` (default), `closed` |
+| `A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS` | Timeout of each Defender evaluation | Number (default: 10000) |
+| `A365_DEFENDER_RTP_AUTHENTICATION_SCOPE` | Override the Defender API token scope | Scope string |
+| `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` | Max characters of each content string sent to Defender | Number (default: 20000) |
 | `A365_OBSERVABILITY_SCOPES_OVERRIDE` | Override observability auth scopes | Space-separated scope strings |
 | `ENABLE_A365_OBSERVABILITY_EXPORTER` | Enable Agent365 exporter | `true`, `false` (default) |
 | `ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT` | Enable per-request export mode | `true`, `false` (default) |
@@ -263,6 +272,7 @@ npm run version:check
 - **Observability Extensions (OpenAI)**: [packages/agents-a365-observability-extensions-openai/docs/design.md](packages/agents-a365-observability-extensions-openai/docs/design.md)
 - **Notifications Package**: [packages/agents-a365-notifications/docs/design.md](packages/agents-a365-notifications/docs/design.md)
 - **Tooling Package**: [packages/agents-a365-tooling/docs/design.md](packages/agents-a365-tooling/docs/design.md)
+- **Tooling Extensions (agent-hooks)**: [packages/agents-a365-tooling-extensions-agenthooks/docs/design.md](packages/agents-a365-tooling-extensions-agenthooks/docs/design.md)
 - **Tooling Extensions (Claude)**: [packages/agents-a365-tooling-extensions-claude/docs/design.md](packages/agents-a365-tooling-extensions-claude/docs/design.md)
 - **Tooling Extensions (LangChain)**: [packages/agents-a365-tooling-extensions-langchain/docs/design.md](packages/agents-a365-tooling-extensions-langchain/docs/design.md)
 - **Tooling Extensions (OpenAI)**: [packages/agents-a365-tooling-extensions-openai/docs/design.md](packages/agents-a365-tooling-extensions-openai/docs/design.md)

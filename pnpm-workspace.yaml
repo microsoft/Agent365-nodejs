@@ -36,6 +36,12 @@ catalog:
   # Model Context Protocol SDK
   "@modelcontextprotocol/sdk": "^1.26.0"
 
+  # agent-hooks control contract (AGENT-HOOKS-0.1), used only by tooling-extensions-agenthooks.
+  # Prerelease with a native core prebuilt for linux-x64/arm64 (glibc), darwin-x64/arm64 and
+  # win32-x64, pinned to an exact version.
+  # TODO: move to 0.1.0-beta.1.
+  "@responsibleai/agent-hooks": "0.1.0-alpha.5"
+
   # OpenAI Agents packages
   "@openai/agents": "^0.7.0"
   "@openai/agents-core": "^0.7.0"

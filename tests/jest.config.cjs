@@ -74,6 +74,7 @@ module.exports = {
     '^@microsoft/agents-a365-observability-extensions-openai$': '<rootDir>/packages/agents-a365-observability-extensions-openai/src',
     '^@microsoft/agents-a365-observability-tokencache$': '<rootDir>/packages/agents-a365-observability-tokencache/src',
     '^@microsoft/agents-a365-tooling$': '<rootDir>/packages/agents-a365-tooling/src',
+    '^@microsoft/agents-a365-tooling-extensions-agenthooks$': '<rootDir>/packages/agents-a365-tooling-extensions-agenthooks/src',
     '^@microsoft/agents-a365-tooling-extensions-claude$': '<rootDir>/packages/agents-a365-tooling-extensions-claude/src',
     '^@microsoft/agents-a365-tooling-extensions-langchain$': '<rootDir>/packages/agents-a365-tooling-extensions-langchain/src',
     '^@microsoft/agents-a365-tooling-extensions-openai$': '<rootDir>/packages/agents-a365-tooling-extensions-openai/src',
