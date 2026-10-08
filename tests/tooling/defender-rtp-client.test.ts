@@ -133,14 +133,22 @@ describe('DefenderRtpClient', () => {
       expect(first?.blockReason).toBeUndefined();
     });
 
-    it('keeps the tenant and actor the host set', async () => {
+    it('keeps the actor the host set and always sends the agent\'s tenant', async () => {
       const { client, calls, tokens } = create(allow);
-      const context = { ...inputContext('hello'), tenant: { id: 'host-tenant', name: 'Contoso' }, actor: { id: 'svc', kind: 'service' } };
+      const tenantId = 'abcdef01-2345-6789-abcd-ef0123456789';
+      const agent = { ...AGENT, tenantId };
+      const actor = { id: 'svc', kind: 'service' };
 
-      await client.evaluateHookContext(context, AGENT, tokens.resolve);
+      await client.evaluateHookContext({ ...inputContext('one'), tenant: { id: tenantId.toUpperCase(), name: 'Contoso' }, actor }, agent, tokens.resolve);
+      await client.evaluateHookContext({ ...inputContext('two'), tenant: { id: 'other-tenant', name: 'Fabrikam' } }, agent, tokens.resolve);
+      await client.evaluateHookContext({ ...inputContext('three'), tenant: { name: 'Contoso' } }, agent, tokens.resolve);
 
-      expect(calls[0].body.tenant).toEqual({ id: 'host-tenant', name: 'Contoso' });
-      expect(calls[0].body.actor).toEqual({ id: 'svc', kind: 'service' });
+      expect(calls.map((call) => call.body.tenant)).toEqual([
+        { id: tenantId, name: 'Contoso' },
+        { id: tenantId },
+        { id: tenantId, name: 'Contoso' },
+      ]);
+      expect(calls[0].body.actor).toEqual(actor);
     });
 
     it('fits tool calls to the contract', async () => {
@@ -265,59 +273,84 @@ describe('DefenderRtpClient', () => {
       expect(calls[0].body.agent.framework).toBe('my-framework');
     });
 
-    it('clamps long strings', async () => {
+    it('clamps long strings within the limit, marker included', async () => {
+      const { client, calls, tokens } = create(allow, { defenderRtpMaxContentCharacters: () => 30 });
+
+      await client.evaluateHookContext(inputContext('abcdefghij'.repeat(5)), AGENT, tokens.resolve);
+
+      const body = calls[0].body;
+      expect(contractErrors(body)).toEqual([]);
+      expect(body.input.content).toBe('abcdefg...[truncated 43 chars]');
+      expect(body.input.content).toHaveLength(30);
+      expect(body.target).toEqual(body.input);
+    });
+
+    it('cuts without a marker when the marker does not fit', async () => {
       const { client, calls, tokens } = create(allow, { defenderRtpMaxContentCharacters: () => 4 });
 
       await client.evaluateHookContext(inputContext('abcdefgh'), AGENT, tokens.resolve);
 
-      const body = calls[0].body;
-      expect(contractErrors(body)).toEqual([]);
-      expect(body.input.content).toBe('abcd...[truncated 4 chars]');
-      expect(body.target).toEqual(body.input);
+      expect(calls[0].body.input.content).toBe('abcd');
+    });
+
+    it('never sends a content string longer than the limit', async () => {
+      for (const max of [1, 21, 22, 23, 24, 30, 1000]) {
+        const { client, calls, tokens } = create(allow, { defenderRtpMaxContentCharacters: () => max });
+        for (const length of [max + 1, max + 9, max * 10 + 7]) {
+          await client.evaluateHookContext(inputContext('x'.repeat(length)), AGENT, tokens.resolve);
+        }
+
+        expect(calls.map((call) => call.body.input.content.length <= max)).toEqual([true, true, true]);
+      }
     });
 
     it('clamps every content string but no identifier or protocol field', async () => {
-      const { client, calls, tokens } = create(allow, { defenderRtpMaxContentCharacters: () => 8 });
-      const long = (character: string): string => character.repeat(20);
+      const { client, calls, tokens } = create(allow, { defenderRtpMaxContentCharacters: () => 30 });
+      const long = (character: string): string => character.repeat(50);
+      const id = (prefix: string): string => `${prefix}-${'0123456789'.repeat(4)}`;
+      const toolName = id('SearchCatalog');
       const context = {
         spec: 'agent-hooks/0.1', interception_point: 'pre_tool_call', timestamp: '2026-10-07T10:00:00.000Z', sequence: 4,
-        agent: { id: AGENT_ID, framework: 'agent-framework', name: 'SampleAgent' },
-        session: { id: 'conversation:activity' }, target: {},
-        tool_call: { id: 'call-identifier', name: 'SearchCatalog', args: { query: long('q'), filters: [long('f')] } },
-        tools: [{ name: 'SearchCatalog', description: long('d'), schema: { type: 'object', description: long('s') } }],
+        agent: { id: AGENT_ID, framework: 'agent-framework', name: id('SampleAgent') },
+        session: { id: id('conversation') }, target: {},
+        tool_call: { id: id('call'), name: toolName, args: { query: long('q'), filters: [long('f')] } },
+        tools: [{ name: toolName, description: long('d'), schema: { type: 'object', description: long('s') } }],
         messages: [{ role: 'user', content: long('m') }],
         extensions: { a365: { note: long('n') } },
-        request_id: 'request-identifier',
+        request_id: id('request'),
       };
 
       await client.evaluateHookContext(context, AGENT, tokens.resolve);
 
       const body = calls[0].body;
-      const clamped = (character: string): string => `${character.repeat(8)}...[truncated 12 chars]`;
+      const clamped = (character: string): string => `${character.repeat(7)}...[truncated 43 chars]`;
       expect(contractErrors(body)).toEqual([]);
       expect(body.tool_call).toEqual({
-        id: 'call-identifier',
-        name: 'SearchCatalog',
+        id: id('call'),
+        name: toolName,
         args: { query: clamped('q'), filters: [clamped('f')] },
       });
       expect(body.target).toEqual(body.tool_call.args);
-      expect(body.tools).toEqual([{ name: 'SearchCatalog', description: clamped('d'), schema: { type: 'object', description: clamped('s') } }]);
+      expect(body.tools).toEqual([{ name: toolName, description: clamped('d'), schema: { type: 'object', description: clamped('s') } }]);
       expect(body.messages).toEqual([{ role: 'user', content: clamped('m') }]);
       expect(body.extensions).toEqual({ a365: { note: clamped('n') } });
-      expect(body.agent).toEqual({ id: AGENT_ID, framework: 'agent-framework', name: 'SampleAgent' });
-      expect(body.session).toEqual({ id: 'conversation:activity' });
+      expect(body.agent).toEqual({ id: AGENT_ID, framework: 'agent-framework', name: id('SampleAgent') });
+      expect(body.session).toEqual({ id: id('conversation') });
       expect(body.tenant).toEqual({ id: TENANT_ID });
-      expect(body.request_id).toBe('request-identifier');
+      expect(body.request_id).toBe(id('request'));
       expect(body.spec).toBe('agent-hooks/0.1');
       expect(body.timestamp).toBe('2026-10-07T10:00:00.000Z');
     });
 
     it('does not split a surrogate pair when clamping', async () => {
-      const { client, calls, tokens } = create(allow, { defenderRtpMaxContentCharacters: () => 4 });
+      const marked = create(allow, { defenderRtpMaxContentCharacters: () => 30 });
+      const cut = create(allow, { defenderRtpMaxContentCharacters: () => 4 });
 
-      await client.evaluateHookContext(inputContext('abc😀def'), AGENT, tokens.resolve);
+      await marked.client.evaluateHookContext(inputContext(`${'a'.repeat(6)}😀${'b'.repeat(43)}`), AGENT, marked.tokens.resolve);
+      await cut.client.evaluateHookContext(inputContext('abc😀def'), AGENT, cut.tokens.resolve);
 
-      expect(calls[0].body.input.content).toBe('abc...[truncated 5 chars]');
+      expect(marked.calls[0].body.input.content).toBe('aaaaaa...[truncated 45 chars]');
+      expect(cut.calls[0].body.input.content).toBe('abc');
     });
 
     it('rejects a context without an agent id', async () => {
@@ -396,6 +429,116 @@ describe('DefenderRtpClient', () => {
       expect(result?.allowed).toBe(false);
       expect(result?.verdict?.transformPath).toBe('/target');
       expect(result?.blockReason).toContain('rewrite');
+    });
+  });
+
+  describe('content longer than the limit', () => {
+    const PADDED = `${'a'.repeat(20000)}BLOCK_ME`;
+    const TRUNCATED_ERROR = 'content exceeded A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS (20000); Defender evaluated a truncated copy';
+    const denyBlockMe = (body: Record<string, any>): Response => JSON.stringify(body).includes('BLOCK_ME')
+      ? json({ decision: 'deny', reason: 'prevention_blocked', message: 'Blocked content.' })
+      : json({ decision: 'allow' });
+
+    /** A context whose content under decision at `point` is `content`. */
+    const contextWith = (point: string, content: string): Record<string, any> => {
+      const envelope = {
+        spec: 'agent-hooks/0.1', interception_point: point, timestamp: '2026-10-07T10:00:00.000Z', sequence: 5,
+        agent: { id: AGENT_ID, framework: 'agent365' }, session: { id: 's-long' },
+      };
+      switch (point) {
+      case 'input':
+        return { ...envelope, target: { content, role: 'user' }, input: { content, role: 'user' } };
+      case 'pre_tool_call':
+        return { ...envelope, target: { body: content }, tool_call: { id: 'call-1', name: 'SendMail', args: { body: content } } };
+      case 'post_tool_call':
+        return {
+          ...envelope, target: content,
+          tool_call: { id: 'call-1', name: 'FetchPage', args: {} }, tool_result: { value: content, is_error: false },
+        };
+      default:
+        return { ...envelope, target: { content }, output: { content } };
+      }
+    };
+    const sentContent = (body: Record<string, any>): string => ({
+      input: body.input?.content,
+      pre_tool_call: body.tool_call?.args?.body,
+      post_tool_call: body.tool_result?.value,
+      output: body.output?.content,
+    } as Record<string, string>)[body.interception_point];
+
+    it.each(['input', 'pre_tool_call', 'post_tool_call', 'output'])(
+      'does not let an allow of a truncated copy authorize the content at %s when failing closed',
+      async (point) => {
+        const { client, calls, tokens } = create(denyBlockMe, { defenderRtpFailClosed: () => true });
+
+        const result = await client.evaluateHookContext(contextWith(point, PADDED), AGENT, tokens.resolve);
+
+        const body = calls[0].body;
+        expect(contractErrors(body)).toEqual([]);
+        expect(sentContent(body).length).toBeLessThanOrEqual(20000);
+        expect(JSON.stringify(body)).not.toContain('BLOCK_ME');
+        expect(result).toMatchObject({
+          allowed: false,
+          evaluated: true,
+          truncated: true,
+          error: TRUNCATED_ERROR,
+          blockReason: 'The content is too long to be fully validated by Microsoft Defender for AI, and this agent is configured to fail closed.',
+        });
+        expect(result?.verdict?.decision).toBe('allow');
+      },
+    );
+
+    it('allows content Defender allowed only in part when failing open, reporting why', async () => {
+      const { client, tokens } = create(denyBlockMe);
+
+      const result = await client.evaluateHookContext(contextWith('input', PADDED), AGENT, tokens.resolve);
+
+      expect(result).toMatchObject({ allowed: true, evaluated: true, truncated: true, error: TRUNCATED_ERROR });
+      expect(result?.blockReason).toBeUndefined();
+    });
+
+    it.each(['deny', 'transform'])('keeps a Defender %s of a truncated copy as a block', async (decision) => {
+      const { client, tokens } = create(() => json({ decision, reason: 'prevention_blocked', message: 'Blocked content.' }));
+
+      const result = await client.evaluateHookContext(contextWith('input', `BLOCK_ME${'a'.repeat(20000)}`), AGENT, tokens.resolve);
+
+      expect(result).toMatchObject({ allowed: false, evaluated: true, truncated: true });
+      expect(result?.error).toBeUndefined();
+      expect(result?.verdict?.decision).toBe(decision);
+    });
+
+    it('evaluates content under the limit normally', async () => {
+      const { client, tokens } = create(denyBlockMe, { defenderRtpFailClosed: () => true });
+
+      const result = await client.evaluateHookContext(contextWith('input', 'a'.repeat(20000)), AGENT, tokens.resolve);
+
+      expect(result).toMatchObject({ allowed: true, evaluated: true });
+      expect(result?.truncated).toBeUndefined();
+      expect(result?.error).toBeUndefined();
+    });
+
+    it('does not count truncation outside the content under decision', async () => {
+      const { client, tokens } = create(denyBlockMe, { defenderRtpFailClosed: () => true });
+      const toolCall = { ...contextWith('pre_tool_call', 'short'), tools: [{ name: 'SendMail', description: PADDED }] };
+      const toolResult = {
+        ...contextWith('post_tool_call', 'short'),
+        tool_call: { id: 'call-1', name: 'FetchPage', args: { body: PADDED } },
+      };
+
+      const results = [
+        await client.evaluateHookContext(toolCall, AGENT, tokens.resolve),
+        await client.evaluateHookContext(toolResult, AGENT, tokens.resolve),
+      ];
+
+      expect(results.map((result) => [result?.allowed, result?.truncated])).toEqual([[true, undefined], [true, undefined]]);
+    });
+
+    it('marks a failure for truncated content as truncated, without changing it', async () => {
+      const { client, tokens } = create(() => json({ title: 'Service Unavailable' }, 503));
+
+      const result = await client.evaluateHookContext(contextWith('output', PADDED), AGENT, tokens.resolve);
+
+      expect(result).toMatchObject({ allowed: true, evaluated: false, truncated: true, error: 'http 503: Service Unavailable' });
     });
   });
 

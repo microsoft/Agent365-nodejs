@@ -830,6 +830,9 @@ importers:
       '@opentelemetry/semantic-conventions':
         specifier: 'catalog:'
         version: 1.40.0
+      '@responsibleai/agent-hooks':
+        specifier: 'catalog:'
+        version: 0.1.0-alpha.5
       dotenv:
         specifier: 'catalog:'
         version: 17.4.2

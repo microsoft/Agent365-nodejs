@@ -189,8 +189,11 @@ export class ToolingConfiguration extends RuntimeConfiguration {
   }
 
   /**
-   * Maximum characters of each content string sent to Defender (default 20000); longer strings are
-   * truncated. Identifiers and protocol fields are sent unchanged.
+   * Maximum characters of each content string sent to Defender (default 20000). A longer string is cut
+   * to this length, ending with a `...[truncated N chars]` marker when the marker fits. When the content
+   * under decision is cut, Defender's allow of the copy does not cover it, so the action follows the
+   * fail mode; raise the limit for agents that handle long content. Identifiers and protocol fields are
+   * sent unchanged.
    */
   get defenderRtpMaxContentCharacters(): number {
     const override = this.toolingOverrides.defenderRtpMaxContentCharacters?.();

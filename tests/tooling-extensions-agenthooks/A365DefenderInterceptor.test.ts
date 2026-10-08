@@ -233,14 +233,26 @@ describe('A365DefenderInterceptor under the agent-hooks emitter', () => {
     expect(resolvedCount()).toBe(0);
   });
 
-  it('allows without a call when no identity is resolved', async () => {
-    const { emitter, calls, evaluations } = harness(() => json({ decision: 'deny' }), { resolveNothing: true });
+  it('follows the fail mode without a call when no identity is resolved', async () => {
+    const open = harness(() => json({ decision: 'allow' }), { resolveNothing: true });
+    const closed = harness(() => json({ decision: 'allow' }), { resolveNothing: true, failClosed: true });
 
-    const record = await emitter.emitUnchecked(builder('s-7').input('hello'));
+    const allowed = await open.emitter.emitUnchecked(builder('s-7').input('hello'));
+    const denied = await closed.emitter.emitUnchecked(builder('s-7').input('hello'));
 
-    expect(proceeds(record)).toBe(true);
-    expect(calls).toHaveLength(0);
-    expect(evaluations).toHaveLength(0);
+    expect(proceeds(allowed)).toBe(true);
+    expect(allowed.verdict.warnings).toEqual([{ reason: 'defender:unverified', message: 'no agent identity was resolved' }]);
+    expect(proceeds(denied)).toBe(false);
+    expect(denied.verdict.reason).toBe('runtime_error:defender_unverified');
+    expect(open.calls).toHaveLength(0);
+    expect(closed.calls).toHaveLength(0);
+    expect(open.evaluations).toEqual([expect.objectContaining({
+      allowed: true,
+      evaluated: false,
+      interceptionPoint: 'input',
+      sessionId: 's-7',
+      error: 'no agent identity was resolved',
+    })]);
   });
 
   it('allows without a call while Defender RTP is disabled', async () => {
@@ -266,6 +278,60 @@ describe('A365DefenderInterceptor under the agent-hooks emitter', () => {
 
     expect(proceeds(record)).toBe(true);
     expect(record.verdict.reason).toBeUndefined();
+  });
+});
+
+describe('A365DefenderInterceptor with content longer than the limit', () => {
+  const PADDED = `${'a'.repeat(20000)}BLOCK_ME`;
+  const TRUNCATED_ERROR = 'content exceeded A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS (20000); Defender evaluated a truncated copy';
+  const denyBlockMe = (body: Record<string, any>): Response => JSON.stringify(body).includes('BLOCK_ME')
+    ? json({ decision: 'deny', reason: 'prevention_blocked', message: 'Blocked content.' })
+    : json({ decision: 'allow' });
+
+  it('denies padded content as unverified when failing closed', async () => {
+    const { emitter, calls } = harness(denyBlockMe, { failClosed: true });
+    const turn = builder('s-long');
+
+    const input = await emitter.emitUnchecked(turn.input(PADDED));
+    const toolCall = await emitter.emitUnchecked(turn.preToolCall('call-1', 'SendMail', { body: PADDED }));
+
+    for (const record of [input, toolCall]) {
+      expect(proceeds(record)).toBe(false);
+      expect(record.verdict.reason).toBe('runtime_error:defender_unverified');
+      expect(record.verdict.message)
+        .toBe('The content is too long to be fully validated by Microsoft Defender for AI, and this agent is configured to fail closed.');
+      expect(record.verdict.warnings).toEqual([{ reason: 'defender:unverified', message: TRUNCATED_ERROR }]);
+    }
+    expect(calls.map((call) => JSON.stringify(call.body).includes('BLOCK_ME'))).toEqual([false, false]);
+  });
+
+  it('allows padded content with the unverified warning when failing open', async () => {
+    const { emitter, evaluations } = harness(denyBlockMe);
+
+    const record = await emitter.emitUnchecked(builder('s-long').input(PADDED));
+
+    expect(proceeds(record)).toBe(true);
+    expect(record.verdict.warnings).toEqual([{ reason: 'defender:unverified', message: TRUNCATED_ERROR }]);
+    expect(evaluations[0]).toMatchObject({ allowed: true, evaluated: true, truncated: true });
+  });
+
+  it('keeps a Defender deny of truncated content', async () => {
+    const { emitter } = harness(denyBlockMe);
+
+    const record = await emitter.emitUnchecked(builder('s-long').input(`BLOCK_ME${'a'.repeat(20000)}`));
+
+    expect(proceeds(record)).toBe(false);
+    expect(record.verdict.reason).toBe('defender:block:prevention_blocked');
+    expect(record.verdict.message).toBe('Blocked content.');
+  });
+
+  it('allows content under the limit normally', async () => {
+    const { emitter } = harness(denyBlockMe, { failClosed: true });
+
+    const record = await emitter.emitUnchecked(builder('s-long').input('a'.repeat(20000)));
+
+    expect(proceeds(record)).toBe(true);
+    expect(record.verdict.warnings).toBeUndefined();
   });
 });
 
@@ -311,6 +377,35 @@ describe('A365DefenderInterceptor.toVerdict', () => {
         message: 'Security validation is unavailable and this agent is configured to fail closed.',
         warnings: [{ reason: 'defender:unverified', message: 'no verdict was returned' }],
       });
+  });
+
+  it('maps an allow of a truncated copy as unverified, keeping what Defender noted', () => {
+    const truncatedAllow = {
+      ...base,
+      evaluated: true,
+      truncated: true,
+      error: 'content exceeded the limit',
+      verdict: {
+        decision: 'allow' as const,
+        warnings: [{ reason: 'prevention_annotated', message: 'Suspicious.' }],
+        resultLabels: ['MaliciousContentPropagation'],
+      },
+    };
+
+    expect(A365DefenderInterceptor.toVerdict({ ...truncatedAllow, allowed: true })).toEqual({
+      decision: 'allow',
+      warnings: [
+        { reason: 'defender:unverified', message: 'content exceeded the limit' },
+        { reason: 'prevention_annotated', message: 'Suspicious.' },
+      ],
+      result_labels: ['MaliciousContentPropagation'],
+    });
+    expect(A365DefenderInterceptor.toVerdict({ ...truncatedAllow, allowed: false, blockReason: 'Too long.' })).toEqual({
+      decision: 'deny',
+      reason: 'runtime_error:defender_unverified',
+      message: 'Too long.',
+      warnings: [{ reason: 'defender:unverified', message: 'content exceeded the limit' }],
+    });
   });
 });
 

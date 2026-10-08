@@ -51,9 +51,19 @@ const UNCLAMPED_PATHS: ReadonlySet<string> = new Set([
   'tools[].name',
 ]);
 const FAIL_CLOSED_REASON = 'Security validation is unavailable and this agent is configured to fail closed.';
+const TRUNCATED_FAIL_CLOSED_REASON =
+  'The content is too long to be fully validated by Microsoft Defender for AI, and this agent is configured to fail closed.';
 const TRANSFORM_REASON =
   'Microsoft Defender for AI asked to rewrite this content, which this SDK version does not apply yet.';
 const DEFAULT_BLOCK_REASON = 'Blocked by Microsoft Defender for AI.';
+
+/** Where each point keeps the content Defender decides on (`target` is a copy of it). */
+const DECISION_PATHS: Readonly<Record<DefenderRtpInterceptionPoint, string>> = {
+  input: 'input.content',
+  pre_tool_call: 'tool_call.args',
+  post_tool_call: 'tool_result.value',
+  output: 'output.content',
+};
 
 /** Options for {@link DefenderRtpClient}. */
 export interface DefenderRtpClientOptions {
@@ -130,6 +140,11 @@ export class DefenderRtpClient {
    * Defender's request validation and sent. One deadline (the configured timeout) covers the token
    * acquisition and the request.
    *
+   * Content under decision (`input` or `output` content, tool call arguments, the tool result) longer
+   * than `defenderRtpMaxContentCharacters` is sent truncated, so Defender sees only part of it. A
+   * block still stands, but an allow does not cover the rest: the result is marked `truncated`, and
+   * `allowed` follows the fail mode.
+   *
    * @param context The agent-hooks/0.1 context emitted by the host.
    * @param agent The agent identity and turn; fills fields the context does not set.
    * @param tokenResolver Resolves the agent identity's Defender token.
@@ -164,10 +179,13 @@ export class DefenderRtpClient {
     DefenderRtpClient.requireIdentity(agent);
     const endpoint = DefenderRtpClient.endpoint(configuration);
     signal?.throwIfAborted();
-    const hook = this.prepare(context, agent, configuration);
+    const maxCharacters = configuration.defenderRtpMaxContentCharacters;
+    const { hook, truncated } = this.prepare(context, agent, maxCharacters);
     const sessionId = readString(asObject(hook['session'])?.['id']);
     const started = this.now();
     const deadline = createDeadline(configuration.defenderRtpTimeoutMilliseconds, signal);
+    const complete = (result: DefenderRtpEvaluationResult): DefenderRtpEvaluationResult =>
+      truncated ? DefenderRtpClient.ofTruncatedContent(result, maxCharacters, configuration) : result;
     try {
       let token: string;
       try {
@@ -178,10 +196,12 @@ export class DefenderRtpClient {
         }
 
         const detail = deadline.signal.aborted ? 'timeout' : describeError(error);
-        return this.failure(point, this.idFactory(), sessionId, `entra token unavailable: ${detail}`, undefined, started, configuration);
+        return complete(
+          this.failure(point, this.idFactory(), sessionId, `entra token unavailable: ${detail}`, undefined, started, configuration),
+        );
       }
 
-      return await this.post(hook, endpoint, point, sessionId, token, started, configuration, deadline.signal, signal);
+      return complete(await this.post(hook, endpoint, point, sessionId, token, started, configuration, deadline.signal, signal));
     } finally {
       deadline.dispose();
     }
@@ -240,13 +260,14 @@ export class DefenderRtpClient {
   /**
    * A copy of the context that meets Defender's request validation: `target` equals the point's
    * field, `tool_call` and `tool_result` carry only spec members, every content string is clamped,
-   * the timestamp is UTC, and loosely filled optional fields are repaired or dropped.
+   * the timestamp is UTC, and loosely filled optional fields are repaired or dropped. `truncated`
+   * tells whether the content under decision at the point was cut.
    */
   private prepare(
     context: DefenderRtpHookContext,
     agent: DefenderRtpAgentContext,
-    configuration: ToolingConfiguration,
-  ): JsonObject {
+    maxCharacters: number,
+  ): { hook: JsonObject; truncated: boolean } {
     const hook = toJsonObject(context);
     hook['spec'] = DefenderRtpClient.AGENT_HOOKS_SPEC;
     hook['timestamp'] = this.utcTimestamp(hook['timestamp']);
@@ -276,9 +297,14 @@ export class DefenderRtpClient {
 
     hook['agent'] = preparedAgent;
 
-    if (!readString(asObject(hook['tenant'])?.['id'])) {
-      hook['tenant'] = { ...asObject(hook['tenant']), id: agent.tenantId };
-    }
+    // Defender requires tenant.id to equal the token's tenant, and the token is always the agent's,
+    // so a different tenant id could only be rejected. Its other fields describe that tenant, so
+    // they are dropped with it.
+    const tenant = asObject(hook['tenant']);
+    const tenantId = readString(tenant?.['id']);
+    hook['tenant'] = !tenantId || tenantId.toLowerCase() === agent.tenantId.toLowerCase()
+      ? { ...tenant, id: agent.tenantId }
+      : { id: agent.tenantId };
 
     if (hook['actor'] == null && agent.userId) {
       hook['actor'] = { id: agent.userId, kind: agent.actorKind ?? 'human' };
@@ -335,9 +361,38 @@ export class DefenderRtpClient {
     }
 
     // Clamp once, then derive the target from the clamped field so the two stay equal.
-    const prepared = clampStrings(hook, configuration.defenderRtpMaxContentCharacters) as JsonObject;
+    const truncatedPaths: string[] = [];
+    const prepared = clampStrings(hook, maxCharacters, truncatedPaths) as JsonObject;
     prepared['target'] = targetOf(prepared);
-    return prepared;
+    const decisionPath = DECISION_PATHS[prepared['interception_point'] as DefenderRtpInterceptionPoint];
+    const truncated = truncatedPaths.some((path) =>
+      path === decisionPath || path.startsWith(`${decisionPath}.`) || path.startsWith(`${decisionPath}[]`));
+    return { hook: prepared, truncated };
+  }
+
+  /**
+   * Defender saw only the start of the content under decision. A block still stands, but an allow
+   * does not cover the rest, so the action follows the fail mode instead, as if no verdict had been
+   * obtained: otherwise content padded past the limit would be authorized unseen.
+   */
+  private static ofTruncatedContent(
+    result: DefenderRtpEvaluationResult,
+    maxCharacters: number,
+    configuration: ToolingConfiguration,
+  ): DefenderRtpEvaluationResult {
+    if (!result.evaluated || !result.allowed) {
+      return { ...result, truncated: true };
+    }
+
+    const failClosed = configuration.defenderRtpFailClosed;
+    return {
+      ...result,
+      truncated: true,
+      allowed: !failClosed,
+      error: `content exceeded A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS (${maxCharacters}); `
+        + 'Defender evaluated a truncated copy',
+      ...(failClosed ? { blockReason: TRUNCATED_FAIL_CLOSED_REASON } : {}),
+    };
   }
 
   // ---- transport ---------------------------------------------------------------------------
@@ -896,37 +951,62 @@ function clone<T extends Json>(value: T): T {
 
 /**
  * Truncates every string value to `maxCharacters` (content, tool arguments and results, tool
- * descriptions and schemas, messages, extensions), except identifiers and protocol fields.
+ * descriptions and schemas, messages, extensions), except identifiers and protocol fields. The path
+ * of each truncated string is added to `truncatedPaths`.
  */
-function clampStrings(node: Json, maxCharacters: number, path = ''): Json {
+function clampStrings(node: Json, maxCharacters: number, truncatedPaths: string[], path = ''): Json {
   if (UNCLAMPED_PATHS.has(path)) {
     return node;
   }
 
   if (typeof node === 'string') {
+    if (node.length <= maxCharacters) {
+      return node;
+    }
+
+    truncatedPaths.push(path);
     return truncate(node, maxCharacters);
   }
 
   if (Array.isArray(node)) {
-    return node.map((item) => clampStrings(item, maxCharacters, `${path}[]`));
+    return node.map((item) => clampStrings(item, maxCharacters, truncatedPaths, `${path}[]`));
   }
 
   if (isObject(node)) {
     return Object.fromEntries(Object.entries(node).map(([key, value]) =>
-      [key, clampStrings(value as Json, maxCharacters, path ? `${path}.${key}` : key)]));
+      [key, clampStrings(value as Json, maxCharacters, truncatedPaths, path ? `${path}.${key}` : key)]));
   }
 
   return node;
 }
 
+/**
+ * Cuts a string to at most `maxCharacters` characters, ending with a `...[truncated N chars]`
+ * marker when the marker fits, and never splitting a surrogate pair.
+ */
 function truncate(value: string, maxCharacters: number): string {
   if (value.length <= maxCharacters) {
     return value;
   }
 
-  // Do not split a surrogate pair.
-  const end = /[\uD800-\uDBFF]/.test(value.charAt(maxCharacters - 1)) ? maxCharacters - 1 : maxCharacters;
-  return `${value.slice(0, end)}...[truncated ${value.length - end} chars]`;
+  // At most value.length characters are removed, so this is the longest the marker can be.
+  const room = maxCharacters - truncationMarker(value.length).length;
+  if (room <= 0) {
+    return value.slice(0, surrogateSafeEnd(value, maxCharacters));
+  }
+
+  const end = surrogateSafeEnd(value, room);
+  return `${value.slice(0, end)}${truncationMarker(value.length - end)}`;
+}
+
+function truncationMarker(removedCharacters: number): string {
+  return `...[truncated ${removedCharacters} chars]`;
+}
+
+/** `end`, moved back by one when the character before it starts a surrogate pair. */
+function surrogateSafeEnd(value: string, end: number): number {
+  const code = value.charCodeAt(end - 1);
+  return code >= 0xd800 && code <= 0xdbff ? end - 1 : end;
 }
 
 function singleLine(value: string, maxCharacters: number): string {

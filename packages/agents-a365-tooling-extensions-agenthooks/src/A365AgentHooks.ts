@@ -16,7 +16,9 @@ const MAX_RECORDS = 1000;
 export interface A365ProtectionEmitterOptions {
   /**
    * Per-interceptor timeout in milliseconds; it must exceed the Defender timeout. Defaults to the
-   * Defender timeout plus two seconds, so the client's own timeout and fail mode apply first.
+   * Defender timeout plus two seconds, so the client's own timeout and fail mode apply first. It is
+   * fixed when the emitter is created: if the Defender timeout can change per request, set it above
+   * the largest value, or create the emitter for each turn.
    */
   interceptorTimeoutMilliseconds?: number;
   /**
@@ -31,6 +33,11 @@ export interface A365ProtectionEmitterOptions {
  * `parallel/strictest` profile, so an action proceeds only when every interceptor allows it.
  * The emitter keeps the last 1000 interception records in memory; drain them with `takeRecords()`
  * or forward them with `setRecordSink()`.
+ *
+ * The interceptor timeout is read once, when the emitter is created. If the configuration's Defender
+ * timeout can change per request (override functions), create the emitter for each turn from that
+ * turn's configuration, or pass an `interceptorTimeoutMilliseconds` above the largest Defender
+ * timeout; otherwise a slow call can end as a timeout deny instead of following the fail mode.
  *
  * @param options The interceptor timeout, or the configuration that sets it.
  * @returns The emitter; register the Defender interceptor with {@link addA365Defender}.

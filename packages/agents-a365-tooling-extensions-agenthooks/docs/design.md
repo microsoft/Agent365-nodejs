@@ -60,11 +60,12 @@ new A365DefenderInterceptor(
 - Defender evaluates `input`, `pre_tool_call`, `post_tool_call` and `output`. Other points, and every point while
   `ENABLE_A365_DEFENDER_RTP` is off, are allowed without calling `resolveCall` or Defender.
 - `resolveCall` returns the agent identity and token resolver for a context (`A365DefenderCall`), for example
-  from the current turn. `null` or `undefined` allows the context without a call.
+  from the current turn. `null` or `undefined` means no agent identity is available: Defender is not called and
+  the context follows the fail mode, so a missing identity can never bypass a fail-closed configuration.
 - An exception from `resolveCall` or `evaluateHookContext` (an invalid context or identity) is never a verdict:
   it becomes `DefenderRtpClient.unavailable(...)`, which follows the fail mode.
-- `onEvaluated` receives every evaluation (correlation id, latency, error) for logging; its errors and rejected
-  promises are ignored so logging cannot change a verdict.
+- `onEvaluated` receives every evaluation, including the ones without a verdict (correlation id, latency, error),
+  for logging; its errors and rejected promises are ignored so logging cannot change a verdict.
 
 ### toVerdict
 
@@ -74,6 +75,12 @@ new A365DefenderInterceptor(
 | evaluated, `deny` or `transform` | `deny`, reason `defender:block[:<reason>]`, Defender's message, evidence `urn:a365:defender:<correlation id>`, labels |
 | not evaluated, fail open | `allow` with warning `defender:unverified` carrying the error |
 | not evaluated, fail closed | `deny`, reason `runtime_error:defender_unverified`, same warning |
+| `allow` of a truncated copy (`truncated`) | as not evaluated: the fail mode decides; when allowing, Defender's warnings and labels follow the unverified warning |
+| `deny` or `transform` of a truncated copy | the block stands, as for an evaluated `deny` |
+
+Content under decision longer than `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` reaches Defender only as a truncated
+copy, so an allow of it does not cover the rest; treating it as authoritative would let padding carry a payload
+past the limit unseen.
 
 `transform` blocks because this version cannot apply the rewrite, and releasing the original content would defeat
 it. The `runtime_error:` prefix is the agent-hooks convention for decision-runtime failures, so a fail-closed
@@ -92,6 +99,8 @@ client's own deadline and fail mode apply first; an explicit `interceptorTimeout
 the Defender timeout is rejected (`RangeError`). An interceptor that exceeds the emitter timeout fails closed as
 `host_error:interceptor_timeout`. This matters because the agent-hooks default interceptor timeout (5 s) is below
 the Defender default (10 s): a host that registers the interceptor on its own emitter must set a longer timeout.
+The timeout is read once, when the emitter is created; with a configuration whose Defender timeout changes per
+request, create the emitter per turn or pass an `interceptorTimeoutMilliseconds` above the largest value.
 The emitter keeps the last 1000 records (the agent-hooks default is unbounded).
 
 ## Design Decisions

@@ -50,7 +50,8 @@ export type ToolingConfigurationOptions = RuntimeConfigurationOptions & {
   defenderRtpFailClosed?: () => boolean;
   /**
    * Maximum characters of each content string sent to Defender (identifiers and protocol fields are
-   * sent unchanged). Falls back to A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS env var, then 20000.
+   * sent unchanged). Content under decision that is longer follows the fail mode unless Defender blocks
+   * it. Falls back to A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS env var, then 20000.
    */
   defenderRtpMaxContentCharacters?: () => number;
 };

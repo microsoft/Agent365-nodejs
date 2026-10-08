@@ -12,6 +12,7 @@ import {
 const INVALID_REASON_CHARACTERS = /[^A-Za-z0-9_.-]/g;
 const MAX_ERROR_CHARACTERS = 200;
 const FAIL_CLOSED_MESSAGE = 'Security validation is unavailable and this agent is configured to fail closed.';
+const NO_IDENTITY_ERROR = 'no agent identity was resolved';
 
 /** The agent identity and credentials for the Defender call of one emitted context. */
 export interface A365DefenderCall {
@@ -26,7 +27,8 @@ export interface A365DefenderCall {
 
 /**
  * Returns the agent identity and token resolver for an emitted context, for example from the
- * current turn. Returning null or undefined allows the context without a call.
+ * current turn. Returning null or undefined means no agent identity is available, so Defender
+ * cannot be called: the context follows the fail mode, like any other unverified context.
  */
 export type A365DefenderCallResolver = (
   context: AgentContext,
@@ -42,10 +44,11 @@ export type A365DefenderEvaluationListener = (result: DefenderRtpEvaluationResul
  * and tool call ids) is sent to Defender, and Defender's verdict decides: `deny` blocks the action.
  * Other points, and every point while Defender RTP is disabled, are allowed without a call.
  *
- * When no verdict is obtained (transport, authentication or validation failure, or a call resolver
- * that throws), the verdict follows the configured fail mode: allow with a `defender:unverified`
- * warning, or deny with reason `runtime_error:defender_unverified`, which is never reported as a
- * detection.
+ * When no verdict is obtained (transport, authentication or validation failure, a call resolver
+ * that throws or resolves no agent identity), or Defender allowed only a truncated copy of content
+ * longer than `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS`, the verdict follows the configured fail
+ * mode: allow with a `defender:unverified` warning, or deny with reason
+ * `runtime_error:defender_unverified`, which is never reported as a detection.
  */
 export class A365DefenderInterceptor implements Interceptor {
   /** The name the interceptor is registered under. */
@@ -54,9 +57,9 @@ export class A365DefenderInterceptor implements Interceptor {
   /**
    * @param client The Defender client.
    * @param resolveCall Returns the agent identity and token resolver for a context, for example
-   * from the current turn; null or undefined allows the context without a call.
-   * @param onEvaluated Receives each evaluation, for logging and telemetry (for example the
-   * correlation id). Errors it throws are ignored.
+   * from the current turn; null or undefined (no agent identity) follows the fail mode without a call.
+   * @param onEvaluated Receives each evaluation, including the ones without a verdict, for logging
+   * and telemetry (for example the correlation id). Errors it throws are ignored.
    */
   constructor(
     private readonly client: DefenderRtpClient,
@@ -86,11 +89,10 @@ export class A365DefenderInterceptor implements Interceptor {
       }
 
       const call = await this.resolveCall(context);
-      if (!call) {
-        return { decision: 'allow' };
-      }
-
-      result = await this.client.evaluateHookContext(context, call.agent, call.tokenResolver);
+      // Without an agent identity Defender cannot be called: the context is unverified, not allowed.
+      result = call
+        ? await this.client.evaluateHookContext(context, call.agent, call.tokenResolver)
+        : this.client.unavailable(point, NO_IDENTITY_ERROR, sessionIdOf(context));
     } catch (error) {
       // An invalid context or identity is never a verdict: it follows the fail mode.
       result = this.client.unavailable(point, describeError(error), sessionIdOf(context));
@@ -109,7 +111,9 @@ export class A365DefenderInterceptor implements Interceptor {
    *
    * @param result The Defender evaluation.
    * @returns The agent-hooks verdict: Defender's warnings and labels on `allow`; on a block, a
-   * `defender:block[:<reason>]` deny with the correlation id as evidence.
+   * `defender:block[:<reason>]` deny with the correlation id as evidence. A result without a
+   * verdict, or Defender's allow of a truncated copy of the content, is unverified: an allow with a
+   * `defender:unverified` warning, or a `runtime_error:defender_unverified` deny.
    */
   public static toVerdict(result: DefenderRtpEvaluationResult): Verdict {
     if (!result) {
@@ -117,16 +121,18 @@ export class A365DefenderInterceptor implements Interceptor {
     }
 
     const name = A365DefenderInterceptor.NAME;
-    if (result.evaluated) {
-      const labels = result.verdict?.resultLabels?.length ? [...result.verdict.resultLabels] : undefined;
+    const labels = result.verdict?.resultLabels?.length ? [...result.verdict.resultLabels] : undefined;
+    const defenderWarnings: Warning[] = (result.verdict?.warnings ?? []).map((warning) => ({
+      reason: warning.reason ?? `${name}:warning`,
+      message: warning.message ?? '',
+    }));
+    // An allow of a truncated copy does not cover the rest of the content, so it is not a verdict.
+    const authoritative = result.evaluated && !(result.truncated && result.verdict?.decision === 'allow');
+    if (authoritative) {
       if (result.allowed) {
-        const warnings: Warning[] = (result.verdict?.warnings ?? []).map((warning) => ({
-          reason: warning.reason ?? `${name}:warning`,
-          message: warning.message ?? '',
-        }));
         return {
           decision: 'allow',
-          ...(warnings.length > 0 ? { warnings } : {}),
+          ...(defenderWarnings.length > 0 ? { warnings: defenderWarnings } : {}),
           ...(labels ? { result_labels: labels } : {}),
         };
       }
@@ -147,7 +153,12 @@ export class A365DefenderInterceptor implements Interceptor {
 
     const unverified: Warning[] = [{ reason: `${name}:unverified`, message: result.error ?? 'no verdict was returned' }];
     return result.allowed
-      ? { decision: 'allow', warnings: unverified }
+      ? {
+        decision: 'allow',
+        // What Defender noted in a truncated copy is still reported, after the unverified warning.
+        warnings: [...unverified, ...defenderWarnings],
+        ...(labels ? { result_labels: labels } : {}),
+      }
       : {
         decision: 'deny',
         reason: `runtime_error:${name}_unverified`,

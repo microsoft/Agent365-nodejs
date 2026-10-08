@@ -52,6 +52,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Every call sends a unique `x-ms-correlation-id`. One deadline covers the token acquisition and the
   request. When no verdict is obtained, the result follows `A365_DEFENDER_RTP_FAIL_MODE` (fail open
   by default), and a `400` reports the failed validation rules.
+- Content under decision longer than `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` is sent truncated.
+  Defender's block of the copy stands, but its allow does not cover the rest: the result is marked
+  `truncated` and follows the fail mode, so padded content cannot be authorized unseen.
+- `tenant.id` is always the agent's tenant, which Defender requires to match the token's tenant.
 - Configured with `ENABLE_A365_DEFENDER_RTP`, `A365_DEFENDER_RTP_ENDPOINT`,
   `A365_DEFENDER_RTP_FAIL_MODE`, `A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS` (default 10000),
   `A365_DEFENDER_RTP_AUTHENTICATION_SCOPE` and `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS`
@@ -62,8 +66,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`A365DefenderInterceptor`** - An agent-hooks interceptor (`@responsibleai/agent-hooks`, pinned to
   the `0.1.0-alpha.5` prerelease) that sends each emitted context Defender evaluates through
   `DefenderRtpClient` and maps the verdict, with a callback for each evaluation;
-  `createProtectionEmitter` (`enforce`, `parallel/strictest`) and `addA365Defender`. Requires
-  Node.js 20 or later.
+  `createProtectionEmitter` (`enforce`, `parallel/strictest`) and `addA365Defender`. Contexts that
+  cannot be verified (no verdict, no agent identity, or an allow of truncated content) follow the
+  fail mode. Requires Node.js 20 or later.
 
 ## [1.0.0] - 2026-04-30
 

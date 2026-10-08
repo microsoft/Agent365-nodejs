@@ -90,7 +90,8 @@ const emitter = addA365Defender(
   createProtectionEmitter(),
   new A365DefenderInterceptor(
     defender,
-    // Returning null allows without a call, for example for a request without an agent identity.
+    // Returning null means there is no agent identity (for example a request that is not agentic):
+    // Defender is not called and the fail mode decides.
     () => agentId && tenantId
       ? {
         agent: { agentId, tenantId, requestId: context.activity.id, userId: context.activity.from?.aadObjectId },
@@ -114,10 +115,11 @@ if (!proceeds(record)) {
 ```
 
 The call resolver runs for each emitted context that Defender evaluates. An emitter can also be created once per
-process, with a resolver that looks the turn up by `context.session.id`. `createProtectionEmitter` uses `enforce`
-mode and the `parallel/strictest` profile, so an action proceeds only when every registered interceptor allows it,
-and keeps the last 1000 interception records in memory (drain them with `takeRecords()` or forward them with
-`setRecordSink()`).
+process, with a resolver that looks the turn up by `context.session.id`; its interceptor timeout is fixed then, so
+if the Defender timeout can change per request, pass an `interceptorTimeoutMilliseconds` above the largest value (or
+keep creating the emitter per turn). `createProtectionEmitter` uses `enforce` mode and the `parallel/strictest`
+profile, so an action proceeds only when every registered interceptor allows it, and keeps the last 1000
+interception records in memory (drain them with `takeRecords()` or forward them with `setRecordSink()`).
 
 > **Use `createProtectionEmitter`, or set the interceptor timeout above the Defender timeout.** An
 > `InterceptionEmitter` constructed directly uses the agent-hooks default interceptor timeout of 5 seconds, below the
@@ -133,12 +135,20 @@ and keeps the last 1000 interception records in memory (drain them with `takeRec
 - A Defender `deny` (or `transform`, which this version cannot apply) becomes a deny with reason
   `defender:block[:<reason>]`, Defender's message, and the correlation id as evidence
   (`urn:a365:defender:<correlation id>`).
-- When no verdict is obtained (token, transport, timeout, HTTP or validation failure, or an invalid context or
-  identity), the verdict follows `A365_DEFENDER_RTP_FAIL_MODE`: fail open (the default) allows with a
-  `defender:unverified` warning that carries the error; fail closed denies with reason
-  `runtime_error:defender_unverified`, which is never reported as a detection. One deadline (the Defender timeout)
-  covers the token acquisition and the request, and the emitter's interceptor timeout must exceed it (by default
-  it is two seconds longer), so the fail mode, not a host error, decides a slow call.
+- When no verdict is obtained (token, transport, timeout, HTTP or validation failure, an invalid context or
+  identity, or a call resolver that resolves no agent identity), the verdict follows
+  `A365_DEFENDER_RTP_FAIL_MODE`: fail open (the default) allows with a `defender:unverified` warning that carries
+  the error; fail closed denies with reason `runtime_error:defender_unverified`, which is never reported as a
+  detection. One deadline (the Defender timeout) covers the token acquisition and the request, and the emitter's
+  interceptor timeout must exceed it (by default it is two seconds longer), so the fail mode, not a host error,
+  decides a slow call.
+- **Content longer than `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS`** (default 20000) follows the fail mode too.
+  Defender is sent a truncated copy, so it sees only the beginning of the content under decision (the message,
+  the tool call arguments, the tool result or the reply). A block of the copy stands, but an allow does not cover
+  the rest, so it is treated like a missing verdict, with the error
+  `content exceeded A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS (<limit>); Defender evaluated a truncated copy`.
+  Otherwise padding could push a payload past the limit and have it authorized unseen. Agents that handle long
+  content should raise the limit; evaluating long content in chunks is a planned follow-up.
 
 Every call sends a unique `x-ms-correlation-id`, returned as `DefenderRtpEvaluationResult.correlationId`;
 Defender logs each evaluation under it. A `400` reports the failed validation rules in `error`.
@@ -152,7 +162,7 @@ Defender logs each evaluation under it. A `400` reports the failed validation ru
 | `A365_DEFENDER_RTP_FAIL_MODE` | `closed` blocks when no verdict is obtained; default is open |
 | `A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS` | deadline of each evaluation, token acquisition included (default 10000) |
 | `A365_DEFENDER_RTP_AUTHENTICATION_SCOPE` | overrides the Defender API scope |
-| `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` | clamps every content string sent; identifiers and protocol fields are sent unchanged (default 20000) |
+| `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` | the longest content string sent (default 20000); longer content under decision follows the fail mode unless Defender blocks it, so raise it for long-content agents. Identifiers and protocol fields are sent unchanged |
 
 The same settings can be supplied per tenant or per request through a `ToolingConfiguration` with
 override functions, passed as `configProvider` to `DefenderRtpClient` and `createProtectionEmitter`.

@@ -20,7 +20,10 @@ export type DefenderRtpActorKind = 'human' | 'service' | 'agent';
 export interface DefenderRtpAgentContext {
   /** The agent identity (application) id the token is requested for. */
   agentId: string;
-  /** The agent's tenant id; sent as `tenant.id` when the context has none, and used to acquire the token. */
+  /**
+   * The agent's tenant id, used to acquire the token and always sent as `tenant.id`: Defender requires
+   * it to equal the token's tenant.
+   */
   tenantId: string;
   /**
    * The agent's Entra object id, sent as `agent.id`. Defaults to the context's `agent.id`, then
@@ -92,13 +95,20 @@ export interface DefenderRtpVerdict {
 
 /**
  * The outcome of one Defender evaluation. `evaluated` is false when no verdict was obtained;
- * `allowed` then follows the configured fail mode (`A365_DEFENDER_RTP_FAIL_MODE`).
+ * `allowed` then follows the configured fail mode (`A365_DEFENDER_RTP_FAIL_MODE`). It also follows
+ * the fail mode when Defender allowed a `truncated` copy of the content.
  */
 export interface DefenderRtpEvaluationResult {
   /** Whether the action may proceed. */
   allowed: boolean;
   /** Whether Defender returned a verdict. */
   evaluated: boolean;
+  /**
+   * True when the content under decision was longer than `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS`,
+   * so Defender evaluated a truncated copy. A block of the copy stands; an allow does not cover the
+   * rest, so `allowed` then follows the fail mode and `error` says why.
+   */
+  truncated?: boolean;
   /** The agent-hooks interception point that was evaluated. */
   interceptionPoint: string;
   /** The `x-ms-correlation-id` sent with the call; Defender logs the evaluation under it. */
@@ -109,7 +119,10 @@ export interface DefenderRtpEvaluationResult {
   verdict?: DefenderRtpVerdict;
   /** The HTTP status, when a response was received. */
   httpStatus?: number;
-  /** Why no verdict was obtained, for example `http 403: ...`. */
+  /**
+   * Why the action could not be verified: no verdict was obtained (for example `http 403: ...`), or
+   * Defender allowed only a truncated copy of the content.
+   */
   error?: string;
   /** Time spent on the evaluation, in milliseconds. */
   latencyMilliseconds: number;

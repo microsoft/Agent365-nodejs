@@ -171,12 +171,20 @@ if (result && !result.allowed) { /* block: result.blockReason */ }
   validation, and never modifies the host's context. The copy keeps the session, sequence and tool call ids;
   `spec` is `agent-hooks/0.1`, the timestamp is UTC, `agent.framework` matches `^[a-z0-9_-]+$`, `target` equals
   the point's field, `tool_call`/`tool_result` carry only spec members, and loosely filled optional fields
-  (extensions, model, tools, messages, actor) are repaired or dropped. `agent.id`, `tenant.id`, `actor`,
-  `request_id` and `model` are filled from `DefenderRtpAgentContext` when the context has none.
+  (extensions, model, tools, messages, actor) are repaired or dropped. `tenant.id` is always the agent's tenant,
+  because Defender requires it to equal the token's tenant (a different host tenant is replaced, with its other
+  fields). `agent.id`, `actor`, `request_id` and `model` are filled from `DefenderRtpAgentContext` when the context
+  has none.
 - **Clamping**: every content string (input and output content, tool arguments and results, tool descriptions
-  and schemas, messages, extensions) is truncated to `defenderRtpMaxContentCharacters`; identifiers and protocol
+  and schemas, messages, extensions) is cut to at most `defenderRtpMaxContentCharacters`, ending with a
+  `...[truncated N chars]` marker when the marker fits; identifiers and protocol
   fields (`spec`, `timestamp`, `agent`, `session`, `tenant`, `actor`, `model`, `request_id`, tool call ids and
   names, `input.role`) are sent unchanged.
+- **Truncated content**: when the content under decision (`input.content`, `tool_call.args` at
+  `pre_tool_call`, `tool_result.value` at `post_tool_call`, `output.content`) was cut, Defender saw only its
+  beginning. A block (`deny` or `transform`) still stands, but an allow does not cover the rest: the result is
+  `truncated: true`, `allowed` follows `defenderRtpFailClosed`, and `error` says why. Otherwise content padded
+  past the limit would be authorized unseen. Truncation elsewhere (tool descriptions, messages) does not count.
 - **Authentication**: always the agent identity's app-only token in the agent's tenant, for the Defender API
   (`api://86a21212-634e-4553-b3d6-e477e4c9d9ec/.default`, app role `RealtimeProtection.Evaluate.All`).
   `DefenderRtpTokenResolver` is `(agentId, tenantId, scopes, signal) => token`;
