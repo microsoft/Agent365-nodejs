@@ -237,6 +237,28 @@ describe('DefenderRtpClient', () => {
       expect(body.actor).toEqual({ id: 'user' });
     });
 
+    it('keeps numbering a session upward after it is no longer tracked', async () => {
+      const { client, calls, tokens } = create(allow);
+      const withoutSequence = (sessionId: string): Record<string, any> => {
+        const context: Record<string, any> = { ...inputContext('hello'), session: { id: sessionId } };
+        delete context.sequence;
+        return context;
+      };
+
+      await client.evaluateHookContext(withoutSequence('s-first'), AGENT, tokens.resolve);
+      await client.evaluateHookContext(withoutSequence('s-first'), AGENT, tokens.resolve);
+      for (let index = 0; index < 1000; index += 1) {
+        await client.evaluateHookContext(withoutSequence(`s-${index}`), AGENT, tokens.resolve);
+      }
+      await client.evaluateHookContext(withoutSequence('s-first'), AGENT, tokens.resolve);
+
+      const first = calls.filter((call) => call.body.session.id === 's-first').map((call) => call.body.sequence);
+      expect(first[0]).toBe(1);
+      expect(first[1]).toBe(2);
+      expect(first[2]).toBeGreaterThan(2);
+      expect(calls.every((call) => contractErrors(call.body).length === 0)).toBe(true);
+    });
+
     it('fills the model, agent name and actor kind from the agent context', async () => {
       const { client, calls, tokens } = create(allow);
       const context = inputContext('hello');
@@ -384,7 +406,7 @@ describe('DefenderRtpClient', () => {
         spec: 'agent-hooks/0.1', interception_point: 'pre_tool_call', timestamp: '2026-10-07T10:00:00.000Z', sequence: 2,
         agent: { id: AGENT_ID, framework: 'agent365' }, session: { id: 's-shapes' }, target: { query: 'x' },
         tool_call: { id: 'call-1', name: 'FetchPage', args: { query: 'x' } },
-        model: 'gpt-4o', actor: 'someone', tenant: 'contoso', tools: 'search', messages: 'history',
+        model: 'gpt-4o', actor: 'someone', tenant: 'contoso', tools: 'search', messages: 'history', request_id: { id: 'r-1' },
         extensions: { a365 },
       };
 
@@ -395,6 +417,7 @@ describe('DefenderRtpClient', () => {
       expect(contractErrors(body)).toEqual([]);
       expect(body.model).toBeUndefined();
       expect(body.actor).toBeUndefined();
+      expect(body.request_id).toBeUndefined();
       expect(body.tenant).toEqual({ id: TENANT_ID });
       expect(body.tools).toEqual([{ name: 'FetchPage' }]);
       expect(body.messages).toBeUndefined();
@@ -604,6 +627,7 @@ describe('DefenderRtpClient', () => {
   });
 
   describe('request size', () => {
+    const HUGE = 1_000_000;
     const envelope = (point: string): Record<string, any> => ({
       spec: 'agent-hooks/0.1', interception_point: point, timestamp: '2026-10-07T10:00:00.000Z', sequence: 6,
       agent: { id: AGENT_ID, framework: 'agent365' }, session: { id: 's-size' },
@@ -622,15 +646,16 @@ describe('DefenderRtpClient', () => {
       });
       const context = {
         ...inputContext('c'.repeat(100)),
-        messages: ['1', '2', '3', '4', '5'].map((turn) => ({ role: 'user', content: turn.repeat(60) })),
+        messages: ['1', '2', '3', '4', '5'].map((turn) => ({ role: 'user', content: turn.repeat(50) })),
       };
 
       const result = await client.evaluateHookContext(context, AGENT, tokens.resolve);
 
+      // 200 for the history: each message costs 66 (the message, its two keys, the role and the content).
       const body = calls[0].body;
       expect(contractErrors(body)).toEqual([]);
       expect(body.input.content).toBe('c'.repeat(100));
-      expect(body.messages).toEqual(['3', '4', '5'].map((turn) => ({ role: 'user', content: turn.repeat(60) })));
+      expect(body.messages).toEqual(['3', '4', '5'].map((turn) => ({ role: 'user', content: turn.repeat(50) })));
       expect(result).toMatchObject({ allowed: true, evaluated: true });
       expect(result?.truncated).toBeUndefined();
     });
@@ -664,9 +689,9 @@ describe('DefenderRtpClient', () => {
 
       const body = calls[0].body;
       expect(contractErrors(body)).toEqual([]);
-      expect(body.tools.map((tool: { name: string }) => tool.name)).toEqual(['tool-7', 'tool-0', 'tool-1', 'tool-2', 'tool-3', 'tool-4']);
+      expect(body.tools.map((tool: { name: string }) => tool.name)).toEqual(['tool-7', 'tool-0', 'tool-1', 'tool-2', 'tool-3']);
       expect(body.tools[0].description).toBe('d'.repeat(60));
-      expect(body.tools[5].description).toBe(`${'d'.repeat(33)}...[truncated 27 chars]`);
+      expect(body.tools[4].description).toBe(`${'d'.repeat(25)}...[truncated 35 chars]`);
       expect(result?.truncated).toBeUndefined();
     });
 
@@ -695,25 +720,150 @@ describe('DefenderRtpClient', () => {
         ...envelope('post_tool_call'), target: 'r'.repeat(50),
         tool_call: { id: 'call-1', name: 'FetchPage', args: { q: 'a'.repeat(90) } },
         tool_result: { value: 'r'.repeat(50), is_error: false },
-        tools: [{ name: 'FetchPage', description: 'd'.repeat(90) }],
-        messages: [{ role: 'user', content: 'm'.repeat(90) }],
+        tools: [{ name: 'FetchPage', description: 'd'.repeat(60) }],
+        messages: [{ role: 'user', content: 'm'.repeat(60) }],
         extensions: { a365: { note: 'n'.repeat(90) } },
         custom_field: 'c'.repeat(90),
       };
 
       const result = await client.evaluateHookContext(context, AGENT, tokens.resolve);
 
-      // 400 in all: the result is sent twice (100), the arguments take 92, the tools 100, the messages 95,
-      // and the extensions get the last 13.
+      // 400 in all: the result is sent twice (100), the arguments take 92, the tools 85, the messages 76,
+      // and the extensions get the last 47.
       const body = calls[0].body;
       expect(contractErrors(body)).toEqual([]);
       expect(body.tool_result.value).toBe('r'.repeat(50));
       expect(body.tool_call.args).toEqual({ q: 'a'.repeat(90) });
-      expect(body.tools).toEqual([{ name: 'FetchPage', description: 'd'.repeat(90) }]);
-      expect(body.messages).toEqual([{ role: 'user', content: 'm'.repeat(90) }]);
-      expect(body.extensions).toEqual({ a365: { note: 'nnnn' } });
+      expect(body.tools).toEqual([{ name: 'FetchPage', description: 'd'.repeat(60) }]);
+      expect(body.messages).toEqual([{ role: 'user', content: 'm'.repeat(60) }]);
+      expect(body.extensions).toEqual({ a365: { note: `${'n'.repeat(15)}...[truncated 75 chars]` } });
       expect(body.custom_field).toBeUndefined();
       expect(result?.truncated).toBeUndefined();
+    });
+
+    it.each([
+      ['name-only tools', () => ({ tools: Array.from({ length: HUGE }, (_, index) => ({ name: `t${index}` })) })],
+      ['empty messages', () => ({ messages: Array.from({ length: HUGE }, () => ({ role: 'user', content: '' })) })],
+      ['messages with null content', () => ({ messages: Array.from({ length: HUGE }, () => ({ role: 'user', content: null })) })],
+      ['nulls in an extension', () => ({ extensions: { a365: { items: new Array(HUGE).fill(null) } } })],
+      ['empty strings in another field', () => ({ other_field: new Array(HUGE).fill('') })],
+      ['empty objects in another field', () => ({ other_field: Array.from({ length: HUGE }, () => ({})) })],
+    ])('bounds the request for a million %s, without counting them as truncation', async (_name, extra) => {
+      const { client, calls, tokens } = create(allow, { defenderRtpFailClosed: () => true });
+
+      const result = await client.evaluateHookContext(toolCallWith({ query: 'x' }, extra()), AGENT, tokens.resolve);
+
+      const { raw, body } = calls[0];
+      expect(contractErrors(body)).toEqual([]);
+      expect(raw.length).toBeLessThan(5 * 4 * 20000);
+      expect(body.tool_call.args).toEqual({ query: 'x' });
+      expect(result).toMatchObject({ allowed: true, evaluated: true });
+      expect(result?.truncated).toBeUndefined();
+    });
+
+    it.each([
+      ['nulls in the tool call arguments', () => toolCallWith({ items: new Array(HUGE).fill(null) })],
+      ['empty objects in the tool call arguments', () => toolCallWith({ items: Array.from({ length: HUGE }, () => ({})) })],
+      ['empty strings in the tool result', () => ({
+        ...envelope('post_tool_call'), target: null,
+        tool_call: { id: 'call-1', name: 'FetchPage', args: {} }, tool_result: { value: new Array(HUGE).fill(''), is_error: false },
+      })],
+    ])('bounds the request for a million %s and reports the content under decision as truncated', async (_name, context) => {
+      const { client, calls, tokens } = create(allow, { defenderRtpFailClosed: () => true });
+
+      const result = await client.evaluateHookContext(context(), AGENT, tokens.resolve);
+
+      const { raw, body } = calls[0];
+      expect(contractErrors(body)).toEqual([]);
+      expect(raw.length).toBeLessThan(5 * 4 * 20000);
+      expect(result).toMatchObject({ allowed: false, evaluated: true, truncated: true });
+    });
+
+    /** `items` behind a proxy that counts the entries read. */
+    const counted = <T>(items: T[]): { list: T[]; reads: () => number } => {
+      let reads = 0;
+      const list = new Proxy(items, {
+        get(target, property, receiver) {
+          if (typeof property === 'string' && /^\d+$/.test(property)) {
+            reads += 1;
+          }
+          return Reflect.get(target, property, receiver);
+        },
+      });
+      return { list, reads: () => reads };
+    };
+
+    it('reads only as many tools as the budget can hold, declaring the called tool by name when it lies beyond', async () => {
+      const { client, calls, tokens } = create(allow);
+      const tools = counted([
+        ...Array.from({ length: HUGE }, (_, index) => ({ name: `t${index}` })),
+        { name: 'SendMail', description: 'Sends mail.' },
+      ]);
+
+      const result = await client.evaluateHookContext(toolCallWith({ query: 'x' }, { tools: tools.list }), AGENT, tokens.resolve);
+
+      const body = calls[0].body;
+      expect(contractErrors(body)).toEqual([]);
+      expect(body.tools[0]).toEqual({ name: 'SendMail' });
+      expect(tools.reads()).toBeLessThan(40_000);
+      expect(result?.truncated).toBeUndefined();
+    });
+
+    it('reads only as many messages as the budget can hold, newest first', async () => {
+      const { client, calls, tokens } = create(allow);
+      const messages = counted(Array.from({ length: HUGE }, (_, index) => ({ role: 'user', content: `m${index}` })));
+
+      await client.evaluateHookContext(toolCallWith({ query: 'x' }, { messages: messages.list }), AGENT, tokens.resolve);
+
+      const sent = calls[0].body.messages;
+      expect(sent[sent.length - 1]).toEqual({ role: 'user', content: `m${HUGE - 1}` });
+      expect(messages.reads()).toBeLessThan(40_000);
+    });
+
+    it('stops the history before a message without a role or content', async () => {
+      const { client, calls, tokens } = create(allow);
+      const messages = [
+        { role: 'user', content: 'oldest' },
+        { role: 'user' },
+        { role: 'assistant', content: 'newer' },
+        { role: 'user', content: 'newest' },
+      ];
+
+      await client.evaluateHookContext(toolCallWith({ query: 'x' }, { messages }), AGENT, tokens.resolve);
+
+      expect(calls[0].body.messages).toEqual([{ role: 'assistant', content: 'newer' }, { role: 'user', content: 'newest' }]);
+    });
+
+    it('reads no more extension namespaces or other fields than the budget can hold', async () => {
+      const { client, calls, tokens } = create(allow, { defenderRtpMaxContentCharacters: () => 100 });
+      const context = {
+        ...toolCallWith({ query: 'x' }),
+        // Namespaces Defender does not accept, and fields with names longer than the limit, cost nothing.
+        extensions: { ...Object.fromEntries(Array.from({ length: 1000 }, (_, index) => [`X${index}`, 1])), late: { note: 'unread' } },
+        ...Object.fromEntries(Array.from({ length: 1000 }, (_, index) => [`${'k'.repeat(101)}${index}`, 1])),
+        late_field: 'unread',
+      };
+
+      await client.evaluateHookContext(context, AGENT, tokens.resolve);
+
+      const body = calls[0].body;
+      expect(contractErrors(body)).toEqual([]);
+      expect(body.extensions).toBeUndefined();
+      expect(body.late_field).toBeUndefined();
+    });
+
+    it('counts keys that JSON leaves out toward what is read of the content under decision', async () => {
+      const { client, calls, tokens } = create(
+        (body) => JSON.stringify(body).includes('BLOCK_ME') ? json({ decision: 'deny' }) : json({ decision: 'allow' }),
+        { defenderRtpMaxContentCharacters: () => 100, defenderRtpFailClosed: () => true },
+      );
+      const args: Record<string, unknown> = Object.fromEntries(Array.from({ length: 1000 }, (_, index) => [`f${index}`, () => index]));
+      args.payload = 'BLOCK_ME';
+
+      const result = await client.evaluateHookContext(toolCallWith(args), AGENT, tokens.resolve);
+
+      expect(calls[0].body.tool_call.args).toEqual({});
+      expect(result).toMatchObject({ allowed: false, evaluated: true, truncated: true });
     });
 
     it('bounds the request for a huge tool result', async () => {

@@ -45,8 +45,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `transform` block). A copy of the context is fitted to Defender's request validation while it is
   read: every string is well formed (a lone surrogate becomes U+FFFD), each content string is
   clamped, the copy carries at most four times `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` of content
-  (the content under decision first), and optional fields of another shape are left out. The host's
-  context is not modified.
+  (the content under decision first, every copied element counting at least one character, and no
+  list or object scanned beyond what fits), and optional fields of another shape are left out. The
+  host's context is not modified.
 - Calls carry the agent identity's own app-only token for the Defender API
   (`api://86a21212-634e-4553-b3d6-e477e4c9d9ec`, role `RealtimeProtection.Evaluate.All`), resolved
   by a `DefenderRtpTokenResolver` and cached per agent, tenant and scope;

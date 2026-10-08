@@ -80,13 +80,16 @@ Like any other failure, a `403` follows the fail mode.
 - Identity and protocol fields (`spec`, the agent, session, tenant, actor, sequence, request and tool call ids) are
   kept or filled in, and normalized where Defender requires it: a UTC timestamp, a lowercase framework name,
   `tenant.id` set to the agent's tenant, and `target` equal to the point's field. Optional fields of another shape
-  (for example a `model` that is a string) are left out rather than failing the evaluation.
+  (for example a `model` that is a string, or a `request_id` that isn't one) are left out rather than failing the
+  evaluation.
 - Every string and object key is well formed: a lone UTF-16 surrogate becomes U+FFFD, because Defender's JSON
   parser rejects it and the request would fail. When two keys of one object become equal that way, only the first
   is sent; in the content under decision, that makes the copy incomplete (see [Verdicts](#verdicts)).
 - Each content string is at most `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` (default 20000) long, cut with a
   `...[truncated N chars]` marker, and nesting deeper than 32 levels is cut.
-- The copy carries at most four times that limit of content in total. The content under decision (the message,
+- The copy carries at most four times that limit of content in total. Every copied value, key, tool declaration
+  and message counts at least one character, so a huge list of empty items or nulls is trimmed like any other
+  content, and lists and objects are read only as far as the budget reaches. The content under decision (the message,
   the tool call arguments, the tool result or the reply) comes first; it is sent twice (`target` mirrors it), so it
   can use up to twice the limit. The rest of the context shares what it leaves, in this order, and is trimmed
   first: the tool call arguments at `post_tool_call`, the tool declarations (the called tool first, always
@@ -150,8 +153,9 @@ interception records in memory (drain them with `takeRecords()` or forward them 
 > `InterceptionEmitter` constructed directly uses the agent-hooks default interceptor timeout of 5 seconds, below the
 > Defender client's 10-second default. A slow Defender call would then end as `host_error:interceptor_timeout`, a
 > deny, instead of following the fail mode. `createProtectionEmitter` sets the Defender timeout plus two seconds and
-> rejects an `interceptorTimeoutMilliseconds` that does not exceed the Defender timeout; with your own emitter, pass
-> a timeout above `A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS` as the third constructor argument.
+> rejects an `interceptorTimeoutMilliseconds` that does not exceed the Defender timeout, or that is not an integer of
+> at most 2147483647 (Node's largest timer delay; a longer one fires after 1 ms); with your own emitter, pass a
+> timeout above `A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS` as the third constructor argument.
 
 ## Verdicts
 
@@ -189,7 +193,7 @@ Defender logs each evaluation under it. A `400` reports the failed validation ru
 | `ENABLE_A365_DEFENDER_RTP` | `true` to call Defender; otherwise the interceptor allows everything without a call |
 | `A365_DEFENDER_RTP_ENDPOINT` | the prevention endpoint, `https://<host>/v1/protection/evaluate` (required when enabled; `https` only) |
 | `A365_DEFENDER_RTP_FAIL_MODE` | `closed` blocks when no verdict is obtained; `open` (the default) allows. Any other value is rejected, so a typo can't silently fail open |
-| `A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS` | deadline of each evaluation, token acquisition included (default 10000) |
+| `A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS` | deadline of each evaluation, token acquisition included (default 10000, at most 2147481647) |
 | `A365_DEFENDER_RTP_AUTHENTICATION_SCOPE` | overrides the Defender API scope |
 | `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` | the longest content string sent (default 20000); the whole copy carries at most four times as much content. Content under decision that does not fit follows the fail mode unless Defender blocks it, so raise it for long-content agents. Identifiers and protocol fields are sent unchanged |
 

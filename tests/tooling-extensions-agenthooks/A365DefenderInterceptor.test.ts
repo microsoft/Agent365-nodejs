@@ -541,6 +541,19 @@ describe('createProtectionEmitter and addA365Defender', () => {
     expect(() => createProtectionEmitter({ configProvider: withDefenderTimeout(1000) })).not.toThrow();
   });
 
+  it.each([Infinity, Number.NaN, 2_147_483_648, 12000.5])(
+    'rejects an interceptor timeout of %d, which Node cannot time',
+    (interceptorTimeoutMilliseconds) => {
+      expect(() => createProtectionEmitter({ interceptorTimeoutMilliseconds }))
+        .toThrow(`interceptorTimeoutMilliseconds (${interceptorTimeoutMilliseconds}) must be an integer of at most 2147483647 ms`);
+    },
+  );
+
+  it('accepts the largest timer delay, and the largest Defender timeout with the default margin', () => {
+    expect(() => createProtectionEmitter({ interceptorTimeoutMilliseconds: 2_147_483_647 })).not.toThrow();
+    expect(() => createProtectionEmitter({ configProvider: withDefenderTimeout(2_147_481_647) })).not.toThrow();
+  });
+
   it('requires an emitter and an interceptor', () => {
     const client = new DefenderRtpClient();
     expect(() => addA365Defender(undefined as never, new A365DefenderInterceptor(client, () => null))).toThrow('emitter is required.');

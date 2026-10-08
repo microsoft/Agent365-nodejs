@@ -35,6 +35,9 @@ const TOTAL_CONTENT_FACTOR = 4;
 /** The most nested levels copied from a value; deeper levels are cut (JSON parsers limit depth). */
 const MAX_COPY_DEPTH = 32;
 
+/** The least a tool declaration costs: the declaration, its `name` key and a one-character name. */
+const MIN_TOOL_DECLARATION_COST = 1 + 'name'.length + 1;
+
 /** Fields rebuilt or copied whole; any other top-level field shares what is left of the budget. */
 const BUILT_FIELDS: ReadonlySet<string> = new Set([
   'spec', 'interception_point', 'timestamp', 'sequence', 'agent', 'session', 'target', 'tenant', 'actor',
@@ -116,6 +119,8 @@ export class DefenderRtpClient {
   private readonly tokens = new Map<string, CachedToken>();
   private readonly inFlightTokens = new Map<string, Promise<string>>();
   private readonly sequences = new Map<string, number>();
+  /** The highest sequence of a session no longer tracked: a session seen again resumes above it. */
+  private evictedSequence = 0;
 
   /**
    * @param options The configuration source and test seams.
@@ -276,9 +281,11 @@ export class DefenderRtpClient {
    * content. The content under decision comes first, with up to half of it (it is sent twice, as
    * `target` too); then the tool call arguments at `post_tool_call`, the tool declarations (the called
    * tool first, always declared), the newest messages, extensions and any other fields share what it
-   * leaves, in that order. `incomplete` tells whether, and why, the copy leaves part of the content
-   * under decision out: it was cut, or two of its keys became one once made well formed. Optional
-   * fields of an unexpected shape are left out, never indexed.
+   * leaves, in that order. Every copied element counts at least one character, and lists and objects
+   * are read only as far as the budget reaches, so a huge context is never scanned whole. `incomplete`
+   * tells whether, and why, the copy leaves part of the content under decision out: it was cut, or two
+   * of its keys became one once made well formed. Optional fields of an unexpected shape are left out,
+   * never indexed.
    */
   private prepare(
     context: DefenderRtpHookContext,
@@ -340,7 +347,8 @@ export class DefenderRtpClient {
       };
     }
 
-    const requestId = source['request_id'] == null ? stringOf(agent.requestId) || undefined : copyJson(source['request_id']);
+    // A request id that is not a string is left out, like other identity fields of another shape.
+    const requestId = source['request_id'] == null ? stringOf(agent.requestId) || undefined : stringOf(source['request_id']);
     if (requestId !== undefined) {
       hook['request_id'] = requestId;
     }
@@ -414,11 +422,21 @@ export class DefenderRtpClient {
       hook['extensions'] = extensions;
     }
 
-    // Other fields are copied as they are, without replacing a field built above.
+    // Other fields are copied as they are, without replacing a field built above, reading no more of
+    // them than the budget could hold.
     const built = new Set([...BUILT_FIELDS, ...POINT_FIELDS[point]]);
     const names = new Set([...built, ...Object.keys(hook)]);
+    let unread = rest.remaining;
     for (const key in source) {
-      if (!Object.prototype.hasOwnProperty.call(source, key) || built.has(key) || key.length > maxCharacters) {
+      if (!Object.prototype.hasOwnProperty.call(source, key) || built.has(key)) {
+        continue;
+      }
+
+      if (unread-- <= 0) {
+        break;
+      }
+
+      if (key.length > maxCharacters) {
         continue;
       }
 
@@ -681,13 +699,19 @@ export class DefenderRtpClient {
 
   // ---- helpers -----------------------------------------------------------------------------
 
+  /**
+   * The next sequence of a session whose context has none. The last 1000 sessions are tracked; a
+   * session seen again after it was dropped resumes above every sequence given to a dropped session,
+   * so its sequence keeps increasing.
+   */
   private nextSequence(sessionId: string): number {
-    const next = (this.sequences.get(sessionId) ?? 0) + 1;
+    const next = (this.sequences.get(sessionId) ?? this.evictedSequence) + 1;
     this.sequences.delete(sessionId);
     this.sequences.set(sessionId, next);
     while (this.sequences.size > MAX_TRACKED_SESSIONS) {
-      const oldest = this.sequences.keys().next().value as string;
+      const [oldest, sequence] = this.sequences.entries().next().value as [string, number];
       this.sequences.delete(oldest);
+      this.evictedSequence = Math.max(this.evictedSequence, sequence);
     }
 
     return next;
@@ -752,8 +776,9 @@ export class DefenderRtpClient {
 
 /**
  * Tool declarations as Defender accepts them (a name, a string description, an object schema), within
- * the budget. The called tool comes first and is always declared: from `tools`, or by name with the
- * host's `extensions.a365.tool.description` when `tools` leaves it out or its declaration does not fit.
+ * the budget. Only as many entries as the budget can hold are read, so a huge list is never scanned
+ * whole. The called tool comes first and is always declared: from `tools`, or by name with the host's
+ * `extensions.a365.tool.description` when the entries read leave it out or its declaration does not fit.
  */
 function fitTools(
   tools: unknown,
@@ -762,6 +787,7 @@ function fitTools(
   budget: Budget,
 ): JsonObject[] | undefined {
   const list: unknown[] = Array.isArray(tools) ? tools : [];
+  const readable = Math.min(list.length, Math.floor(budget.remaining / MIN_TOOL_DECLARATION_COST));
   const declarations: JsonObject[] = [];
   const add = (tool: unknown): boolean => {
     const name = isObject(tool) ? stringOf(tool['name']) : undefined;
@@ -769,23 +795,25 @@ function fitTools(
       return true;
     }
 
-    if (budget.remaining < name.length + 1) {
+    // The declaration, its `name` key and the name.
+    const cost = 1 + 'name'.length + name.length;
+    if (budget.remaining < cost) {
       return false;
     }
 
-    budget.remaining -= name.length + 1;
+    budget.remaining -= cost;
     const declaration: JsonObject = { name };
     if (typeof tool['description'] === 'string') {
-      const description = fitString(tool['description'], budget);
-      if (description !== DROPPED) {
-        declaration['description'] = description;
+      const description = fitEntry('description', tool['description'], budget);
+      if (Array.isArray(description)) {
+        declaration['description'] = description[1];
       }
     }
 
     if (isObject(tool['schema'])) {
-      const schema = fitJson(tool['schema'], budget);
-      if (isObject(schema)) {
-        declaration['schema'] = schema as JsonObject;
+      const schema = fitEntry('schema', tool['schema'], budget);
+      if (Array.isArray(schema) && isObject(schema[1])) {
+        declaration['schema'] = schema[1] as JsonObject;
       }
     }
 
@@ -793,14 +821,20 @@ function fitTools(
     return true;
   };
 
-  const called = calledTool === undefined
-    ? -1
-    : list.findIndex((tool) => isObject(tool) && stringOf(tool['name']) === calledTool);
+  let called = -1;
+  for (let index = 0; calledTool !== undefined && index < readable; index += 1) {
+    const tool = list[index];
+    if (isObject(tool) && stringOf(tool['name']) === calledTool) {
+      called = index;
+      break;
+    }
+  }
+
   if (calledTool !== undefined && (called < 0 || !add(list[called]))) {
     declarations.push(toolFromExtensions(extensions, calledTool, budget));
   }
 
-  for (let index = 0; index < list.length && budget.remaining > 0; index += 1) {
+  for (let index = 0; index < readable && budget.remaining > 0; index += 1) {
     if (index !== called && !add(list[index])) {
       break;
     }
@@ -809,7 +843,7 @@ function fitTools(
   return declarations.length > 0 ? declarations : undefined;
 }
 
-/** The current tool's declaration, with the host's `extensions.a365.tool.description` if it fits. */
+/** The called tool's declaration, with the host's `extensions.a365.tool.description` if it fits. */
 function toolFromExtensions(extensions: unknown, toolName: string, budget: Budget): JsonObject {
   const a365 = isObject(extensions) ? extensions[A365_EXTENSION] : undefined;
   const tool = isObject(a365) ? a365['tool'] : undefined;
@@ -818,13 +852,14 @@ function toolFromExtensions(extensions: unknown, toolName: string, budget: Budge
     return { name: toolName };
   }
 
-  const fitted = fitString(description, budget);
-  return fitted === DROPPED || fitted.length === 0 ? { name: toolName } : { name: toolName, description: fitted };
+  const fitted = fitEntry('description', description, budget);
+  return Array.isArray(fitted) && fitted[1] !== '' ? { name: toolName, description: fitted[1] } : { name: toolName };
 }
 
 /**
- * The extension namespaces Defender accepts (`^[a-z][a-z0-9_]*$`), within the budget. A namespace
- * name longer than the string limit is left out, as cutting it would break the pattern.
+ * The extension namespaces Defender accepts (`^[a-z][a-z0-9_]*$`), within the budget, reading no more
+ * keys than it can hold. A namespace name longer than the string limit is left out, as cutting it would
+ * break the pattern.
  */
 function fitExtensions(extensions: unknown, budget: Budget): JsonObject | undefined {
   if (!isObject(extensions)) {
@@ -833,7 +868,12 @@ function fitExtensions(extensions: unknown, budget: Budget): JsonObject | undefi
 
   const entries: Array<[string, Json]> = [];
   const seen = new Set<string>();
+  let unread = budget.remaining;
   for (const key in extensions) {
+    if (unread-- <= 0) {
+      break;
+    }
+
     if (!Object.prototype.hasOwnProperty.call(extensions, key)
       || key.length > budget.maxString
       || !EXTENSION_KEY_PATTERN.test(key)) {
@@ -854,33 +894,43 @@ function fitExtensions(extensions: unknown, budget: Budget): JsonObject | undefi
 }
 
 /**
- * The message history, when every message has a role and content (Defender rejects it otherwise),
- * within the budget: the newest messages are kept first.
+ * The newest messages, within the budget. Only as many as it can hold are read, newest first, and the
+ * history stops before a message without a role or content, which Defender would reject.
  */
 function fitMessages(messages: unknown, budget: Budget): JsonObject[] | undefined {
-  if (!Array.isArray(messages)
-    || !messages.every((message) => isObject(message) && !!stringOf(message['role']) && 'content' in message)) {
+  if (!Array.isArray(messages)) {
     return undefined;
   }
 
   const kept: JsonObject[] = [];
   for (let index = messages.length - 1; index >= 0; index -= 1) {
-    const message = messages[index] as Record<string, unknown>;
-    const role = stringOf(message['role']) as string;
-    if (budget.remaining < role.length + 1) {
+    const message: unknown = messages[index];
+    const role = isObject(message) ? stringOf(message['role']) : undefined;
+    if (!isObject(message) || !role || !('content' in message)) {
       break;
     }
 
-    budget.remaining -= role.length + 1;
+    // The message, its `role` and `content` keys and the role.
+    const cost = 1 + 'role'.length + 'content'.length + role.length;
+    if (budget.remaining < cost) {
+      break;
+    }
+
+    budget.remaining -= cost;
     const fitted = fitJson(message['content'], budget);
     if (fitted === DROPPED) {
-      budget.remaining += role.length + 1;
+      budget.remaining += cost;
       break;
     }
 
     const entries: Array<[string, Json]> = [['role', role], ['content', fitted ?? '']];
     const seen = new Set(['role', 'content']);
+    let unread = budget.remaining;
     for (const key in message) {
+      if (unread-- <= 0) {
+        break;
+      }
+
       if (!Object.prototype.hasOwnProperty.call(message, key) || key === 'role' || key === 'content') {
         continue;
       }
@@ -1149,7 +1199,14 @@ function fitJson(value: unknown, budget: Budget, depth = 0, ancestors: object[] 
 
     const entries: Array<[string, Json]> = [];
     const seen = new Set<string>();
+    // Keys that JSON leaves out cost nothing, so no more are read than the budget could hold.
+    let unread = budget.remaining;
     for (const key in node) {
+      if (unread-- <= 0) {
+        budget.cut = true;
+        break;
+      }
+
       if (!Object.prototype.hasOwnProperty.call(node, key)) {
         continue;
       }

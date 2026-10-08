@@ -10,6 +10,11 @@ const MCP_PLATFORM_PROD_BASE_URL = 'https://agent365.svc.cloud.microsoft';
 const PROD_MCP_PLATFORM_AUTHENTICATION_SCOPE = 'ea9ffc3e-8a23-4a7d-836d-234d7c7565c1/.default';
 const DEFAULT_DEFENDER_RTP_TIMEOUT_MILLISECONDS = 10000;
 const DEFAULT_DEFENDER_RTP_MAX_CONTENT_CHARACTERS = 20000;
+/**
+ * The longest Defender timeout: Node's largest timer delay (a longer one fires after 1 ms), less the two
+ * seconds the protection emitter adds.
+ */
+const MAX_DEFENDER_RTP_TIMEOUT_MILLISECONDS = 2_147_483_647 - 2_000;
 
 /** Application id of the Defender API, which grants `RealtimeProtection.Evaluate.All`. */
 export const DEFENDER_RTP_API_APP_ID = '86a21212-634e-4553-b3d6-e477e4c9d9ec';
@@ -162,6 +167,7 @@ export class ToolingConfiguration extends RuntimeConfiguration {
 
   /**
    * Deadline in milliseconds of each Defender evaluation, token acquisition included (default 10000).
+   * At most 2147481647: Node fires a longer timer after 1 ms, which would fail every evaluation.
    */
   get defenderRtpTimeoutMilliseconds(): number {
     const override = this.toolingOverrides.defenderRtpTimeoutMilliseconds?.();
@@ -171,8 +177,8 @@ export class ToolingConfiguration extends RuntimeConfiguration {
         DEFAULT_DEFENDER_RTP_TIMEOUT_MILLISECONDS,
       );
 
-    if (!Number.isInteger(timeout) || timeout <= 0) {
-      throw new Error('defenderRtpTimeoutMilliseconds must be a positive integer.');
+    if (!Number.isInteger(timeout) || timeout <= 0 || timeout > MAX_DEFENDER_RTP_TIMEOUT_MILLISECONDS) {
+      throw new Error(`defenderRtpTimeoutMilliseconds must be a positive integer of at most ${MAX_DEFENDER_RTP_TIMEOUT_MILLISECONDS}.`);
     }
     return timeout;
   }

@@ -216,7 +216,7 @@ The keyword "Kairo" is legacy and should not appear in any code. Flag and remove
 | `ENABLE_A365_DEFENDER_RTP` | Enable Defender real-time protection (`DefenderRtpClient`) | `true`, `false` (default) |
 | `A365_DEFENDER_RTP_ENDPOINT` | Defender prevention endpoint (required when enabled) | URL string |
 | `A365_DEFENDER_RTP_FAIL_MODE` | Behavior when no Defender verdict is obtained | `open` (default), `closed`; other values are rejected |
-| `A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS` | Timeout of each Defender evaluation | Number (default: 10000) |
+| `A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS` | Timeout of each Defender evaluation | Number (default: 10000, at most 2147481647) |
 | `A365_DEFENDER_RTP_AUTHENTICATION_SCOPE` | Override the Defender API token scope | Scope string |
 | `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` | Max characters of each content string sent to Defender; the request carries at most four times as much content | Number (default: 20000) |
 | `A365_OBSERVABILITY_SCOPES_OVERRIDE` | Override observability auth scopes | Space-separated scope strings |

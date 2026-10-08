@@ -92,9 +92,20 @@ describe('Defender RTP tooling configuration', () => {
     expect(new ToolingConfiguration().defenderRtpTimeoutMilliseconds).toBe(10000);
 
     expect(() => new ToolingConfiguration({ defenderRtpTimeoutMilliseconds: () => 0 }).defenderRtpTimeoutMilliseconds)
-      .toThrow('defenderRtpTimeoutMilliseconds must be a positive integer.');
+      .toThrow('defenderRtpTimeoutMilliseconds must be a positive integer of at most 2147481647.');
     expect(() => new ToolingConfiguration({ defenderRtpMaxContentCharacters: () => -1 }).defenderRtpMaxContentCharacters)
       .toThrow('defenderRtpMaxContentCharacters must be a positive integer.');
+  });
+
+  it('rejects a timeout beyond the timer range, which would fire after 1 ms', () => {
+    expect(new ToolingConfiguration({ defenderRtpTimeoutMilliseconds: () => 2_147_481_647 }).defenderRtpTimeoutMilliseconds)
+      .toBe(2_147_481_647);
+    expect(() => new ToolingConfiguration({ defenderRtpTimeoutMilliseconds: () => 2_147_481_648 }).defenderRtpTimeoutMilliseconds)
+      .toThrow('defenderRtpTimeoutMilliseconds must be a positive integer of at most 2147481647.');
+
+    process.env.A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS = '99999999999';
+    expect(() => new ToolingConfiguration().defenderRtpTimeoutMilliseconds)
+      .toThrow('defenderRtpTimeoutMilliseconds must be a positive integer of at most 2147481647.');
   });
 
   it.each([

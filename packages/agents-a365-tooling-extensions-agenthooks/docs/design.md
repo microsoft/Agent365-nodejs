@@ -99,11 +99,13 @@ const emitter = addA365Defender(createProtectionEmitter(), interceptor);
 profile (`Composition.strictest('deny')`): an action proceeds only when every interceptor allows it, and a
 transform conflict denies. Its per-interceptor timeout defaults to the Defender timeout plus two seconds, so the
 client's own deadline and fail mode apply first; an explicit `interceptorTimeoutMilliseconds` that does not exceed
-the Defender timeout is rejected (`RangeError`). An interceptor that exceeds the emitter timeout fails closed as
-`host_error:interceptor_timeout`. This matters because the agent-hooks default interceptor timeout (5 s) is below
-the Defender default (10 s): a host that registers the interceptor on its own emitter must set a longer timeout.
-The timeout is read once, when the emitter is created; with a configuration whose Defender timeout changes per
-request, create the emitter per turn or pass an `interceptorTimeoutMilliseconds` above the largest value.
+the Defender timeout, or that is not an integer of at most 2147483647 (Node's largest timer delay, beyond which a
+timer fires after 1 ms), is rejected (`RangeError`). For the same reason the Defender timeout is at most
+2147481647, so the default emitter timeout stays in range. An interceptor that exceeds the emitter timeout fails
+closed as `host_error:interceptor_timeout`. This matters because the agent-hooks default interceptor timeout (5 s)
+is below the Defender default (10 s): a host that registers the interceptor on its own emitter must set a longer
+timeout. The timeout is read once, when the emitter is created; with a configuration whose Defender timeout changes
+per request, create the emitter per turn or pass an `interceptorTimeoutMilliseconds` above the largest value.
 The emitter keeps the last 1000 records (the agent-hooks default is unbounded).
 
 ## Design Decisions

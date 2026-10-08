@@ -9,6 +9,9 @@ import { A365DefenderInterceptor } from './A365DefenderInterceptor';
 /** Extra time the emitter gives an interceptor beyond the Defender timeout. */
 const INTERCEPTOR_TIMEOUT_MARGIN_MILLISECONDS = 2000;
 
+/** Node's largest timer delay: a longer one fires after 1 ms. */
+const MAX_TIMER_MILLISECONDS = 2_147_483_647;
+
 /** Records the emitter keeps in memory (oldest dropped first). */
 const MAX_RECORDS = 1000;
 
@@ -41,13 +44,21 @@ export interface A365ProtectionEmitterOptions {
  *
  * @param options The interceptor timeout, or the configuration that sets it.
  * @returns The emitter; register the Defender interceptor with {@link addA365Defender}.
- * @throws When `interceptorTimeoutMilliseconds` does not exceed the Defender timeout: the client
- * must apply its fail mode before the emitter times the interceptor out (which always denies).
+ * @throws When `interceptorTimeoutMilliseconds` does not exceed the Defender timeout (the client must
+ * apply its fail mode before the emitter times the interceptor out, which always denies), or is not an
+ * integer within Node's timer range (at most 2147483647 ms).
  */
 export function createProtectionEmitter(options: A365ProtectionEmitterOptions = {}): InterceptionEmitter {
   const defenderTimeout = (options.configProvider ?? defaultToolingConfigurationProvider)
     .getConfiguration().defenderRtpTimeoutMilliseconds;
   const timeout = options.interceptorTimeoutMilliseconds ?? defenderTimeout + INTERCEPTOR_TIMEOUT_MARGIN_MILLISECONDS;
+  if (!Number.isInteger(timeout) || timeout > MAX_TIMER_MILLISECONDS) {
+    throw new RangeError(
+      `interceptorTimeoutMilliseconds (${timeout}) must be an integer of at most ${MAX_TIMER_MILLISECONDS} ms, `
+      + 'Node\'s largest timer delay.',
+    );
+  }
+
   if (!(timeout > defenderTimeout)) {
     throw new RangeError(
       `interceptorTimeoutMilliseconds (${timeout}) must exceed the Defender timeout (${defenderTimeout} ms), `

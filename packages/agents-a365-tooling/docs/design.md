@@ -168,31 +168,39 @@ if (result && !result.allowed) { /* block: result.blockReason */ }
 ```
 
 - **Forwarding**: `evaluateHookContext` sends a copy of the emitted context, fitted to Defender's request
-  validation, and never modifies the host's context. The copy keeps the session, sequence and tool call ids;
-  `spec` is `agent-hooks/0.1`, the timestamp is UTC, `agent.framework` matches `^[a-z0-9_-]+$`, `target` equals
-  the point's field, `tool_call`/`tool_result` carry only spec members, and loosely filled optional fields
-  (extensions, model, tools, messages, actor) are repaired or dropped. `tenant.id` is always the agent's tenant,
-  because Defender requires it to equal the token's tenant (a different host tenant is replaced, with its other
-  fields). `agent.id`, `actor`, `request_id` and `model` are filled from `DefenderRtpAgentContext` when the context
-  has none. Every optional field is shape-checked before it is read: one of another shape (for example a `model`
-  or `actor` that is a string, or an `a365` extension that is not an object) is left out, never indexed, so it
-  cannot fail an evaluation; a `session` that is not an object has no `session.id`, which is required. Every
-  string and object key is well formed: a lone UTF-16 surrogate becomes U+FFFD
-  (`String.prototype.toWellFormed`, with a fallback on Node.js 18), because `JSON.stringify` would write it as a
-  `\uD8xx` escape that Defender's JSON parser rejects, failing the request. When two keys of one object become
-  equal that way, only the first is sent, and in the content under decision the copy counts as incomplete.
-- **Size**: the copy is built while reading the context, field by field, never by serializing it whole. Each
-  content string (input and output content, tool arguments and results, tool descriptions and schemas, messages,
-  extensions, other fields) is cut to at most `defenderRtpMaxContentCharacters`, ending with a
-  `...[truncated N chars]` marker when the marker fits, and nesting deeper than 32 levels is cut. The whole copy
-  carries at most four times `defenderRtpMaxContentCharacters` of content: strings, keys and other values count
-  their length, and each array or object one. The content under decision comes first and may use half of that,
-  as it is sent twice (`target` mirrors it); twice what it leaves goes to the rest of the context, in this order:
-  the tool call arguments at `post_tool_call`, the tool declarations (the called tool first and always declared,
-  from `extensions.a365.tool` when `tools` leaves it out), the newest messages, extensions, then any other fields.
-  Identifiers and protocol fields (`spec`, `timestamp`, `agent`,
-  `session`, `tenant`, `actor`, `model`, `request_id`, `trace`, tool call ids and names, `input.role`) are sent
-  whole and do not count.
+  validation, and never modifies the host's context. The copy keeps the session, sequence and tool call ids.
+  When the context has no `sequence`, the client numbers each session's contexts itself, for the last 1000
+  sessions; a session seen again after that resumes above every number given to a dropped session, so its
+  sequence keeps increasing. `spec` is `agent-hooks/0.1`, the timestamp is UTC, `agent.framework` matches
+  `^[a-z0-9_-]+$`, `target` equals the point's field, `tool_call`/`tool_result` carry only spec members, and
+  loosely filled optional fields (extensions, model, tools, messages, actor) are repaired or dropped. `tenant.id`
+  is always the agent's tenant, because Defender requires it to equal the token's tenant (a different host tenant
+  is replaced, with its other fields). `agent.id`, `actor`, `request_id` and `model` are filled from
+  `DefenderRtpAgentContext` when the context has none. Every optional field is shape-checked before it is read:
+  one of another shape (for example a `model` or `actor` that is a string, a `request_id` that is not a string,
+  or an `a365` extension that is not an object) is left out, never indexed, so it cannot fail an evaluation; a
+  `session` that is not an object has no `session.id`, which is required. Every string and object key is well
+  formed: a lone UTF-16 surrogate becomes U+FFFD (`String.prototype.toWellFormed`, with a fallback on Node.js 18),
+  because `JSON.stringify` would write it as a `\uD8xx` escape that Defender's JSON parser rejects, failing the
+  request. When two keys of one object become equal that way, only the first is sent, and in the content under
+  decision the copy counts as incomplete.
+- **Size**: the copy is built while reading the context, field by field, never by serializing it whole.
+  - Each content string (input and output content, tool arguments and results, tool descriptions and schemas,
+    messages, extensions, other fields) is cut to at most `defenderRtpMaxContentCharacters`, ending with a
+    `...[truncated N chars]` marker when the marker fits, and nesting deeper than 32 levels is cut.
+  - The whole copy carries at most four times `defenderRtpMaxContentCharacters` of content. Strings, keys and
+    other values count their length (at least one character, so empty strings and nulls count too); each array,
+    object, tool declaration and message counts one more; and tool declarations and messages count their keys.
+  - The content under decision comes first and may use half of the total, as it is sent twice (`target` mirrors
+    it). Twice what it leaves goes to the rest of the context, in this order: the tool call arguments at
+    `post_tool_call`, the tool declarations (the called tool first and always declared, from
+    `extensions.a365.tool` when `tools` leaves it out), the newest messages, extensions, then any other fields.
+  - Lists and objects are read only as far as the budget reaches, so a huge one is never scanned whole: the
+    called tool is looked for only among the declarations that could fit (otherwise it is declared by name), the
+    history is read newest first and stops before a message without a role or content, and keys that cost
+    nothing (namespaces Defender does not accept, values JSON leaves out) count toward what is read.
+  - Identifiers and protocol fields (`spec`, `timestamp`, `agent`, `session`, `tenant`, `actor`, `model`,
+    `request_id`, `trace`, tool call ids and names, `input.role`) are sent whole and do not count.
 - **Truncated content**: when the content under decision (`input.content`, `tool_call.args` at
   `pre_tool_call`, `tool_result.value` at `post_tool_call`, `output.content`) was cut (a string longer than the
   limit, nesting deeper than 32 levels, or more content than its share), or two of its keys became one once made
@@ -334,7 +342,7 @@ const customConfig = new ToolingConfiguration({
 | `isDefenderRtpEnabled` | `ENABLE_A365_DEFENDER_RTP` | `false` | Enables Defender RTP (`DefenderRtpClient`) |
 | `defenderRtpEndpoint` | `A365_DEFENDER_RTP_ENDPOINT` | None (required when enabled) | Defender prevention endpoint |
 | `defenderRtpFailClosed` | `A365_DEFENDER_RTP_FAIL_MODE` | `false` (open) | `closed` blocks when no verdict is obtained; values other than `open` and `closed` throw |
-| `defenderRtpTimeoutMilliseconds` | `A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS` | `10000` | Timeout of each evaluation |
+| `defenderRtpTimeoutMilliseconds` | `A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS` | `10000` | Timeout of each evaluation; at most 2147481647, as Node fires a longer timer after 1 ms |
 | `defenderRtpAuthenticationScope` | `A365_DEFENDER_RTP_AUTHENTICATION_SCOPE` | Defender API scope | OAuth scope of the Defender token |
 | `defenderRtpMaxContentCharacters` | `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` | `20000` | Maximum characters of each content string; the request carries at most four times as much content |
 | `clusterCategory` | `CLUSTER_CATEGORY` | `prod` | (Inherited) Environment cluster |
@@ -371,7 +379,7 @@ src/
 | `ENABLE_A365_DEFENDER_RTP` | Enables Defender RTP | `false` |
 | `A365_DEFENDER_RTP_ENDPOINT` | Defender prevention endpoint (`https://<host>/v1/protection/evaluate`) | None |
 | `A365_DEFENDER_RTP_FAIL_MODE` | `closed` blocks when no verdict is obtained; values other than `open` and `closed` are rejected | `open` |
-| `A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS` | Timeout of each evaluation | `10000` |
+| `A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS` | Timeout of each evaluation (at most 2147481647) | `10000` |
 | `A365_DEFENDER_RTP_AUTHENTICATION_SCOPE` | OAuth scope of the Defender token | Defender API scope |
 | `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` | Maximum characters of each content string; the request carries at most four times as much content | `20000` |
 
