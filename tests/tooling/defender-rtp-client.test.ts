@@ -255,6 +255,16 @@ describe('DefenderRtpClient', () => {
       expect(calls[0].body.timestamp).toBe('2026-10-07T10:00:00.000Z');
     });
 
+    it('trims separators from a sanitized framework', async () => {
+      const { client, calls, tokens } = create(allow);
+      const context = inputContext('hello');
+      context.agent.framework = ` --My Framework!!${'-'.repeat(5000)} `;
+
+      await client.evaluateHookContext(context, AGENT, tokens.resolve);
+
+      expect(calls[0].body.agent.framework).toBe('my-framework');
+    });
+
     it('clamps long strings', async () => {
       const { client, calls, tokens } = create(allow, { defenderRtpMaxContentCharacters: () => 4 });
 
@@ -876,5 +886,23 @@ describe('DefenderRtpTokenResolvers.fromAgenticConnection', () => {
       expect(() => DefenderRtpTokenResolvers.fromAgenticConnection(connection, { authority }))
         .toThrow('authority must be an absolute https URL.');
     }
+  });
+
+  it('removes trailing slashes from the authority', async () => {
+    const urls: string[] = [];
+    const resolver = DefenderRtpTokenResolvers.fromAgenticConnection(
+      { getAgenticApplicationToken: async () => 'fmi-assertion' },
+      {
+        authority: 'https://login.example.test///',
+        fetchImplementation: (async (url: string) => {
+          urls.push(url);
+          return json({ access_token: 'defender-token' });
+        }) as unknown as typeof fetch,
+      },
+    );
+
+    await resolver(AGENT_ID, TENANT_ID, [DEFENDER_SCOPE], new AbortController().signal);
+
+    expect(urls).toEqual([`https://login.example.test/${TENANT_ID}/oauth2/v2.0/token`]);
   });
 });

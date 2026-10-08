@@ -935,8 +935,23 @@ function singleLine(value: string, maxCharacters: number): string {
 }
 
 function sanitizeFramework(framework: string | undefined): string {
-  const value = (framework ?? '').trim().toLowerCase().replace(INVALID_FRAMEWORK_CHARACTERS, '-').replace(/^-+|-+$/g, '');
+  const value = trimCharacter((framework ?? '').trim().toLowerCase().replace(INVALID_FRAMEWORK_CHARACTERS, '-'), '-');
   return value || DEFAULT_FRAMEWORK;
+}
+
+/** Removes leading and trailing `character`s in linear time (a `-+$` pattern is polynomial). */
+function trimCharacter(value: string, character: string): string {
+  let start = 0;
+  let end = value.length;
+  while (start < end && value[start] === character) {
+    start += 1;
+  }
+
+  while (end > start && value[end - 1] === character) {
+    end -= 1;
+  }
+
+  return value.slice(start, end);
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {

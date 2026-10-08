@@ -38,7 +38,7 @@ export class DefenderRtpTokenResolvers {
       throw new TypeError('connection must provide getAgenticApplicationToken.');
     }
 
-    const authority = (options.authority ?? DEFAULT_AUTHORITY).replace(/\/+$/, '');
+    const authority = trimTrailingSlashes(options.authority ?? DEFAULT_AUTHORITY);
     if (!isHttpsUrl(authority)) {
       throw new TypeError('authority must be an absolute https URL.');
     }
@@ -91,6 +91,16 @@ function isHttpsUrl(value: string): boolean {
   } catch (_error) {
     return false;
   }
+}
+
+/** Removes trailing slashes in linear time (a `/+$` pattern is polynomial). */
+function trimTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value[end - 1] === '/') {
+    end -= 1;
+  }
+
+  return value.slice(0, end);
 }
 
 async function readJson(response: Response): Promise<unknown> {
