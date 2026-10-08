@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
-import { AgentContextBuilder, Interceptor, proceeds } from '@responsibleai/agent-hooks';
+import { AgentContext, AgentContextBuilder, Interceptor, proceeds } from '@responsibleai/agent-hooks';
 import { DefaultConfigurationProvider } from '@microsoft/agents-a365-runtime';
 import {
   DefenderRtpClient,
@@ -279,6 +279,63 @@ describe('A365DefenderInterceptor under the agent-hooks emitter', () => {
     expect(proceeds(record)).toBe(true);
     expect(record.verdict.reason).toBeUndefined();
   });
+
+  it('blocks a Defender deny whose transform has another shape as a detection', async () => {
+    const { emitter } = harness(() => json({ decision: 'deny', reason: 'prevention_blocked', transform: ['unexpected'] }), {
+      failClosed: false,
+    });
+
+    const record = await emitter.emitUnchecked(builder('s-10').input('hello'));
+
+    expect(proceeds(record)).toBe(false);
+    expect(record.verdict.reason).toBe('defender:block:prevention_blocked');
+  });
+});
+
+describe('A365DefenderInterceptor with contexts of another shape', () => {
+  const create = (failClosed: boolean) => {
+    const endpoint = fakeEndpoint(() => json({ decision: 'allow' }));
+    const configProvider = new DefaultConfigurationProvider(() => new ToolingConfiguration({
+      isDefenderRtpEnabled: () => true,
+      defenderRtpEndpoint: () => ENDPOINT,
+      defenderRtpFailClosed: () => failClosed,
+    }));
+    const client = new DefenderRtpClient({ configProvider, fetchImplementation: endpoint.fetch });
+    const interceptor = new A365DefenderInterceptor(client, () => ({
+      agent: { agentId: AGENT_ID, tenantId: TENANT_ID },
+      tokenResolver: async () => createToken(),
+    }));
+    return { interceptor, calls: endpoint.calls };
+  };
+
+  it('follows the fail mode, without throwing, for a session that is not an object', async () => {
+    const { interceptor, calls } = create(true);
+    const context = { ...builder('s-11').input('hello'), session: 's-11' } as unknown as AgentContext;
+
+    const verdict = await interceptor.intercept(context);
+
+    expect(verdict).toMatchObject({
+      decision: 'deny',
+      reason: 'runtime_error:defender_unverified',
+      warnings: [{ reason: 'defender:unverified', message: 'TypeError: session.id is required.' }],
+    });
+    expect(calls).toHaveLength(0);
+  });
+
+  it('leaves out optional members of another shape and evaluates the rest', async () => {
+    const { interceptor, calls } = create(true);
+    const context = {
+      ...builder('s-12').preToolCall('call-1', 'FetchPage', { url: 'https://example.test' }),
+      model: 'gpt-4o',
+      extensions: { a365: { tool: 'metadata' } },
+    } as unknown as AgentContext;
+
+    const verdict = await interceptor.intercept(context);
+
+    expect(verdict).toEqual({ decision: 'allow' });
+    expect(contractErrors(calls[0].body)).toEqual([]);
+    expect(calls[0].body.model).toBeUndefined();
+  });
 });
 
 describe('A365DefenderInterceptor with content longer than the limit', () => {
@@ -323,6 +380,23 @@ describe('A365DefenderInterceptor with content longer than the limit', () => {
     expect(proceeds(record)).toBe(false);
     expect(record.verdict.reason).toBe('defender:block:prevention_blocked');
     expect(record.verdict.message).toBe('Blocked content.');
+  });
+
+  it('keeps a Defender transform of truncated content as a block, also when failing open', async () => {
+    const { emitter, evaluations } = harness(() => json({
+      decision: 'transform',
+      reason: 'prevention_redacted',
+      transform: { path: '/target', value: '[redacted]' },
+    }));
+
+    const record = await emitter.emitUnchecked(builder('s-long').input(PADDED));
+
+    expect(proceeds(record)).toBe(false);
+    expect(record.verdict.reason).toBe('defender:block:prevention_redacted');
+    expect(record.verdict.message)
+      .toBe('Microsoft Defender for AI asked to rewrite this content, which this SDK version does not apply yet.');
+    expect(evaluations[0]).toMatchObject({ allowed: false, evaluated: true, truncated: true });
+    expect(evaluations[0].error).toBeUndefined();
   });
 
   it('allows content under the limit normally', async () => {

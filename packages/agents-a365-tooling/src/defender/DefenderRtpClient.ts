@@ -29,41 +29,45 @@ const EXTENSION_KEY_PATTERN = /^[a-z][a-z0-9_]*$/;
 const INVALID_FRAMEWORK_CHARACTERS = /[^a-z0-9_-]+/g;
 const TIMESTAMP_WITHOUT_OFFSET = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/;
 
-/**
- * Identifiers and protocol fields, never clamped: they carry no content, and Defender validates
- * them (`tenant.id` must match the token's tenant; `spec`, `timestamp`, `agent.framework` and the
- * roles have fixed formats). Dotted paths, with `[]` for array items.
- */
-const UNCLAMPED_PATHS: ReadonlySet<string> = new Set([
-  'spec',
-  'interception_point',
-  'timestamp',
-  'request_id',
-  'agent',
-  'session',
-  'tenant',
-  'actor',
-  'model',
-  'trace',
-  'input.role',
-  'tool_call.id',
-  'tool_call.name',
-  'tools[].name',
+/** The copy sent to Defender carries at most this many times `maxContentCharacters` of content. */
+const TOTAL_CONTENT_FACTOR = 4;
+
+/** The most nested levels copied from a value; deeper levels are cut (JSON parsers limit depth). */
+const MAX_COPY_DEPTH = 32;
+
+/** Fields rebuilt or copied whole; any other top-level field shares what is left of the budget. */
+const BUILT_FIELDS: ReadonlySet<string> = new Set([
+  'spec', 'interception_point', 'timestamp', 'sequence', 'agent', 'session', 'target', 'tenant', 'actor',
+  'request_id', 'model', 'trace', 'tools', 'extensions', 'messages',
 ]);
+
+/** The fields that carry each point's content. */
+const POINT_FIELDS: Readonly<Record<DefenderRtpInterceptionPoint, readonly string[]>> = {
+  input: ['input'],
+  output: ['output'],
+  pre_tool_call: ['tool_call'],
+  post_tool_call: ['tool_call', 'tool_result'],
+};
+
+/** A value that did not fit the budget (unlike `undefined`, which JSON leaves out). */
+const DROPPED: unique symbol = Symbol('dropped');
+type Dropped = typeof DROPPED;
+
+/** Characters of content still available for a copy. */
+interface Budget {
+  remaining: number;
+  /** The most characters of one string. */
+  maxString: number;
+  /** Set when something was cut or left out. */
+  cut: boolean;
+}
+
 const FAIL_CLOSED_REASON = 'Security validation is unavailable and this agent is configured to fail closed.';
 const TRUNCATED_FAIL_CLOSED_REASON =
   'The content is too long to be fully validated by Microsoft Defender for AI, and this agent is configured to fail closed.';
 const TRANSFORM_REASON =
   'Microsoft Defender for AI asked to rewrite this content, which this SDK version does not apply yet.';
 const DEFAULT_BLOCK_REASON = 'Blocked by Microsoft Defender for AI.';
-
-/** Where each point keeps the content Defender decides on (`target` is a copy of it). */
-const DECISION_PATHS: Readonly<Record<DefenderRtpInterceptionPoint, string>> = {
-  input: 'input.content',
-  pre_tool_call: 'tool_call.args',
-  post_tool_call: 'tool_result.value',
-  output: 'output.content',
-};
 
 /** Options for {@link DefenderRtpClient}. */
 export interface DefenderRtpClientOptions {
@@ -88,9 +92,9 @@ interface CachedToken {
  * Defender evaluates four agent-hooks/0.1 interception points: `input` (the user's message, before
  * the agent runs), `pre_tool_call`, `post_tool_call`, and `output` (the reply, before it is sent).
  * {@link evaluateHookContext} sends a copy of a context emitted by an agent-hooks host, fitted to
- * Defender's request validation (normalized, with content strings clamped) and keeping its session,
- * sequence and tool call ids, and returns the verdict. Each call carries a unique
- * `x-ms-correlation-id` and the agent identity's app-only token for the Defender API.
+ * Defender's request validation and size limits (normalized, well formed, with content strings
+ * clamped) and keeping its session, sequence and tool call ids, and returns the verdict. Each call
+ * carries a unique `x-ms-correlation-id` and the agent identity's app-only token for the Defender API.
  */
 export class DefenderRtpClient {
   /** The only agent-hooks wire version the prevention endpoint accepts. */
@@ -258,116 +262,171 @@ export class DefenderRtpClient {
   // ---- agent-hooks context ---------------------------------------------------------------
 
   /**
-   * A copy of the context that meets Defender's request validation: `target` equals the point's
-   * field, `tool_call` and `tool_result` carry only spec members, every content string is clamped,
-   * the timestamp is UTC, and loosely filled optional fields are repaired or dropped. `truncated`
-   * tells whether the content under decision at the point was cut.
+   * A copy of the context that meets Defender's request validation, built field by field (the host's
+   * context is only read): `target` equals the point's field, `tool_call` and `tool_result` carry only
+   * spec members, the timestamp is UTC, and loosely filled optional fields are repaired or dropped.
+   * Every string is well formed (a lone surrogate becomes U+FFFD, which Defender's JSON parser
+   * requires) and at most `maxCharacters` long, and the copy carries at most four times that much
+   * content. The content under decision comes first, with up to half of it (it is sent twice, as
+   * `target` too); then the tool call arguments at `post_tool_call`, the tool declarations (the called
+   * tool first), the newest messages, extensions and any other fields share what it leaves, in that
+   * order. `truncated` tells whether the content under decision was cut. Optional fields of an
+   * unexpected shape are left out, never indexed.
    */
   private prepare(
     context: DefenderRtpHookContext,
     agent: DefenderRtpAgentContext,
     maxCharacters: number,
   ): { hook: JsonObject; truncated: boolean } {
-    const hook = toJsonObject(context);
-    hook['spec'] = DefenderRtpClient.AGENT_HOOKS_SPEC;
-    hook['timestamp'] = this.utcTimestamp(hook['timestamp']);
+    const source = context as Record<string, unknown>;
+    const point = source['interception_point'] as DefenderRtpInterceptionPoint;
 
-    const agentNode = asObject(hook['agent']);
-    const agentId = firstNonEmpty(agent.agentObjectId, readString(agentNode?.['id']), agent.agentId);
-    const sessionId = readString(asObject(hook['session'])?.['id']);
+    // Identity and protocol fields are copied whole: they carry no content, and Defender validates them.
+    const agentNode = asRecord(source['agent']);
+    const agentId = firstNonEmpty(stringOf(agent.agentObjectId), stringOf(agentNode?.['id']), stringOf(agent.agentId));
+    const session = asObject(copyJson(source['session']));
+    const sessionId = readString(session?.['id']);
     requireString(agentId, 'agent.id');
     requireString(sessionId, 'session.id');
-    if (!isNonNegativeInteger(hook['sequence'])) {
-      hook['sequence'] = this.nextSequence(sessionId);
-    }
 
     const preparedAgent: JsonObject = {
       id: agentId,
-      framework: sanitizeFramework(firstNonEmpty(readString(agentNode?.['framework']), agent.framework)),
+      framework: sanitizeFramework(firstNonEmpty(stringOf(agentNode?.['framework']), agent.framework)),
     };
-    const name = firstNonEmpty(readString(agentNode?.['name']), agent.agentName);
+    const name = firstNonEmpty(stringOf(agentNode?.['name']), stringOf(agent.agentName));
     if (name) {
       preparedAgent['name'] = name;
     }
 
-    const version = readString(agentNode?.['version']);
+    const version = stringOf(agentNode?.['version']);
     if (version) {
       preparedAgent['version'] = version;
     }
 
-    hook['agent'] = preparedAgent;
-
     // Defender requires tenant.id to equal the token's tenant, and the token is always the agent's,
     // so a different tenant id could only be rejected. Its other fields describe that tenant, so
     // they are dropped with it.
-    const tenant = asObject(hook['tenant']);
-    const tenantId = readString(tenant?.['id']);
-    hook['tenant'] = !tenantId || tenantId.toLowerCase() === agent.tenantId.toLowerCase()
-      ? { ...tenant, id: agent.tenantId }
-      : { id: agent.tenantId };
+    const tenantId = wellFormed(agent.tenantId);
+    const tenant = asObject(copyJson(source['tenant']));
+    const hostTenantId = readString(tenant?.['id']);
+    const hook: JsonObject = {
+      spec: DefenderRtpClient.AGENT_HOOKS_SPEC,
+      interception_point: point,
+      timestamp: this.utcTimestamp(source['timestamp']),
+      sequence: isNonNegativeInteger(source['sequence']) ? source['sequence'] : this.nextSequence(sessionId),
+      agent: preparedAgent,
+      session: session as JsonObject,
+      tenant: !hostTenantId || hostTenantId.toLowerCase() === tenantId.toLowerCase()
+        ? { ...tenant, id: tenantId }
+        : { id: tenantId },
+    };
 
-    if (hook['actor'] == null && agent.userId) {
-      hook['actor'] = { id: agent.userId, kind: agent.actorKind ?? 'human' };
+    const actor = source['actor'] == null && agent.userId
+      ? { id: agent.userId, kind: agent.actorKind ?? 'human' }
+      : source['actor'];
+    if (isObject(actor)) {
+      const actorId = stringOf(actor['id']);
+      const kind = stringOf(actor['kind']);
+      hook['actor'] = {
+        ...(actorId ? { id: actorId } : {}),
+        ...(kind && ACTOR_KINDS.has(kind) ? { kind } : {}),
+      };
     }
 
-    if (hook['request_id'] == null && agent.requestId) {
-      hook['request_id'] = agent.requestId;
+    const requestId = source['request_id'] == null ? stringOf(agent.requestId) || undefined : copyJson(source['request_id']);
+    if (requestId !== undefined) {
+      hook['request_id'] = requestId;
     }
 
-    if (hook['model'] == null && agent.modelName) {
-      hook['model'] = { id: agent.modelName };
+    const model = source['model'] == null && agent.modelName ? { id: agent.modelName } : source['model'];
+    const modelId = isObject(model) ? stringOf(model['id']) : undefined;
+    if (modelId) {
+      hook['model'] = { id: modelId };
     }
 
-    dropInvalidOptionalFields(hook);
+    const trace = copyJson(source['trace']);
+    if (trace !== undefined) {
+      hook['trace'] = trace;
+    }
 
-    switch (hook['interception_point']) {
+    // The content under decision first: it is sent twice (`target` mirrors it), so it may use half of
+    // the budget, and twice what it leaves goes to the rest of the context.
+    const decision: Budget = { remaining: (TOTAL_CONTENT_FACTOR / 2) * maxCharacters, maxString: maxCharacters, cut: false };
+    const toolCall = asRecord(source['tool_call']);
+    let toolName: string | undefined;
+    switch (point) {
     case 'input': {
-      const input = asObject(hook['input']);
-      const role = readString(input?.['role']);
+      const input = asRecord(source['input']);
+      const role = stringOf(input?.['role']);
       hook['input'] = {
-        content: input?.['content'] ?? '',
+        content: fitContent(input?.['content'], decision) ?? '',
         role: role === 'system' || role === 'external' ? role : 'user',
       };
       break;
     }
 
     case 'output':
-      hook['output'] = { content: asObject(hook['output'])?.['content'] ?? '' };
+      hook['output'] = { content: fitContent(asRecord(source['output'])?.['content'], decision) ?? '' };
       break;
 
-    case 'pre_tool_call':
-    case 'post_tool_call': {
-      const toolCall = asObject(hook['tool_call']);
-      const toolName = readString(toolCall?.['name']);
-      requireString(toolName, 'tool_call.name');
-      hook['tool_call'] = {
-        id: firstNonEmpty(readString(toolCall?.['id'])) ?? this.generatedToolCallId(),
-        name: toolName,
-        args: toArguments(toolCall?.['args']),
-      };
-
-      if (hook['interception_point'] === 'post_tool_call') {
-        const toolResult = asObject(hook['tool_result']);
-        hook['tool_result'] = { value: toolResult?.['value'] ?? null, is_error: toolResult?.['is_error'] === true };
+    default: {
+      const callName = stringOf(toolCall?.['name']);
+      requireString(callName, 'tool_call.name');
+      toolName = callName;
+      const id = firstNonEmpty(stringOf(toolCall?.['id'])) ?? this.generatedToolCallId();
+      if (point === 'pre_tool_call') {
+        hook['tool_call'] = { id, name: callName, args: toArguments(fitContent(toolCall?.['args'], decision)) };
+      } else {
+        const toolResult = asRecord(source['tool_result']);
+        hook['tool_call'] = { id, name: callName, args: {} };
+        hook['tool_result'] = {
+          value: fitContent(toolResult?.['value'], decision) ?? null,
+          is_error: toolResult?.['is_error'] === true,
+        };
       }
-
-      const tools = hook['tools'];
-      if (!Array.isArray(tools) || tools.length === 0) {
-        hook['tools'] = [toolFromExtensions(hook, toolName)];
-      }
-
-      break;
     }
     }
 
-    // Clamp once, then derive the target from the clamped field so the two stay equal.
-    const truncatedPaths: string[] = [];
-    const prepared = clampStrings(hook, maxCharacters, truncatedPaths) as JsonObject;
-    prepared['target'] = targetOf(prepared);
-    const decisionPath = DECISION_PATHS[prepared['interception_point'] as DefenderRtpInterceptionPoint];
-    const truncated = truncatedPaths.some((path) =>
-      path === decisionPath || path.startsWith(`${decisionPath}.`) || path.startsWith(`${decisionPath}[]`));
-    return { hook: prepared, truncated };
+    const rest: Budget = { remaining: 2 * decision.remaining, maxString: maxCharacters, cut: false };
+    if (point === 'post_tool_call') {
+      (hook['tool_call'] as JsonObject)['args'] = toArguments(fitContent(toolCall?.['args'], rest));
+    }
+
+    const tools = fitTools(source['tools'], toolName, rest)
+      ?? (toolName === undefined ? undefined : [toolFromExtensions(source['extensions'], toolName, rest)]);
+    if (tools) {
+      hook['tools'] = tools;
+    }
+
+    const messages = fitMessages(source['messages'], rest);
+    if (messages) {
+      hook['messages'] = messages;
+    }
+
+    const extensions = fitExtensions(source['extensions'], rest);
+    if (extensions) {
+      hook['extensions'] = extensions;
+    }
+
+    // Other fields are copied as they are, without replacing a field built above.
+    const built = new Set([...BUILT_FIELDS, ...POINT_FIELDS[point]]);
+    for (const key in source) {
+      if (!Object.prototype.hasOwnProperty.call(source, key) || built.has(key) || key.length > maxCharacters) {
+        continue;
+      }
+
+      const entry = fitEntry(key, source[key], rest);
+      if (entry === DROPPED) {
+        break;
+      }
+
+      if (entry && !Object.prototype.hasOwnProperty.call(hook, entry[0])) {
+        Object.defineProperty(hook, entry[0], { value: entry[1], enumerable: true, writable: true, configurable: true });
+      }
+    }
+
+    hook['target'] = targetOf(hook);
+    return { hook, truncated: decision.cut };
   }
 
   /**
@@ -627,8 +686,8 @@ export class DefenderRtpClient {
   }
 
   /** Defender requires an RFC 3339 UTC instant; a timestamp without an offset is read as UTC. */
-  private utcTimestamp(value: Json | undefined): string {
-    const text = readString(value);
+  private utcTimestamp(value: unknown): string {
+    const text = typeof value === 'string' ? value : undefined;
     const parsed = text ? Date.parse(TIMESTAMP_WITHOUT_OFFSET.test(text) ? `${text}Z` : text) : Number.NaN;
     return new Date(Number.isNaN(parsed) ? this.now() : parsed).toISOString();
   }
@@ -679,86 +738,147 @@ export class DefenderRtpClient {
 // ---- module helpers ----------------------------------------------------------------------------
 
 /**
- * Optional fields a host may fill loosely but Defender validates strictly (a 400 would leave the
- * call unverified): extension namespaces, `model.id`, tool declarations, messages, actor.
+ * Tool declarations as Defender accepts them (a name, a string description, an object schema),
+ * within the budget, the current tool's first.
  */
-function dropInvalidOptionalFields(hook: JsonObject): void {
-  if ('extensions' in hook) {
-    const extensions = asObject(hook['extensions']);
-    const valid = extensions
-      ? Object.fromEntries(Object.entries(extensions).filter(([key]) => EXTENSION_KEY_PATTERN.test(key)))
-      : {};
-    if (Object.keys(valid).length > 0) {
-      hook['extensions'] = valid;
-    } else {
-      delete hook['extensions'];
+function fitTools(tools: unknown, currentTool: string | undefined, budget: Budget): JsonObject[] | undefined {
+  if (!Array.isArray(tools)) {
+    return undefined;
+  }
+
+  const declarations: JsonObject[] = [];
+  const add = (tool: unknown): boolean => {
+    const name = isObject(tool) ? stringOf(tool['name']) : undefined;
+    if (!isObject(tool) || !name) {
+      return true;
+    }
+
+    if (budget.remaining < name.length + 1) {
+      return false;
+    }
+
+    budget.remaining -= name.length + 1;
+    const declaration: JsonObject = { name };
+    if (typeof tool['description'] === 'string') {
+      const description = fitString(tool['description'], budget);
+      if (description !== DROPPED) {
+        declaration['description'] = description;
+      }
+    }
+
+    if (isObject(tool['schema'])) {
+      const schema = fitJson(tool['schema'], budget);
+      if (isObject(schema)) {
+        declaration['schema'] = schema as JsonObject;
+      }
+    }
+
+    declarations.push(declaration);
+    return true;
+  };
+
+  const current = currentTool === undefined
+    ? -1
+    : tools.findIndex((tool) => isObject(tool) && stringOf(tool['name']) === currentTool);
+  if (current < 0 || add(tools[current])) {
+    for (let index = 0; index < tools.length && budget.remaining > 0; index += 1) {
+      if (index !== current && !add(tools[index])) {
+        break;
+      }
     }
   }
 
-  if ('model' in hook) {
-    const modelId = readString(asObject(hook['model'])?.['id']);
-    if (modelId) {
-      hook['model'] = { id: modelId };
-    } else {
-      delete hook['model'];
+  return declarations.length > 0 ? declarations : undefined;
+}
+
+/** The current tool's declaration, with the host's `extensions.a365.tool.description` if it fits. */
+function toolFromExtensions(extensions: unknown, toolName: string, budget: Budget): JsonObject {
+  const a365 = isObject(extensions) ? extensions[A365_EXTENSION] : undefined;
+  const tool = isObject(a365) ? a365['tool'] : undefined;
+  const description = isObject(tool) && typeof tool['description'] === 'string' ? tool['description'] : '';
+  if (!description) {
+    return { name: toolName };
+  }
+
+  const fitted = fitString(description, budget);
+  return fitted === DROPPED || fitted.length === 0 ? { name: toolName } : { name: toolName, description: fitted };
+}
+
+/**
+ * The extension namespaces Defender accepts (`^[a-z][a-z0-9_]*$`), within the budget. A namespace
+ * name longer than the string limit is left out, as cutting it would break the pattern.
+ */
+function fitExtensions(extensions: unknown, budget: Budget): JsonObject | undefined {
+  if (!isObject(extensions)) {
+    return undefined;
+  }
+
+  const entries: Array<[string, Json]> = [];
+  for (const key in extensions) {
+    if (!Object.prototype.hasOwnProperty.call(extensions, key)
+      || key.length > budget.maxString
+      || !EXTENSION_KEY_PATTERN.test(key)) {
+      continue;
+    }
+
+    const entry = fitEntry(key, extensions[key], budget);
+    if (entry === DROPPED) {
+      break;
+    }
+
+    if (entry) {
+      entries.push(entry);
     }
   }
 
-  if ('tools' in hook) {
-    const tools: JsonObject[] = [];
-    for (const tool of Array.isArray(hook['tools']) ? hook['tools'] : []) {
-      const declaration = asObject(tool);
-      const toolName = readString(declaration?.['name']);
-      if (!declaration || !toolName) {
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+}
+
+/**
+ * The message history, when every message has a role and content (Defender rejects it otherwise),
+ * within the budget: the newest messages are kept first.
+ */
+function fitMessages(messages: unknown, budget: Budget): JsonObject[] | undefined {
+  if (!Array.isArray(messages)
+    || !messages.every((message) => isObject(message) && !!stringOf(message['role']) && 'content' in message)) {
+    return undefined;
+  }
+
+  const kept: JsonObject[] = [];
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index] as Record<string, unknown>;
+    const role = stringOf(message['role']) as string;
+    if (budget.remaining < role.length + 1) {
+      break;
+    }
+
+    budget.remaining -= role.length + 1;
+    const fitted = fitJson(message['content'], budget);
+    if (fitted === DROPPED) {
+      budget.remaining += role.length + 1;
+      break;
+    }
+
+    const entries: Array<[string, Json]> = [['role', role], ['content', fitted ?? '']];
+    for (const key in message) {
+      if (!Object.prototype.hasOwnProperty.call(message, key) || key === 'role' || key === 'content') {
         continue;
       }
 
-      const description = declaration['description'];
-      const schema = asObject(declaration['schema']);
-      tools.push({
-        name: toolName,
-        ...(typeof description === 'string' ? { description } : {}),
-        ...(schema ? { schema } : {}),
-      });
+      const entry = fitEntry(key, message[key], budget);
+      if (entry === DROPPED) {
+        break;
+      }
+
+      if (entry) {
+        entries.push(entry);
+      }
     }
 
-    if (tools.length > 0) {
-      hook['tools'] = tools;
-    } else {
-      delete hook['tools'];
-    }
+    kept.push(Object.fromEntries(entries));
   }
 
-  if ('messages' in hook) {
-    const messages = hook['messages'];
-    const valid = Array.isArray(messages) && messages.every((message) => {
-      const item = asObject(message);
-      return !!item && !!readString(item['role']) && 'content' in item;
-    });
-    if (!valid) {
-      delete hook['messages'];
-    }
-  }
-
-  if ('actor' in hook) {
-    const actor = asObject(hook['actor']);
-    if (actor) {
-      const actorId = readString(actor['id']);
-      const kind = readString(actor['kind']);
-      hook['actor'] = {
-        ...(actorId ? { id: actorId } : {}),
-        ...(kind && ACTOR_KINDS.has(kind) ? { kind } : {}),
-      };
-    } else {
-      delete hook['actor'];
-    }
-  }
-}
-
-function toolFromExtensions(hook: JsonObject, toolName: string): JsonObject {
-  const a365 = asObject(asObject(hook['extensions'])?.[A365_EXTENSION]);
-  const description = readString(asObject(a365?.['tool'])?.['description']);
-  return { name: toolName, ...(description ? { description } : {}) };
+  return kept.length > 0 ? kept.reverse() : undefined;
 }
 
 function toArguments(args: Json | undefined): JsonObject {
@@ -926,58 +1046,201 @@ function networkErrorCode(error: unknown): string {
   return code ?? (error instanceof Error ? error.name : 'Error');
 }
 
-/**
- * A JSON copy of the context. Big integers become strings and non-finite numbers their names, as
- * neither has a JSON form.
- */
-function toJsonObject(context: DefenderRtpHookContext): JsonObject {
-  let serialized: string;
-  try {
-    serialized = JSON.stringify(context, (_key, item: unknown) => {
-      if (typeof item === 'bigint') return item.toString();
-      if (typeof item === 'number' && !Number.isFinite(item)) return String(item);
-      return item;
-    });
-  } catch (error) {
-    throw new TypeError(`context must be JSON-serializable: ${describeError(error)}`);
+/** The content under decision, within its budget; when it does not fit at all, it is cut entirely. */
+function fitContent(value: unknown, budget: Budget): Json | undefined {
+  const fitted = fitJson(value, budget);
+  if (fitted === DROPPED) {
+    budget.cut = true;
+    return undefined;
   }
 
-  return JSON.parse(serialized) as JsonObject;
+  return fitted;
+}
+
+/** A whole JSON copy of an identity or protocol value, with well-formed strings. */
+function copyJson(value: unknown): Json | undefined {
+  const fitted = fitJson(value, { remaining: Number.POSITIVE_INFINITY, maxString: Number.POSITIVE_INFINITY, cut: false });
+  return fitted === DROPPED ? undefined : fitted;
+}
+
+/**
+ * A JSON copy of `value` within `budget`, made while reading it (the original is never serialized
+ * whole). Strings and keys are well formed and at most `budget.maxString` long; each string, key and
+ * other value costs its length (at least one character), and each array or object one more. What no
+ * longer fits is cut or left out, and `budget.cut` is set. Big integers and non-finite numbers become
+ * text, as JSON has no form for them. Returns `undefined` for what JSON leaves out (undefined,
+ * functions, symbols) and `DROPPED` when nothing fits.
+ *
+ * @throws TypeError when `value` contains a circular reference.
+ */
+function fitJson(value: unknown, budget: Budget, depth = 0, ancestors: object[] = []): Json | undefined | Dropped {
+  let node = value;
+  if (typeof node === 'object' && node !== null && typeof (node as { toJSON?: unknown }).toJSON === 'function') {
+    node = (node as { toJSON: () => unknown }).toJSON();
+  }
+
+  switch (typeof node) {
+  case 'string':
+    return fitString(node, budget);
+  case 'bigint':
+    return fitString(node.toString(), budget);
+  case 'number':
+    return Number.isFinite(node) ? spend(budget, String(node).length, node) : fitString(String(node), budget);
+  case 'boolean':
+    return spend(budget, node ? 4 : 5, node);
+  case 'object':
+    break;
+  default:
+    return undefined;
+  }
+
+  if (node === null) {
+    return spend(budget, 4, null);
+  }
+
+  if (ancestors.includes(node)) {
+    throw new TypeError('context must be JSON-serializable: it contains a circular reference.');
+  }
+
+  if (depth >= MAX_COPY_DEPTH || budget.remaining < 1) {
+    budget.cut = true;
+    return DROPPED;
+  }
+
+  budget.remaining -= 1;
+  ancestors.push(node);
+  try {
+    if (Array.isArray(node)) {
+      const items: Json[] = [];
+      for (let index = 0; index < node.length; index += 1) {
+        const fitted = fitJson(node[index], budget, depth + 1, ancestors);
+        // JSON writes null for what it leaves out of an array.
+        const item = fitted === undefined ? spend(budget, 4, null) : fitted;
+        if (item === DROPPED) {
+          budget.cut = true;
+          break;
+        }
+
+        items.push(item);
+      }
+
+      return items;
+    }
+
+    const entries: Array<[string, Json]> = [];
+    for (const key in node) {
+      if (!Object.prototype.hasOwnProperty.call(node, key)) {
+        continue;
+      }
+
+      const entry = fitEntry(key, (node as Record<string, unknown>)[key], budget, depth + 1, ancestors);
+      if (entry === DROPPED) {
+        budget.cut = true;
+        break;
+      }
+
+      if (entry) {
+        entries.push(entry);
+      }
+    }
+
+    return Object.fromEntries(entries);
+  } finally {
+    ancestors.pop();
+  }
+}
+
+/** A property within the budget: `undefined` when JSON leaves it out, `DROPPED` when it does not fit. */
+function fitEntry(
+  key: string,
+  value: unknown,
+  budget: Budget,
+  depth = 0,
+  ancestors: object[] = [],
+): [string, Json] | undefined | Dropped {
+  const name = fitString(key, budget);
+  if (name === DROPPED) {
+    return DROPPED;
+  }
+
+  const fitted = fitJson(value, budget, depth, ancestors);
+  if (fitted === DROPPED) {
+    budget.remaining += Math.max(1, name.length);
+    return DROPPED;
+  }
+
+  if (fitted === undefined) {
+    budget.remaining += Math.max(1, name.length);
+    return undefined;
+  }
+
+  return [name, fitted];
+}
+
+/**
+ * `value`, cut to what the budget allows, and well formed (a lone surrogate becomes U+FFFD); its length
+ * (at least one character) is spent. `DROPPED` when nothing fits.
+ */
+function fitString(value: string, budget: Budget): string | Dropped {
+  if (value.length <= budget.maxString && Math.max(1, value.length) <= budget.remaining) {
+    budget.remaining -= Math.max(1, value.length);
+    return wellFormed(value);
+  }
+
+  budget.cut = true;
+  const room = Math.min(budget.maxString, budget.remaining);
+  if (room < 1) {
+    return DROPPED;
+  }
+
+  const kept = truncate(value, room);
+  budget.remaining -= Math.max(1, kept.length);
+  return wellFormed(kept);
+}
+
+/** `value` when `cost` characters fit the budget (they are spent), `DROPPED` otherwise. */
+function spend<T extends Json>(budget: Budget, cost: number, value: T): T | Dropped {
+  if (cost > budget.remaining) {
+    return DROPPED;
+  }
+
+  budget.remaining -= cost;
+  return value;
+}
+
+/**
+ * `value` with every lone surrogate replaced by U+FFFD. `JSON.stringify` would write a lone surrogate
+ * as a `\uD8xx` escape, which strict JSON parsers reject, failing the request.
+ */
+function wellFormed(value: string): string {
+  const native = (value as unknown as { toWellFormed?: () => string }).toWellFormed;
+  if (typeof native === 'function') {
+    return native.call(value);
+  }
+
+  let result = '';
+  let start = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    if (code < 0xd800 || code > 0xdfff) {
+      continue;
+    }
+
+    const next = value.charCodeAt(index + 1);
+    if (code <= 0xdbff && next >= 0xdc00 && next <= 0xdfff) {
+      index += 1;
+      continue;
+    }
+
+    result += `${value.slice(start, index)}\uFFFD`;
+    start = index + 1;
+  }
+
+  return start === 0 ? value : result + value.slice(start);
 }
 
 function clone<T extends Json>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
-}
-
-/**
- * Truncates every string value to `maxCharacters` (content, tool arguments and results, tool
- * descriptions and schemas, messages, extensions), except identifiers and protocol fields. The path
- * of each truncated string is added to `truncatedPaths`.
- */
-function clampStrings(node: Json, maxCharacters: number, truncatedPaths: string[], path = ''): Json {
-  if (UNCLAMPED_PATHS.has(path)) {
-    return node;
-  }
-
-  if (typeof node === 'string') {
-    if (node.length <= maxCharacters) {
-      return node;
-    }
-
-    truncatedPaths.push(path);
-    return truncate(node, maxCharacters);
-  }
-
-  if (Array.isArray(node)) {
-    return node.map((item) => clampStrings(item, maxCharacters, truncatedPaths, `${path}[]`));
-  }
-
-  if (isObject(node)) {
-    return Object.fromEntries(Object.entries(node).map(([key, value]) =>
-      [key, clampStrings(value as Json, maxCharacters, truncatedPaths, path ? `${path}.${key}` : key)]));
-  }
-
-  return node;
 }
 
 /**
@@ -1038,6 +1301,10 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return isObject(value) ? value : undefined;
+}
+
 function asObject(value: Json | undefined): JsonObject | undefined {
   return isObject(value) ? value as JsonObject : undefined;
 }
@@ -1046,12 +1313,17 @@ function readString(value: Json | undefined): string | undefined {
   return typeof value === 'string' ? value : undefined;
 }
 
+/** A string from the host, made well formed. */
+function stringOf(value: unknown): string | undefined {
+  return typeof value === 'string' ? wellFormed(value) : undefined;
+}
+
 /** A non-empty string, or undefined. */
 function text(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
 
-function isNonNegativeInteger(value: Json | undefined): boolean {
+function isNonNegativeInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
 }
 

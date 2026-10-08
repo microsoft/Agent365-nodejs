@@ -203,7 +203,7 @@ The keyword "Kairo" is legacy and should not appear in any code. Flag and remove
 - **Unused variables**: Prefix with `_` to avoid ESLint errors (configured in `eslint.config.mjs`)
 - **Module format**: This is an ESM project (`"type": "module"` in root `package.json`)
 - **Node.js version**: Requires Node.js >= 18.0.0 (`agents-a365-tooling-extensions-agenthooks` requires >= 20, like its `@responsibleai/agent-hooks` native core)
-- **Dependency versions**: Never specify version constraints directly in `package.json` files. All dependency versions must be defined in the `catalog:` section of `pnpm-workspace.yaml` and referenced using `catalog:` in package.json files. This applies to `dependencies`, `devDependencies`, and `peerDependencies`.
+- **Dependency versions**: Never specify version constraints directly in `package.json` files. All dependency versions must be defined in the `catalog:` section of `pnpm-workspace.yaml` and referenced using `catalog:` in package.json files. This applies to `dependencies`, `devDependencies`, and `peerDependencies`. A peer dependency range that differs from the pinned version goes in a named catalog under `catalogs:` and is referenced as `catalog:<name>` (for example `catalog:peers`).
 
 ## Environment Variables
 
@@ -218,7 +218,7 @@ The keyword "Kairo" is legacy and should not appear in any code. Flag and remove
 | `A365_DEFENDER_RTP_FAIL_MODE` | Behavior when no Defender verdict is obtained | `open` (default), `closed` |
 | `A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS` | Timeout of each Defender evaluation | Number (default: 10000) |
 | `A365_DEFENDER_RTP_AUTHENTICATION_SCOPE` | Override the Defender API token scope | Scope string |
-| `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` | Max characters of each content string sent to Defender | Number (default: 20000) |
+| `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` | Max characters of each content string sent to Defender; the request carries at most four times as much content | Number (default: 20000) |
 | `A365_OBSERVABILITY_SCOPES_OVERRIDE` | Override observability auth scopes | Space-separated scope strings |
 | `ENABLE_A365_OBSERVABILITY_EXPORTER` | Enable Agent365 exporter | `true`, `false` (default) |
 | `ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT` | Enable per-request export mode | `true`, `false` (default) |

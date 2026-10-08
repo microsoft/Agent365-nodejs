@@ -38,7 +38,8 @@ catalog:
 
   # agent-hooks control contract (AGENT-HOOKS-0.1), used only by tooling-extensions-agenthooks.
   # Prerelease with a native core prebuilt for linux-x64/arm64 (glibc), darwin-x64/arm64 and
-  # win32-x64, pinned to an exact version.
+  # win32-x64, pinned to an exact version for development and tests. The package declares it as a
+  # peer dependency with the wider range in the `peers` catalog below.
   # TODO: move to 0.1.0-beta.1.
   "@responsibleai/agent-hooks": "0.1.0-alpha.5"
 
@@ -82,6 +83,13 @@ catalog:
   "typescript": "^5.9.3"
   "typescript-eslint": "^8.47.0"
   "uuid": "^9.0.1"
+
+# Named catalogs, referenced as `catalog:<name>`.
+catalogs:
+  # Ranges published as peer dependencies, where consumers bring their own copy of the package.
+  peers:
+    # agent-hooks prereleases of 0.1.0 from alpha.5 on (beta.1 included) and 0.1.x releases.
+    "@responsibleai/agent-hooks": ">=0.1.0-alpha.5 <0.2.0"
 
 overrides:
   # Brace expansion - update for bug fixes

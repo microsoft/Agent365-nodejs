@@ -12,9 +12,10 @@ of the agent loop; registered interceptors return verdicts, which the host compo
 `A365DefenderInterceptor` forwards the contexts Microsoft Defender for AI evaluates to its prevention endpoint
 and maps Defender's verdict back to an agent-hooks verdict.
 
-It is the only Agent 365 package that depends on `@responsibleai/agent-hooks`, a prerelease package with a native
-core for a subset of platforms (no musl) and Node.js 20+. The Defender client itself (`DefenderRtpClient`) is in
-`@microsoft/agents-a365-tooling` and has no agent-hooks dependency, so core tooling users do not take one on.
+It is the only Agent 365 package that uses `@responsibleai/agent-hooks`, a prerelease package with a native core for
+a subset of platforms (no musl) and Node.js 20+, and declares it as a peer dependency (`>=0.1.0-alpha.5 <0.2.0`).
+The Defender client itself (`DefenderRtpClient`) is in `@microsoft/agents-a365-tooling` and has no agent-hooks
+dependency, so core tooling users do not take one on.
 
 ## Architecture
 
@@ -78,9 +79,10 @@ new A365DefenderInterceptor(
 | `allow` of a truncated copy (`truncated`) | as not evaluated: the fail mode decides; when allowing, Defender's warnings and labels follow the unverified warning |
 | `deny` or `transform` of a truncated copy | the block stands, as for an evaluated `deny` |
 
-Content under decision longer than `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` reaches Defender only as a truncated
-copy, so an allow of it does not cover the rest; treating it as authoritative would let padding carry a payload
-past the limit unseen.
+Content under decision that does not fit (longer than `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS`, or beyond its
+share of the copy's total) reaches Defender only as a truncated copy, so an allow of it does not cover the rest;
+treating it as authoritative would let padding carry a payload past the limit unseen. A `transform` maps to a deny,
+so on a truncated copy it blocks like a `deny`.
 
 `transform` blocks because this version cannot apply the rewrite, and releasing the original content would defeat
 it. The `runtime_error:` prefix is the agent-hooks convention for decision-runtime failures, so a fail-closed
@@ -106,15 +108,21 @@ The emitter keeps the last 1000 records (the agent-hooks default is unbounded).
 ## Design Decisions
 
 - **A fitted copy of the context is sent.** `DefenderRtpClient` sends a copy of the emitted context, fitted to
-  Defender's request validation (normalized, every content string clamped, identifiers and protocol fields
-  unchanged), and never modifies the host's context. The host's session, sequence and tool call ids are kept,
-  so Defender's evaluations line up with the host's interception records.
+  Defender's request validation (normalized, every string well formed, each content string clamped, at most four
+  times that much content in all with the content under decision first, optional fields of another shape left
+  out, identifiers and protocol fields unchanged), and never modifies the host's context. The host's session,
+  sequence and tool call ids are kept, so Defender's evaluations line up with the host's interception records.
 - **The fail mode, not a host error, decides a slow call.** One deadline covers the token acquisition and the
   request, and `createProtectionEmitter` rejects an interceptor timeout that does not exceed it.
 - **Mirrors the .NET SDK.** `A365DefenderInterceptor`, `A365DefenderCall`, `createProtectionEmitter` and
   `addA365Defender` correspond to the .NET `Microsoft.Agents.A365.Tooling.Extensions.AgentHooks` API, with the same
   verdict mapping, defaults (10 s timeout, 20000 characters, fail open) and environment variables.
-- **The agent-hooks dependency is isolated.** Only this package loads the native core.
+- **agent-hooks is a peer dependency, isolated to this package.** Only this package loads the native core. The
+  application installs `@responsibleai/agent-hooks` itself, so the emitter, `AgentContextBuilder`, `proceeds` and
+  `InterceptionBlocked` it imports are the same copy this package uses: with two copies, `addA365Defender` would
+  not accept the application's emitter (TypeScript rejects classes with private members from separate
+  declarations) and `instanceof` checks would fail. The range admits the 0.1.0 prereleases from alpha.5 on
+  (beta.1 included) and 0.1.x releases; development and tests pin `0.1.0-alpha.5`.
 
 ## File Structure
 
@@ -129,4 +137,5 @@ src/
 
 - `@microsoft/agents-a365-tooling` - `DefenderRtpClient`, Defender configuration
 - `@microsoft/agents-a365-runtime` - configuration provider types
-- `@responsibleai/agent-hooks` - `InterceptionEmitter`, `Interceptor`, `Verdict` (pinned prerelease)
+- `@responsibleai/agent-hooks` - `InterceptionEmitter`, `Interceptor`, `Verdict` (peer dependency,
+  `>=0.1.0-alpha.5 <0.2.0`; development and tests pin `0.1.0-alpha.5`)

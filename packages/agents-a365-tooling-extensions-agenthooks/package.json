@@ -37,11 +37,14 @@
   },
   "dependencies": {
     "@microsoft/agents-a365-runtime": "workspace:*",
-    "@microsoft/agents-a365-tooling": "workspace:*",
-    "@responsibleai/agent-hooks": "catalog:"
+    "@microsoft/agents-a365-tooling": "workspace:*"
+  },
+  "peerDependencies": {
+    "@responsibleai/agent-hooks": "catalog:peers"
   },
   "devDependencies": {
     "@eslint/js": "catalog:",
+    "@responsibleai/agent-hooks": "catalog:",
     "@types/jest": "catalog:",
     "@types/node": "catalog:",
     "@typescript-eslint/eslint-plugin": "catalog:",

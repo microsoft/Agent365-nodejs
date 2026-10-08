@@ -174,17 +174,29 @@ if (result && !result.allowed) { /* block: result.blockReason */ }
   (extensions, model, tools, messages, actor) are repaired or dropped. `tenant.id` is always the agent's tenant,
   because Defender requires it to equal the token's tenant (a different host tenant is replaced, with its other
   fields). `agent.id`, `actor`, `request_id` and `model` are filled from `DefenderRtpAgentContext` when the context
-  has none.
-- **Clamping**: every content string (input and output content, tool arguments and results, tool descriptions
-  and schemas, messages, extensions) is cut to at most `defenderRtpMaxContentCharacters`, ending with a
-  `...[truncated N chars]` marker when the marker fits; identifiers and protocol
-  fields (`spec`, `timestamp`, `agent`, `session`, `tenant`, `actor`, `model`, `request_id`, tool call ids and
-  names, `input.role`) are sent unchanged.
+  has none. Every optional field is shape-checked before it is read: one of another shape (for example a `model`
+  or `actor` that is a string, or an `a365` extension that is not an object) is left out, never indexed, so it
+  cannot fail an evaluation; a `session` that is not an object has no `session.id`, which is required. Every
+  string and object key is well formed: a lone UTF-16 surrogate becomes U+FFFD
+  (`String.prototype.toWellFormed`, with a fallback on Node.js 18), because `JSON.stringify` would write it as a
+  `\uD8xx` escape that Defender's JSON parser rejects, failing the request.
+- **Size**: the copy is built while reading the context, field by field, never by serializing it whole. Each
+  content string (input and output content, tool arguments and results, tool descriptions and schemas, messages,
+  extensions, other fields) is cut to at most `defenderRtpMaxContentCharacters`, ending with a
+  `...[truncated N chars]` marker when the marker fits, and nesting deeper than 32 levels is cut. The whole copy
+  carries at most four times `defenderRtpMaxContentCharacters` of content: strings, keys and other values count
+  their length, and each array or object one. The content under decision comes first and may use half of that,
+  as it is sent twice (`target` mirrors it); twice what it leaves goes to the rest of the context, in this order:
+  the tool call arguments at `post_tool_call`, the tool declarations (the called tool first), the newest
+  messages, extensions, then any other fields. Identifiers and protocol fields (`spec`, `timestamp`, `agent`,
+  `session`, `tenant`, `actor`, `model`, `request_id`, `trace`, tool call ids and names, `input.role`) are sent
+  whole and do not count.
 - **Truncated content**: when the content under decision (`input.content`, `tool_call.args` at
-  `pre_tool_call`, `tool_result.value` at `post_tool_call`, `output.content`) was cut, Defender saw only its
-  beginning. A block (`deny` or `transform`) still stands, but an allow does not cover the rest: the result is
-  `truncated: true`, `allowed` follows `defenderRtpFailClosed`, and `error` says why. Otherwise content padded
-  past the limit would be authorized unseen. Truncation elsewhere (tool descriptions, messages) does not count.
+  `pre_tool_call`, `tool_result.value` at `post_tool_call`, `output.content`) was cut (a string longer than the
+  limit, nesting deeper than 32 levels, or more content than its share), Defender saw only part of it. A block
+  (`deny` or `transform`) still stands, but an allow does not cover the rest: the result is `truncated: true`,
+  `allowed` follows `defenderRtpFailClosed`, and `error` says why. Otherwise content padded past the limit would
+  be authorized unseen. Trimming elsewhere (tool declarations, extensions, messages) does not count.
 - **Authentication**: always the agent identity's app-only token in the agent's tenant, for the Defender API
   (`api://86a21212-634e-4553-b3d6-e477e4c9d9ec/.default`, app role `RealtimeProtection.Evaluate.All`).
   `DefenderRtpTokenResolver` is `(agentId, tenantId, scopes, signal) => token`;
@@ -197,12 +209,16 @@ if (result && !result.allowed) { /* block: result.blockReason */ }
   (`prefetchAccessToken` waits for the refresh and reports its failure). The endpoint and the token authority must
   be absolute `https` URLs.
 - **Correlation**: every call sends a unique `x-ms-correlation-id`, returned as `result.correlationId`.
-- **Verdicts**: `allow` proceeds (warnings and `resultLabels` are kept); `deny` and `transform` block.
+- **Verdicts**: `allow` proceeds (warnings and `resultLabels` are kept); `deny` and `transform` block. Members of
+  another shape in a response (a `transform` that is not an object, warnings or labels that are not arrays) are
+  ignored, so they never cost Defender its decision; likewise a `400` whose `diagnostics` has another shape is
+  reported by its title, and a token whose payload has no numeric `exp` is used but not cached.
 - **Failures**: a token, transport, timeout, HTTP or response failure, or any other error while sending or reading
   (for example from a wrapping fetch), returns `evaluated: false`, with `allowed` following `defenderRtpFailClosed`
   and the reason in `error` (a `400` lists the failed validation rules); only the caller's own cancellation
   rejects. One deadline (`defenderRtpTimeoutMilliseconds`) bounds each evaluation, token acquisition included. An
-  invalid context or agent identity throws; `unavailable(...)` builds the matching not-evaluated result.
+  invalid context (for example one without `session.id`, or with a circular reference) or agent identity throws;
+  `unavailable(...)` builds the matching not-evaluated result.
 
 The client has no agent-hooks dependency: contexts are plain JSON (`DefenderRtpHookContext`).
 
@@ -317,7 +333,7 @@ const customConfig = new ToolingConfiguration({
 | `defenderRtpFailClosed` | `A365_DEFENDER_RTP_FAIL_MODE` | `false` (open) | `closed` blocks when no verdict is obtained |
 | `defenderRtpTimeoutMilliseconds` | `A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS` | `10000` | Timeout of each evaluation |
 | `defenderRtpAuthenticationScope` | `A365_DEFENDER_RTP_AUTHENTICATION_SCOPE` | Defender API scope | OAuth scope of the Defender token |
-| `defenderRtpMaxContentCharacters` | `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` | `20000` | Maximum characters of each content string |
+| `defenderRtpMaxContentCharacters` | `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` | `20000` | Maximum characters of each content string; the request carries at most four times as much content |
 | `clusterCategory` | `CLUSTER_CATEGORY` | `prod` | (Inherited) Environment cluster |
 | `isDevelopmentEnvironment` | - | Derived | (Inherited) true if cluster is 'local' or 'dev' |
 | `isNodeEnvDevelopment` | `NODE_ENV` | `false` | (Inherited) true if NODE_ENV='development' |
@@ -354,7 +370,7 @@ src/
 | `A365_DEFENDER_RTP_FAIL_MODE` | `closed` blocks when no verdict is obtained | `open` |
 | `A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS` | Timeout of each evaluation | `10000` |
 | `A365_DEFENDER_RTP_AUTHENTICATION_SCOPE` | OAuth scope of the Defender token | Defender API scope |
-| `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` | Maximum characters of each content string | `20000` |
+| `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` | Maximum characters of each content string; the request carries at most four times as much content | `20000` |
 
 ## Error Handling
 

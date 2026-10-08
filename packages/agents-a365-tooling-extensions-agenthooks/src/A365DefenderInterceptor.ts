@@ -40,14 +40,15 @@ export type A365DefenderEvaluationListener = (result: DefenderRtpEvaluationResul
 /**
  * An agent-hooks interceptor for Microsoft Defender for AI real-time protection. For each context
  * the host emits at `input`, `pre_tool_call`, `post_tool_call` or `output`, a copy fitted to
- * Defender's request validation (normalized, content strings clamped, keeping its session, sequence
- * and tool call ids) is sent to Defender, and Defender's verdict decides: `deny` blocks the action.
- * Other points, and every point while Defender RTP is disabled, are allowed without a call.
+ * Defender's request validation and size limits (normalized, content strings clamped, keeping its
+ * session, sequence and tool call ids) is sent to Defender, and Defender's verdict decides: `deny`
+ * (or `transform`) blocks the action. Other points, and every point while Defender RTP is disabled,
+ * are allowed without a call.
  *
  * When no verdict is obtained (transport, authentication or validation failure, a call resolver
  * that throws or resolves no agent identity), or Defender allowed only a truncated copy of content
- * longer than `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS`, the verdict follows the configured fail
- * mode: allow with a `defender:unverified` warning, or deny with reason
+ * that did not fit `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS`, the verdict follows the configured
+ * fail mode: allow with a `defender:unverified` warning, or deny with reason
  * `runtime_error:defender_unverified`, which is never reported as a detection.
  */
 export class A365DefenderInterceptor implements Interceptor {

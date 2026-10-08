@@ -104,8 +104,9 @@ export interface DefenderRtpEvaluationResult {
   /** Whether Defender returned a verdict. */
   evaluated: boolean;
   /**
-   * True when the content under decision was longer than `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS`,
-   * so Defender evaluated a truncated copy. A block of the copy stands; an allow does not cover the
+   * True when the content under decision did not fit (a string longer than
+   * `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS`, or more content than its share of the copy), so
+   * Defender evaluated a truncated copy. A block of the copy stands; an allow does not cover the
    * rest, so `allowed` then follows the fail mode and `error` says why.
    */
   truncated?: boolean;

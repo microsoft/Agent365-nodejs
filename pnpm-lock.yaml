@@ -553,13 +553,13 @@ importers:
       '@microsoft/agents-a365-tooling':
         specifier: workspace:*
         version: link:../agents-a365-tooling
-      '@responsibleai/agent-hooks':
-        specifier: 'catalog:'
-        version: 0.1.0-alpha.5
     devDependencies:
       '@eslint/js':
         specifier: 'catalog:'
         version: 9.39.4
+      '@responsibleai/agent-hooks':
+        specifier: 'catalog:'
+        version: 0.1.0-alpha.5
       '@types/jest':
         specifier: 'catalog:'
         version: 30.0.0

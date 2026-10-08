@@ -42,8 +42,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `DefenderRtpClient.evaluateHookContext` sends an agent-hooks/0.1 context to the Defender
   prevention endpoint (`POST .../v1/protection/evaluate`) at the four points Defender evaluates
   (`input`, `pre_tool_call`, `post_tool_call`, `output`) and returns its verdict (`deny` and
-  `transform` block). A copy of the context is fitted to Defender's request validation, with every
-  content string clamped; the host's context is not modified.
+  `transform` block). A copy of the context is fitted to Defender's request validation while it is
+  read: every string is well formed (a lone surrogate becomes U+FFFD), each content string is
+  clamped, the copy carries at most four times `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` of content
+  (the content under decision first), and optional fields of another shape are left out. The host's
+  context is not modified.
 - Calls carry the agent identity's own app-only token for the Defender API
   (`api://86a21212-634e-4553-b3d6-e477e4c9d9ec`, role `RealtimeProtection.Evaluate.All`), resolved
   by a `DefenderRtpTokenResolver` and cached per agent, tenant and scope;
@@ -52,7 +55,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Every call sends a unique `x-ms-correlation-id`. One deadline covers the token acquisition and the
   request. When no verdict is obtained, the result follows `A365_DEFENDER_RTP_FAIL_MODE` (fail open
   by default), and a `400` reports the failed validation rules.
-- Content under decision longer than `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` is sent truncated.
+- Content under decision that does not fit (longer than `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS`,
+  or beyond its share of the copy) is sent truncated.
   Defender's block of the copy stands, but its allow does not cover the rest: the result is marked
   `truncated` and follows the fail mode, so padded content cannot be authorized unseen.
 - `tenant.id` is always the agent's tenant, which Defender requires to match the token's tenant.
@@ -63,8 +67,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added (`@microsoft/agents-a365-tooling-extensions-agenthooks`, new, preview)
 
-- **`A365DefenderInterceptor`** - An agent-hooks interceptor (`@responsibleai/agent-hooks`, pinned to
-  the `0.1.0-alpha.5` prerelease) that sends each emitted context Defender evaluates through
+- **`A365DefenderInterceptor`** - An agent-hooks interceptor (`@responsibleai/agent-hooks`, a peer
+  dependency, `>=0.1.0-alpha.5 <0.2.0`, tested with the `0.1.0-alpha.5` prerelease; install it
+  alongside) that sends each emitted context Defender evaluates through
   `DefenderRtpClient` and maps the verdict, with a callback for each evaluation;
   `createProtectionEmitter` (`enforce`, `parallel/strictest`) and `addA365Defender`. Contexts that
   cannot be verified (no verdict, no agent identity, or an allow of truncated content) follow the

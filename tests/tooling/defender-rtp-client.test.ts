@@ -304,42 +304,40 @@ describe('DefenderRtpClient', () => {
       }
     });
 
-    it('clamps every content string but no identifier or protocol field', async () => {
-      const { client, calls, tokens } = create(allow, { defenderRtpMaxContentCharacters: () => 30 });
-      const long = (character: string): string => character.repeat(50);
-      const id = (prefix: string): string => `${prefix}-${'0123456789'.repeat(4)}`;
+    it('clamps each content string but no identifier or protocol field', async () => {
+      const { client, calls, tokens } = create(allow, { defenderRtpMaxContentCharacters: () => 100 });
+      const id = (prefix: string): string => `${prefix}-${'0123456789'.repeat(11)}`;
       const toolName = id('SearchCatalog');
       const context = {
         spec: 'agent-hooks/0.1', interception_point: 'pre_tool_call', timestamp: '2026-10-07T10:00:00.000Z', sequence: 4,
         agent: { id: AGENT_ID, framework: 'agent-framework', name: id('SampleAgent') },
         session: { id: id('conversation') }, target: {},
-        tool_call: { id: id('call'), name: toolName, args: { query: long('q'), filters: [long('f')] } },
-        tools: [{ name: toolName, description: long('d'), schema: { type: 'object', description: long('s') } }],
-        messages: [{ role: 'user', content: long('m') }],
-        extensions: { a365: { note: long('n') } },
+        tool_call: { id: id('call'), name: toolName, args: { query: 'q'.repeat(150) } },
+        extensions: { a365: { note: 'n'.repeat(150) }, [`x${'y'.repeat(100)}`]: { note: 'left out' } },
         request_id: id('request'),
+        custom_field: 'kept',
+        [`z${'z'.repeat(100)}`]: 'left out',
       };
 
-      await client.evaluateHookContext(context, AGENT, tokens.resolve);
+      const result = await client.evaluateHookContext(context, AGENT, tokens.resolve);
 
       const body = calls[0].body;
-      const clamped = (character: string): string => `${character.repeat(7)}...[truncated 43 chars]`;
+      const clamped = (character: string): string => `${character.repeat(76)}...[truncated 74 chars]`;
+      expect(clamped('q')).toHaveLength(99);
       expect(contractErrors(body)).toEqual([]);
-      expect(body.tool_call).toEqual({
-        id: id('call'),
-        name: toolName,
-        args: { query: clamped('q'), filters: [clamped('f')] },
-      });
+      expect(body.tool_call).toEqual({ id: id('call'), name: toolName, args: { query: clamped('q') } });
       expect(body.target).toEqual(body.tool_call.args);
-      expect(body.tools).toEqual([{ name: toolName, description: clamped('d'), schema: { type: 'object', description: clamped('s') } }]);
-      expect(body.messages).toEqual([{ role: 'user', content: clamped('m') }]);
+      expect(body.tools).toEqual([{ name: toolName }]);
       expect(body.extensions).toEqual({ a365: { note: clamped('n') } });
+      expect(body.custom_field).toBe('kept');
+      expect(Object.keys(body).filter((key) => key.startsWith('zz'))).toEqual([]);
       expect(body.agent).toEqual({ id: AGENT_ID, framework: 'agent-framework', name: id('SampleAgent') });
       expect(body.session).toEqual({ id: id('conversation') });
       expect(body.tenant).toEqual({ id: TENANT_ID });
       expect(body.request_id).toBe(id('request'));
       expect(body.spec).toBe('agent-hooks/0.1');
       expect(body.timestamp).toBe('2026-10-07T10:00:00.000Z');
+      expect(result).toMatchObject({ allowed: true, evaluated: true, truncated: true });
     });
 
     it('does not split a surrogate pair when clamping', async () => {
@@ -366,6 +364,40 @@ describe('DefenderRtpClient', () => {
 
       await expect(client.evaluateHookContext({ ...inputContext('hello'), session: {} }, AGENT, tokens.resolve))
         .rejects.toThrow('session.id is required.');
+    });
+
+    it('rejects a context whose session is not an object', async () => {
+      const { client, calls, tokens } = create(allow);
+
+      await expect(client.evaluateHookContext({ ...inputContext('hello'), session: 's-1' }, AGENT, tokens.resolve))
+        .rejects.toThrow('session.id is required.');
+      expect(calls).toHaveLength(0);
+    });
+
+    it.each([
+      ['a string', 'metadata'],
+      ['a tool that is a string', { tool: 'metadata' }],
+      ['an array', [1, 2]],
+    ])('leaves out optional members of another shape (an a365 extension that is %s)', async (_name, a365) => {
+      const { client, calls, tokens } = create(allow);
+      const context = {
+        spec: 'agent-hooks/0.1', interception_point: 'pre_tool_call', timestamp: '2026-10-07T10:00:00.000Z', sequence: 2,
+        agent: { id: AGENT_ID, framework: 'agent365' }, session: { id: 's-shapes' }, target: { query: 'x' },
+        tool_call: { id: 'call-1', name: 'FetchPage', args: { query: 'x' } },
+        model: 'gpt-4o', actor: 'someone', tenant: 'contoso', tools: 'search', messages: 'history',
+        extensions: { a365 },
+      };
+
+      const result = await client.evaluateHookContext(context, AGENT, tokens.resolve);
+
+      expect(result).toMatchObject({ allowed: true, evaluated: true });
+      const body = calls[0].body;
+      expect(contractErrors(body)).toEqual([]);
+      expect(body.model).toBeUndefined();
+      expect(body.actor).toBeUndefined();
+      expect(body.tenant).toEqual({ id: TENANT_ID });
+      expect(body.tools).toEqual([{ name: 'FetchPage' }]);
+      expect(body.messages).toBeUndefined();
     });
 
     it('rejects a tool call without a name', async () => {
@@ -429,6 +461,35 @@ describe('DefenderRtpClient', () => {
       expect(result?.allowed).toBe(false);
       expect(result?.verdict?.transformPath).toBe('/target');
       expect(result?.blockReason).toContain('rewrite');
+    });
+
+    it.each([
+      ['deny', ['unexpected']],
+      ['transform', ['unexpected']],
+      ['deny', { path: 42 }],
+      ['transform', 'rewrite'],
+    ])('keeps a %s when its transform has another shape (%j)', async (decision, transform) => {
+      const { client, tokens } = create(() => json({ decision, reason: 'prevention_blocked', transform }));
+
+      const result = await client.evaluateHookContext(inputContext('secret'), AGENT, tokens.resolve);
+
+      expect(result).toMatchObject({ allowed: false, evaluated: true });
+      expect(result?.verdict?.decision).toBe(decision);
+      expect(result?.verdict?.transformPath).toBeUndefined();
+    });
+
+    it('ignores warnings and labels of another shape', async () => {
+      const { client, tokens } = create(() => json({
+        decision: 'allow',
+        warnings: ['loose', null, { reason: 7, message: 'Kept.' }],
+        result_labels: 'MaliciousUrl',
+      }));
+
+      const result = await client.evaluateHookContext(inputContext('hello'), AGENT, tokens.resolve);
+
+      expect(result).toMatchObject({ allowed: true, evaluated: true });
+      expect(result?.verdict?.warnings).toEqual([{ message: 'Kept.' }]);
+      expect(result?.verdict?.resultLabels).toEqual([]);
     });
   });
 
@@ -542,6 +603,210 @@ describe('DefenderRtpClient', () => {
     });
   });
 
+  describe('request size', () => {
+    const envelope = (point: string): Record<string, any> => ({
+      spec: 'agent-hooks/0.1', interception_point: point, timestamp: '2026-10-07T10:00:00.000Z', sequence: 6,
+      agent: { id: AGENT_ID, framework: 'agent365' }, session: { id: 's-size' },
+    });
+    const toolCallWith = (args: unknown, extra: Record<string, any> = {}): Record<string, any> => ({
+      ...envelope('pre_tool_call'), target: args, tool_call: { id: 'call-1', name: 'SendMail', args }, ...extra,
+    });
+    const depthOf = (value: unknown): number => typeof value === 'object' && value !== null
+      ? 1 + Math.max(0, ...Object.values(value).map(depthOf))
+      : 0;
+
+    it('keeps the content under decision whole and trims the history, newest first, to the total budget', async () => {
+      const { client, calls, tokens } = create(allow, {
+        defenderRtpMaxContentCharacters: () => 100,
+        defenderRtpFailClosed: () => true,
+      });
+      const context = {
+        ...inputContext('c'.repeat(100)),
+        messages: ['1', '2', '3', '4', '5'].map((turn) => ({ role: 'user', content: turn.repeat(60) })),
+      };
+
+      const result = await client.evaluateHookContext(context, AGENT, tokens.resolve);
+
+      const body = calls[0].body;
+      expect(contractErrors(body)).toEqual([]);
+      expect(body.input.content).toBe('c'.repeat(100));
+      expect(body.messages).toEqual(['3', '4', '5'].map((turn) => ({ role: 'user', content: turn.repeat(60) })));
+      expect(result).toMatchObject({ allowed: true, evaluated: true });
+      expect(result?.truncated).toBeUndefined();
+    });
+
+    it('cuts the content under decision to the total budget and reports it as truncated', async () => {
+      const { client, calls, tokens } = create(allow, {
+        defenderRtpMaxContentCharacters: () => 100,
+        defenderRtpFailClosed: () => true,
+      });
+      const args = { a: 'a'.repeat(90), b: 'b'.repeat(90), c: 'c'.repeat(90) };
+
+      const result = await client.evaluateHookContext(
+        toolCallWith(args, { messages: [{ role: 'user', content: 'hello' }] }),
+        AGENT,
+        tokens.resolve,
+      );
+
+      const body = calls[0].body;
+      expect(contractErrors(body)).toEqual([]);
+      expect(body.tool_call.args).toEqual({ a: 'a'.repeat(90), b: 'b'.repeat(90), c: 'c'.repeat(16) });
+      expect(body.messages).toBeUndefined();
+      expect(result).toMatchObject({ allowed: false, evaluated: true, truncated: true });
+    });
+
+    it('declares the current tool first when only some tools fit', async () => {
+      const { client, calls, tokens } = create(allow, { defenderRtpMaxContentCharacters: () => 100 });
+      const tools = Array.from({ length: 10 }, (_, index) => ({ name: `tool-${index}`, description: 'd'.repeat(60) }));
+      const context = { ...toolCallWith({}), tool_call: { id: 'call-1', name: 'tool-7', args: {} }, tools };
+
+      const result = await client.evaluateHookContext(context, AGENT, tokens.resolve);
+
+      const body = calls[0].body;
+      expect(contractErrors(body)).toEqual([]);
+      expect(body.tools.map((tool: { name: string }) => tool.name)).toEqual(['tool-7', 'tool-0', 'tool-1', 'tool-2', 'tool-3', 'tool-4']);
+      expect(body.tools[0].description).toBe('d'.repeat(60));
+      expect(body.tools[5].description).toBe(`${'d'.repeat(33)}...[truncated 27 chars]`);
+      expect(result?.truncated).toBeUndefined();
+    });
+
+    it('fills what the content under decision leaves in order: arguments, tools, messages, extensions, other fields', async () => {
+      const { client, calls, tokens } = create(allow, { defenderRtpMaxContentCharacters: () => 100 });
+      const context = {
+        ...envelope('post_tool_call'), target: 'r'.repeat(50),
+        tool_call: { id: 'call-1', name: 'FetchPage', args: { q: 'a'.repeat(90) } },
+        tool_result: { value: 'r'.repeat(50), is_error: false },
+        tools: [{ name: 'FetchPage', description: 'd'.repeat(90) }],
+        messages: [{ role: 'user', content: 'm'.repeat(90) }],
+        extensions: { a365: { note: 'n'.repeat(90) } },
+        custom_field: 'c'.repeat(90),
+      };
+
+      const result = await client.evaluateHookContext(context, AGENT, tokens.resolve);
+
+      // 400 in all: the result is sent twice (100), the arguments take 92, the tools 100, the messages 95,
+      // and the extensions get the last 13.
+      const body = calls[0].body;
+      expect(contractErrors(body)).toEqual([]);
+      expect(body.tool_result.value).toBe('r'.repeat(50));
+      expect(body.tool_call.args).toEqual({ q: 'a'.repeat(90) });
+      expect(body.tools).toEqual([{ name: 'FetchPage', description: 'd'.repeat(90) }]);
+      expect(body.messages).toEqual([{ role: 'user', content: 'm'.repeat(90) }]);
+      expect(body.extensions).toEqual({ a365: { note: 'nnnn' } });
+      expect(body.custom_field).toBeUndefined();
+      expect(result?.truncated).toBeUndefined();
+    });
+
+    it('bounds the request for a huge tool result', async () => {
+      const { client, calls, tokens } = create(allow);
+      const value = Array.from({ length: 100 }, (_, index) => `${index}:`.padEnd(10000, 'x'));
+      const context = {
+        ...envelope('post_tool_call'), target: value,
+        tool_call: { id: 'call-1', name: 'FetchPage', args: {} }, tool_result: { value, is_error: false },
+      };
+
+      const result = await client.evaluateHookContext(context, AGENT, tokens.resolve);
+
+      const { raw, body } = calls[0];
+      expect(JSON.stringify(context).length).toBeGreaterThan(2_000_000);
+      expect(raw.length).toBeLessThan(4 * 20000 + 2000);
+      expect(contractErrors(body)).toEqual([]);
+      expect(body.tool_result.value.slice(0, 3)).toEqual(value.slice(0, 3));
+      expect(body.tool_result.value.slice(3)).toEqual([`${value[3].slice(0, 9973)}...[truncated 27 chars]`, '4:x']);
+      expect(result).toMatchObject({ allowed: true, evaluated: true, truncated: true });
+    });
+
+    it('cuts nesting deeper than 32 levels', async () => {
+      const { client, calls, tokens } = create(allow);
+      let args: Record<string, any> = { value: 'deep' };
+      for (let level = 0; level < 40; level += 1) {
+        args = { next: args };
+      }
+
+      const result = await client.evaluateHookContext(toolCallWith(args), AGENT, tokens.resolve);
+
+      const body = calls[0].body;
+      expect(depthOf(args)).toBe(41);
+      expect(depthOf(body.tool_call.args)).toBe(32);
+      expect(body.target).toEqual(body.tool_call.args);
+      expect(result?.truncated).toBe(true);
+    });
+
+    it('copies shared values but rejects a circular reference', async () => {
+      const { client, calls, tokens } = create(allow);
+      const shared = { note: 'shared' };
+      const circular: Record<string, any> = { note: 'loop' };
+      circular.self = circular;
+
+      await client.evaluateHookContext(
+        { ...inputContext('hello'), extensions: { a365: { first: shared, second: shared } } },
+        AGENT,
+        tokens.resolve,
+      );
+      await expect(client.evaluateHookContext(
+        { ...inputContext('hello'), extensions: { a365: circular } },
+        AGENT,
+        tokens.resolve,
+      )).rejects.toThrow('context must be JSON-serializable: it contains a circular reference.');
+
+      expect(calls).toHaveLength(1);
+      expect(calls[0].body.extensions).toEqual({ a365: { first: shared, second: shared } });
+    });
+
+    describe.each([
+      ['String.prototype.toWellFormed', false],
+      ['the fallback for Node 18', true],
+    ])('lone surrogates, with %s', (_name, withoutNative) => {
+      const native = Object.getOwnPropertyDescriptor(String.prototype, 'toWellFormed');
+
+      beforeEach(() => {
+        if (withoutNative) {
+          delete (String.prototype as { toWellFormed?: unknown }).toWellFormed;
+        }
+      });
+
+      afterEach(() => {
+        if (withoutNative && native) {
+          Object.defineProperty(String.prototype, 'toWellFormed', native);
+        }
+      });
+
+      it('are replaced in values and keys, so the content is still sent and evaluated', async () => {
+        const { client, calls, tokens } = create((body) => JSON.stringify(body).includes('BLOCK_ME')
+          ? json({ decision: 'deny', reason: 'prevention_blocked', message: 'Blocked content.' })
+          : json({ decision: 'allow' }));
+        const args = {
+          'to\uDC00': 'someone@example.test',
+          body: '\uD800BLOCK_ME',
+          emoji: 'ok \uD83D\uDE00',
+          tail: 'end\uD83D',
+        };
+        const context = toolCallWith(args, {
+          agent: { id: AGENT_ID, framework: 'agent365', name: 'Sample\uD800Agent' },
+          session: { id: 's-\uDC00' },
+        });
+
+        const result = await client.evaluateHookContext(context, AGENT, tokens.resolve);
+
+        if (withoutNative) {
+          expect((String.prototype as { toWellFormed?: unknown }).toWellFormed).toBeUndefined();
+        }
+        const { raw, body } = calls[0];
+        expect(raw).not.toMatch(/\\ud[89a-f][0-9a-f]{2}/i);
+        expect(body.tool_call.args).toEqual({
+          'to\uFFFD': 'someone@example.test',
+          body: '\uFFFDBLOCK_ME',
+          emoji: 'ok \uD83D\uDE00',
+          tail: 'end\uFFFD',
+        });
+        expect(body.target).toEqual(body.tool_call.args);
+        expect(body.agent.name).toBe('Sample\uFFFDAgent');
+        expect(body.session.id).toBe('s-\uFFFD');
+        expect(result).toMatchObject({ allowed: false, evaluated: true, blockReason: 'Blocked content.' });
+      });
+    });
+  });
+
   describe('failures', () => {
     it.each([false, true])('follows the fail mode on an HTTP error and keeps the service detail (fail closed: %s)', async (failClosed) => {
       const { client, tokens } = create(
@@ -588,6 +853,28 @@ describe('DefenderRtpClient', () => {
 
       expect(result?.error).toBe('http 503');
       expect(result?.httpStatus).toBe(503);
+    });
+
+    it.each([
+      [[1]],
+      ['[1]'],
+      ['not json'],
+      [{ validationErrors: 'The target field must match input.' }],
+      [{ validationErrors: [1, { message: 5 }] }],
+    ])('reports a 400 whose diagnostics have another shape (%j) by its title', async (diagnostics) => {
+      const { client, tokens } = create(() => json({ title: 'Bad Request', diagnostics }, 400));
+
+      const result = await client.evaluateHookContext(inputContext('hello'), AGENT, tokens.resolve);
+
+      expect(result).toMatchObject({ evaluated: false, allowed: true, error: 'http 400: Bad Request' });
+    });
+
+    it.each(['[1]', '"Bad Request"', 'null', '{"title": 5}'])('reports an error body of another shape (%s) by its status', async (body) => {
+      const { client, tokens } = create(() => new Response(body, { status: 400 }));
+
+      const result = await client.evaluateHookContext(inputContext('hello'), AGENT, tokens.resolve);
+
+      expect(result).toMatchObject({ evaluated: false, error: 'http 400', httpStatus: 400 });
     });
 
     it('treats a success without a decision as no verdict', async () => {
@@ -698,6 +985,23 @@ describe('DefenderRtpClient', () => {
 
       expect(tokens.requests).toEqual([`${AGENT_ID}|${TENANT_ID}|api://other/.default`]);
     });
+
+    it.each(['[]', 'null', '"claims"', '{"exp":"soon"}', 'not json'])(
+      'uses a token whose payload is not an object with a numeric exp (%s), without caching it',
+      async (payload) => {
+        const { client, calls } = create(allow);
+        const tokens = tokenSource(`e30.${Buffer.from(payload).toString('base64url')}.signature`);
+
+        const results = [
+          await client.evaluateHookContext(inputContext('one'), AGENT, tokens.resolve),
+          await client.evaluateHookContext(inputContext('two'), AGENT, tokens.resolve),
+        ];
+
+        expect(results.map((result) => result?.evaluated)).toEqual([true, true]);
+        expect(calls).toHaveLength(2);
+        expect(tokens.requests).toHaveLength(2);
+      },
+    );
 
     it('shares one token acquisition between concurrent evaluations', async () => {
       const { client, calls, tokens } = create(allow);
@@ -986,6 +1290,35 @@ describe('DefenderRtpTokenResolvers.fromAgenticConnection', () => {
 
     await expect(resolver(AGENT_ID, TENANT_ID, [DEFENDER_SCOPE], new AbortController().signal))
       .rejects.toThrow('The Defender token response was not JSON.');
+  });
+
+  it.each(['{"token_type":"Bearer"}', '{"access_token":42}', '{"access_token":""}', '[]', '"defender-token"', 'null'])(
+    'fails on a success response of another shape (%s)',
+    async (body) => {
+      const resolver = DefenderRtpTokenResolvers.fromAgenticConnection(
+        { getAgenticApplicationToken: async () => 'fmi-assertion' },
+        { fetchImplementation: (async () => new Response(body, { status: 200 })) as unknown as typeof fetch },
+      );
+
+      await expect(resolver(AGENT_ID, TENANT_ID, [DEFENDER_SCOPE], new AbortController().signal))
+        .rejects.toThrow('The Defender token response had no access_token.');
+    },
+  );
+
+  it.each([
+    ['[]', ''],
+    ['"invalid_client"', ''],
+    ['null', ''],
+    ['{"error":5,"error_codes":"7000215"}', ''],
+    ['{"error":"Invalid Client!","error_codes":[7000215,"50034",1.5,null]}', ' (AADSTS7000215)'],
+  ])('reports an error body of another shape (%s) with the status and valid codes only', async (body, codes) => {
+    const resolver = DefenderRtpTokenResolvers.fromAgenticConnection(
+      { getAgenticApplicationToken: async () => 'fmi-assertion' },
+      { fetchImplementation: (async () => new Response(body, { status: 401 })) as unknown as typeof fetch },
+    );
+
+    await expect(resolver(AGENT_ID, TENANT_ID, [DEFENDER_SCOPE], new AbortController().signal))
+      .rejects.toThrow(`The Defender token request failed with HTTP 401${codes}.`);
   });
 
   it('reports an HTTP error whose body is not JSON with the status only', async () => {

@@ -8,9 +8,9 @@ control contract (AGENT-HOOKS-0.1), using the TypeScript package `@responsibleai
 
 `A365DefenderInterceptor` is an agent-hooks interceptor for Microsoft Defender for AI. For each context the host
 emits at the four points Defender evaluates, `DefenderRtpClient` from `@microsoft/agents-a365-tooling` sends a copy
-to the prevention endpoint (`POST .../v1/protection/evaluate`), fitted to Defender's request validation: normalized,
-with every content string clamped, and keeping the context's session, sequence and tool call ids. The host's
-context is not modified. Defender's verdict decides:
+to the prevention endpoint (`POST .../v1/protection/evaluate`), fitted to Defender's request validation and size
+limits (see [What Defender receives](#what-defender-receives)). The host's context is not modified. Defender's
+verdict decides:
 
 | agent-hooks point | When | On `deny` |
 |---|---|---|
@@ -25,12 +25,17 @@ emission record: `proceeds(record)` is false when the action must not run.
 ## Installation
 
 ```bash
-npm install @microsoft/agents-a365-tooling-extensions-agenthooks
+npm install @microsoft/agents-a365-tooling-extensions-agenthooks @responsibleai/agent-hooks@0.1.0-alpha.5
 ```
 
+`@responsibleai/agent-hooks` is a peer dependency (`>=0.1.0-alpha.5 <0.2.0`; this version is tested with
+`0.1.0-alpha.5`), so install it in your application. The emitter, `AgentContextBuilder` and `proceeds` you import
+must come from the same copy this package uses: with two copies, `addA365Defender` does not accept your emitter and
+`instanceof InterceptionBlocked` checks fail.
+
 `@responsibleai/agent-hooks` is a prerelease package with a native core for linux-x64 and linux-arm64 (glibc),
-darwin-x64, darwin-arm64 and win32-x64, and requires Node.js 20 or later. It is a dependency of this package
-only: `DefenderRtpClient` in `@microsoft/agents-a365-tooling` does not need it.
+darwin-x64, darwin-arm64 and win32-x64, and requires Node.js 20 or later. Only this package needs it:
+`DefenderRtpClient` in `@microsoft/agents-a365-tooling` does not.
 
 ## Authentication
 
@@ -67,6 +72,24 @@ created from the blueprint inherits it:
 The tenant must also be onboarded to Defender for AI; otherwise Defender returns 403.
 
 Like any other failure, a `403` follows the fail mode.
+
+## What Defender receives
+
+`DefenderRtpClient` builds the copy while reading the context, so a huge context is never serialized whole:
+
+- Identity and protocol fields (`spec`, the agent, session, tenant, actor, sequence, request and tool call ids) are
+  kept or filled in, and normalized where Defender requires it: a UTC timestamp, a lowercase framework name,
+  `tenant.id` set to the agent's tenant, and `target` equal to the point's field. Optional fields of another shape
+  (for example a `model` that is a string) are left out rather than failing the evaluation.
+- Every string and object key is well formed: a lone UTF-16 surrogate becomes U+FFFD, because Defender's JSON
+  parser rejects it and the request would fail.
+- Each content string is at most `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` (default 20000) long, cut with a
+  `...[truncated N chars]` marker, and nesting deeper than 32 levels is cut.
+- The copy carries at most four times that limit of content in total. The content under decision (the message,
+  the tool call arguments, the tool result or the reply) comes first; it is sent twice (`target` mirrors it), so it
+  can use up to twice the limit. The rest of the context shares what it leaves, in this order, and is trimmed
+  first: the tool call arguments at `post_tool_call`, the tool declarations (the called tool first), the newest
+  messages, extensions, then any other fields.
 
 ## Usage
 
@@ -142,13 +165,15 @@ interception records in memory (drain them with `takeRecords()` or forward them 
   detection. One deadline (the Defender timeout) covers the token acquisition and the request, and the emitter's
   interceptor timeout must exceed it (by default it is two seconds longer), so the fail mode, not a host error,
   decides a slow call.
-- **Content longer than `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS`** (default 20000) follows the fail mode too.
-  Defender is sent a truncated copy, so it sees only the beginning of the content under decision (the message,
-  the tool call arguments, the tool result or the reply). A block of the copy stands, but an allow does not cover
-  the rest, so it is treated like a missing verdict, with the error
+- **Content that does not fit** follows the fail mode too: content under decision longer than
+  `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` (default 20000), or more than its share of the copy (for example tool
+  call arguments with many long strings). Defender is sent a truncated copy, so it sees only the beginning of the
+  content under decision. A block of the copy stands, but an allow does not cover the rest, so it is treated like a
+  missing verdict, with the error
   `content exceeded A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS (<limit>); Defender evaluated a truncated copy`.
   Otherwise padding could push a payload past the limit and have it authorized unseen. Agents that handle long
-  content should raise the limit; evaluating long content in chunks is a planned follow-up.
+  content (for example base64-encoded files in tool results) should raise the limit; evaluating long content in
+  chunks is a planned follow-up.
 
 Every call sends a unique `x-ms-correlation-id`, returned as `DefenderRtpEvaluationResult.correlationId`;
 Defender logs each evaluation under it. A `400` reports the failed validation rules in `error`.
@@ -162,7 +187,7 @@ Defender logs each evaluation under it. A `400` reports the failed validation ru
 | `A365_DEFENDER_RTP_FAIL_MODE` | `closed` blocks when no verdict is obtained; default is open |
 | `A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS` | deadline of each evaluation, token acquisition included (default 10000) |
 | `A365_DEFENDER_RTP_AUTHENTICATION_SCOPE` | overrides the Defender API scope |
-| `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` | the longest content string sent (default 20000); longer content under decision follows the fail mode unless Defender blocks it, so raise it for long-content agents. Identifiers and protocol fields are sent unchanged |
+| `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` | the longest content string sent (default 20000); the whole copy carries at most four times as much content. Content under decision that does not fit follows the fail mode unless Defender blocks it, so raise it for long-content agents. Identifiers and protocol fields are sent unchanged |
 
 The same settings can be supplied per tenant or per request through a `ToolingConfiguration` with
 override functions, passed as `configProvider` to `DefenderRtpClient` and `createProtectionEmitter`.

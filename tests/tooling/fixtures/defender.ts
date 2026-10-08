@@ -48,6 +48,8 @@ export interface RecordedCall {
   method: string;
   authorization: string | null;
   correlationId: string | null;
+  /** The request body as sent. */
+  raw: string;
   body: Record<string, any>;
 }
 
@@ -58,12 +60,14 @@ export function fakeEndpoint(
   const calls: RecordedCall[] = [];
   const fetchImplementation = async (input: string | URL | Request, init: RequestInit = {}): Promise<Response> => {
     const headers = new Headers(init.headers);
-    const body = JSON.parse(String(init.body ?? '{}'));
+    const raw = String(init.body ?? '{}');
+    const body = JSON.parse(raw);
     calls.push({
       url: String(input),
       method: init.method ?? 'GET',
       authorization: headers.get('authorization'),
       correlationId: headers.get('x-ms-correlation-id'),
+      raw,
       body,
     });
     return await respond(body, init);
