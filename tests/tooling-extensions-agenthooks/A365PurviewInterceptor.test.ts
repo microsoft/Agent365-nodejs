@@ -650,7 +650,8 @@ describe('A365PurviewInterceptor under the agent-hooks emitter', () => {
         purviewDlpMaxContentCharacters: () => maximum,
       },
     });
-    maximum = 0;
+    // Finite, but beyond the cap: it would overflow the reading budget to Infinity.
+    maximum = Number('9'.repeat(308));
 
     const denied = await emitter.emitUnchecked(builder('conversation-25').input('hello'));
     failClosed = false;
@@ -658,7 +659,7 @@ describe('A365PurviewInterceptor under the agent-hooks emitter', () => {
 
     expect(proceeds(denied)).toBe(false);
     expect(denied.verdict.warnings).toEqual([
-      { reason: 'purview:unverified', message: 'Error: purviewDlpMaxContentCharacters must be a positive integer.' },
+      { reason: 'purview:unverified', message: 'Error: purviewDlpMaxContentCharacters must be a positive integer of at most 2147483647.' },
     ]);
     expect(proceeds(allowed)).toBe(true);
   });

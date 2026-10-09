@@ -400,7 +400,7 @@ The interceptor sets the content entry's `correlationId` and `sequenceNumber` fr
 | `A365_PURVIEW_DLP_RESPONSE_MODE` | `audit` (the default) sends replies without waiting and never blocks them; `enforce` blocks them like prompts. Any other value is rejected |
 | `A365_PURVIEW_DLP_FAIL_MODE` | `closed` blocks when no verdict is obtained; `open` (the default) allows. Any other value is rejected |
 | `A365_PURVIEW_DLP_TIMEOUT_MILLISECONDS` | deadline of each evaluation, token acquisition included (default 10000, at most 2147481647). A value that is not a whole number (for example `10s`) is rejected |
-| `A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS` | the longest text sent (default 100000); longer text is sent truncated and, unless Purview blocks it, follows the fail mode. A value that is not a whole number is rejected |
+| `A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS` | the longest text sent, a whole number (default 100000, at most 2147483647); longer text is sent truncated and, unless Purview blocks it, follows the fail mode. Any other value is rejected |
 | `A365_PURVIEW_DLP_GRAPH_BASE_URL` | the Microsoft Graph base URL (default `https://graph.microsoft.com/v1.0`; `https` only) |
 | `A365_PURVIEW_DLP_AUTHENTICATION_SCOPE` | overrides the Microsoft Graph token scope (default `https://graph.microsoft.com/.default`) |
 

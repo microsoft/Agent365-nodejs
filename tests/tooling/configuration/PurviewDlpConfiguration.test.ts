@@ -101,13 +101,37 @@ describe('Purview DLP tooling configuration', () => {
     expect(() => new ToolingConfiguration({ purviewDlpTimeoutMilliseconds: () => 0 }).purviewDlpTimeoutMilliseconds)
       .toThrow('purviewDlpTimeoutMilliseconds must be a positive integer of at most 2147481647.');
     expect(() => new ToolingConfiguration({ purviewDlpMaxContentCharacters: () => -1 }).purviewDlpMaxContentCharacters)
-      .toThrow('purviewDlpMaxContentCharacters must be a positive integer.');
+      .toThrow('purviewDlpMaxContentCharacters must be a positive integer of at most 2147483647.');
     expect(() => new ToolingConfiguration({ purviewDlpMaxContentCharacters: () => 1.5 }).purviewDlpMaxContentCharacters)
-      .toThrow('purviewDlpMaxContentCharacters must be a positive integer.');
+      .toThrow('purviewDlpMaxContentCharacters must be a positive integer of at most 2147483647.');
 
     process.env.A365_PURVIEW_DLP_TIMEOUT_MILLISECONDS = '0';
+    process.env.A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS = '0';
     expect(() => new ToolingConfiguration().purviewDlpTimeoutMilliseconds)
       .toThrow('purviewDlpTimeoutMilliseconds must be a positive integer of at most 2147481647.');
+    expect(() => new ToolingConfiguration().purviewDlpMaxContentCharacters)
+      .toThrow('purviewDlpMaxContentCharacters must be a positive integer of at most 2147483647.');
+  });
+
+  it('accepts a maximum content size of exactly 2147483647', () => {
+    expect(new ToolingConfiguration({ purviewDlpMaxContentCharacters: () => 2_147_483_647 }).purviewDlpMaxContentCharacters)
+      .toBe(2_147_483_647);
+
+    process.env.A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS = '2147483647';
+    expect(new ToolingConfiguration().purviewDlpMaxContentCharacters).toBe(2_147_483_647);
+  });
+
+  it.each([
+    ['308 nines, which is finite but overflows the reading budget to Infinity', '9'.repeat(308)],
+    ['309 nines, which is Infinity', '9'.repeat(309)],
+    ['one above the cap', '2147483648'],
+  ])('rejects a maximum content size of %s', (_name, value) => {
+    process.env.A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS = value;
+
+    expect(() => new ToolingConfiguration().purviewDlpMaxContentCharacters)
+      .toThrow('purviewDlpMaxContentCharacters must be a positive integer of at most 2147483647.');
+    expect(() => new ToolingConfiguration({ purviewDlpMaxContentCharacters: () => Number(value) }).purviewDlpMaxContentCharacters)
+      .toThrow('purviewDlpMaxContentCharacters must be a positive integer of at most 2147483647.');
   });
 
   it.each(['soon', '10s', '10seconds', '1.5', '-5', '1e3', '+5', '0x10'])(

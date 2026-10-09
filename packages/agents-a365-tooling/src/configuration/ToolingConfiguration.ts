@@ -29,6 +29,12 @@ const PURVIEW_DLP_RESPONSE_MODES: ReadonlySet<string> = new Set(['audit', 'enfor
  */
 const MAX_DEFENDER_RTP_MAX_CONTENT_CHARACTERS = 2_147_483_647;
 
+/**
+ * The largest Purview content limit, as for Defender and in the .NET and Python SDKs: the agent-hooks interceptor's
+ * reading budget is a multiple of it, and a larger value could overflow it to Infinity, which never runs out.
+ */
+const MAX_PURVIEW_DLP_MAX_CONTENT_CHARACTERS = 2_147_483_647;
+
 /** Application id of the Defender API, which grants `RealtimeProtection.Evaluate.All`. */
 export const DEFENDER_RTP_API_APP_ID = '86a21212-634e-4553-b3d6-e477e4c9d9ec';
 
@@ -366,6 +372,7 @@ export class ToolingConfiguration extends RuntimeConfiguration {
    * Maximum characters of the text sent to Purview (default 100000). Longer text is cut and sent with
    * `isTruncated: true`; Purview's block of it stands, but its allow does not cover the rest, so the
    * content then follows the fail mode. `A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS` must be a whole number.
+   * At most 2147483647, as for Defender and in the .NET and Python SDKs.
    */
   get purviewDlpMaxContentCharacters(): number {
     const override = this.toolingOverrides.purviewDlpMaxContentCharacters?.();
@@ -373,8 +380,8 @@ export class ToolingConfiguration extends RuntimeConfiguration {
       ?? wholeNumber('A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS')
       ?? DEFAULT_PURVIEW_DLP_MAX_CONTENT_CHARACTERS;
 
-    if (!Number.isInteger(maximum) || maximum <= 0) {
-      throw sdkError(new Error('purviewDlpMaxContentCharacters must be a positive integer.'));
+    if (!Number.isInteger(maximum) || maximum <= 0 || maximum > MAX_PURVIEW_DLP_MAX_CONTENT_CHARACTERS) {
+      throw sdkError(new Error(`purviewDlpMaxContentCharacters must be a positive integer of at most ${MAX_PURVIEW_DLP_MAX_CONTENT_CHARACTERS}.`));
     }
     return maximum;
   }
