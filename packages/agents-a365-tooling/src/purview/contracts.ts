@@ -93,6 +93,16 @@ export type PurviewDlpAccessTokenProvider = (
   agent: PurviewDlpAgentContext,
 ) => Promise<string | null | undefined> | string | null | undefined;
 
+/** Options for `PurviewDlpClient.evaluate`. */
+export interface PurviewDlpEvaluateOptions {
+  /**
+   * Whether the text is only the first part of the content (for example of a message too large to read
+   * whole). It is sent with `isTruncated: true`, Purview's allow does not cover the rest and follows the fail
+   * mode, and blank text is not evaluated but follows the fail mode too.
+   */
+  truncated?: boolean;
+}
+
 /** What Purview decided, read from the `policyActions` of the `processContent` response. */
 export interface PurviewDlpDecision {
   /**

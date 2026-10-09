@@ -8,6 +8,7 @@ import {
   PurviewDlpClient,
   PurviewDlpTokenResolver,
   PurviewDlpTokenResolvers,
+  ToolingConfiguration,
   ToolingConfigurationOptions,
 } from '../../packages/agents-a365-tooling/src';
 import {
@@ -499,6 +500,64 @@ describe('PurviewDlpClient', () => {
       const result = await client.evaluate('uploadText', 'a'.repeat(LIMIT + 1), AGENT, tokens.resolve);
 
       expect(result).toMatchObject({ evaluated: false, truncated: true, error: 'http 503' });
+    });
+
+    it.each([false, true])('treats text the caller marks as only part of the content as truncated (fail closed: %s)', async (failClosed) => {
+      const { client, calls, tokens } = create(blockMarker, { purviewDlpFailClosed: () => failClosed });
+
+      const allowed = await client.evaluate('uploadText', 'first part', AGENT, tokens.resolve, undefined, { truncated: true });
+      const blocked = await client.evaluate('uploadText', 'BLOCK_ME first part', AGENT, tokens.resolve, undefined, { truncated: true });
+
+      expect(calls.map((call) => call.body.contentToProcess.contentEntries[0].isTruncated)).toEqual([true, true]);
+      expect(sentText(calls[0])).toBe('first part');
+      expect(allowed).toMatchObject({
+        allowed: !failClosed,
+        evaluated: true,
+        truncated: true,
+        error: 'the content was only partly read; Purview evaluated a truncated copy',
+      });
+      expect(blocked).toMatchObject({ allowed: false, evaluated: true, truncated: true, decision: { blockAction: true } });
+    });
+
+    it('follows the fail mode without a call for blank text that is only part of the content', async () => {
+      const { client, calls, tokens } = create(blockMarker, { purviewDlpFailClosed: () => true });
+
+      const result = await client.evaluate('uploadText', '   ', AGENT, tokens.resolve, undefined, { truncated: true });
+
+      expect(result).toMatchObject({
+        allowed: false,
+        evaluated: false,
+        truncated: true,
+        error: 'the content was only partly read, and the part read has no text; Purview was not called',
+      });
+      expect(calls).toHaveLength(0);
+      expect(tokens.requests).toHaveLength(0);
+    });
+  });
+
+  describe('describeError', () => {
+    it('keeps the message of the SDK\'s own errors only', async () => {
+      const { client, tokens } = create(allow);
+      const sdkError = await client.evaluate('uploadText', 'hello', { sessionId: 's-1' } as never, tokens.resolve).catch((error) => error);
+      const hostError = new Error('settings service returned token secret-value');
+
+      expect(PurviewDlpClient.describeError(sdkError)).toBe('TypeError: agent.agentId is required.');
+      expect(PurviewDlpClient.describeError(hostError)).toBe('Error');
+      expect(PurviewDlpClient.describeError(Object.assign(new Error('x'), { name: 'GraphServiceError' }))).toBe('GraphServiceError');
+      expect(PurviewDlpClient.describeError(Object.assign(new Error('x'), { name: 'secret value with spaces' }))).toBe('Error');
+      expect(PurviewDlpClient.describeError('secret-value')).toBe('unknown error');
+    });
+
+    it('keeps the message of the SDK\'s configuration errors', () => {
+      process.env.A365_PURVIEW_DLP_RESPONSE_MODE = 'block';
+      let error: unknown;
+      try {
+        void new ToolingConfiguration().purviewDlpResponseMode;
+      } catch (caught) {
+        error = caught;
+      }
+
+      expect(PurviewDlpClient.describeError(error)).toBe("Error: A365_PURVIEW_DLP_RESPONSE_MODE must be 'audit' or 'enforce'.");
     });
   });
 

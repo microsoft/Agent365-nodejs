@@ -489,17 +489,19 @@ describe('A365PurviewInterceptor under the agent-hooks emitter', () => {
   it.each([false, true])(
     'follows the fail mode for structured content that is blank up to the limit and goes on (fail closed: %s)',
     async (failClosed) => {
-      const { emitter, calls, resolvedCount } = harness(() => processed([BLOCK_ACTION]), {
+      const { emitter, calls } = harness(() => processed([BLOCK_ACTION]), {
         configuration: { purviewDlpMaxContentCharacters: () => 10, purviewDlpFailClosed: () => failClosed },
       });
       const unverified = {
         reason: 'purview:unverified',
-        message: 'content exceeded A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS (10) before any text; Purview was not called',
+        message: 'the content was only partly read, and the part read has no text; Purview was not called',
       };
 
       const records = [
         await emitter.emitUnchecked(builder('conversation-27').input([' '.repeat(11), CARD])),
         await emitter.emitUnchecked(builder('conversation-27').input([{ text: '\n'.repeat(11), type: 'text' }, { text: CARD, type: 'text' }])),
+        // More values than the reading bound (four per character of the limit), all of them empty.
+        await emitter.emitUnchecked(builder('conversation-27').input([...Array.from({ length: 100 }, () => ''), CARD])),
       ];
 
       for (const record of records) {
@@ -507,9 +509,70 @@ describe('A365PurviewInterceptor under the agent-hooks emitter', () => {
         expect(record.verdict.warnings).toEqual([unverified]);
       }
       expect(calls).toHaveLength(0);
-      expect(resolvedCount()).toBe(0);
     },
   );
+
+  it('sends what was read before the reading bound as truncated', async () => {
+    const { emitter, calls, evaluations } = harness(blockCard, {
+      configuration: { purviewDlpMaxContentCharacters: () => 10, purviewDlpFailClosed: () => true },
+    });
+
+    const record = await emitter.emitUnchecked(builder('conversation-29').input(['hello', ...Array.from({ length: 100 }, () => null), CARD]));
+    await settle();
+
+    expect(proceeds(record)).toBe(false);
+    expect(record.verdict.reason).toBe('runtime_error:purview_unverified');
+    expect(sentText(calls[0])).toBe('hello');
+    expect(calls[0].body.contentToProcess.contentEntries[0].isTruncated).toBe(true);
+    expect(evaluations[0]).toMatchObject({
+      evaluated: true,
+      truncated: true,
+      error: 'the content was only partly read; Purview evaluated a truncated copy',
+    });
+  });
+
+  it('leaves nesting deeper than 32 levels unread, reads the rest, and keeps Purview\'s block', async () => {
+    const { emitter, calls } = harness(blockCard);
+    let nested: JsonValue = 'deep text';
+    for (let level = 0; level < 40; level += 1) nested = [nested];
+
+    const record = await emitter.emitUnchecked(builder('conversation-30').input([nested, CARD]));
+
+    expect(proceeds(record)).toBe(false);
+    expect(record.verdict.reason).toBe('purview:block');
+    expect(sentText(calls[0])).toBe(CARD);
+    expect(calls[0].body.contentToProcess.contentEntries[0].isTruncated).toBe(true);
+  });
+
+  it('keeps no more than the limit of one large part of structured content', async () => {
+    const { emitter, calls } = harness(blockCard, { configuration: { purviewDlpMaxContentCharacters: () => 10 } });
+
+    const record = await emitter.emitUnchecked(builder('conversation-31').input([{ text: 'x'.repeat(100000) }]));
+
+    expect(proceeds(record)).toBe(true);
+    expect(record.verdict.warnings?.[0]?.reason).toBe('purview:unverified');
+    expect(sentText(calls[0])).toBe('x'.repeat(10));
+    expect(calls[0].body.contentToProcess.contentEntries[0].isTruncated).toBe(true);
+  });
+
+  it('reports only the type of an error raised by the host\'s configuration', async () => {
+    let failing = false;
+    const { emitter, calls } = harness(processed, {
+      configuration: {
+        purviewDlpMaxContentCharacters: () => {
+          if (failing) throw new Error('settings service returned token secret-value');
+          return 100;
+        },
+      },
+    });
+    failing = true;
+
+    const record = await emitter.emitUnchecked(builder('conversation-32').input('hello'));
+
+    expect(proceeds(record)).toBe(true);
+    expect(record.verdict.warnings).toEqual([{ reason: 'purview:unverified', message: 'Error' }]);
+    expect(calls).toHaveLength(0);
+  });
 
   it('evaluates a message that is blank up to the limit and goes on, as truncated', async () => {
     const { emitter, calls } = harness(blockCard, {

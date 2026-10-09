@@ -282,13 +282,15 @@ if (result && !result.allowed) { /* block: result.blockReason */ }
 - **Failures**: non-empty `processingErrors` (no block), a response without a well-formed `policyActions` list, a
   non-2xx status, a timeout, a transport error or an unparsable body returns `evaluated: false`, with `allowed`
   following `purviewDlpFailClosed`. `error` names the failure, or the exception type only (`http 403`,
-  `request timeout`, `token unavailable: TypeError`), never a response body or token; the SDK's own argument errors
-  keep their message. An invalid argument (for example no `sessionId`) throws; `unavailable(...)` builds the
-  matching not-evaluated result.
+  `request timeout`, `token unavailable: TypeError`), never a response body or token; errors the SDK raises itself
+  (an invalid argument or setting) keep their message. `PurviewDlpClient.describeError(error)` applies the same
+  rule for callers, such as the agent-hooks interceptor. An invalid argument (for example no `sessionId`) throws;
+  `unavailable(...)` builds the matching not-evaluated result.
 - **Truncation**: text longer than `purviewDlpMaxContentCharacters` (default 100000) is cut (never splitting a
   surrogate pair) and sent with `isTruncated: true`. A block still stands, but an allow does not cover the rest:
   the result is `truncated: true` and `allowed` follows the fail mode, so text padded past the limit cannot be
-  authorized unseen.
+  authorized unseen. A caller that read only the first part of the content passes `{ truncated: true }` as the
+  sixth argument, with the same effect; blank text marked so is not sent and follows the fail mode.
 - **Authentication**: a `PurviewDlpTokenResolver` is `(agent, scopes, signal) => { accessToken, userId? }`; without
   `userId` the client calls `/me`, with it `/users/{userId}`.
   `PurviewDlpTokenResolvers.fromAgenticUser(connection)` returns the agentic user's delegated Microsoft Graph token

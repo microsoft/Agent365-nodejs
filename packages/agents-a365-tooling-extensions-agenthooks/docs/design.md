@@ -126,16 +126,18 @@ other points, Purview DLP disabled, or content without text ──► allow, no 
 - `input` is evaluated as `uploadText` and `output` as `downloadText`; other points, every point while
   `ENABLE_A365_PURVIEW_DLP` is off, and content without text are allowed without calling `resolveCall` or Purview.
   The text of a string is the string; of structured content, its string and number values in order, one per line,
-  each object read once and reading stopped once the text is longer than the limit (the client then marks it
-  truncated). Structured content that is still blank when reading stops is not empty, as the rest was never read: it
-  follows the fail mode without a call.
+  each object read once. Structured content is read lazily and within bounds: at most the limit plus one
+  character of text is kept, at most four values per character of the limit are read (empty values count), and
+  nesting deeper than 32 levels is left unread. Content read only in part is passed to the client as
+  `truncated`, so Purview's block of what was read stands and its allow follows the fail mode (as does content
+  that is still blank where reading stopped).
 - `resolveCall` returns the agent identity and token resolver (`A365PurviewCall`). The interceptor sets the agent
   context's `sessionId` and `sequence` from the context (`session.id`, `sequence`), so Purview's conversation lines up
   with the interception records, and `agentName` from `agent.name` when the call sets none. `null` or `undefined`
   means no agent identity: Purview is not called and the context follows the fail mode
-  (`no agent identity was resolved`). An exception from `resolveCall` does too, reporting only its type, as a host's
-  error may carry anything; an exception from `evaluate` (an invalid argument or configuration) keeps the SDK's
-  message.
+  (`no agent identity was resolved`). An exception from `resolveCall`, the configuration or the client does too;
+  it is described by `PurviewDlpClient.describeError`, which keeps the message only of errors the SDK raised
+  itself, as a host's (for example from a configuration provider) may carry a token or a response body.
 - **Replies in `audit` mode** (`A365_PURVIEW_DLP_RESPONSE_MODE`, the default): Purview DLP policies for custom AI
   apps cannot restrict replies, so the evaluation starts in the background and the interceptor returns `allow` at
   once, whatever the fail mode. The background evaluation is bounded by the client's own timeout and never by the

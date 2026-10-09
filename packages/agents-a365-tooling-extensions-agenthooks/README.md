@@ -231,8 +231,10 @@ application and records each interaction for audit (DSPM for AI, Activity explor
 
 Other points are allowed without a call: Purview DLP evaluates prompts and replies, not tool calls. Content without
 text is allowed without a call. A string is sent as it is; structured content (for example content parts) is sent as
-its string and number values, in order, one per line, read only as far as `A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS`
-(structured content that is still blank there follows the fail mode, as the rest was not read).
+its string and number values, in order, one per line. Structured content is read within bounds (at most the limit
+plus one character of text, four values per character of `A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS`, and 32 levels of
+nesting); content read only in part is sent as truncated, so Purview's block stands and its allow follows the fail
+mode.
 
 ### Response mode
 

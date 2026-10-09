@@ -117,7 +117,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`downloadText`: sent in the background and allowed at once in the default `audit` mode, awaited
   in `enforce` mode), with a callback for each evaluation; `addA365Purview` registers it next to
   `A365DefenderInterceptor` on one emitter. Contexts that cannot be verified follow the fail mode.
-  `createProtectionEmitter` accepts `purviewConfigProvider`, and its default interceptor timeout
+  Structured content is read lazily within bounds, and content read only in part is evaluated as
+  truncated. `createProtectionEmitter` accepts `purviewConfigProvider`, and its default interceptor timeout
   covers the Purview timeout when Purview DLP is enabled; Defender-only emitters are unchanged.
 
 ## [1.0.0] - 2026-04-30

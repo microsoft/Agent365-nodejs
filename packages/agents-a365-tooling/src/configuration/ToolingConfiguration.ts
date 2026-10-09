@@ -5,6 +5,7 @@ import { RuntimeConfiguration } from '@microsoft/agents-a365-runtime';
 import { ToolingConfigurationOptions } from './ToolingConfigurationOptions';
 import { MCPServerConfig } from '../contracts';
 import type { PurviewDlpResponseMode } from '../purview/contracts';
+import { sdkError } from '../purview/internal';
 
 // Constants for tooling-specific settings
 const MCP_PLATFORM_PROD_BASE_URL = 'https://agent365.svc.cloud.microsoft';
@@ -290,7 +291,7 @@ export class ToolingConfiguration extends RuntimeConfiguration {
       return true;
     }
 
-    throw new Error('ENABLE_A365_PURVIEW_DLP must be true or false (or 1/0, yes/no, on/off).');
+    throw sdkError(new Error('ENABLE_A365_PURVIEW_DLP must be true or false (or 1/0, yes/no, on/off).'));
   }
 
   /**
@@ -334,7 +335,7 @@ export class ToolingConfiguration extends RuntimeConfiguration {
       );
 
     if (!Number.isInteger(timeout) || timeout <= 0 || timeout > MAX_PURVIEW_DLP_TIMEOUT_MILLISECONDS) {
-      throw new Error(`purviewDlpTimeoutMilliseconds must be a positive integer of at most ${MAX_PURVIEW_DLP_TIMEOUT_MILLISECONDS}.`);
+      throw sdkError(new Error(`purviewDlpTimeoutMilliseconds must be a positive integer of at most ${MAX_PURVIEW_DLP_TIMEOUT_MILLISECONDS}.`));
     }
     return timeout;
   }
@@ -358,7 +359,7 @@ export class ToolingConfiguration extends RuntimeConfiguration {
       return true;
     }
 
-    throw new Error("A365_PURVIEW_DLP_FAIL_MODE must be 'open' or 'closed'.");
+    throw sdkError(new Error("A365_PURVIEW_DLP_FAIL_MODE must be 'open' or 'closed'."));
   }
 
   /**
@@ -375,7 +376,7 @@ export class ToolingConfiguration extends RuntimeConfiguration {
       );
 
     if (!Number.isInteger(maximum) || maximum <= 0) {
-      throw new Error('purviewDlpMaxContentCharacters must be a positive integer.');
+      throw sdkError(new Error('purviewDlpMaxContentCharacters must be a positive integer.'));
     }
     return maximum;
   }
@@ -392,7 +393,7 @@ export class ToolingConfiguration extends RuntimeConfiguration {
       ? override
       : process.env.A365_PURVIEW_DLP_RESPONSE_MODE?.trim().toLowerCase() || 'audit';
     if (!PURVIEW_DLP_RESPONSE_MODES.has(mode)) {
-      throw new Error("A365_PURVIEW_DLP_RESPONSE_MODE must be 'audit' or 'enforce'.");
+      throw sdkError(new Error("A365_PURVIEW_DLP_RESPONSE_MODE must be 'audit' or 'enforce'."));
     }
     return mode as PurviewDlpResponseMode;
   }

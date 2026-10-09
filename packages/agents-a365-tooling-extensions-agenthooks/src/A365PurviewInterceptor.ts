@@ -11,8 +11,10 @@ import {
 } from '@microsoft/agents-a365-tooling';
 
 const NO_IDENTITY_ERROR = 'no agent identity was resolved';
-const MAX_ERROR_CHARACTERS = 200;
-const ERROR_TYPE = /^[A-Za-z_$][A-Za-z0-9_$]{0,63}$/;
+/** The most values read from structured content, per character of the limit; every value counts, empty ones too. */
+const VALUES_PER_CHARACTER = 4;
+/** The deepest nesting read from structured content; deeper values are left unread. */
+const MAX_DEPTH = 32;
 const BLOCK_MESSAGES: Readonly<Record<PurviewDlpActivity, string>> = {
   uploadText: 'The request was blocked by a Microsoft Purview data loss prevention policy.',
   downloadText: 'The response was blocked by a Microsoft Purview data loss prevention policy.',
@@ -121,7 +123,7 @@ export class A365PurviewInterceptor implements Interceptor {
       result = await this.evaluate(context, activity);
     } catch (error) {
       // An invalid configuration is never a verdict: it follows the fail mode.
-      result = this.client.unavailable(activity, describeError(error, true));
+      result = this.client.unavailable(activity, PurviewDlpClient.describeError(error));
     }
 
     if (!result) {
@@ -179,34 +181,28 @@ export class A365PurviewInterceptor implements Interceptor {
 
   /**
    * Evaluates the context's text. Never rejects for a missing identity or an invalid context: those become
-   * not-evaluated results, which follow the fail mode.
+   * not-evaluated results, which follow the fail mode. Errors are described by `PurviewDlpClient.describeError`:
+   * only the SDK's own keep their message, as a host's may carry a token or a response body.
    */
   private async evaluate(context: AgentContext, activity: PurviewDlpActivity): Promise<PurviewDlpEvaluationResult | null> {
     let limit: number;
     try {
       limit = this.client.configuration.purviewDlpMaxContentCharacters;
     } catch (error) {
-      return this.client.unavailable(activity, describeError(error, true));
+      return this.client.unavailable(activity, PurviewDlpClient.describeError(error));
     }
 
-    let text: string;
-    let complete: boolean;
+    let content: { text: string; complete: boolean };
     try {
-      ({ text, complete } = contentText(contentOf(context, activity), limit));
+      content = contentText(contentOf(context, activity), limit);
     } catch (error) {
-      // The content is the host's, so only the type of what it raised is reported.
-      return this.client.unavailable(activity, `content could not be read: ${describeError(error, false)}`);
+      return this.client.unavailable(activity, `content could not be read: ${PurviewDlpClient.describeError(error)}`);
     }
 
-    if (!text.trim()) {
-      // Nothing to evaluate, so no identity is needed. Content whose first characters are blank but that goes
-      // on past the limit is not empty: the rest was never read, so it follows the fail mode.
-      return complete
-        ? null
-        : this.client.unavailable(
-          activity,
-          `content exceeded A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS (${limit}) before any text; Purview was not called`,
-        );
+    // Nothing to evaluate, so no identity is needed. Content read only in part is never empty: the client
+    // decides it as truncated.
+    if (content.complete && !content.text.trim()) {
+      return null;
     }
 
     // Read before anything is awaited: a reply is evaluated after the interceptor has returned.
@@ -215,8 +211,7 @@ export class A365PurviewInterceptor implements Interceptor {
     try {
       call = await this.resolveCall(context);
     } catch (error) {
-      // The host's error may carry anything, so only its type is reported.
-      return this.client.unavailable(activity, `${NO_IDENTITY_ERROR}: ${describeError(error, false)}`);
+      return this.client.unavailable(activity, `${NO_IDENTITY_ERROR}: ${PurviewDlpClient.describeError(error)}`);
     }
 
     // Without an agent identity Purview cannot be called: the content is unverified, not allowed.
@@ -225,10 +220,16 @@ export class A365PurviewInterceptor implements Interceptor {
     }
 
     try {
-      return await this.client.evaluate(activity, text, agentFor(call.agent, turn), call.tokenResolver);
+      return await this.client.evaluate(
+        activity,
+        content.text,
+        agentFor(call.agent, turn),
+        call.tokenResolver,
+        undefined,
+        { truncated: !content.complete },
+      );
     } catch (error) {
-      // The client throws only for invalid arguments or configuration, with the SDK's own messages.
-      return this.client.unavailable(activity, describeError(error, true));
+      return this.client.unavailable(activity, PurviewDlpClient.describeError(error));
     }
   }
 
@@ -315,10 +316,11 @@ function contentOf(context: AgentContext, activity: PurviewDlpActivity): unknown
 }
 
 /**
- * The text of a message's content: a string as it is; structured content (for example content parts) as
- * its string and number values in order, one per line, each object read once. Reading stops once the text
- * is longer than `limit`, as the client sends at most that much and marks the content as truncated;
- * `complete` tells whether everything was read.
+ * The text of a message's content: a string as it is; structured content (for example content parts) as its
+ * string and number values in order, one per line, each object read once. Structured content is read lazily
+ * and within bounds: at most `limit + 1` characters of text are kept (so the client still sees text that is
+ * too long), at most four values per character of the limit are read (empty values included), and nesting
+ * deeper than 32 levels is left unread. `complete` is false when anything was left unread or cut.
  */
 function contentText(content: unknown, limit: number): { text: string; complete: boolean } {
   if (typeof content === 'string') {
@@ -328,32 +330,82 @@ function contentText(content: unknown, limit: number): { text: string; complete:
   const parts: string[] = [];
   // The length of the joined text, separators included.
   let length = 0;
-  const pending: unknown[] = [content];
+  let remaining = VALUES_PER_CHARACTER * limit;
+  let complete = true;
   const seen = new Set<object>();
-  while (pending.length > 0 && length <= limit) {
-    const node = pending.pop();
-    if (typeof node === 'object' && node !== null) {
-      if (!seen.has(node)) {
-        seen.add(node);
-        const children: unknown[] = Array.isArray(node) ? node : Object.values(node);
-        for (let index = children.length - 1; index >= 0; index -= 1) {
-          pending.push(children[index]);
-        }
+  const stack: Array<Iterator<unknown>> = [];
+  const result = (): { text: string; complete: boolean } => ({ text: parts.join('\n'), complete });
+  let next: { value: unknown } | undefined = { value: content };
+  for (;;) {
+    if (!next) {
+      const top = stack[stack.length - 1];
+      if (!top) {
+        return result();
       }
 
+      const step = top.next();
+      if (step.done) {
+        stack.pop();
+        continue;
+      }
+
+      next = { value: step.value };
+    }
+
+    const value = next.value;
+    next = undefined;
+    if (remaining <= 0 || length > limit) {
+      complete = false;
+      return result();
+    }
+
+    remaining -= 1;
+    if (typeof value === 'object' && value !== null) {
+      if (seen.has(value)) {
+        continue;
+      }
+
+      if (stack.length >= MAX_DEPTH) {
+        complete = false;
+        continue;
+      }
+
+      seen.add(value);
+      stack.push(valuesOf(value));
       continue;
     }
 
-    const text = typeof node === 'string'
-      ? node
-      : (typeof node === 'number' && Number.isFinite(node)) || typeof node === 'bigint' ? String(node) : '';
+    const text = typeof value === 'string'
+      ? value
+      : (typeof value === 'number' && Number.isFinite(value)) || typeof value === 'bigint' ? String(value) : '';
     if (text) {
-      length += (parts.length > 0 ? 1 : 0) + text.length;
-      parts.push(text);
+      const separator = parts.length > 0 ? 1 : 0;
+      const kept = text.slice(0, Math.max(0, limit + 1 - length - separator));
+      parts.push(kept);
+      length += separator + kept.length;
+      if (kept.length < text.length) {
+        complete = false;
+        return result();
+      }
     }
   }
+}
 
-  return { text: parts.join('\n'), complete: pending.length === 0 };
+/** The values of an array or object, read one at a time. */
+function* valuesOf(node: object): Generator<unknown> {
+  if (Array.isArray(node)) {
+    for (let index = 0; index < node.length; index += 1) {
+      yield node[index];
+    }
+
+    return;
+  }
+
+  for (const key in node) {
+    if (Object.prototype.hasOwnProperty.call(node, key)) {
+      yield (node as Record<string, unknown>)[key];
+    }
+  }
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -364,24 +416,4 @@ function isThenable(value: unknown): value is PromiseLike<unknown> {
   return (typeof value === 'object' || typeof value === 'function')
     && value !== null
     && typeof (value as { then?: unknown }).then === 'function';
-}
-
-/**
- * The exception type, for example `TypeError`, and with `withMessage` its message: only for the SDK's own
- * errors, as a host's may carry a token or a response body.
- */
-function describeError(error: unknown, withMessage: boolean): string {
-  if (typeof error !== 'object' || error === null) {
-    return 'unknown error';
-  }
-
-  const name = (error as { name?: unknown }).name;
-  const type = typeof name === 'string' && ERROR_TYPE.test(name) ? name : 'Error';
-  if (!withMessage) {
-    return type;
-  }
-
-  const message = (error as { message?: unknown }).message;
-  const description = `${type}: ${typeof message === 'string' ? message : ''}`.replace(/\s+/g, ' ').trim();
-  return description.length > MAX_ERROR_CHARACTERS ? `${description.slice(0, MAX_ERROR_CHARACTERS)}...` : description;
 }

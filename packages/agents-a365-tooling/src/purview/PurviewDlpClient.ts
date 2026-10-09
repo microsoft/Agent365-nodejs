@@ -9,6 +9,7 @@ import {
   PurviewDlpActivity,
   PurviewDlpAgentContext,
   PurviewDlpDecision,
+  PurviewDlpEvaluateOptions,
   PurviewDlpEvaluationResult,
   PurviewDlpTokenResolver,
 } from './contracts';
@@ -44,6 +45,8 @@ const TOKEN_REFRESH_SKEW_MILLISECONDS = 5 * 60 * 1000;
 const FAIL_CLOSED_REASON = 'Data loss prevention validation is unavailable and this agent is configured to fail closed.';
 const TRUNCATED_FAIL_CLOSED_REASON =
   'The content is too long to be fully validated by Microsoft Purview, and this agent is configured to fail closed.';
+const PARTLY_READ_ERROR = 'the content was only partly read; Purview evaluated a truncated copy';
+const BLANK_PART_ERROR = 'the content was only partly read, and the part read has no text; Purview was not called';
 const BLOCK_REASONS: Readonly<Record<PurviewDlpActivity, string>> = {
   uploadText: 'The request was blocked by a Microsoft Purview data loss prevention policy.',
   downloadText: 'The response was blocked by a Microsoft Purview data loss prevention policy.',
@@ -135,18 +138,32 @@ export class PurviewDlpClient {
   }
 
   /**
+   * Describes an exception for a result's `error`: its type (for example `TypeError`), with the message only
+   * when the SDK raised it (an invalid argument or setting). Another exception, for example from a host's
+   * configuration provider or token resolver, may carry a token or a response body, so only its type is kept.
+   *
+   * @param error The exception.
+   * @returns The description, on one line.
+   */
+  public static describeError(error: unknown): string {
+    return describeError(error);
+  }
+
+  /**
    * Evaluates text with Purview DLP. One deadline (the configured timeout) covers the token acquisition
    * and the request.
    *
    * Text longer than `purviewDlpMaxContentCharacters` is cut and sent with `isTruncated: true`, so Purview
    * sees only its beginning. A block still stands, but an allow does not cover the rest: the result is
-   * marked `truncated`, and `allowed` follows the fail mode.
+   * marked `truncated`, and `allowed` follows the fail mode. The same holds for text the caller marks as
+   * only the first part of the content (`options.truncated`).
    *
    * @param activity `uploadText` for a prompt, `downloadText` for a reply.
    * @param text The text to evaluate.
    * @param agent The agent identity and conversation (`sessionId` is required).
    * @param tokenResolver Resolves the Microsoft Graph token, and the user to evaluate for.
    * @param signal Cancels the evaluation; the returned promise then rejects with its reason.
+   * @param options Whether the text is only the first part of the content.
    * @returns The result, or null without a call when Purview DLP is disabled or the text is empty. When
    * no verdict is obtained (token, transport, timeout, HTTP or processing failure) the result is not
    * evaluated and follows the configured fail mode.
@@ -159,6 +176,7 @@ export class PurviewDlpClient {
     agent: PurviewDlpAgentContext,
     tokenResolver: PurviewDlpTokenResolver,
     signal?: AbortSignal,
+    options: PurviewDlpEvaluateOptions = {},
   ): Promise<PurviewDlpEvaluationResult | null> {
     const configuration = this.configuration;
     if (!configuration.isPurviewDlpEnabled) {
@@ -166,30 +184,37 @@ export class PurviewDlpClient {
     }
 
     if (!PurviewDlpClient.isActivity(activity)) {
-      throw new TypeError("activity must be 'uploadText' or 'downloadText'.");
+      throw sdkError(new TypeError("activity must be 'uploadText' or 'downloadText'."));
     }
 
     if (typeof text !== 'string') {
-      throw new TypeError('text must be a string.');
+      throw sdkError(new TypeError('text must be a string.'));
     }
 
     PurviewDlpClient.requireArguments(agent, tokenResolver);
+    const partial = options?.truncated === true;
     if (text.trim().length === 0) {
-      return null;
+      // Blank text has nothing to evaluate, unless it is only the first part of the content: the rest was not
+      // read, so it is unverified.
+      return partial ? { ...this.unavailable(activity, BLANK_PART_ERROR), truncated: true } : null;
     }
 
     const identity = this.identity(agent);
     const baseUrl = PurviewDlpClient.graphBaseUrl(configuration);
     signal?.throwIfAborted();
     const maxCharacters = configuration.purviewDlpMaxContentCharacters;
-    const truncated = text.length > maxCharacters;
-    const data = wellFormed(truncated ? cut(text, maxCharacters) : text);
+    const tooLong = text.length > maxCharacters;
+    const truncated = tooLong || partial;
+    const data = wellFormed(tooLong ? cut(text, maxCharacters) : text);
     // One id per call: the client-request-id, and the content entry's identifier in Purview.
     const requestId = this.idFactory();
     const started = this.now();
     const deadline = createDeadline(configuration.purviewDlpTimeoutMilliseconds, signal);
+    const truncation = tooLong
+      ? `content exceeded A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS (${maxCharacters}); Purview evaluated a truncated copy`
+      : PARTLY_READ_ERROR;
     const complete = (result: PurviewDlpEvaluationResult): PurviewDlpEvaluationResult =>
-      truncated ? PurviewDlpClient.ofTruncatedContent(result, maxCharacters, configuration) : result;
+      truncated ? PurviewDlpClient.ofTruncatedContent(result, truncation, configuration) : result;
     try {
       let token: PurviewDlpAccessToken;
       try {
@@ -229,12 +254,12 @@ export class PurviewDlpClient {
   private identity(agent: PurviewDlpAgentContext): Identity {
     const agentId = nonEmpty(agent.agentId);
     if (!agentId) {
-      throw new TypeError('agent.agentId is required.');
+      throw sdkError(new TypeError('agent.agentId is required.'));
     }
 
     const sessionId = nonEmpty(agent.sessionId);
     if (!sessionId) {
-      throw new TypeError('agent.sessionId is required.');
+      throw sdkError(new TypeError('agent.sessionId is required.'));
     }
 
     const blueprintId = nonEmpty(agent.blueprintId);
@@ -299,7 +324,7 @@ export class PurviewDlpClient {
    */
   private static ofTruncatedContent(
     result: PurviewDlpEvaluationResult,
-    maxCharacters: number,
+    error: string,
     configuration: ToolingConfiguration,
   ): PurviewDlpEvaluationResult {
     if (!result.evaluated || result.decision.blockAction) {
@@ -311,7 +336,7 @@ export class PurviewDlpClient {
       ...result,
       truncated: true,
       allowed: !failClosed,
-      error: `content exceeded A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS (${maxCharacters}); Purview evaluated a truncated copy`,
+      error,
       ...(failClosed ? { blockReason: TRUNCATED_FAIL_CLOSED_REASON } : {}),
     };
   }
@@ -613,7 +638,7 @@ export class PurviewDlpClient {
   private static graphBaseUrl(configuration: ToolingConfiguration): string {
     const url = parseHttpsUrl(configuration.purviewDlpGraphBaseUrl);
     if (!url || url.username || url.password || url.search || url.hash) {
-      throw new Error('A365_PURVIEW_DLP_GRAPH_BASE_URL must be an absolute https URL without credentials, query or fragment.');
+      throw sdkError(new Error('A365_PURVIEW_DLP_GRAPH_BASE_URL must be an absolute https URL without credentials, query or fragment.'));
     }
 
     return trimTrailingSlashes(`${url.origin}${url.pathname}`);
@@ -621,11 +646,11 @@ export class PurviewDlpClient {
 
   private static requireArguments(agent: PurviewDlpAgentContext, tokenResolver: PurviewDlpTokenResolver): void {
     if (!isObject(agent)) {
-      throw new TypeError('agent is required.');
+      throw sdkError(new TypeError('agent is required.'));
     }
 
     if (typeof tokenResolver !== 'function') {
-      throw new TypeError('tokenResolver is required.');
+      throw sdkError(new TypeError('tokenResolver is required.'));
     }
   }
 }
