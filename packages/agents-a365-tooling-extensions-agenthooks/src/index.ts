@@ -2,4 +2,5 @@
 // Licensed under the MIT License.
 
 export * from './A365DefenderInterceptor';
+export * from './A365PurviewInterceptor';
 export * from './A365AgentHooks';
