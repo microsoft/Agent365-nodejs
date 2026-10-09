@@ -172,7 +172,8 @@ if (result && !result.allowed) { /* block: result.blockReason */ }
   When the context has no `sequence`, the client numbers each session's contexts itself, for the last 1000
   sessions; a session seen again after that resumes above every number given to a dropped session, so its
   sequence keeps increasing. `spec` is `agent-hooks/0.1`, the timestamp is UTC, `agent.framework` matches
-  `^[a-z0-9_-]+$`, `target` equals the point's field, `tool_call`/`tool_result` carry only spec members, and
+  `^[a-z0-9_-]+$`, `target` equals the point's field, `tool_call`/`tool_result` carry only spec members, the other
+  points' fields (`input`, `output`, `tool_call`, `tool_result` left over from another point) are never sent, and
   loosely filled optional fields (extensions, model, tools, messages, actor) are repaired or dropped. `tenant`
   carries only `id`, always the agent's tenant because Defender requires it to equal the token's tenant, and the
   host's `name` when the host's tenant id matches. `agent.id`, `actor`, `request_id` and `model` are filled from

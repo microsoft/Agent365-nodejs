@@ -397,6 +397,43 @@ describe('DefenderRtpClient', () => {
       expect(calls[0].body.custom_field).toEqual({ kept: ['a', 1, null, true] });
     });
 
+    const pointCases: Array<[string, Record<string, any>, string[]]> = [
+      ['input', inputContext('hello'), ['tool_call', 'tool_result', 'output']],
+      ['pre_tool_call', {
+        spec: 'agent-hooks/0.1', interception_point: 'pre_tool_call', timestamp: '2026-10-07T10:00:00.000Z', sequence: 7,
+        agent: { id: AGENT_ID, framework: 'agent365' }, session: { id: 's-stale' }, target: { query: 'x' },
+        tool_call: { id: 'call-1', name: 'SearchCatalog', args: { query: 'x' } },
+      }, ['input', 'output', 'tool_result']],
+      ['output', {
+        spec: 'agent-hooks/0.1', interception_point: 'output', timestamp: '2026-10-07T10:00:00.000Z', sequence: 8,
+        agent: { id: AGENT_ID, framework: 'agent365' }, session: { id: 's-stale' },
+        target: { content: 'reply' }, output: { content: 'reply' },
+      }, ['input', 'tool_call', 'tool_result']],
+    ];
+
+    it.each(pointCases)('does not copy the other points\' fields at %s', async (_point, context, stale) => {
+      const { client, calls, tokens } = create(allow);
+      const leftovers: Record<string, unknown> = {
+        input: { content: 'stale', role: 'user', provider_meta: { trace: 'x' } },
+        output: { content: 'stale', provider_meta: { trace: 'x' } },
+        tool_call: { id: 'call-0', name: 'OldTool', args: {}, provider_meta: { trace: 'x' } },
+        tool_result: { value: 'stale', is_error: false, provider_meta: { trace: 'x' } },
+      };
+
+      const result = await client.evaluateHookContext(
+        { ...context, ...Object.fromEntries(stale.map((field) => [field, leftovers[field]])) },
+        AGENT,
+        tokens.resolve,
+      );
+
+      const body = calls[0].body;
+      expect(contractErrors(body)).toEqual([]);
+      for (const field of stale) {
+        expect(body).not.toHaveProperty(field);
+      }
+      expect(result).toMatchObject({ allowed: true, evaluated: true });
+    });
+
     it('does not split a surrogate pair when clamping', async () => {
       const marked = create(allow, { defenderRtpMaxContentCharacters: () => 30 });
       const cut = create(allow, { defenderRtpMaxContentCharacters: () => 4 });

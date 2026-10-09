@@ -41,19 +41,15 @@ const MIN_TOOL_DECLARATION_COST = 1 + 'name'.length + 1;
 /** The most tool declarations searched, by name only, for the called tool's. */
 const MAX_CALLED_TOOL_SCAN = 10_000;
 
-/** Fields rebuilt or copied whole; any other top-level field shares what is left of the budget. */
-const BUILT_FIELDS: ReadonlySet<string> = new Set([
+/**
+ * The agent-hooks members the copy builds itself, as .NET's `KnownMembers`: the active point's field is
+ * rebuilt, the other points' fields are never sent, and any other top-level field shares what is left of
+ * the budget.
+ */
+const KNOWN_MEMBERS: ReadonlySet<string> = new Set([
   'spec', 'interception_point', 'timestamp', 'sequence', 'agent', 'session', 'target', 'tenant', 'actor',
-  'request_id', 'model', 'trace', 'tools', 'extensions', 'messages',
+  'request_id', 'model', 'trace', 'tools', 'extensions', 'messages', 'input', 'output', 'tool_call', 'tool_result',
 ]);
-
-/** The fields that carry each point's content. */
-const POINT_FIELDS: Readonly<Record<DefenderRtpInterceptionPoint, readonly string[]>> = {
-  input: ['input'],
-  output: ['output'],
-  pre_tool_call: ['tool_call'],
-  post_tool_call: ['tool_call', 'tool_result'],
-};
 
 /** A value that did not fit the budget (unlike `undefined`, which JSON leaves out). */
 const DROPPED: unique symbol = Symbol('dropped');
@@ -452,12 +448,12 @@ export class DefenderRtpClient {
     }
 
     // Other fields are copied as they are, without replacing a field built above, reading no more of
-    // them than the budget could hold.
-    const built = new Set([...BUILT_FIELDS, ...POINT_FIELDS[point]]);
-    const names = new Set([...built, ...Object.keys(hook)]);
+    // them than the budget could hold. The other points' fields are never copied: they would carry
+    // members Defender rejects at this point.
+    const names = new Set([...KNOWN_MEMBERS, ...Object.keys(hook)]);
     let unread = rest.remaining;
     for (const key in source) {
-      if (!Object.prototype.hasOwnProperty.call(source, key) || built.has(key)) {
+      if (!Object.prototype.hasOwnProperty.call(source, key) || KNOWN_MEMBERS.has(key)) {
         continue;
       }
 

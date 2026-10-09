@@ -80,9 +80,10 @@ Like any other failure, a `403` follows the fail mode.
 
 - Identity and protocol fields (`spec`, the agent, session, tenant, actor, sequence, request and tool call ids) are
   kept or filled in, and normalized where Defender requires it: a UTC timestamp, a lowercase framework name,
-  `tenant.id` set to the agent's tenant, and `target` equal to the point's field. Optional fields of another shape
-  (for example a `model` that is a string) are left out rather than failing the evaluation, and a `request_id` that
-  isn't a string falls back to the agent's request id, like a missing one.
+  `tenant.id` set to the agent's tenant, and `target` equal to the point's field. Only the active point's field is
+  sent: an `input`, `output`, `tool_call` or `tool_result` left over from another point is left out. Optional fields
+  of another shape (for example a `model` that is a string) are left out rather than failing the evaluation, and a
+  `request_id` that isn't a string falls back to the agent's request id, like a missing one.
 - Every string and object key is well formed: a lone UTF-16 surrogate becomes U+FFFD, because Defender's JSON
   parser rejects it and the request would fail. When two keys of one object become equal that way, only the first
   is sent; in the content under decision, that makes the copy incomplete (see [Verdicts](#verdicts)).
