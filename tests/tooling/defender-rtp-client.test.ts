@@ -1564,6 +1564,16 @@ describe('DefenderRtpClient', () => {
         .toThrow('ENABLE_A365_DEFENDER_RTP must be true or false (or 1/0, yes/no, on/off).');
     });
 
+    it.each(['A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS', 'A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS'])(
+      'rejects a %s that is not a whole number at construction, rather than reading 10s as 10',
+      (variable) => {
+        process.env[variable] = '10s';
+
+        expect(() => new DefenderRtpClient({ configProvider: defenderConfiguration() }))
+          .toThrow(`${variable} must be a whole number.`);
+      },
+    );
+
     it('checks the endpoint again when the configuration changes', async () => {
       let enabled = false;
       const endpoint = fakeEndpoint(allow);

@@ -68,6 +68,23 @@ function normalizeUrl(url: string): string {
 }
 
 /**
+ * The environment variable as a whole number, or undefined when it is unset or blank. Anything else throws,
+ * unlike `parseInt`, which reads `10s` as 10.
+ */
+function wholeNumber(name: string): number | undefined {
+  const value = process.env[name]?.trim();
+  if (!value) {
+    return undefined;
+  }
+
+  if (!/^\d+$/.test(value)) {
+    throw new Error(`${name} must be a whole number.`);
+  }
+
+  return Number(value);
+}
+
+/**
  * Configuration for tooling package.
  * Inherits runtime settings and adds tooling-specific settings.
  */
@@ -179,14 +196,14 @@ export class ToolingConfiguration extends RuntimeConfiguration {
   /**
    * Deadline in milliseconds of each Defender evaluation, token acquisition included (default 10000).
    * At most 2147481647: Node fires a longer timer after 1 ms, which would fail every evaluation.
+   * `A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS` must be a whole number: a value such as `10s` throws instead of
+   * becoming 10 ms, which would time out every evaluation.
    */
   get defenderRtpTimeoutMilliseconds(): number {
     const override = this.toolingOverrides.defenderRtpTimeoutMilliseconds?.();
     const timeout = override
-      ?? RuntimeConfiguration.parseEnvInt(
-        process.env.A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS,
-        DEFAULT_DEFENDER_RTP_TIMEOUT_MILLISECONDS,
-      );
+      ?? wholeNumber('A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS')
+      ?? DEFAULT_DEFENDER_RTP_TIMEOUT_MILLISECONDS;
 
     if (!Number.isInteger(timeout) || timeout <= 0 || timeout > MAX_DEFENDER_RTP_TIMEOUT_MILLISECONDS) {
       throw new Error(`defenderRtpTimeoutMilliseconds must be a positive integer of at most ${MAX_DEFENDER_RTP_TIMEOUT_MILLISECONDS}.`);
@@ -221,15 +238,14 @@ export class ToolingConfiguration extends RuntimeConfiguration {
    * to this length, ending with a `...[truncated N chars]` marker when the marker fits. When the content
    * under decision is cut, Defender's allow of the copy does not cover it, so the action follows the
    * fail mode; raise the limit for agents that handle long content. Identifiers and protocol fields are
-   * sent unchanged.
+   * sent unchanged. `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` must be a whole number: a value such as
+   * `20k` throws instead of becoming 20.
    */
   get defenderRtpMaxContentCharacters(): number {
     const override = this.toolingOverrides.defenderRtpMaxContentCharacters?.();
     const maximum = override
-      ?? RuntimeConfiguration.parseEnvInt(
-        process.env.A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS,
-        DEFAULT_DEFENDER_RTP_MAX_CONTENT_CHARACTERS,
-      );
+      ?? wholeNumber('A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS')
+      ?? DEFAULT_DEFENDER_RTP_MAX_CONTENT_CHARACTERS;
 
     if (!Number.isInteger(maximum) || maximum <= 0) {
       throw new Error('defenderRtpMaxContentCharacters must be a positive integer.');

@@ -87,14 +87,56 @@ describe('Defender RTP tooling configuration', () => {
     );
   });
 
-  it('falls back to the defaults for non-numeric values and rejects non-positive ones', () => {
-    process.env.A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS = 'soon';
-    expect(new ToolingConfiguration().defenderRtpTimeoutMilliseconds).toBe(10000);
-
+  it('rejects non-positive values', () => {
     expect(() => new ToolingConfiguration({ defenderRtpTimeoutMilliseconds: () => 0 }).defenderRtpTimeoutMilliseconds)
       .toThrow('defenderRtpTimeoutMilliseconds must be a positive integer of at most 2147481647.');
     expect(() => new ToolingConfiguration({ defenderRtpMaxContentCharacters: () => -1 }).defenderRtpMaxContentCharacters)
       .toThrow('defenderRtpMaxContentCharacters must be a positive integer.');
+
+    process.env.A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS = '0';
+    process.env.A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS = '0';
+    expect(() => new ToolingConfiguration().defenderRtpTimeoutMilliseconds)
+      .toThrow('defenderRtpTimeoutMilliseconds must be a positive integer of at most 2147481647.');
+    expect(() => new ToolingConfiguration().defenderRtpMaxContentCharacters)
+      .toThrow('defenderRtpMaxContentCharacters must be a positive integer.');
+  });
+
+  const wholeNumberSettings: Array<[string, 'defenderRtpTimeoutMilliseconds' | 'defenderRtpMaxContentCharacters', number]> = [
+    ['A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS', 'defenderRtpTimeoutMilliseconds', 10000],
+    ['A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS', 'defenderRtpMaxContentCharacters', 20000],
+  ];
+
+  describe.each(wholeNumberSettings)('%s', (variable, property, defaultValue) => {
+    it.each(['10s', '1e4', '10.5', '-5', '+5', '0x10', '1_000', 'soon'])(
+      'rejects %j, which parseInt would read as a number or NaN',
+      (value) => {
+        process.env[variable] = value;
+
+        expect(() => new ToolingConfiguration()[property]).toThrow(`${variable} must be a whole number.`);
+      },
+    );
+
+    it.each(['', '   '])('uses the default for a blank value (%j)', (value) => {
+      process.env[variable] = value;
+
+      expect(new ToolingConfiguration()[property]).toBe(defaultValue);
+    });
+
+    it('reads a whole number, ignoring surrounding spaces', () => {
+      process.env[variable] = ' 1500 ';
+
+      expect(new ToolingConfiguration()[property]).toBe(1500);
+    });
+
+    it('prefers an override to an invalid environment value', () => {
+      process.env[variable] = '10s';
+      const configuration = new ToolingConfiguration({
+        defenderRtpTimeoutMilliseconds: () => 1500,
+        defenderRtpMaxContentCharacters: () => 1500,
+      });
+
+      expect(configuration[property]).toBe(1500);
+    });
   });
 
   it('rejects a timeout beyond the timer range, which would fire after 1 ms', () => {

@@ -202,9 +202,9 @@ Defender logs each evaluation under it. A `400` reports the failed validation ru
 | `ENABLE_A365_DEFENDER_RTP` | `true` (or 1, yes, on) to call Defender; `false` (or 0, no, off) or unset leaves it off, and the interceptor allows everything without a call. Any other value fails at startup |
 | `A365_DEFENDER_RTP_ENDPOINT` | the prevention endpoint, `https://<host>/v1/protection/evaluate` (required when enabled; `https` only) |
 | `A365_DEFENDER_RTP_FAIL_MODE` | `closed` blocks when no verdict is obtained; `open` (the default) allows. Any other value is rejected, so a typo can't silently fail open |
-| `A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS` | deadline of each evaluation, token acquisition included (default 10000, at most 2147481647) |
+| `A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS` | deadline of each evaluation, token acquisition included: a whole number (default 10000, at most 2147481647); a value such as `10s` fails at startup |
 | `A365_DEFENDER_RTP_AUTHENTICATION_SCOPE` | overrides the Defender API scope |
-| `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` | the longest content string sent (default 20000); the whole copy carries at most four times as much content. Content under decision that does not fit follows the fail mode unless Defender blocks it, so raise it for long-content agents. Identifiers and protocol fields are sent unchanged |
+| `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` | the longest content string sent, a whole number (default 20000); the whole copy carries at most four times as much content. Content under decision that does not fit follows the fail mode unless Defender blocks it, so raise it for long-content agents. Identifiers and protocol fields are sent unchanged |
 
 The same settings can be supplied per tenant or per request through a `ToolingConfiguration` with
 override functions, passed as `configProvider` to `DefenderRtpClient` and `createProtectionEmitter`.
