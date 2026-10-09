@@ -425,8 +425,8 @@ const customConfig = new ToolingConfiguration({
 | `purviewDlpGraphBaseUrl` | `A365_PURVIEW_DLP_GRAPH_BASE_URL` | `https://graph.microsoft.com/v1.0` | Microsoft Graph base URL of `processContent`; the client requires an absolute `https` URL |
 | `purviewDlpAuthenticationScope` | `A365_PURVIEW_DLP_AUTHENTICATION_SCOPE` | `https://graph.microsoft.com/.default` | OAuth scope of the Microsoft Graph token |
 | `purviewDlpFailClosed` | `A365_PURVIEW_DLP_FAIL_MODE` | `false` (open) | `closed` blocks when no verdict is obtained; values other than `open` and `closed` throw |
-| `purviewDlpTimeoutMilliseconds` | `A365_PURVIEW_DLP_TIMEOUT_MILLISECONDS` | `10000` | Timeout of each evaluation, token acquisition included; at most 2147481647 |
-| `purviewDlpMaxContentCharacters` | `A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS` | `100000` | Maximum characters of text sent; longer text is sent truncated and, unless Purview blocks it, follows the fail mode |
+| `purviewDlpTimeoutMilliseconds` | `A365_PURVIEW_DLP_TIMEOUT_MILLISECONDS` | `10000` | Timeout of each evaluation, token acquisition included; at most 2147481647; the variable must be a whole number |
+| `purviewDlpMaxContentCharacters` | `A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS` | `100000` | Maximum characters of text sent; longer text is sent truncated and, unless Purview blocks it, follows the fail mode; the variable must be a whole number |
 | `purviewDlpResponseMode` | `A365_PURVIEW_DLP_RESPONSE_MODE` | `audit` | `audit` or `enforce` handling of replies; other values throw |
 | `clusterCategory` | `CLUSTER_CATEGORY` | `prod` | (Inherited) Environment cluster |
 | `isDevelopmentEnvironment` | - | Derived | (Inherited) true if cluster is 'local' or 'dev' |
@@ -475,8 +475,8 @@ src/
 | `A365_PURVIEW_DLP_GRAPH_BASE_URL` | Microsoft Graph base URL of `processContent` (absolute `https`) | `https://graph.microsoft.com/v1.0` |
 | `A365_PURVIEW_DLP_AUTHENTICATION_SCOPE` | OAuth scope of the Microsoft Graph token | `https://graph.microsoft.com/.default` |
 | `A365_PURVIEW_DLP_FAIL_MODE` | `closed` blocks when no verdict is obtained; values other than `open` and `closed` are rejected | `open` |
-| `A365_PURVIEW_DLP_TIMEOUT_MILLISECONDS` | Timeout of each evaluation (at most 2147481647) | `10000` |
-| `A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS` | Maximum characters of text sent to Purview; longer text is sent truncated and, unless Purview blocks it, follows the fail mode | `100000` |
+| `A365_PURVIEW_DLP_TIMEOUT_MILLISECONDS` | Timeout of each evaluation (at most 2147481647; values that are not whole numbers are rejected) | `10000` |
+| `A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS` | Maximum characters of text sent to Purview; longer text is sent truncated and, unless Purview blocks it, follows the fail mode (values that are not whole numbers are rejected) | `100000` |
 | `A365_PURVIEW_DLP_RESPONSE_MODE` | `audit` sends replies without waiting and never blocks them; `enforce` blocks them like prompts; other values are rejected | `audit` |
 
 ## Error Handling

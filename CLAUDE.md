@@ -224,8 +224,8 @@ The keyword "Kairo" is legacy and should not appear in any code. Flag and remove
 | `A365_PURVIEW_DLP_GRAPH_BASE_URL` | Microsoft Graph base URL of `processContent` | https URL (default: `https://graph.microsoft.com/v1.0`) |
 | `A365_PURVIEW_DLP_AUTHENTICATION_SCOPE` | Override the Microsoft Graph token scope | Scope string (default: `https://graph.microsoft.com/.default`) |
 | `A365_PURVIEW_DLP_FAIL_MODE` | Behavior when no Purview verdict is obtained | `open` (default), `closed`; other values are rejected |
-| `A365_PURVIEW_DLP_TIMEOUT_MILLISECONDS` | Timeout of each Purview evaluation | Number (default: 10000, at most 2147481647) |
-| `A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS` | Max characters of text sent to Purview; longer text is sent truncated and follows the fail mode unless blocked | Number (default: 100000) |
+| `A365_PURVIEW_DLP_TIMEOUT_MILLISECONDS` | Timeout of each Purview evaluation | Whole number (default: 10000, at most 2147481647); other values are rejected |
+| `A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS` | Max characters of text sent to Purview; longer text is sent truncated and follows the fail mode unless blocked | Whole number (default: 100000); other values are rejected |
 | `A365_PURVIEW_DLP_RESPONSE_MODE` | How replies are handled | `audit` (default, never blocked), `enforce`; other values are rejected |
 | `A365_OBSERVABILITY_SCOPES_OVERRIDE` | Override observability auth scopes | Space-separated scope strings |
 | `ENABLE_A365_OBSERVABILITY_EXPORTER` | Enable Agent365 exporter | `true`, `false` (default) |

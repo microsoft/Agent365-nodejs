@@ -97,7 +97,7 @@ function wholeNumber(name: string): number | undefined {
   }
 
   if (!/^\d+$/.test(value)) {
-    throw new Error(`${name} must be a whole number.`);
+    throw sdkError(new Error(`${name} must be a whole number.`));
   }
 
   return Number(value);
@@ -325,14 +325,14 @@ export class ToolingConfiguration extends RuntimeConfiguration {
   /**
    * Deadline in milliseconds of each Purview evaluation, token acquisition included (default 10000).
    * At most 2147481647: Node fires a longer timer after 1 ms, which would fail every evaluation.
+   * `A365_PURVIEW_DLP_TIMEOUT_MILLISECONDS` must be a whole number: a value such as `10s` throws instead of
+   * becoming 10 ms, which would time out every evaluation.
    */
   get purviewDlpTimeoutMilliseconds(): number {
     const override = this.toolingOverrides.purviewDlpTimeoutMilliseconds?.();
     const timeout = override
-      ?? RuntimeConfiguration.parseEnvInt(
-        process.env.A365_PURVIEW_DLP_TIMEOUT_MILLISECONDS,
-        DEFAULT_PURVIEW_DLP_TIMEOUT_MILLISECONDS,
-      );
+      ?? wholeNumber('A365_PURVIEW_DLP_TIMEOUT_MILLISECONDS')
+      ?? DEFAULT_PURVIEW_DLP_TIMEOUT_MILLISECONDS;
 
     if (!Number.isInteger(timeout) || timeout <= 0 || timeout > MAX_PURVIEW_DLP_TIMEOUT_MILLISECONDS) {
       throw sdkError(new Error(`purviewDlpTimeoutMilliseconds must be a positive integer of at most ${MAX_PURVIEW_DLP_TIMEOUT_MILLISECONDS}.`));
@@ -365,15 +365,13 @@ export class ToolingConfiguration extends RuntimeConfiguration {
   /**
    * Maximum characters of the text sent to Purview (default 100000). Longer text is cut and sent with
    * `isTruncated: true`; Purview's block of it stands, but its allow does not cover the rest, so the
-   * content then follows the fail mode.
+   * content then follows the fail mode. `A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS` must be a whole number.
    */
   get purviewDlpMaxContentCharacters(): number {
     const override = this.toolingOverrides.purviewDlpMaxContentCharacters?.();
     const maximum = override
-      ?? RuntimeConfiguration.parseEnvInt(
-        process.env.A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS,
-        DEFAULT_PURVIEW_DLP_MAX_CONTENT_CHARACTERS,
-      );
+      ?? wholeNumber('A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS')
+      ?? DEFAULT_PURVIEW_DLP_MAX_CONTENT_CHARACTERS;
 
     if (!Number.isInteger(maximum) || maximum <= 0) {
       throw sdkError(new Error('purviewDlpMaxContentCharacters must be a positive integer.'));

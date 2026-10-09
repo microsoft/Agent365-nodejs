@@ -108,7 +108,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `A365_PURVIEW_DLP_FAIL_MODE`, `A365_PURVIEW_DLP_TIMEOUT_MILLISECONDS` (default 10000),
   `A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS` and `A365_PURVIEW_DLP_RESPONSE_MODE` (`audit` or
   `enforce`, default `audit`), or the matching `ToolingConfiguration` overrides; unknown values of
-  the enable flag and the modes are rejected. No new dependency.
+  the enable flag and the modes, and number settings that are not whole numbers, are rejected. No new
+  dependency.
 
 ### Added (`@microsoft/agents-a365-tooling-extensions-agenthooks`, Purview)
 

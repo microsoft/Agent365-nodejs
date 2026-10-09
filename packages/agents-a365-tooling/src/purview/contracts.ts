@@ -130,8 +130,10 @@ export interface PurviewDlpEvaluationResult {
   /** Whether Purview returned a verdict. */
   evaluated: boolean;
   /**
-   * Whether the text was longer than `A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS` and was sent cut. A block
-   * stands; an allow does not cover the rest, so `allowed` then follows the fail mode and `error` says why.
+   * Whether Purview saw only part of the content, so a block stands but an allow does not cover the rest:
+   * `allowed` then follows the fail mode and `error` says why. That is the case when the text was longer than
+   * `A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS` and was sent cut, and when the caller marked the text as only the
+   * first part of the content (`PurviewDlpEvaluateOptions.truncated`), even if it was sent whole.
    */
   truncated: boolean;
   /** The Purview activity that was evaluated. */

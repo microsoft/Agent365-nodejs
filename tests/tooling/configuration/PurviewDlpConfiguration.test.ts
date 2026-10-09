@@ -86,14 +86,16 @@ describe('Purview DLP tooling configuration', () => {
     expect(configuration.purviewDlpResponseMode).toBe('audit');
   });
 
-  it('falls back to the defaults for blank overrides and non-numeric values, and rejects non-positive ones', () => {
-    process.env.A365_PURVIEW_DLP_TIMEOUT_MILLISECONDS = 'soon';
+  it('falls back to the defaults for blank values, and rejects non-positive ones', () => {
+    process.env.A365_PURVIEW_DLP_TIMEOUT_MILLISECONDS = ' ';
+    process.env.A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS = '';
     const configuration = new ToolingConfiguration({
       purviewDlpGraphBaseUrl: () => ' ',
       purviewDlpAuthenticationScope: () => ' ',
     });
 
     expect(configuration.purviewDlpTimeoutMilliseconds).toBe(10000);
+    expect(configuration.purviewDlpMaxContentCharacters).toBe(100000);
     expect(configuration.purviewDlpGraphBaseUrl).toBe(DEFAULT_PURVIEW_DLP_GRAPH_BASE_URL);
     expect(configuration.purviewDlpAuthenticationScope).toBe(DEFAULT_PURVIEW_DLP_AUTHENTICATION_SCOPE);
     expect(() => new ToolingConfiguration({ purviewDlpTimeoutMilliseconds: () => 0 }).purviewDlpTimeoutMilliseconds)
@@ -102,6 +104,30 @@ describe('Purview DLP tooling configuration', () => {
       .toThrow('purviewDlpMaxContentCharacters must be a positive integer.');
     expect(() => new ToolingConfiguration({ purviewDlpMaxContentCharacters: () => 1.5 }).purviewDlpMaxContentCharacters)
       .toThrow('purviewDlpMaxContentCharacters must be a positive integer.');
+
+    process.env.A365_PURVIEW_DLP_TIMEOUT_MILLISECONDS = '0';
+    expect(() => new ToolingConfiguration().purviewDlpTimeoutMilliseconds)
+      .toThrow('purviewDlpTimeoutMilliseconds must be a positive integer of at most 2147481647.');
+  });
+
+  it.each(['soon', '10s', '10seconds', '1.5', '-5', '1e3', '+5', '0x10'])(
+    'rejects a number setting that is not a whole number (%s), rather than reading its leading digits',
+    (value) => {
+      process.env.A365_PURVIEW_DLP_TIMEOUT_MILLISECONDS = value;
+      process.env.A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS = value;
+      const configuration = new ToolingConfiguration();
+
+      expect(() => configuration.purviewDlpTimeoutMilliseconds).toThrow('A365_PURVIEW_DLP_TIMEOUT_MILLISECONDS must be a whole number.');
+      expect(() => configuration.purviewDlpMaxContentCharacters).toThrow('A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS must be a whole number.');
+    },
+  );
+
+  it('reads whole numbers with surrounding spaces or leading zeros', () => {
+    process.env.A365_PURVIEW_DLP_TIMEOUT_MILLISECONDS = ' 2500 ';
+    process.env.A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS = '0100';
+
+    expect(new ToolingConfiguration().purviewDlpTimeoutMilliseconds).toBe(2500);
+    expect(new ToolingConfiguration().purviewDlpMaxContentCharacters).toBe(100);
   });
 
   it('rejects a timeout beyond the timer range, which would fire after 1 ms', () => {
