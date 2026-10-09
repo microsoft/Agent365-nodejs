@@ -4,17 +4,23 @@
 import { RuntimeConfiguration } from '@microsoft/agents-a365-runtime';
 import { ToolingConfigurationOptions } from './ToolingConfigurationOptions';
 import { MCPServerConfig } from '../contracts';
+import type { PurviewDlpResponseMode } from '../purview/contracts';
 
 // Constants for tooling-specific settings
 const MCP_PLATFORM_PROD_BASE_URL = 'https://agent365.svc.cloud.microsoft';
 const PROD_MCP_PLATFORM_AUTHENTICATION_SCOPE = 'ea9ffc3e-8a23-4a7d-836d-234d7c7565c1/.default';
 const DEFAULT_DEFENDER_RTP_TIMEOUT_MILLISECONDS = 10000;
 const DEFAULT_DEFENDER_RTP_MAX_CONTENT_CHARACTERS = 20000;
+const DEFAULT_PURVIEW_DLP_TIMEOUT_MILLISECONDS = 10000;
+const DEFAULT_PURVIEW_DLP_MAX_CONTENT_CHARACTERS = 100000;
 /**
  * The longest Defender timeout: Node's largest timer delay (a longer one fires after 1 ms), less the two
  * seconds the protection emitter adds.
  */
 const MAX_DEFENDER_RTP_TIMEOUT_MILLISECONDS = 2_147_483_647 - 2_000;
+/** The longest Purview timeout, for the same reason as the Defender one. */
+const MAX_PURVIEW_DLP_TIMEOUT_MILLISECONDS = 2_147_483_647 - 2_000;
+const PURVIEW_DLP_RESPONSE_MODES: ReadonlySet<string> = new Set(['audit', 'enforce']);
 
 /**
  * The largest Defender content limit, as in the .NET (int32) and Python SDKs: the client's budgets are
@@ -27,6 +33,12 @@ export const DEFENDER_RTP_API_APP_ID = '86a21212-634e-4553-b3d6-e477e4c9d9ec';
 
 /** Default Defender RTP token scope: the Defender API. */
 export const DEFAULT_DEFENDER_RTP_AUTHENTICATION_SCOPE = `api://${DEFENDER_RTP_API_APP_ID}/.default`;
+
+/** Default Microsoft Graph base URL of the Purview `processContent` call. */
+export const DEFAULT_PURVIEW_DLP_GRAPH_BASE_URL = 'https://graph.microsoft.com/v1.0';
+
+/** Default Purview DLP token scope: Microsoft Graph (`Content.Process.User` for a delegated token). */
+export const DEFAULT_PURVIEW_DLP_AUTHENTICATION_SCOPE = 'https://graph.microsoft.com/.default';
 
 /**
  * Resolve the OAuth scope to request for a given MCP server.
@@ -257,6 +269,132 @@ export class ToolingConfiguration extends RuntimeConfiguration {
       throw new Error(`defenderRtpMaxContentCharacters must be a positive integer of at most ${MAX_DEFENDER_RTP_MAX_CONTENT_CHARACTERS}.`);
     }
     return maximum;
+  }
+
+  /**
+   * Whether Microsoft Purview data loss prevention (DLP) is enabled. When false, `PurviewDlpClient`
+   * evaluates nothing and makes no calls. `ENABLE_A365_PURVIEW_DLP` accepts true/false, 1/0, yes/no or
+   * on/off (any case; blank means false); any other value throws.
+   */
+  get isPurviewDlpEnabled(): boolean {
+    const override = this.toolingOverrides.isPurviewDlpEnabled?.();
+    if (override !== undefined) return override;
+
+    // Strict, so a typo fails at startup instead of silently turning protection off.
+    const value = process.env.ENABLE_A365_PURVIEW_DLP?.trim().toLowerCase();
+    if (!value || ['false', '0', 'no', 'off'].includes(value)) {
+      return false;
+    }
+
+    if (['true', '1', 'yes', 'on'].includes(value)) {
+      return true;
+    }
+
+    throw new Error('ENABLE_A365_PURVIEW_DLP must be true or false (or 1/0, yes/no, on/off).');
+  }
+
+  /**
+   * Microsoft Graph base URL of the Purview `processContent` call, an absolute https URL (default
+   * `https://graph.microsoft.com/v1.0`). `PurviewDlpClient` rejects any other scheme.
+   */
+  get purviewDlpGraphBaseUrl(): string {
+    const override = this.toolingOverrides.purviewDlpGraphBaseUrl?.();
+    if (override?.trim()) return normalizeUrl(override);
+
+    const envValue = process.env.A365_PURVIEW_DLP_GRAPH_BASE_URL?.trim();
+    if (envValue) return normalizeUrl(envValue);
+
+    return DEFAULT_PURVIEW_DLP_GRAPH_BASE_URL;
+  }
+
+  /**
+   * OAuth scope of the Purview DLP token (default `https://graph.microsoft.com/.default`). A delegated
+   * token must carry `Content.Process.User`.
+   */
+  get purviewDlpAuthenticationScope(): string {
+    const override = this.toolingOverrides.purviewDlpAuthenticationScope?.()?.trim();
+    if (override) return override;
+
+    const envValue = process.env.A365_PURVIEW_DLP_AUTHENTICATION_SCOPE?.trim();
+    if (envValue) return envValue;
+
+    return DEFAULT_PURVIEW_DLP_AUTHENTICATION_SCOPE;
+  }
+
+  /**
+   * Deadline in milliseconds of each Purview evaluation, token acquisition included (default 10000).
+   * At most 2147481647: Node fires a longer timer after 1 ms, which would fail every evaluation.
+   */
+  get purviewDlpTimeoutMilliseconds(): number {
+    const override = this.toolingOverrides.purviewDlpTimeoutMilliseconds?.();
+    const timeout = override
+      ?? RuntimeConfiguration.parseEnvInt(
+        process.env.A365_PURVIEW_DLP_TIMEOUT_MILLISECONDS,
+        DEFAULT_PURVIEW_DLP_TIMEOUT_MILLISECONDS,
+      );
+
+    if (!Number.isInteger(timeout) || timeout <= 0 || timeout > MAX_PURVIEW_DLP_TIMEOUT_MILLISECONDS) {
+      throw new Error(`purviewDlpTimeoutMilliseconds must be a positive integer of at most ${MAX_PURVIEW_DLP_TIMEOUT_MILLISECONDS}.`);
+    }
+    return timeout;
+  }
+
+  /**
+   * Whether an evaluation that returns no verdict (timeout, transport, authentication, HTTP or
+   * processing error) blocks the content (`A365_PURVIEW_DLP_FAIL_MODE=closed`). Defaults to false:
+   * fail open. `A365_PURVIEW_DLP_FAIL_MODE` accepts `open` or `closed` (any case); any other value
+   * throws, so a typo cannot silently turn fail-closed into fail-open.
+   */
+  get purviewDlpFailClosed(): boolean {
+    const override = this.toolingOverrides.purviewDlpFailClosed?.();
+    if (override !== undefined) return override;
+
+    const mode = process.env.A365_PURVIEW_DLP_FAIL_MODE?.trim().toLowerCase();
+    if (!mode || mode === 'open') {
+      return false;
+    }
+
+    if (mode === 'closed') {
+      return true;
+    }
+
+    throw new Error("A365_PURVIEW_DLP_FAIL_MODE must be 'open' or 'closed'.");
+  }
+
+  /**
+   * Maximum characters of the text sent to Purview (default 100000). Longer text is cut and sent with
+   * `isTruncated: true`; Purview's block of it stands, but its allow does not cover the rest, so the
+   * content then follows the fail mode.
+   */
+  get purviewDlpMaxContentCharacters(): number {
+    const override = this.toolingOverrides.purviewDlpMaxContentCharacters?.();
+    const maximum = override
+      ?? RuntimeConfiguration.parseEnvInt(
+        process.env.A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS,
+        DEFAULT_PURVIEW_DLP_MAX_CONTENT_CHARACTERS,
+      );
+
+    if (!Number.isInteger(maximum) || maximum <= 0) {
+      throw new Error('purviewDlpMaxContentCharacters must be a positive integer.');
+    }
+    return maximum;
+  }
+
+  /**
+   * How the agent's reply (`downloadText`) is handled: `audit` (default) sends it to Purview without
+   * waiting and never blocks it, as Purview DLP restricts only prompts (`uploadText`) of custom AI apps;
+   * `enforce` waits for Purview and blocks the reply like a prompt. `A365_PURVIEW_DLP_RESPONSE_MODE`
+   * accepts `audit` or `enforce` (any case); any other value throws.
+   */
+  get purviewDlpResponseMode(): PurviewDlpResponseMode {
+    const override = this.toolingOverrides.purviewDlpResponseMode?.();
+    const mode = override !== undefined
+      ? override
+      : process.env.A365_PURVIEW_DLP_RESPONSE_MODE?.trim().toLowerCase() || 'audit';
+    if (!PURVIEW_DLP_RESPONSE_MODES.has(mode)) {
+      throw new Error("A365_PURVIEW_DLP_RESPONSE_MODE must be 'audit' or 'enforce'.");
+    }
+    return mode as PurviewDlpResponseMode;
   }
 
   /**

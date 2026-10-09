@@ -84,6 +84,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   cannot be verified (no verdict, no agent identity, or an allow of truncated content) follow the
   fail mode. Requires Node.js 20 or later.
 
+### Added (`@microsoft/agents-a365-tooling`, Purview)
+
+- **Microsoft Purview data loss prevention client (opt-in)** - `PurviewDlpClient.evaluate` sends
+  the text of a prompt (`uploadText`) or a reply (`downloadText`) to the Microsoft Graph
+  `processContent` API (`/me/dataSecurityAndGovernance/processContent`, or `/users/{id}/...`), which
+  applies the tenant's DLP policies for the agent's application and records the interaction for
+  audit. A policy action with `restrictionAction: block` or `action: blockAccess` blocks the content; other actions allow it
+  and are counted. The request is one conversation message with a non-empty name, the conversation's
+  `correlationId` and `sequenceNumber`, the agent (`agents[0]` with its blueprint) and the blueprint's
+  application id as the `applicationLocation`; every call sends a new `client-request-id`.
+- `PurviewDlpTokenResolvers.fromAgenticUser` uses the agentic user's delegated Microsoft Graph token
+  from the Agents SDK connection (`getAgenticUserToken`, needs `Content.Process.User`), cached per
+  tenant, agent, agentic user and scope; `fromAccessTokenProvider` uses a host's token, for `/me` or
+  for a named user. The Graph base URL must be `https`, and the request does not follow a redirect.
+- Processing errors (reported with HTTP 200), non-2xx statuses, timeouts, transport errors and
+  responses of another shape follow `A365_PURVIEW_DLP_FAIL_MODE` (fail open by default); errors name
+  the failure or exception type only, never a response body or token. Text longer than
+  `A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS` (default 100000) is sent with `isTruncated: true`, and
+  Purview's allow of it follows the fail mode. `protectionScopes/compute` is not used.
+- Configured with `ENABLE_A365_PURVIEW_DLP`, `A365_PURVIEW_DLP_GRAPH_BASE_URL` (default
+  `https://graph.microsoft.com/v1.0`), `A365_PURVIEW_DLP_AUTHENTICATION_SCOPE`,
+  `A365_PURVIEW_DLP_FAIL_MODE`, `A365_PURVIEW_DLP_TIMEOUT_MILLISECONDS` (default 10000),
+  `A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS` and `A365_PURVIEW_DLP_RESPONSE_MODE` (`audit` or
+  `enforce`, default `audit`), or the matching `ToolingConfiguration` overrides; unknown values of
+  the enable flag and the modes are rejected. No new dependency.
+
+### Added (`@microsoft/agents-a365-tooling-extensions-agenthooks`, Purview)
+
+- **`A365PurviewInterceptor`** - An agent-hooks interceptor that evaluates the user's message at
+  `input` (`uploadText`, a block denies it with `purview:block`) and the reply at `output`
+  (`downloadText`: sent in the background and allowed at once in the default `audit` mode, awaited
+  in `enforce` mode), with a callback for each evaluation; `addA365Purview` registers it next to
+  `A365DefenderInterceptor` on one emitter. Contexts that cannot be verified follow the fail mode.
+  `createProtectionEmitter` accepts `purviewConfigProvider`, and its default interceptor timeout
+  covers the Purview timeout when Purview DLP is enabled; Defender-only emitters are unchanged.
+
 ## [1.0.0] - 2026-04-30
 
 ### Breaking Changes (`@microsoft/agents-a365-tooling`)

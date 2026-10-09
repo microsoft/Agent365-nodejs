@@ -83,8 +83,8 @@ packages/
 ├── agents-a365-observability-extensions-langchain/  # LangChain instrumentation
 ├── agents-a365-observability-extensions-openai/  # OpenAI instrumentation
 ├── agents-a365-notifications/              # Agent notification services
-├── agents-a365-tooling/                    # MCP server configuration, Defender RTP client
-├── agents-a365-tooling-extensions-agenthooks/  # agent-hooks interceptor for Defender RTP
+├── agents-a365-tooling/                    # MCP server configuration, Defender RTP and Purview DLP clients
+├── agents-a365-tooling-extensions-agenthooks/  # agent-hooks interceptors for Defender RTP and Purview DLP
 ├── agents-a365-tooling-extensions-claude/  # Claude/Anthropic integration
 ├── agents-a365-tooling-extensions-langchain/  # LangChain integration
 └── agents-a365-tooling-extensions-openai/  # OpenAI Agents SDK integration
@@ -177,6 +177,7 @@ MCP tool server discovery and configuration:
 - **`Utility`**: Header composition, token validation, URL construction
 - **Interfaces**: `MCPServerConfig`, `McpClientTool`, `ToolOptions`
 - **`DefenderRtpClient`**: Microsoft Defender for AI real-time protection (opt-in, `ENABLE_A365_DEFENDER_RTP`). `evaluateHookContext` sends a copy of an agent-hooks/0.1 context, fitted to Defender's request validation, to the Defender prevention endpoint at `input`, `pre_tool_call`, `post_tool_call` and `output`, with the agent identity's app-only token (`DefenderRtpTokenResolvers.fromAgenticConnection`) and a unique `x-ms-correlation-id`, and returns the verdict; failures follow `A365_DEFENDER_RTP_FAIL_MODE`. No agent-hooks dependency: `A365DefenderInterceptor` in `agents-a365-tooling-extensions-agenthooks` drives it from an agent-hooks emitter.
+- **`PurviewDlpClient`**: Microsoft Purview data loss prevention (opt-in, `ENABLE_A365_PURVIEW_DLP`). `evaluate` sends the text of a prompt (`uploadText`) or reply (`downloadText`) to Microsoft Graph `processContent` with the agentic user's delegated token (`PurviewDlpTokenResolvers.fromAgenticUser`, `/me`) or a host token (`fromAccessTokenProvider`) and a new `client-request-id`; a `restrictionAction: block` (or `action: blockAccess`) policy action blocks, and failures (including inline `processingErrors`) follow `A365_PURVIEW_DLP_FAIL_MODE`. `A365PurviewInterceptor` in `agents-a365-tooling-extensions-agenthooks` drives it at `input` and `output` (replies audited in the background by default, `A365_PURVIEW_DLP_RESPONSE_MODE`).
 
 ### Notifications (`@microsoft/agents-a365-notifications`)
 Extends `AgentApplication` with notification handlers via declaration merging:
@@ -219,6 +220,13 @@ The keyword "Kairo" is legacy and should not appear in any code. Flag and remove
 | `A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS` | Timeout of each Defender evaluation | Number (default: 10000, at most 2147481647) |
 | `A365_DEFENDER_RTP_AUTHENTICATION_SCOPE` | Override the Defender API token scope | Scope string |
 | `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` | Max characters of each content string sent to Defender; the request carries at most four times as much content | Number (default: 20000) |
+| `ENABLE_A365_PURVIEW_DLP` | Enable Purview data loss prevention (`PurviewDlpClient`) | `true`, `false` (default); also 1/0, yes/no, on/off; other values are rejected |
+| `A365_PURVIEW_DLP_GRAPH_BASE_URL` | Microsoft Graph base URL of `processContent` | https URL (default: `https://graph.microsoft.com/v1.0`) |
+| `A365_PURVIEW_DLP_AUTHENTICATION_SCOPE` | Override the Microsoft Graph token scope | Scope string (default: `https://graph.microsoft.com/.default`) |
+| `A365_PURVIEW_DLP_FAIL_MODE` | Behavior when no Purview verdict is obtained | `open` (default), `closed`; other values are rejected |
+| `A365_PURVIEW_DLP_TIMEOUT_MILLISECONDS` | Timeout of each Purview evaluation | Number (default: 10000, at most 2147481647) |
+| `A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS` | Max characters of text sent to Purview; longer text is sent truncated and follows the fail mode unless blocked | Number (default: 100000) |
+| `A365_PURVIEW_DLP_RESPONSE_MODE` | How replies are handled | `audit` (default, never blocked), `enforce`; other values are rejected |
 | `A365_OBSERVABILITY_SCOPES_OVERRIDE` | Override observability auth scopes | Space-separated scope strings |
 | `ENABLE_A365_OBSERVABILITY_EXPORTER` | Enable Agent365 exporter | `true`, `false` (default) |
 | `ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT` | Enable per-request export mode | `true`, `false` (default) |

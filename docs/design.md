@@ -186,7 +186,7 @@ Framework-specific instrumentations that integrate with the observability core:
 
 > **Detailed documentation**: [packages/agents-a365-tooling/docs/design.md](../packages/agents-a365-tooling/docs/design.md)
 
-MCP (Model Context Protocol) tool server configuration and discovery, and the Microsoft Defender for AI real-time protection client.
+MCP (Model Context Protocol) tool server configuration and discovery, the Microsoft Defender for AI real-time protection client, and the Microsoft Purview data loss prevention client.
 
 **Key Classes:**
 
@@ -196,6 +196,8 @@ MCP (Model Context Protocol) tool server configuration and discovery, and the Mi
 | `Utility` | Header composition, token validation, URL construction |
 | `DefenderRtpClient` | Send agent-hooks contexts to the Defender prevention endpoint and return its verdict (opt-in, `ENABLE_A365_DEFENDER_RTP`) |
 | `DefenderRtpTokenResolvers` | The agent identity's app-only Defender token from an Agents SDK connection |
+| `PurviewDlpClient` | Send prompt and reply text to Microsoft Purview DLP (Graph `processContent`) and return whether it may proceed (opt-in, `ENABLE_A365_PURVIEW_DLP`) |
+| `PurviewDlpTokenResolvers` | The agentic user's delegated Microsoft Graph token from an Agents SDK connection, or a host's token |
 
 **Interfaces:**
 
@@ -247,7 +249,7 @@ Framework-specific adapters for MCP tool integration, and the agent-hooks adapte
 
 | Package | Purpose | Design Doc |
 |---------|---------|------------|
-| `tooling-extensions-agenthooks` | agent-hooks interceptor for Microsoft Defender for AI real-time protection | [design.md](../packages/agents-a365-tooling-extensions-agenthooks/docs/design.md) |
+| `tooling-extensions-agenthooks` | agent-hooks interceptors for Microsoft Defender for AI real-time protection and Microsoft Purview data loss prevention | [design.md](../packages/agents-a365-tooling-extensions-agenthooks/docs/design.md) |
 | `tooling-extensions-claude` | Claude SDK integration | [design.md](../packages/agents-a365-tooling-extensions-claude/docs/design.md) |
 | `tooling-extensions-langchain` | LangChain integration | [design.md](../packages/agents-a365-tooling-extensions-langchain/docs/design.md) |
 | `tooling-extensions-openai` | OpenAI Agents SDK integration | [design.md](../packages/agents-a365-tooling-extensions-openai/docs/design.md) |

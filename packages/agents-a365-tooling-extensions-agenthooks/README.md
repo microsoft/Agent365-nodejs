@@ -22,6 +22,12 @@ verdict decides:
 Other points (`agent_startup`, model calls, `agent_shutdown`) are allowed without a call. The host acts on the
 emission record: `proceeds(record)` is false when the action must not run.
 
+`A365PurviewInterceptor` is an agent-hooks interceptor for Microsoft Purview data loss prevention (DLP): it sends the
+text of the user's message and of the reply to Purview through Microsoft Graph, which applies the tenant's DLP
+policies and records the interaction for audit (see
+[Microsoft Purview data loss prevention](#microsoft-purview-data-loss-prevention)). Both interceptors register on one
+emitter, and a deny from either blocks the action.
+
 ## Installation
 
 ```bash
@@ -35,7 +41,7 @@ must come from the same copy this package uses: with two copies, `addA365Defende
 
 `@responsibleai/agent-hooks` is a prerelease package with a native core for linux-x64 and linux-arm64 (glibc),
 darwin-x64, darwin-arm64 and win32-x64, and requires Node.js 20 or later. Only this package needs it:
-`DefenderRtpClient` in `@microsoft/agents-a365-tooling` does not.
+`DefenderRtpClient` and `PurviewDlpClient` in `@microsoft/agents-a365-tooling` do not.
 
 ## Authentication
 
@@ -163,7 +169,8 @@ the last 1000 interception records in memory (drain them with `takeRecords()` or
 > deny, instead of following the fail mode. `createProtectionEmitter` sets the Defender timeout plus two seconds and
 > rejects an `interceptorTimeoutMilliseconds` that does not exceed the Defender timeout, or that is not an integer of
 > at most 2147483647 (Node's largest timer delay; a longer one fires after 1 ms); with your own emitter, pass a
-> timeout above `A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS` as the third constructor argument.
+> timeout above `A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS` as the third constructor argument. When Purview DLP is
+> enabled, the same applies to the Purview timeout: the default is the longer of the two plus two seconds.
 
 ## Verdicts
 
@@ -209,6 +216,195 @@ Defender logs each evaluation under it. A `400` reports the failed validation ru
 
 The same settings can be supplied per tenant or per request through a `ToolingConfiguration` with
 override functions, passed as `configProvider` to `DefenderRtpClient` and `createProtectionEmitter`.
+
+## Microsoft Purview data loss prevention
+
+`A365PurviewInterceptor` evaluates the text of the user's message and of the reply with `PurviewDlpClient` from
+`@microsoft/agents-a365-tooling`, which calls the Microsoft Graph `processContent` API
+(`POST .../me/dataSecurityAndGovernance/processContent`). Purview applies the tenant's DLP policies for the agent's
+application and records each interaction for audit (DSPM for AI, Activity explorer).
+
+| agent-hooks point | Purview activity | Behavior |
+|---|---|---|
+| `input` | `uploadText` (the user's message) | awaited; a block denies it, so the agent does not run |
+| `output` | `downloadText` (the reply) | `audit` (default): sent without waiting and allowed at once; `enforce`: awaited and decided like the input |
+
+Other points are allowed without a call: Purview DLP evaluates prompts and replies, not tool calls. Content without
+text is allowed without a call. A string is sent as it is; structured content (for example content parts) is sent as
+its string and number values, in order, one per line, read only as far as `A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS`
+(structured content that is still blank there follows the fail mode, as the rest was not read).
+
+### Response mode
+
+Purview DLP policies for custom AI apps restrict prompts (`UploadText`); restricting replies is not supported for
+them. So by default (`A365_PURVIEW_DLP_RESPONSE_MODE=audit`) the reply is sent to Purview in the background and the
+interceptor allows it at once: Purview still records it for audit and the evaluation reaches the evaluation callback,
+but the reply is never delayed or blocked, whatever the fail mode. The background evaluation is bounded by the
+Purview timeout, never cancelled by the emitter, and nothing it raises escapes (no unhandled rejection). With
+`enforce`, the reply is awaited and decided like the input.
+
+### Authentication
+
+- **The agentic user (validated).** `PurviewDlpTokenResolvers.fromAgenticUser(connection)` asks the agent's Agents SDK
+  connection for the agentic user's delegated Microsoft Graph token
+  (`getAgenticUserToken(tenantId, agentId, agenticUserId, scopes)`, as the Agents SDK's own agentic authorization
+  does), so Purview evaluates the content as the agentic user (`/me`). The agent context needs `tenantId`
+  (`activity.getAgenticTenantId()`), `agentId` (`activity.getAgenticInstanceId()`) and `agenticUserId`
+  (`activity.getAgenticUser()`). The client caches the token per tenant, agent, agentic user and scope until five
+  minutes before it expires, and concurrent evaluations share one acquisition.
+- **A token from the host.** `PurviewDlpTokenResolvers.fromAccessTokenProvider(getToken, userId?)` uses a Microsoft
+  Graph token the host supplies, for example an on-behalf-of token for the signed-in user (`/me`, delegated
+  `Content.Process.User`), or an app-only token with `Content.Process.All` and the user to evaluate for
+  (`/users/{userId}`); the app-only path has not been validated end to end. The client does not cache these tokens,
+  as they may be for a user the agent context does not identify.
+
+One deadline (`A365_PURVIEW_DLP_TIMEOUT_MILLISECONDS`) covers the token acquisition and the request. The Graph base
+URL must be an `https` URL, and the request does not follow a redirect, so the content and the token are never sent
+anywhere else.
+
+### Prerequisites
+
+The tenant needs:
+
+1. **Licensing and billing.** Microsoft Purview licensing that covers DLP for AI apps (for example Microsoft 365 E5 or
+   E5 Compliance), and pay-as-you-go billing for Purview's AI features (an Azure subscription linked in the Purview
+   portal, **Settings > Billing**).
+2. **DSPM for AI onboarded** in the Purview portal. Without the first two, `processContent` returns no policy actions
+   and nothing is ever blocked, with no error.
+3. **A DLP policy for the agent.** A dedicated policy on the AI app location ("Managed cloud apps" in the portal, the
+   `Applications` workload), scoped to the agent blueprint's application id (what the SDK sends as the
+   `applicationLocation`), with a rule whose action restricts `UploadText` with **Block** (for example with Security &
+   Compliance PowerShell: `New-DlpCompliancePolicy -EnforcementPlanes Application` with an `Applications` location for
+   the app id, and `New-DlpComplianceRule -RestrictAccess @(@{setting='UploadText';value='Block'})` with the sensitive
+   information types to detect). The portal rejects a policy that mixes this location with Exchange, SharePoint,
+   OneDrive or Teams. A new policy can take up to an hour to apply.
+4. **`Content.Process.User` for the agentic users.** Add the delegated Microsoft Graph permission
+   `Content.Process.User` to the blueprint's tenant-wide (`AllPrincipals`) delegated Microsoft Graph grant, appending
+   it to the scopes the grant already has, never replacing them:
+   `GET https://graph.microsoft.com/v1.0/oauth2PermissionGrants?$filter=clientId eq '{blueprint-sp-object-id}' and consentType eq 'AllPrincipals' and resourceId eq '{graph-sp-object-id}'`,
+   then `PATCH https://graph.microsoft.com/v1.0/oauth2PermissionGrants/{grant-id}` with
+   `{"scope":"<existing scopes> Content.Process.User"}`. The blueprint's inheritable permissions for Microsoft Graph
+   are of kind `allAllowed` (which `a365 setup` configures), so every agent identity's agentic user inherits the
+   scope.
+
+`protectionScopes/compute` is not used (it needs `ProtectionScopes.Compute.User`): every evaluation calls
+`processContent`, and the returned `protectionScopeState` is only reported.
+
+### What Purview receives
+
+One conversation message (`processConversationMetadata`) per evaluation: the text (`textContent`), a name
+(`<agent name> <activity>`; Purview rejects an empty one), the conversation's `correlationId` and `sequenceNumber`
+(the context's `session.id` and `sequence`), `isTruncated`, UTC timestamps, `contentCategory: ai` and the agent
+(`agents[0]`: the agent identity id, the blueprint id, name and version); the activity; and the agent's name and
+version as the integrated and protected application, with the blueprint's application id as the
+`applicationLocation` DLP policies are scoped to. Every call sends a new GUID as `client-request-id` (also the content
+entry's `identifier`), returned as `PurviewDlpEvaluationResult.correlationId`. Text longer than
+`A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS` (default 100000) is cut and sent with `isTruncated: true`.
+
+### Verdicts
+
+- A policy action with `restrictionAction: block` (or `action: blockAccess`) becomes a deny with reason `purview:block`, the message "The request
+  was blocked by a Microsoft Purview data loss prevention policy." (for a reply in `enforce` mode, "The response was
+  blocked ..."), and the `client-request-id` as evidence (`urn:a365:purview:<client-request-id>`). Other actions (for
+  example `warn` or `audit`) allow the content and are counted in `decision.actionCount`.
+- When no verdict is obtained (token, transport, timeout or HTTP failure, processing errors, which Graph reports with
+  HTTP 200, a response of another shape, or a call resolver that throws or resolves no agent identity), the verdict
+  follows `A365_PURVIEW_DLP_FAIL_MODE`: fail open (the default) allows with a `purview:unverified` warning that carries
+  the error; fail closed denies with reason `runtime_error:purview_unverified`, which is never reported as a detection.
+  The error names the failure or the exception type only (for example `http 403` or `token unavailable: TypeError`),
+  never a response body or token.
+- **Text that does not fit** follows the fail mode too: Purview's block of the truncated text stands, but its allow
+  does not cover the rest, so it is treated like a missing verdict.
+
+`createProtectionEmitter` uses the `parallel/strictest` profile, so with both interceptors registered an action
+proceeds only when Defender and Purview both allow it. agent-hooks runs them one after the other, each on its own
+copy of the context, so at `input` their latencies add up.
+
+### Usage
+
+```typescript
+import {
+  DefenderRtpClient,
+  DefenderRtpTokenResolvers,
+  PurviewDlpClient,
+  PurviewDlpTokenResolvers,
+} from '@microsoft/agents-a365-tooling';
+import {
+  A365DefenderInterceptor,
+  A365PurviewInterceptor,
+  addA365Defender,
+  addA365Purview,
+  createProtectionEmitter,
+} from '@microsoft/agents-a365-tooling-extensions-agenthooks';
+import { AgentContextBuilder, proceeds } from '@responsibleai/agent-hooks';
+
+// Once per process: reads ENABLE_A365_DEFENDER_RTP, A365_DEFENDER_RTP_*, ENABLE_A365_PURVIEW_DLP and A365_PURVIEW_DLP_*.
+const connection = adapter.connectionManager.getDefaultConnection();
+const defender = new DefenderRtpClient();
+const defenderTokens = DefenderRtpTokenResolvers.fromAgenticConnection(connection);
+const purview = new PurviewDlpClient();
+const purviewTokens = PurviewDlpTokenResolvers.fromAgenticUser(connection);
+
+// In the turn handler:
+const activity = context.activity;
+const agentId = activity.getAgenticInstanceId(); // the agent identity
+const tenantId = activity.getAgenticTenantId(); // the agent's tenant
+const agenticUserId = activity.getAgenticUser(); // the agent's agentic user
+const emitter = createProtectionEmitter();
+addA365Defender(emitter, new A365DefenderInterceptor(
+  defender,
+  () => agentId && tenantId ? { agent: { agentId, tenantId, requestId: activity.id }, tokenResolver: defenderTokens } : null,
+));
+addA365Purview(emitter, new A365PurviewInterceptor(
+  purview,
+  // Returning null means there is no agentic user (for example a request that is not agentic):
+  // Purview is not called and the fail mode decides.
+  () => agentId && tenantId && agenticUserId
+    ? {
+      agent: {
+        agentId,
+        tenantId,
+        agenticUserId,
+        blueprintId: activity.recipient?.agenticAppBlueprintId,
+        agentName: 'SampleAgent',
+      },
+      tokenResolver: purviewTokens,
+    }
+    : null,
+  (result) => console.log(
+    `Purview ${result.activity} allowed=${result.allowed} evaluated=${result.evaluated} `
+    + `client-request-id=${result.correlationId}${result.error ? ` error=${result.error}` : ''}`),
+));
+
+const builder = new AgentContextBuilder({
+  agentId: agentId ?? 'my-agent',
+  framework: 'my-framework',
+  sessionId: activity.conversation?.id ?? 'my-session', // Purview groups the conversation's messages under it
+});
+const record = await emitter.emitUnchecked(builder.input(activity.text ?? ''));
+if (!proceeds(record)) {
+  // Blocked: reply with record.verdict.message and stop the turn.
+}
+```
+
+The interceptor sets the content entry's `correlationId` and `sequenceNumber` from the context's `session.id` and
+`sequence`, so Purview's conversation lines up with the host's interception records.
+
+### Configuration
+
+| Variable | Meaning |
+|---|---|
+| `ENABLE_A365_PURVIEW_DLP` | `true` (or 1, yes, on) to call Purview; `false` (or 0, no, off) or unset leaves it off, and the interceptor allows everything without a call. Any other value fails at startup |
+| `A365_PURVIEW_DLP_RESPONSE_MODE` | `audit` (the default) sends replies without waiting and never blocks them; `enforce` blocks them like prompts. Any other value is rejected |
+| `A365_PURVIEW_DLP_FAIL_MODE` | `closed` blocks when no verdict is obtained; `open` (the default) allows. Any other value is rejected |
+| `A365_PURVIEW_DLP_TIMEOUT_MILLISECONDS` | deadline of each evaluation, token acquisition included (default 10000, at most 2147481647) |
+| `A365_PURVIEW_DLP_MAX_CONTENT_CHARACTERS` | the longest text sent (default 100000); longer text is sent truncated and, unless Purview blocks it, follows the fail mode |
+| `A365_PURVIEW_DLP_GRAPH_BASE_URL` | the Microsoft Graph base URL (default `https://graph.microsoft.com/v1.0`; `https` only) |
+| `A365_PURVIEW_DLP_AUTHENTICATION_SCOPE` | overrides the Microsoft Graph token scope (default `https://graph.microsoft.com/.default`) |
+
+As for Defender, the same settings can be supplied through a `ToolingConfiguration` with override functions, passed as
+`configProvider` to `PurviewDlpClient` and `createProtectionEmitter` (or as `purviewConfigProvider` when the Purview
+client uses its own configuration).
 
 ## Support
 

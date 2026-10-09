@@ -76,7 +76,7 @@ For more detailed build instructions, see the [HOW_TO_BUILD.md](HOW_TO_BUILD.md)
 - **packages/agents-a365-observability-extensions-openai**: OpenAI observability extensions
 - **packages/agents-a365-runtime**: Microsoft Agent 365 Runtime - Core runtime utilities and extensions
 - **packages/agents-a365-tooling**: Microsoft Agent 365 Tooling SDK - Agent tooling and MCP integration
-- **packages/agents-a365-tooling-extensions-agenthooks**: agent-hooks interceptor for Microsoft Defender for AI real-time protection
+- **packages/agents-a365-tooling-extensions-agenthooks**: agent-hooks interceptors for Microsoft Defender for AI real-time protection and Microsoft Purview data loss prevention
 - **packages/agents-a365-tooling-extensions-claude**: Claude/Anthropic tooling extensions
 - **packages/agents-a365-tooling-extensions-langchain**: LangChain tooling extensions
 - **packages/agents-a365-tooling-extensions-openai**: OpenAI tooling extensions
