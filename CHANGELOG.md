@@ -36,6 +36,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   runtime, so installs where npm did not hoist another copy failed with
   `MODULE_NOT_FOUND` when loading the exporter.
 
+### Added (`@microsoft/agents-a365-tooling`)
+
+- **Microsoft Defender for AI real-time protection client (opt-in)** -
+  `DefenderRtpClient.evaluateHookContext` sends an agent-hooks/0.1 context to the Defender
+  prevention endpoint (`POST .../v1/protection/evaluate`) at the four points Defender evaluates
+  (`input`, `pre_tool_call`, `post_tool_call`, `output`) and returns its verdict (`deny` and
+  `transform` block). A copy of the context is fitted to Defender's request validation while it is
+  read: every string is well formed (a lone surrogate becomes U+FFFD), each content string is
+  clamped, the copy carries at most four times `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` of content
+  (the content under decision first, every copied element counting at least one character, and no
+  list or object scanned beyond what fits), and optional fields of another shape are left out. The
+  host's context is not modified.
+- Calls carry the agent identity's own app-only token for the Defender API
+  (`api://86a21212-634e-4553-b3d6-e477e4c9d9ec`, role `RealtimeProtection.Evaluate.All`), resolved
+  by a `DefenderRtpTokenResolver` and cached per agent, tenant and scope;
+  `DefenderRtpTokenResolvers.fromAgenticConnection` uses the agent's Agents SDK connection, the same
+  authority as Observability S2S export. The endpoint and the token authority must be `https`, and
+  neither request follows a redirect.
+- Every call sends a unique `x-ms-correlation-id`. One deadline covers the token acquisition and the
+  request. When no verdict is obtained, the result follows `A365_DEFENDER_RTP_FAIL_MODE` (fail open
+  by default; a value other than `open` or `closed` is rejected), and a `400` reports the failed
+  validation rules.
+- Content under decision that does not fit (longer than `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS`,
+  or beyond its share of the copy), or whose keys become one once made well formed, is sent incomplete.
+  At a tool call, the called tool's declaration is copied first, searched for among the first 10000
+  declarations; it is incomplete too when its description or schema is cut or it lies beyond them.
+  Defender's block of the copy stands, but its allow does not cover the rest: the result is marked
+  `truncated` and follows the fail mode, so padded content cannot be authorized unseen.
+- `tenant.id` is always the agent's tenant, which Defender requires to match the token's tenant.
+- Configured with `ENABLE_A365_DEFENDER_RTP`, `A365_DEFENDER_RTP_ENDPOINT`,
+  `A365_DEFENDER_RTP_FAIL_MODE`, `A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS` (default 10000),
+  `A365_DEFENDER_RTP_AUTHENTICATION_SCOPE` and `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS`
+  (default 20000), or the matching `ToolingConfiguration` overrides. `ENABLE_A365_DEFENDER_RTP`
+  and `A365_DEFENDER_RTP_FAIL_MODE` accept only known values, and
+  `A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS` and `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` only whole
+  numbers (`10s` is rejected rather than read as 10 ms), so a typo fails at startup instead of
+  silently turning protection off or failing open. No new dependency.
+
+### Added (`@microsoft/agents-a365-tooling-extensions-agenthooks`, new, preview)
+
+- **`A365DefenderInterceptor`** - An agent-hooks interceptor (`@responsibleai/agent-hooks`, a peer
+  dependency, `>=0.1.0-alpha.5 <0.2.0`, tested with the `0.1.0-alpha.5` prerelease; install it
+  alongside) that sends each emitted context Defender evaluates through
+  `DefenderRtpClient` and maps the verdict, with a callback for each evaluation;
+  `createProtectionEmitter` (`enforce`, `parallel/strictest`) and `addA365Defender`. Contexts that
+  cannot be verified (no verdict, no agent identity, or an allow of truncated content) follow the
+  fail mode. Requires Node.js 20 or later.
+
 ## [1.0.0] - 2026-04-30
 
 ### Breaking Changes (`@microsoft/agents-a365-tooling`)

@@ -21,6 +21,7 @@ const packages = fs.readdirSync(packagesDir).filter((dir: string) => {
 // Error: "A dynamic import callback was invoked without --experimental-vm-modules"
 const skipPackages = [
     'agents-a365-tooling',
+    'agents-a365-tooling-extensions-agenthooks',
     'agents-a365-tooling-extensions-claude',
     'agents-a365-tooling-extensions-langchain',
     'agents-a365-tooling-extensions-openai',
