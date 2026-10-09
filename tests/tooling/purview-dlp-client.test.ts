@@ -393,6 +393,20 @@ describe('PurviewDlpClient', () => {
       expect(result).toMatchObject({ allowed: true, evaluated: true, httpStatus: status, decision: { blockAction: false, actionCount: 0 } });
     });
 
+    it('reads a 202 that has a body like a 200, so a block in it stands', async () => {
+      const blocking = create(() => json({ policyActions: [BLOCK_ACTION], processingErrors: [] }, 202));
+      const clean = create(() => json({ protectionScopeState: 'notModified', policyActions: [], processingErrors: [] }, 202));
+      const garbled = create(() => new Response('accepted', { status: 202 }), { purviewDlpFailClosed: () => true });
+
+      const blocked = await blocking.client.evaluate('uploadText', CARD_TEXT, AGENT, blocking.tokens.resolve);
+      const allowed = await clean.client.evaluate('uploadText', 'hello', AGENT, clean.tokens.resolve);
+      const unverified = await garbled.client.evaluate('uploadText', 'hello', AGENT, garbled.tokens.resolve);
+
+      expect(blocked).toMatchObject({ allowed: false, evaluated: true, httpStatus: 202, decision: { blockAction: true } });
+      expect(allowed).toMatchObject({ allowed: true, evaluated: true, httpStatus: 202, protectionScopeState: 'notModified' });
+      expect(unverified).toMatchObject({ allowed: false, evaluated: false, httpStatus: 202, error: 'non-JSON response' });
+    });
+
     it.each([false, true])('follows the fail mode on processing errors, which Graph reports with HTTP 200 (fail closed: %s)', async (failClosed) => {
       const { client, tokens } = create(() => json({
         protectionScopeState: 'notModified',

@@ -278,7 +278,9 @@ if (result && !result.allowed) { /* block: result.blockReason */ }
 - **Verdict**: any `policyActions[]` entry whose `restrictionAction` is `block` or whose `action` is `blockAccess`
   (any case; the rule of Microsoft's own Purview integrations) blocks the content, even beside processing errors or
   malformed actions. Other actions (for example `warn` or `audit`) allow it and are counted in
-  `decision.actionCount`. `202` and `204` are an evaluated allow. Every node read is shape-checked.
+  `decision.actionCount`. `204`, and `202` without a body (accepted with no inline decision, as for an offline
+  evaluation), are an evaluated allow; a `202` with a body is read like a `200`, so a block in it stands. Every node
+  read is shape-checked.
 - **Failures**: non-empty `processingErrors` (no block), a response without a well-formed `policyActions` list, a
   non-2xx status, a timeout, a transport error or an unparsable body returns `evaluated: false`, with `allowed`
   following `purviewDlpFailClosed`. `error` names the failure, or the exception type only (`http 403`,

@@ -382,8 +382,8 @@ export class PurviewDlpClient {
       }
 
       status = response.status;
-      // Accepted without an inline decision: Purview processes the content and applies no restriction.
-      if (status === 202 || status === 204) {
+      // No content: Purview processed the content and applies no inline restriction.
+      if (status === 204) {
         discard(response);
         return this.evaluated(activity, requestId, { blockAction: false, actionCount: 0 }, undefined, status, started);
       }
@@ -403,6 +403,13 @@ export class PurviewDlpClient {
         }
 
         return fail(signal.aborted ? 'request timeout' : 'response body could not be read', status);
+      }
+
+      // Accepted without a body: the content is processed without an inline decision (as for an offline
+      // evaluation), so there is no restriction to apply. A 202 with a body is read like a 200, so a block in it
+      // stands.
+      if (status === 202 && !text.trim()) {
+        return this.evaluated(activity, requestId, { blockAction: false, actionCount: 0 }, undefined, status, started);
       }
 
       let payload: unknown;
