@@ -1611,6 +1611,25 @@ describe('DefenderRtpClient', () => {
       },
     );
 
+    it('rejects a maximum content size whose budget would overflow at construction, and bounds the request at the cap', async () => {
+      process.env.A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS = '9'.repeat(308);
+      expect(() => new DefenderRtpClient({ configProvider: defenderConfiguration() }))
+        .toThrow('defenderRtpMaxContentCharacters must be a positive integer of at most 2147483647.');
+
+      process.env.A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS = '2147483647';
+      const { client, calls, tokens } = create(allow);
+      const result = await client.evaluateHookContext(
+        { ...inputContext('hello'), messages: Array.from({ length: 3 }, (_, index) => ({ role: 'user', content: `m${index}` })) },
+        AGENT,
+        tokens.resolve,
+      );
+
+      expect(contractErrors(calls[0].body)).toEqual([]);
+      expect(calls[0].body.messages).toHaveLength(3);
+      expect(result).toMatchObject({ allowed: true, evaluated: true });
+      expect(result?.truncated).toBeUndefined();
+    });
+
     it('checks the endpoint again when the configuration changes', async () => {
       let enabled = false;
       const endpoint = fakeEndpoint(allow);

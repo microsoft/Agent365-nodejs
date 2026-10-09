@@ -16,6 +16,12 @@ const DEFAULT_DEFENDER_RTP_MAX_CONTENT_CHARACTERS = 20000;
  */
 const MAX_DEFENDER_RTP_TIMEOUT_MILLISECONDS = 2_147_483_647 - 2_000;
 
+/**
+ * The largest Defender content limit, as in the .NET (int32) and Python SDKs: the client's budgets are
+ * multiples of it, and a larger value could overflow them to Infinity, which never runs out.
+ */
+const MAX_DEFENDER_RTP_MAX_CONTENT_CHARACTERS = 2_147_483_647;
+
 /** Application id of the Defender API, which grants `RealtimeProtection.Evaluate.All`. */
 export const DEFENDER_RTP_API_APP_ID = '86a21212-634e-4553-b3d6-e477e4c9d9ec';
 
@@ -239,7 +245,7 @@ export class ToolingConfiguration extends RuntimeConfiguration {
    * under decision is cut, Defender's allow of the copy does not cover it, so the action follows the
    * fail mode; raise the limit for agents that handle long content. Identifiers and protocol fields are
    * sent unchanged. `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` must be a whole number: a value such as
-   * `20k` throws instead of becoming 20.
+   * `20k` throws instead of becoming 20. At most 2147483647, as in the .NET and Python SDKs.
    */
   get defenderRtpMaxContentCharacters(): number {
     const override = this.toolingOverrides.defenderRtpMaxContentCharacters?.();
@@ -247,8 +253,8 @@ export class ToolingConfiguration extends RuntimeConfiguration {
       ?? wholeNumber('A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS')
       ?? DEFAULT_DEFENDER_RTP_MAX_CONTENT_CHARACTERS;
 
-    if (!Number.isInteger(maximum) || maximum <= 0) {
-      throw new Error('defenderRtpMaxContentCharacters must be a positive integer.');
+    if (!Number.isInteger(maximum) || maximum <= 0 || maximum > MAX_DEFENDER_RTP_MAX_CONTENT_CHARACTERS) {
+      throw new Error(`defenderRtpMaxContentCharacters must be a positive integer of at most ${MAX_DEFENDER_RTP_MAX_CONTENT_CHARACTERS}.`);
     }
     return maximum;
   }

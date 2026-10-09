@@ -91,14 +91,35 @@ describe('Defender RTP tooling configuration', () => {
     expect(() => new ToolingConfiguration({ defenderRtpTimeoutMilliseconds: () => 0 }).defenderRtpTimeoutMilliseconds)
       .toThrow('defenderRtpTimeoutMilliseconds must be a positive integer of at most 2147481647.');
     expect(() => new ToolingConfiguration({ defenderRtpMaxContentCharacters: () => -1 }).defenderRtpMaxContentCharacters)
-      .toThrow('defenderRtpMaxContentCharacters must be a positive integer.');
+      .toThrow('defenderRtpMaxContentCharacters must be a positive integer of at most 2147483647.');
 
     process.env.A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS = '0';
     process.env.A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS = '0';
     expect(() => new ToolingConfiguration().defenderRtpTimeoutMilliseconds)
       .toThrow('defenderRtpTimeoutMilliseconds must be a positive integer of at most 2147481647.');
     expect(() => new ToolingConfiguration().defenderRtpMaxContentCharacters)
-      .toThrow('defenderRtpMaxContentCharacters must be a positive integer.');
+      .toThrow('defenderRtpMaxContentCharacters must be a positive integer of at most 2147483647.');
+  });
+
+  it('accepts a maximum content size of exactly 2147483647', () => {
+    expect(new ToolingConfiguration({ defenderRtpMaxContentCharacters: () => 2_147_483_647 }).defenderRtpMaxContentCharacters)
+      .toBe(2_147_483_647);
+
+    process.env.A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS = '2147483647';
+    expect(new ToolingConfiguration().defenderRtpMaxContentCharacters).toBe(2_147_483_647);
+  });
+
+  it.each([
+    ['308 nines, which is finite but overflows the budget to Infinity', '9'.repeat(308)],
+    ['309 nines, which is Infinity', '9'.repeat(309)],
+    ['one above the cap', '2147483648'],
+  ])('rejects a maximum content size of %s', (_name, value) => {
+    process.env.A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS = value;
+
+    expect(() => new ToolingConfiguration().defenderRtpMaxContentCharacters)
+      .toThrow('defenderRtpMaxContentCharacters must be a positive integer of at most 2147483647.');
+    expect(() => new ToolingConfiguration({ defenderRtpMaxContentCharacters: () => Number(value) }).defenderRtpMaxContentCharacters)
+      .toThrow('defenderRtpMaxContentCharacters must be a positive integer of at most 2147483647.');
   });
 
   const wholeNumberSettings: Array<[string, 'defenderRtpTimeoutMilliseconds' | 'defenderRtpMaxContentCharacters', number]> = [
