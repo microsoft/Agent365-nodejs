@@ -420,9 +420,9 @@ const customConfig = new ToolingConfiguration({
 | `isDefenderRtpEnabled` | `ENABLE_A365_DEFENDER_RTP` | `false` | Enables Defender RTP (`DefenderRtpClient`); accepts true/false, 1/0, yes/no or on/off, and any other value throws |
 | `defenderRtpEndpoint` | `A365_DEFENDER_RTP_ENDPOINT` | None (required when enabled) | Defender prevention endpoint |
 | `defenderRtpFailClosed` | `A365_DEFENDER_RTP_FAIL_MODE` | `false` (open) | `closed` blocks when no verdict is obtained; values other than `open` and `closed` throw |
-| `defenderRtpTimeoutMilliseconds` | `A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS` | `10000` | Timeout of each evaluation; at most 2147481647, as Node fires a longer timer after 1 ms |
+| `defenderRtpTimeoutMilliseconds` | `A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS` | `10000` | Timeout of each evaluation; at most 2147481647, as Node fires a longer timer after 1 ms; the variable must be a whole number |
 | `defenderRtpAuthenticationScope` | `A365_DEFENDER_RTP_AUTHENTICATION_SCOPE` | Defender API scope | OAuth scope of the Defender token |
-| `defenderRtpMaxContentCharacters` | `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` | `20000` | Maximum characters of each content string; the request carries at most four times as much content |
+| `defenderRtpMaxContentCharacters` | `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` | `20000` | Maximum characters of each content string; the request carries at most four times as much content; at most 2147483647; the variable must be a whole number |
 | `isPurviewDlpEnabled` | `ENABLE_A365_PURVIEW_DLP` | `false` | Enables Purview DLP (`PurviewDlpClient`); accepts true/false, 1/0, yes/no or on/off, and any other value throws |
 | `purviewDlpGraphBaseUrl` | `A365_PURVIEW_DLP_GRAPH_BASE_URL` | `https://graph.microsoft.com/v1.0` | Microsoft Graph base URL of `processContent`; the client requires an absolute `https` URL |
 | `purviewDlpAuthenticationScope` | `A365_PURVIEW_DLP_AUTHENTICATION_SCOPE` | `https://graph.microsoft.com/.default` | OAuth scope of the Microsoft Graph token |
@@ -470,9 +470,9 @@ src/
 | `ENABLE_A365_DEFENDER_RTP` | Enables Defender RTP (true/false, 1/0, yes/no or on/off; other values are rejected) | `false` |
 | `A365_DEFENDER_RTP_ENDPOINT` | Defender prevention endpoint (`https://<host>/v1/protection/evaluate`) | None |
 | `A365_DEFENDER_RTP_FAIL_MODE` | `closed` blocks when no verdict is obtained; values other than `open` and `closed` are rejected | `open` |
-| `A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS` | Timeout of each evaluation (at most 2147481647) | `10000` |
+| `A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS` | Timeout of each evaluation (at most 2147481647; values that are not whole numbers are rejected) | `10000` |
 | `A365_DEFENDER_RTP_AUTHENTICATION_SCOPE` | OAuth scope of the Defender token | Defender API scope |
-| `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` | Maximum characters of each content string; the request carries at most four times as much content | `20000` |
+| `A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS` | Maximum characters of each content string; the request carries at most four times as much content (at most 2147483647; values that are not whole numbers are rejected) | `20000` |
 | `ENABLE_A365_PURVIEW_DLP` | Enables Purview DLP (true/false, 1/0, yes/no or on/off; other values are rejected) | `false` |
 | `A365_PURVIEW_DLP_GRAPH_BASE_URL` | Microsoft Graph base URL of `processContent` (absolute `https`) | `https://graph.microsoft.com/v1.0` |
 | `A365_PURVIEW_DLP_AUTHENTICATION_SCOPE` | OAuth scope of the Microsoft Graph token | `https://graph.microsoft.com/.default` |
