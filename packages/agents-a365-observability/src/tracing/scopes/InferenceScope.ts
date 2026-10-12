@@ -52,6 +52,12 @@ export class InferenceScope extends OpenTelemetryScope {
     if (!details.model?.trim() && !details.responseModel?.trim()) {
       throw new Error('InferenceScope: at least one of model or responseModel is required');
     }
+    if (!details.providerName?.trim()) {
+      throw new Error('InferenceScope: providerName is required');
+    }
+    if (details.endpoint?.port !== undefined && !Number.isInteger(details.endpoint.port)) {
+      throw new Error('InferenceScope: endpoint port must be an integer');
+    }
 
     // spanKind for InferenceScope is always CLIENT
     const resolvedSpanDetails: SpanDetails = { ...spanDetails, spanKind: SpanKind.CLIENT };

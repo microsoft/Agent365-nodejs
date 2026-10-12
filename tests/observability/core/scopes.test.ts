@@ -559,6 +559,27 @@ describe('Scopes', () => {
       )).toThrow('at least one of model or responseModel is required');
     });
 
+    it('requires a provider name', () => {
+      expect(() => InferenceScope.start(
+        testRequest,
+        { operationName: InferenceOperationType.CHAT, model: 'gpt-4', providerName: '' },
+        testAgentDetails
+      )).toThrow('providerName is required');
+    });
+
+    it('requires an integer endpoint port', () => {
+      expect(() => InferenceScope.start(
+        testRequest,
+        {
+          operationName: InferenceOperationType.CHAT,
+          model: 'gpt-4',
+          providerName: 'openai',
+          endpoint: { host: 'api.openai.com', port: 443.5 },
+        },
+        testAgentDetails
+      )).toThrow('endpoint port must be an integer');
+    });
+
     it('should create scope with inference details', () => {
       const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
       const callerDetails: UserDetails = {
