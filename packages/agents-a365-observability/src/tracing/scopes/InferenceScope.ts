@@ -49,13 +49,16 @@ export class InferenceScope extends OpenTelemetryScope {
     if (!agentDetails.tenantId) {
       throw new Error('InferenceScope: tenantId is required on agentDetails');
     }
+    if (!details.model?.trim() && !details.responseModel?.trim()) {
+      throw new Error('InferenceScope: at least one of model or responseModel is required');
+    }
 
     // spanKind for InferenceScope is always CLIENT
     const resolvedSpanDetails: SpanDetails = { ...spanDetails, spanKind: SpanKind.CLIENT };
 
     super(
-      details.operationName.toString(),
-      `${details.operationName} ${details.model}`,
+      OpenTelemetryConstants.CHAT_OPERATION_NAME,
+      `${OpenTelemetryConstants.CHAT_OPERATION_NAME} ${details.model ?? details.responseModel}`,
       agentDetails,
       resolvedSpanDetails,
       userDetails,
@@ -63,9 +66,12 @@ export class InferenceScope extends OpenTelemetryScope {
 
     // Set core inference information
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_REQUEST_MODEL_KEY, details.model);
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_RESPONSE_MODEL_KEY, details.responseModel);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY, details.providerName);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_INPUT_TOKENS_KEY, details.inputTokens);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY, details.outputTokens);
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS_KEY, details.cacheReadInputTokens);
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_CACHE_WRITE_INPUT_TOKENS_KEY, details.cacheWriteInputTokens);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_RESPONSE_FINISH_REASONS_KEY, details.finishReasons);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_AGENT_THOUGHT_PROCESS_KEY, details.thoughtProcess);
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_CONVERSATION_ID_KEY, request.conversationId);
@@ -76,8 +82,7 @@ export class InferenceScope extends OpenTelemetryScope {
     if (details.endpoint) {
       this.setTagMaybe(OpenTelemetryConstants.SERVER_ADDRESS_KEY, details.endpoint.host);
 
-      // Only record port if it is different from 443 (default HTTPS port)
-      if (details.endpoint.port && details.endpoint.port !== 443) {
+      if (details.endpoint.port !== undefined) {
         this.setTagMaybe(OpenTelemetryConstants.SERVER_PORT_KEY, details.endpoint.port);
       }
     }
@@ -97,6 +102,16 @@ export class InferenceScope extends OpenTelemetryScope {
    */
   public recordOutputTokens(outputTokens: number): void {
     this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY, outputTokens);
+  }
+
+  /** Records the number of input tokens read from a cache. */
+  public recordCacheReadInputTokens(inputTokens: number): void {
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS_KEY, inputTokens);
+  }
+
+  /** Records the number of input tokens written to a cache. */
+  public recordCacheWriteInputTokens(inputTokens: number): void {
+    this.setTagMaybe(OpenTelemetryConstants.GEN_AI_USAGE_CACHE_WRITE_INPUT_TOKENS_KEY, inputTokens);
   }
 
   /**

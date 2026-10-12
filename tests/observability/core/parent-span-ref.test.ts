@@ -211,6 +211,7 @@ describe('ParentSpanRef - Explicit Parent Span Support', () => {
       const inferenceDetails: InferenceDetails = {
         operationName: InferenceOperationType.CHAT,
         model: 'gpt-4',
+        providerName: 'openai',
       };
       const activeParentSpan = trace.wrapSpanContext(spanContext);
       const baseCtx = trace.setSpan(otelContext.active(), activeParentSpan);

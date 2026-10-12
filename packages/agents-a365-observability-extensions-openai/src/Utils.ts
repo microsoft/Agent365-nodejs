@@ -23,7 +23,11 @@ import { Span as AgentsSpan, SpanData } from '@openai/agents-core/dist/tracing/s
  * - Chat Completions: { prompt_tokens, completion_tokens }
  * Usage may live directly on the span data, on `.output`, or inside `.output[0]`.
  */
-export function extractUsageTokens(data: Record<string, unknown>): { inputTokens?: number; outputTokens?: number } {
+export function extractUsageTokens(data: Record<string, unknown>): {
+  inputTokens?: number;
+  outputTokens?: number;
+  cacheReadInputTokens?: number;
+} {
   const candidates: Array<Record<string, unknown> | undefined> = [];
   const direct = data.usage as Record<string, unknown> | undefined;
   candidates.push(direct);
@@ -42,10 +46,16 @@ export function extractUsageTokens(data: Record<string, unknown>): { inputTokens
     if (!usage) continue;
     const inputTokens = usage.input_tokens ?? usage.prompt_tokens;
     const outputTokens = usage.output_tokens ?? usage.completion_tokens;
-    if (typeof inputTokens === 'number' || typeof outputTokens === 'number') {
+    const inputTokenDetails =
+      (usage.input_tokens_details as Record<string, unknown> | undefined) ??
+      (usage.prompt_tokens_details as Record<string, unknown> | undefined);
+    const cacheReadInputTokens = inputTokenDetails?.cached_tokens;
+    if (typeof inputTokens === 'number' || typeof outputTokens === 'number' ||
+        typeof cacheReadInputTokens === 'number') {
       return {
         inputTokens: typeof inputTokens === 'number' ? inputTokens : undefined,
         outputTokens: typeof outputTokens === 'number' ? outputTokens : undefined,
+        cacheReadInputTokens: typeof cacheReadInputTokens === 'number' ? cacheReadInputTokens : undefined,
       };
     }
   }
@@ -147,6 +157,9 @@ export function getAttributesFromGenerationSpanData(data: SpanData): Record<stri
   if (genUsage.outputTokens !== undefined) {
     attributes[OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY] = genUsage.outputTokens;
   }
+  if (genUsage.cacheReadInputTokens !== undefined) {
+    attributes[OpenTelemetryConstants.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS_KEY] = genUsage.cacheReadInputTokens;
+  }
 
   return attributes;
 }
@@ -203,7 +216,7 @@ export function getAttributesFromResponse(response: unknown): Record<string, unk
   const resp = response as Record<string, unknown>;
 
   if (resp.model) {
-    attributes[OpenTelemetryConstants.GEN_AI_REQUEST_MODEL_KEY] = resp.model;
+    attributes[OpenTelemetryConstants.GEN_AI_RESPONSE_MODEL_KEY] = resp.model;
   }
 
   const respUsage = extractUsageTokens(resp);
@@ -212,6 +225,9 @@ export function getAttributesFromResponse(response: unknown): Record<string, unk
   }
   if (respUsage.outputTokens !== undefined) {
     attributes[OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY] = respUsage.outputTokens;
+  }
+  if (respUsage.cacheReadInputTokens !== undefined) {
+    attributes[OpenTelemetryConstants.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS_KEY] = respUsage.cacheReadInputTokens;
   }
 
   return attributes;
