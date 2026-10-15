@@ -12,6 +12,8 @@ export class OpenTelemetryConstants {
   public static readonly EXECUTE_TOOL_OPERATION_NAME = 'execute_tool';
   public static readonly OUTPUT_MESSAGES_OPERATION_NAME = 'output_messages';
   public static readonly CHAT_OPERATION_NAME = 'chat';
+  public static readonly TEXT_COMPLETION_OPERATION_NAME = 'text_completion';
+  public static readonly GENERATE_CONTENT_OPERATION_NAME = 'generate_content';
 
   // OpenTelemetry semantic conventions
   public static readonly ERROR_TYPE_KEY = 'error.type';
@@ -43,6 +45,7 @@ export class OpenTelemetryConstants {
   public static readonly GEN_AI_AGENT_ID_KEY = 'gen_ai.agent.id';
   public static readonly GEN_AI_AGENT_NAME_KEY = 'gen_ai.agent.name';
   public static readonly GEN_AI_AGENT_DESCRIPTION_KEY = 'gen_ai.agent.description';
+  public static readonly GEN_AI_AGENT_TYPE_KEY = 'gen_ai.agent.type';
   public static readonly GEN_AI_AGENT_VERSION_KEY = 'gen_ai.agent.version';
   public static readonly GEN_AI_AGENT_PLATFORM_ID_KEY = 'microsoft.a365.agent.platform.id';
   public static readonly GEN_AI_AGENT_THOUGHT_PROCESS_KEY = 'microsoft.a365.agent.thought.process';
@@ -51,6 +54,8 @@ export class OpenTelemetryConstants {
   public static readonly GEN_AI_TOKEN_TYPE_KEY = 'gen_ai.token.type';
   public static readonly GEN_AI_USAGE_INPUT_TOKENS_KEY = 'gen_ai.usage.input_tokens';
   public static readonly GEN_AI_USAGE_OUTPUT_TOKENS_KEY = 'gen_ai.usage.output_tokens';
+  public static readonly GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS_KEY = 'gen_ai.usage.cache_read.input_tokens';
+  public static readonly GEN_AI_USAGE_CACHE_WRITE_INPUT_TOKENS_KEY = 'gen_ai.usage.cache_write.input_tokens';
   public static readonly GEN_AI_CHOICE = 'gen_ai.choice';
   public static readonly GEN_AI_PROVIDER_NAME_KEY = 'gen_ai.provider.name';
 

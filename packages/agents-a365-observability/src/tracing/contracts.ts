@@ -83,6 +83,9 @@ export interface AgentDetails {
   /** A description of the AI agent's purpose or capabilities */
   agentDescription?: string;
 
+  /** The type of the AI agent */
+  agentType?: string;
+
   /** Optional icon identifier or URL for visual representation of the agent */
   iconUri?: string;
   
@@ -204,17 +207,26 @@ export interface InferenceDetails {
   /** The operation name/type for the inference */
   operationName: InferenceOperationType;
 
-  /** The model name/identifier */
-  model: string;
+  /** The requested model name/identifier. At least one of model or responseModel is required. */
+  model?: string;
 
   /** The provider name (e.g., openai, azure, anthropic) */
-  providerName?: string;
+  providerName: string;
+
+  /** The model name/identifier returned by the provider */
+  responseModel?: string;
 
   /** Number of input tokens used */
   inputTokens?: number;
 
   /** Number of output tokens generated */
   outputTokens?: number;
+
+  /** Number of input tokens read from a cache */
+  cacheReadInputTokens?: number;
+
+  /** Number of input tokens written to a cache */
+  cacheWriteInputTokens?: number;
 
   /** Array of finish reasons */
   finishReasons?: string[];
