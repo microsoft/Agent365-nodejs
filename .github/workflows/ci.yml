@@ -95,6 +95,8 @@ jobs:
       run: npm test
 
     - name: Run integration tests
+      # Only run after merge: pull_request runs execute unreviewed code, which must not receive repository secrets.
+      if: github.event_name == 'push'
       env:
         AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
         AZURE_OPENAI_ENDPOINT: ${{ vars.AZURE_OPENAI_ENDPOINT }}
