@@ -200,8 +200,8 @@ scope.recordCacheWriteInputTokens(10);
 scope.recordFinishReasons(['stop']);
 ```
 
-Inference spans use the model-observation schema: `gen_ai.operation.name` is
-always lowercase `chat`; `gen_ai.provider.name` and at least one of
+Inference spans use the model-observation schema: `gen_ai.operation.name` is the
+lowercase semconv value (`chat`, `text_completion`, or `generate_content`); `gen_ai.provider.name` and at least one of
 `gen_ai.request.model` or `gen_ai.response.model` identify the provider and
 model. Attributable agents include `gen_ai.agent.id` and may include
 `gen_ai.agent.type`. Supplied endpoints emit `server.address` and a numeric
