@@ -63,6 +63,27 @@ export function extractUsageTokens(data: Record<string, unknown>): {
 }
 
 /**
+ * Locate the served/returned model identifier on a Chat Completions-style output object:
+ * - Chat Completions: the completion object itself (or `output[0]`) carries its own `model`,
+ *   which can differ from the requested alias/deployment name on `genData.model`.
+ * Looks in `.output` or `.output[0]`, mirroring `extractUsageTokens`.
+ */
+export function extractServedModel(data: Record<string, unknown>): string | undefined {
+  const output = data.output as unknown;
+  if (output && typeof output === 'object') {
+    if (Array.isArray(output)) {
+      const first = output[0];
+      if (first && typeof first === 'object' && typeof (first as Record<string, unknown>).model === 'string') {
+        return (first as Record<string, unknown>).model as string;
+      }
+    } else if (typeof (output as Record<string, unknown>).model === 'string') {
+      return (output as Record<string, unknown>).model as string;
+    }
+  }
+  return undefined;
+}
+
+/**
  * Safely stringify an object to JSON
  * @param obj - The object to stringify
  * @returns JSON string representation or string conversion if JSON.stringify fails
@@ -135,6 +156,11 @@ export function getAttributesFromGenerationSpanData(data: SpanData): Record<stri
 
   if (typeof genData.model === 'string') {
     attributes[OpenTelemetryConstants.GEN_AI_REQUEST_MODEL_KEY] = genData.model;
+  }
+
+  const servedModel = extractServedModel(genData);
+  if (servedModel !== undefined) {
+    attributes[OpenTelemetryConstants.GEN_AI_RESPONSE_MODEL_KEY] = servedModel;
   }
 
   if (genData.model_config || genData.modelConfig) {

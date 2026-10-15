@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking Changes (`@microsoft/agents-a365-observability`, `@microsoft/agents-a365-observability-hosting`)
 
+- **`InferenceDetails.providerName` is now required** — Previously optional, `InferenceScope.start()` and
+  `ScopeUtils.populateInferenceScopeFromTurnContext` now throw if `providerName` is missing or blank.
+  TypeScript callers that omitted it will no longer compile.
+- **`InferenceDetails.model` is now optional** — At least one of `model` or `responseModel` must be a
+  non-blank string; `InferenceScope.start()` throws otherwise. Blank/whitespace-only values are treated
+  as absent for both validation and the emitted attributes/span name.
+- **`InferenceScope` now validates `endpoint.port` range** — Non-integer ports (including `NaN`) and
+  ports outside `1-65535` now throw instead of silently being recorded or dropped.
+- **Inference spans now record `server.port` for port `443`** — Previously port `443` was treated as the
+  implicit default and omitted; it is now always recorded when `endpoint.port` is provided.
+- **OpenAI response spans use `gen_ai.response.model`, no longer `gen_ai.request.model`** —
+  `@microsoft/agents-a365-observability-extensions-openai` response-span processing now reports the
+  served model via `gen_ai.response.model` and omits `gen_ai.request.model`. Chat Completions/generation
+  spans now additionally report the served model (e.g. from `output[0].model`) via
+  `gen_ai.response.model`, while `gen_ai.request.model` continues to reflect the requested
+  alias/deployment name from `genData.model`.
+- **LangChain `gen_ai.request.model` no longer falls back to the served model** —
+  `@microsoft/agents-a365-observability-extensions-langchain` no longer prefers
+  `response_metadata.model_name` for `gen_ai.request.model`; that value is now reported only via
+  `gen_ai.response.model`.
 - **OBS exports always use `/observabilityService`** - The `useS2SEndpoint` option is
   deprecated and ignored, even when `false`. Batch and per-request exports no longer
   select or fall back to `/observability`. Provide an app-only OBS token independently
@@ -35,6 +55,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`@opentelemetry/core` is now a declared dependency** - The exporter imports it at
   runtime, so installs where npm did not hoist another copy failed with
   `MODULE_NOT_FOUND` when loading the exporter.
+- **`gen_ai.operation.name` and the span-name prefix now reflect the actual operation type** —
+  `InferenceScope` now maps `InferenceDetails.operationName` to its canonical lowercase semconv value
+  (`chat` / `text_completion` / `generate_content`) instead of always emitting `chat`.
 
 ## [1.0.0] - 2026-04-30
 

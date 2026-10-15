@@ -12,6 +12,8 @@ export class OpenTelemetryConstants {
   public static readonly EXECUTE_TOOL_OPERATION_NAME = 'execute_tool';
   public static readonly OUTPUT_MESSAGES_OPERATION_NAME = 'output_messages';
   public static readonly CHAT_OPERATION_NAME = 'chat';
+  public static readonly TEXT_COMPLETION_OPERATION_NAME = 'text_completion';
+  public static readonly GENERATE_CONTENT_OPERATION_NAME = 'generate_content';
 
   // OpenTelemetry semantic conventions
   public static readonly ERROR_TYPE_KEY = 'error.type';

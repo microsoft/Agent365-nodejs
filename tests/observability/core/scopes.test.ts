@@ -536,7 +536,7 @@ describe('Scopes', () => {
       const spans = sharedExporter.getFinishedSpans();
       const attributes = spans[spans.length - 1].attributes;
       expect(attributes).toEqual(expect.objectContaining({
-        [OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY]: 'chat',
+        [OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY]: 'text_completion',
         [OpenTelemetryConstants.GEN_AI_PROVIDER_NAME_KEY]: 'openai',
         [OpenTelemetryConstants.GEN_AI_RESPONSE_MODEL_KEY]: 'gpt-4o-2024-08-06',
         [OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]: 'test-agent',
@@ -578,6 +578,75 @@ describe('Scopes', () => {
         },
         testAgentDetails
       )).toThrow('endpoint port must be an integer');
+    });
+
+    it.each([-1, 0, 65536])('rejects endpoint port %p as out of the valid 1-65535 range', (port) => {
+      expect(() => InferenceScope.start(
+        testRequest,
+        {
+          operationName: InferenceOperationType.CHAT,
+          model: 'gpt-4',
+          providerName: 'openai',
+          endpoint: { host: 'api.openai.com', port },
+        },
+        testAgentDetails
+      )).toThrow('endpoint port must be an integer between 1 and 65535');
+    });
+
+    it.each([1, 443, 65535])('accepts endpoint port %p as within the valid 1-65535 range', (port) => {
+      expect(() => InferenceScope.start(
+        testRequest,
+        {
+          operationName: InferenceOperationType.CHAT,
+          model: 'gpt-4',
+          providerName: 'openai',
+          endpoint: { host: 'api.openai.com', port },
+        },
+        testAgentDetails
+      )).not.toThrow();
+    });
+
+    it.each([
+      [InferenceOperationType.CHAT, 'chat'],
+      [InferenceOperationType.TEXT_COMPLETION, 'text_completion'],
+      [InferenceOperationType.GENERATE_CONTENT, 'generate_content'],
+    ])('maps operationName %s to canonical gen_ai.operation.name %s for both the attribute and span name', (operationName, expected) => {
+      sharedExporter.reset();
+      const scope = InferenceScope.start(
+        testRequest,
+        { operationName, model: 'gpt-4', providerName: 'openai' },
+        testAgentDetails
+      );
+      scope.dispose();
+
+      const spans = sharedExporter.getFinishedSpans();
+      const span = spans[spans.length - 1];
+      expect(span.attributes[OpenTelemetryConstants.GEN_AI_OPERATION_NAME_KEY]).toBe(expected);
+      expect(span.name).toBe(`${expected} gpt-4`);
+    });
+
+    it('treats an empty model string as absent and falls back to responseModel for the span name and request-model attribute', () => {
+      sharedExporter.reset();
+      const scope = InferenceScope.start(
+        testRequest,
+        { operationName: InferenceOperationType.CHAT, model: '', responseModel: 'gpt-4o-2024-08-06', providerName: 'openai' },
+        testAgentDetails
+      );
+      scope.dispose();
+
+      const spans = sharedExporter.getFinishedSpans();
+      const span = spans[spans.length - 1];
+      expect(span.name).toBe('chat gpt-4o-2024-08-06');
+      expect(span.attributes[OpenTelemetryConstants.GEN_AI_REQUEST_MODEL_KEY]).toBeUndefined();
+      expect(span.attributes[OpenTelemetryConstants.GEN_AI_RESPONSE_MODEL_KEY]).toBe('gpt-4o-2024-08-06');
+    });
+
+    it('treats a whitespace-only model string as absent, same as an empty string', () => {
+      expect(() => InferenceScope.start(
+        testRequest,
+        { operationName: InferenceOperationType.CHAT, model: '   ', responseModel: '   ', providerName: 'openai' },
+        testAgentDetails
+      )).toThrow('at least one of model or responseModel is required');
     });
 
     it('should create scope with inference details', () => {
@@ -649,6 +718,7 @@ describe('Scopes', () => {
         providerName: 'openai'
       };
 
+      const spy = jest.spyOn(OpenTelemetryScope.prototype as any, 'setTagMaybe');
       const scope = InferenceScope.start(testRequest, inferenceDetails, testAgentDetails);
 
       expect(() => scope?.recordInputMessages(['Input message'])).not.toThrow();
@@ -658,7 +728,17 @@ describe('Scopes', () => {
       expect(() => scope?.recordCacheReadInputTokens(10)).not.toThrow();
       expect(() => scope?.recordCacheWriteInputTokens(5)).not.toThrow();
       expect(() => scope?.recordFinishReasons(['stop', 'length'])).not.toThrow();
+
+      const calls = spy.mock.calls.map(args => ({ key: args[0], val: args[1] }));
+      expect(calls).toEqual(expect.arrayContaining([
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_USAGE_INPUT_TOKENS_KEY, val: 50 }),
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY, val: 100 }),
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS_KEY, val: 10 }),
+        expect.objectContaining({ key: OpenTelemetryConstants.GEN_AI_USAGE_CACHE_WRITE_INPUT_TOKENS_KEY, val: 5 }),
+      ]));
+
       scope?.dispose();
+      spy.mockRestore();
     });
 
      it('should set conversationId and channel tags when provided', () => {

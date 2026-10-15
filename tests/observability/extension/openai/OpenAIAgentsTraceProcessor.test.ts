@@ -837,6 +837,38 @@ describe('OpenAIAgentsTraceProcessor', () => {
       expect(attrs.find(([k]) => k === OpenTelemetryConstants.GEN_AI_REQUEST_MODEL_KEY)).toBeUndefined();
     });
 
+    it('maps the served model on Chat Completions generation spans while keeping the requested alias', async () => {
+      const processor = new OpenAIAgentsTraceProcessor(tracer, {});
+      const traceData = { traceId: 'trace-gen-model', name: 'Agent' } as any;
+      await processor.onTraceStart(traceData);
+
+      const genSpan = {
+        spanId: 'gen-model',
+        traceId: 'trace-gen-model',
+        startedAt: new Date().toISOString(),
+        endedAt: new Date().toISOString(),
+        spanData: {
+          type: 'generation' as const,
+          name: 'GenModel',
+          model: 'production-deployment',
+          output: [{
+            model: 'gpt-4o-2024-08-06',
+            choices: [],
+            usage: { prompt_tokens: 2048, completion_tokens: 11 },
+          }],
+        },
+      } as any;
+
+      await processor.onSpanStart(genSpan);
+      await processor.onSpanEnd(genSpan);
+
+      const attrs = spansByName.GenModel._attrs as Array<[string, unknown]>;
+      expect(attrs.find(([k]) => k === OpenTelemetryConstants.GEN_AI_REQUEST_MODEL_KEY)?.[1])
+        .toBe('production-deployment');
+      expect(attrs.find(([k]) => k === OpenTelemetryConstants.GEN_AI_RESPONSE_MODEL_KEY)?.[1])
+        .toBe('gpt-4o-2024-08-06');
+    });
+
   });
 
   // SpanKind, caller.agent.name, handoff A→B, and error.type are validated by
