@@ -395,13 +395,8 @@ export function setOutputMessagesAttribute(run: Run, span: Span) {
 }
 
 // Model - Helper to extract model name from run
-export function getModel(run: Run): string | undefined {
+export function getRequestModel(run: Run): string | undefined {
   return [
-    // v1: response_metadata directly on message
-    run.outputs?.generations?.[0]?.[0]?.message?.response_metadata?.model_name,
-    // v0: response_metadata nested under kwargs
-    run.outputs?.generations?.[0]?.[0]?.message?.kwargs?.response_metadata?.model_name,
-    // Metadata paths (both v0 and v1)
     run.extra?.metadata?.ls_model_name,
     run.extra?.invocation_params?.model,
     run.extra?.invocation_params?.model_name,
@@ -412,8 +407,18 @@ export function getModel(run: Run): string | undefined {
 
 // Model - Set model attribute on span
 export function setModelAttribute(run: Run, span: Span) {
-  const model = getModel(run);
-  if (model) span.setAttribute(OpenTelemetryConstants.GEN_AI_REQUEST_MODEL_KEY, model);
+  const requestModel = getRequestModel(run);
+  if (requestModel) span.setAttribute(OpenTelemetryConstants.GEN_AI_REQUEST_MODEL_KEY, requestModel);
+
+  const responseModel = [
+    run.outputs?.llmOutput?.model_name,
+    run.outputs?.llmOutput?.model,
+    run.outputs?.generations?.[0]?.[0]?.message?.response_metadata?.model_name,
+    run.outputs?.generations?.[0]?.[0]?.message?.kwargs?.response_metadata?.model_name,
+  ]
+    .map((v) => (v != null ? String(v).trim() : ""))
+    .find((v) => v.length > 0);
+  if (responseModel) span.setAttribute(OpenTelemetryConstants.GEN_AI_RESPONSE_MODEL_KEY, responseModel);
 }
 
 // Provider
@@ -490,11 +495,20 @@ export function setTokenAttributes(run: Run, span: Span) {
   // tokenUsage shape (promptTokens/completionTokens) from LangChain OpenAI provider
   const inputTokens = usageObj.input_tokens ?? usageObj.promptTokens;
   const outputTokens = usageObj.output_tokens ?? usageObj.completionTokens;
+  const inputTokenDetails = usageObj.input_token_details as Record<string, unknown> | undefined;
+  const cacheReadInputTokens = inputTokenDetails?.cache_read ?? inputTokenDetails?.cached_tokens;
+  const cacheWriteInputTokens = inputTokenDetails?.cache_write ?? inputTokenDetails?.cache_creation;
   if (typeof inputTokens === "number") {
     span.setAttribute(OpenTelemetryConstants.GEN_AI_USAGE_INPUT_TOKENS_KEY, inputTokens);
   }
   if (typeof outputTokens === "number") {
     span.setAttribute(OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY, outputTokens);
+  }
+  if (typeof cacheReadInputTokens === "number") {
+    span.setAttribute(OpenTelemetryConstants.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS_KEY, cacheReadInputTokens);
+  }
+  if (typeof cacheWriteInputTokens === "number") {
+    span.setAttribute(OpenTelemetryConstants.GEN_AI_USAGE_CACHE_WRITE_INPUT_TOKENS_KEY, cacheWriteInputTokens);
   }
 }
 

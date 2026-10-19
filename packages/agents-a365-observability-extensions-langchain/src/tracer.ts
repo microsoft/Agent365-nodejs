@@ -60,7 +60,7 @@ export class LangChainTracer extends BaseTracer {
       spanName = `${operation} ${run.name}`;
       kind = SpanKind.CLIENT;
     } else if (operation === "chat") {
-      spanName = `${operation} ${Utils.getModel(run) || run.name}`.trim();
+      spanName = `${operation} ${Utils.getRequestModel(run) || run.name}`.trim();
       kind = SpanKind.CLIENT;
     }
 
