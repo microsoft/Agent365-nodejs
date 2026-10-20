@@ -5,9 +5,16 @@ All notable changes to the Agent365 TypeScript SDK will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.0] - Unreleased
+## [2.0.0] - 2026-10-20
 
-### Breaking Changes (`@microsoft/agents-a365-observability`, `@microsoft/agents-a365-observability-hosting`)
+### Breaking Changes (`@microsoft/agents-a365-observability`, `@microsoft/agents-a365-observability-hosting`, `@microsoft/agents-a365-observability-extensions-openai`, `@microsoft/agents-a365-observability-extensions-langchain`)
+
+- **Message attributes now serialize as plain OTel JSON arrays** — `gen_ai.input.messages` and
+  `gen_ai.output.messages` are now emitted as `[{...}, ...]` per the OpenTelemetry gen-ai semantic
+  conventions instead of the versioned `{"version":"0.1.0","messages":[...]}` envelope. The `version`
+  property is removed from `InputMessages` and `OutputMessages`, and the `A365_MESSAGE_SCHEMA_VERSION`
+  export is removed (replaced by `DEFAULT_FINISH_REASON`). Output messages created from plain strings now
+  default `finish_reason` to `"stop"`. Consumers that parse these attributes must handle the new shape.
 
 - **`InferenceDetails.providerName` is now required** — Previously optional, `InferenceScope.start()` and
   `ScopeUtils.populateInferenceScopeFromTurnContext` now throw if `providerName` is missing or blank.
@@ -50,14 +57,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `RefreshObservabilityToken` throws when acquisition fails; call it from the
   exporter's `tokenResolver` or wrap it in try/catch on the request path.
 
-### Fixed (`@microsoft/agents-a365-observability`)
+### Added
 
+#### `@microsoft/agents-a365-observability`
+- **`ApplyGuardrailScope`** — New scope for tracing security guardrail evaluations, with
+  `recordDecision()`, `recordContentOutput()`, and `recordFinding()`. New contracts
+  `GuardrailDetails`, `GuardrailFinding`, `GuardrailDecisionType`, `GuardrailTargetType`, and
+  `GuardrailRiskSeverity`, plus the related `microsoft.security.*` / `microsoft.guardian.*` constants.
+  `apply_guardrail` spans are now accepted by the Agent365 exporter.
+- **Model observation attributes** — `InferenceDetails` gains `responseModel`
+  (`gen_ai.response.model`), `cacheReadInputTokens` (`gen_ai.usage.cache_read.input_tokens`), and
+  `cacheWriteInputTokens` (`gen_ai.usage.cache_write.input_tokens`). `AgentDetails` gains `agentType`
+  (`gen_ai.agent.type`). New `TEXT_COMPLETION_OPERATION_NAME` and `GENERATE_CONTENT_OPERATION_NAME`
+  constants.
+- **`TokenResolver` type export** — The exporter token resolver signature is now exported.
+
+#### `@microsoft/agents-a365-observability-hosting`
+- **`ObservabilityTokenResolver` type export** — The app-only resolver signature accepted by
+  `RefreshObservabilityToken`.
+
+#### `@microsoft/agents-a365-notifications`
+- **New agentic user lifecycle handlers** — `onAgenticUserUndeletedNotification()`,
+  `onAgenticUserUpdatedNotification()`, `onAgenticUserManagerUpdatedNotification()`,
+  `onAgenticUserEnabledNotification()`, and `onAgenticUserDisabledNotification()`.
+
+### Fixed
+
+#### `@microsoft/agents-a365-observability`
 - **`@opentelemetry/core` is now a declared dependency** - The exporter imports it at
   runtime, so installs where npm did not hoist another copy failed with
   `MODULE_NOT_FOUND` when loading the exporter.
 - **`gen_ai.operation.name` and the span-name prefix now reflect the actual operation type** —
   `InferenceScope` now maps `InferenceDetails.operationName` to its canonical lowercase semconv value
   (`chat` / `text_completion` / `generate_content`) instead of always emitting `chat`.
+
+#### `@microsoft/agents-a365-observability-hosting`
+- **Channel link falls back to `productContext`** — `getChannelBaggagePairs()` now uses
+  `channelData.productContext` for the channel link when `activity.channelIdSubChannel` is missing or blank.
+
+#### `@microsoft/agents-a365-tooling`
+- **Gateway `mcpServers` envelope is unwrapped** — `listToolServers` now reads the server list from the
+  `mcpServers` field of the tooling gateway response instead of returning an empty list.
+- **`axios` is now a declared dependency** — Previously relied on a transitive install.
+
+### Security
+
+- **`@modelcontextprotocol/sdk` upgraded to `^1.26.0`** (`@microsoft/agents-a365-tooling`,
+  `@microsoft/agents-a365-tooling-extensions-claude`) to address a cross-client data leak in stateless
+  deployments.
+- **Dependency security updates** — Updated vulnerable transitive dependencies, including `fast-uri` and
+  `ws`, via workspace overrides.
 
 ## [1.0.0] - 2026-04-30
 
@@ -173,12 +222,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **getTargetAgentBaggagePairs** — Now uses `activity.getAgenticInstanceId()` instead of `recipient.agenticAppId`.
 - **getTenantIdPair** — Now uses `activity.getAgenticTenantId()` instead of manual `channelData` parsing.
 
----
-
-
 ### Deprecated
 - `EnhancedAgentDetails` is now an alias of `AgentDetails` and marked as deprecated. Existing imports continue to work without breaking changes; migrate to `AgentDetails` when convenient.
 
+---
 
 ## [0.2.0] - 2026-04-15
 
@@ -218,7 +265,7 @@ Both `Agent365.Observability.OtelWrite` (Delegated) and `Agent365.Observability.
 
 ---
 
-## [0.1.0] - 2025-01-03
+## [0.1.0] - 2025-11-17
 
 ### Added
 - Initial release of Agent365 TypeScript SDK
