@@ -14,6 +14,8 @@ export class Utility {
   public static readonly HEADER_USER_AGENT = 'User-Agent';
   /** Header name for sending the agent identifier to MCP platform for logging/analytics. */
   public static readonly HEADER_AGENT_ID = 'x-ms-agentid';
+  /** Header name for sending the user's original message to MCP servers during tool execution. */
+  public static readonly HEADER_USER_MESSAGE = 'x-ms-usermessage';
 
   /**
    * Compose standard headers for MCP tooling requests.
@@ -52,11 +54,50 @@ export class Utility {
       headers[Utility.HEADER_SUBCHANNEL_ID] = subChannelId;
     }
 
+    const userMessage = turnContext?.activity?.text as string | undefined;
+    if (userMessage) {
+      headers[Utility.HEADER_USER_MESSAGE] = Utility.sanitizeTextForHeader(userMessage);
+    }
+
     if (options?.orchestratorName) {
       headers[Utility.HEADER_USER_AGENT] = RuntimeUtility.GetUserAgentHeader(options.orchestratorName);
     }
 
     return headers;
+  }
+
+  /**
+   * Sanitizes text for use in an HTTP header value by normalizing to ASCII-safe characters.
+   * Matches the .NET implementation in HttpContextHeadersHandler.SanitizeTextForHeader().
+   *
+   * @param input - The text to sanitize.
+   * @returns ASCII-safe text suitable for HTTP header values.
+   */
+  private static sanitizeTextForHeader(input: string): string {
+    try {
+      // Step 1: Replace non-breaking spaces with regular spaces, then trim
+      let result = input.replace(/[\u00A0\u202F]/g, ' ').trim();
+
+      // Step 2: Unicode normalize (NFD) and remove combining marks (diacritics)
+      result = result.normalize('NFD').replace(/\p{M}/gu, '');
+
+      // Step 3: Convert smart punctuation to ASCII equivalents
+      result = result
+        .replace(/[\u2018\u2019]/g, "'")   // Smart single quotes → '
+        .replace(/[\u201C\u201D]/g, '"')    // Smart double quotes → "
+        .replace(/[\u2013\u2014]/g, '-')    // En/em dashes → -
+        .replace(/\u2026/g, '...');         // Ellipsis → ...
+
+      // Step 4: Keep only printable ASCII (32-126), replace others with space
+      result = result.replace(/[^\x20-\x7E]/g, ' ');
+
+      // Step 5: Collapse whitespace and trim
+      result = result.replace(/\s+/g, ' ').trim();
+
+      return result;
+    } catch {
+      return input;
+    }
   }
 
   /**
