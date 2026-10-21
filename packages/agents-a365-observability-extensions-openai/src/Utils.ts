@@ -23,7 +23,11 @@ import { Span as AgentsSpan, SpanData } from '@openai/agents-core/dist/tracing/s
  * - Chat Completions: { prompt_tokens, completion_tokens }
  * Usage may live directly on the span data, on `.output`, or inside `.output[0]`.
  */
-export function extractUsageTokens(data: Record<string, unknown>): { inputTokens?: number; outputTokens?: number } {
+export function extractUsageTokens(data: Record<string, unknown>): {
+  inputTokens?: number;
+  outputTokens?: number;
+  cacheReadInputTokens?: number;
+} {
   const candidates: Array<Record<string, unknown> | undefined> = [];
   const direct = data.usage as Record<string, unknown> | undefined;
   candidates.push(direct);
@@ -42,14 +46,41 @@ export function extractUsageTokens(data: Record<string, unknown>): { inputTokens
     if (!usage) continue;
     const inputTokens = usage.input_tokens ?? usage.prompt_tokens;
     const outputTokens = usage.output_tokens ?? usage.completion_tokens;
-    if (typeof inputTokens === 'number' || typeof outputTokens === 'number') {
+    const inputTokenDetails =
+      (usage.input_tokens_details as Record<string, unknown> | undefined) ??
+      (usage.prompt_tokens_details as Record<string, unknown> | undefined);
+    const cacheReadInputTokens = inputTokenDetails?.cached_tokens;
+    if (typeof inputTokens === 'number' || typeof outputTokens === 'number' ||
+        typeof cacheReadInputTokens === 'number') {
       return {
         inputTokens: typeof inputTokens === 'number' ? inputTokens : undefined,
         outputTokens: typeof outputTokens === 'number' ? outputTokens : undefined,
+        cacheReadInputTokens: typeof cacheReadInputTokens === 'number' ? cacheReadInputTokens : undefined,
       };
     }
   }
   return {};
+}
+
+/**
+ * Locate the served/returned model identifier on a Chat Completions-style output object:
+ * - Chat Completions: the completion object itself (or `output[0]`) carries its own `model`,
+ *   which can differ from the requested alias/deployment name on `genData.model`.
+ * Looks in `.output` or `.output[0]`, mirroring `extractUsageTokens`.
+ */
+export function extractServedModel(data: Record<string, unknown>): string | undefined {
+  const output = data.output as unknown;
+  if (output && typeof output === 'object') {
+    if (Array.isArray(output)) {
+      const first = output[0];
+      if (first && typeof first === 'object' && typeof (first as Record<string, unknown>).model === 'string') {
+        return (first as Record<string, unknown>).model as string;
+      }
+    } else if (typeof (output as Record<string, unknown>).model === 'string') {
+      return (output as Record<string, unknown>).model as string;
+    }
+  }
+  return undefined;
 }
 
 /**
@@ -127,6 +158,11 @@ export function getAttributesFromGenerationSpanData(data: SpanData): Record<stri
     attributes[OpenTelemetryConstants.GEN_AI_REQUEST_MODEL_KEY] = genData.model;
   }
 
+  const servedModel = extractServedModel(genData);
+  if (servedModel !== undefined) {
+    attributes[OpenTelemetryConstants.GEN_AI_RESPONSE_MODEL_KEY] = servedModel;
+  }
+
   if (genData.model_config || genData.modelConfig) {
     const config = genData.model_config || genData.modelConfig;
     attributes[OpenTelemetryConstants.GEN_AI_EXECUTION_PAYLOAD_KEY] = safeJsonDumps(config);
@@ -146,6 +182,9 @@ export function getAttributesFromGenerationSpanData(data: SpanData): Record<stri
   }
   if (genUsage.outputTokens !== undefined) {
     attributes[OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY] = genUsage.outputTokens;
+  }
+  if (genUsage.cacheReadInputTokens !== undefined) {
+    attributes[OpenTelemetryConstants.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS_KEY] = genUsage.cacheReadInputTokens;
   }
 
   return attributes;
@@ -203,7 +242,7 @@ export function getAttributesFromResponse(response: unknown): Record<string, unk
   const resp = response as Record<string, unknown>;
 
   if (resp.model) {
-    attributes[OpenTelemetryConstants.GEN_AI_REQUEST_MODEL_KEY] = resp.model;
+    attributes[OpenTelemetryConstants.GEN_AI_RESPONSE_MODEL_KEY] = resp.model;
   }
 
   const respUsage = extractUsageTokens(resp);
@@ -212,6 +251,9 @@ export function getAttributesFromResponse(response: unknown): Record<string, unk
   }
   if (respUsage.outputTokens !== undefined) {
     attributes[OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY] = respUsage.outputTokens;
+  }
+  if (respUsage.cacheReadInputTokens !== undefined) {
+    attributes[OpenTelemetryConstants.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS_KEY] = respUsage.cacheReadInputTokens;
   }
 
   return attributes;
