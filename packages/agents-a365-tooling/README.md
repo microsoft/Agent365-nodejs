@@ -19,6 +19,10 @@ For detailed usage examples and implementation guidance, see the [Microsoft Agen
 
 `DefenderRtpClient` sends agent-hooks contexts to the Microsoft Defender for AI prevention endpoint at the points Defender evaluates (`input`, `pre_tool_call`, `post_tool_call`, `output`) and returns its verdict, using the agent identity's own app-only token. It is disabled by default (`ENABLE_A365_DEFENDER_RTP`). To use it from an agent-hooks host, register `A365DefenderInterceptor` from [`@microsoft/agents-a365-tooling-extensions-agenthooks`](../agents-a365-tooling-extensions-agenthooks/README.md), which also lists the configuration. See the [design document](docs/design.md) for details.
 
+## Microsoft Purview data loss prevention
+
+`PurviewDlpClient` sends the text of a prompt (`uploadText`) or a reply (`downloadText`) to Microsoft Purview through the Microsoft Graph `processContent` API, which applies the tenant's data loss prevention (DLP) policies for the agent and records the interaction for audit, and returns whether the content may proceed. It authenticates as the agent's agentic user (`PurviewDlpTokenResolvers.fromAgenticUser`) or with a Microsoft Graph token from the host (`PurviewDlpTokenResolvers.fromAccessTokenProvider`). It is disabled by default (`ENABLE_A365_PURVIEW_DLP`). To use it from an agent-hooks host, register `A365PurviewInterceptor` from [`@microsoft/agents-a365-tooling-extensions-agenthooks`](../agents-a365-tooling-extensions-agenthooks/README.md), which also lists the configuration and the tenant prerequisites. See the [design document](docs/design.md) for details.
+
 ## Support
 
 For issues, questions, or feedback:
