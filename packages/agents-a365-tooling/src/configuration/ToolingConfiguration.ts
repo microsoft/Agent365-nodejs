@@ -8,6 +8,8 @@ import { MCPServerConfig } from '../contracts';
 // Constants for tooling-specific settings
 const MCP_PLATFORM_PROD_BASE_URL = 'https://agent365.svc.cloud.microsoft';
 const PROD_MCP_PLATFORM_AUTHENTICATION_SCOPE = 'ea9ffc3e-8a23-4a7d-836d-234d7c7565c1/.default';
+const DEFAULT_DEFENDER_RTP_TIMEOUT_MILLISECONDS = 10000;
+const DEFAULT_DEFENDER_RTP_MAX_CONTENT_CHARACTERS = 20000;
 
 /**
  * Resolve the OAuth scope to request for a given MCP server.
@@ -105,6 +107,95 @@ export class ToolingConfiguration extends RuntimeConfiguration {
     if (envValue) return envValue;
 
     return PROD_MCP_PLATFORM_AUTHENTICATION_SCOPE;
+  }
+
+  /**
+   * Whether SDK tool execution wrappers call Defender RTP before executing.
+   */
+  get isDefenderRtpEnabled(): boolean {
+    const override = this.toolingOverrides.isDefenderRtpEnabled?.();
+    if (override !== undefined) return override;
+
+    return RuntimeConfiguration.parseEnvBoolean(process.env.ENABLE_A365_DEFENDER_RTP);
+  }
+
+  /**
+   * Defender RTP endpoint. Required when Defender RTP is enabled.
+   */
+  get defenderRtpEndpoint(): string {
+    const override = this.toolingOverrides.defenderRtpEndpoint?.();
+    if (override?.trim()) return normalizeUrl(override);
+
+    const envValue = process.env.A365_DEFENDER_RTP_ENDPOINT?.trim();
+    if (envValue) return normalizeUrl(envValue);
+
+    if (this.isDefenderRtpEnabled) {
+      throw new Error(
+        'defenderRtpEndpoint is required when Defender RTP is enabled. '
+        + 'Set A365_DEFENDER_RTP_ENDPOINT or provide a configuration override.',
+      );
+    }
+    return '';
+  }
+
+  /**
+   * Optional OAuth resource scope override.
+   *
+   * The 3P webhook authorizes customer-specific audiences. Client-credential authentication
+   * derives api://<clientId>/.default when this is not set.
+   */
+  get defenderRtpAuthenticationScope(): string {
+    const override = this.toolingOverrides.defenderRtpAuthenticationScope?.()?.trim();
+    if (override) return override;
+
+    const envValue = process.env.A365_DEFENDER_RTP_AUTHENTICATION_SCOPE?.trim();
+    if (envValue) return envValue;
+
+    return '';
+  }
+
+  /**
+   * Maximum duration of one synchronous Defender RTP evaluation request.
+   */
+  get defenderRtpTimeoutMilliseconds(): number {
+    const override = this.toolingOverrides.defenderRtpTimeoutMilliseconds?.();
+    const timeout = override
+      ?? RuntimeConfiguration.parseEnvInt(
+        process.env.A365_DEFENDER_RTP_TIMEOUT_MILLISECONDS,
+        DEFAULT_DEFENDER_RTP_TIMEOUT_MILLISECONDS,
+      );
+
+    if (!Number.isInteger(timeout) || timeout <= 0) {
+      throw new Error('defenderRtpTimeoutMilliseconds must be a positive integer.');
+    }
+    return timeout;
+  }
+
+  /**
+   * Whether an unavailable Defender verdict blocks the inspected action.
+   */
+  get defenderRtpFailClosed(): boolean {
+    const override = this.toolingOverrides.defenderRtpFailClosed?.();
+    if (override !== undefined) return override;
+
+    return process.env.A365_DEFENDER_RTP_FAIL_MODE?.trim().toLowerCase() === 'closed';
+  }
+
+  /**
+   * Maximum characters retained in each content string sent to Defender.
+   */
+  get defenderRtpMaxContentCharacters(): number {
+    const override = this.toolingOverrides.defenderRtpMaxContentCharacters?.();
+    const maximum = override
+      ?? RuntimeConfiguration.parseEnvInt(
+        process.env.A365_DEFENDER_RTP_MAX_CONTENT_CHARACTERS,
+        DEFAULT_DEFENDER_RTP_MAX_CONTENT_CHARACTERS,
+      );
+
+    if (!Number.isInteger(maximum) || maximum <= 0) {
+      throw new Error('defenderRtpMaxContentCharacters must be a positive integer.');
+    }
+    return maximum;
   }
 
   /**
