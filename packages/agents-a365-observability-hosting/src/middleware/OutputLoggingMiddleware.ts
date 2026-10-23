@@ -11,6 +11,7 @@ import {
   SpanDetails,
   logger,
   isPerRequestExportEnabled,
+  getResolvedInvocationIdentity,
 } from '@microsoft/agents-a365-observability';
 import { ScopeUtils } from '../utils/ScopeUtils';
 import { AgenticTokenCacheInstance } from '../caching/AgenticTokenCache';
@@ -39,14 +40,8 @@ export class OutputLoggingMiddleware implements Middleware {
 
   async onTurn(context: TurnContext, next: () => Promise<void>): Promise<void> {
     const authToken = this.resolveAuthToken(context);
-    const agentDetails = ScopeUtils.deriveAgentDetails(context, authToken);
-
-    if (!agentDetails || !agentDetails.tenantId) {
-      await next();
-      return;
-    }
-
-    const userDetails = ScopeUtils.deriveCallerDetails(context);
+    const agentDetailsSnapshot = ScopeUtils.deriveAgentDetails(context, authToken);
+    const userDetailsSnapshot = ScopeUtils.deriveCallerDetails(context);
     const conversationId = ScopeUtils.deriveConversationId(context);
     const channel = ScopeUtils.deriveChannelObject(context);
 
@@ -56,7 +51,12 @@ export class OutputLoggingMiddleware implements Middleware {
     };
 
     context.onSendActivities(
-      this._createSendHandler(context, agentDetails, userDetails, request)
+      this._createSendHandler(
+        context,
+        agentDetailsSnapshot,
+        userDetailsSnapshot,
+        request,
+      )
     );
 
     await next();
@@ -85,8 +85,8 @@ export class OutputLoggingMiddleware implements Middleware {
    */
   private _createSendHandler(
     turnContext: TurnContext,
-    agentDetails: AgentDetails,
-    userDetails?: UserDetails,
+    agentDetailsSnapshot?: AgentDetails,
+    userDetailsSnapshot?: UserDetails,
     request?: Request,
   ): SendActivitiesHandler {
     return async (_ctx, activities, sendNext) => {
@@ -95,6 +95,18 @@ export class OutputLoggingMiddleware implements Middleware {
         .map((a) => a.text!);
 
       if (messages.length === 0) {
+        return await sendNext();
+      }
+
+      const hasResolvedIdentity = getResolvedInvocationIdentity() !== undefined;
+      const agentDetails = hasResolvedIdentity
+        ? ScopeUtils.deriveAgentDetails(turnContext, '')
+        : agentDetailsSnapshot;
+      const userDetails = hasResolvedIdentity
+        ? ScopeUtils.deriveCallerDetails(turnContext)
+        : userDetailsSnapshot;
+
+      if (!agentDetails || !agentDetails.tenantId) {
         return await sendNext();
       }
 

@@ -24,10 +24,17 @@ import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '
 import { trace, context as otelContext } from '@opentelemetry/api';
 import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
 import { RoleTypes, ActivityTypes, ActivityEventNames } from '@microsoft/agents-activity';
-import type { TurnContext, SendActivitiesHandler } from '@microsoft/agents-hosting';
+import type { Middleware, TurnContext, SendActivitiesHandler } from '@microsoft/agents-hosting';
 
 import { OutputLoggingMiddleware, A365_PARENT_SPAN_KEY, A365_AUTH_TOKEN_KEY } from '../../../../packages/agents-a365-observability-hosting/src/middleware/OutputLoggingMiddleware';
-import { OpenTelemetryConstants, ParentSpanRef } from '@microsoft/agents-a365-observability';
+import { InvocationIdentityMiddleware } from '../../../../packages/agents-a365-observability-hosting/src/middleware/InvocationIdentityMiddleware';
+import { InvocationRole, OpenTelemetryConstants, ParentSpanRef } from '@microsoft/agents-a365-observability';
+
+const HUMAN_OID = '11111111-1111-4111-8111-111111111111';
+const TARGET_AGENT_ID = '77777777-7777-4777-8777-777777777777';
+const TARGET_AGENT_BLUEPRINT_ID = '88888888-8888-4888-8888-888888888888';
+const TARGET_AGENT_AUID = '99999999-9999-4999-8999-999999999999';
+const TENANT_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 
 function makeMockTurnContext(options?: {
   text?: string;
@@ -90,6 +97,24 @@ function makeMockTurnContext(options?: {
   };
 
   return ctx;
+}
+
+async function runMiddlewarePipeline(
+  middlewares: Middleware[],
+  context: TurnContext,
+  terminal: () => Promise<void>,
+): Promise<void> {
+  let index = 0;
+  const next = async (): Promise<void> => {
+    const middleware = middlewares[index++];
+    if (middleware) {
+      await middleware.onTurn(context, next);
+      return;
+    }
+    await terminal();
+  };
+
+  await next();
 }
 
 describe('OutputLoggingMiddleware', () => {
@@ -204,6 +229,52 @@ describe('OutputLoggingMiddleware', () => {
     expect(outputSpan!.attributes[OpenTelemetryConstants.USER_ID_KEY]).toBe('user-oid');
     expect(outputSpan!.attributes[OpenTelemetryConstants.USER_NAME_KEY]).toBe('Test User');
     expect(outputSpan!.attributes[OpenTelemetryConstants.CHANNEL_NAME_KEY]).toBe('teams');
+  });
+
+  it.each([
+    ['before', true],
+    ['after', false],
+  ])('uses resolved identity when identity middleware is registered %s output logging', async (
+    _label,
+    identityFirst,
+  ) => {
+    const outputMiddleware = new OutputLoggingMiddleware();
+    const identityMiddleware = new InvocationIdentityMiddleware({
+      resolveValidatedPrincipal: () => ({
+        role: InvocationRole.Human,
+        humanOid: HUMAN_OID,
+      }),
+      targetIdentity: {
+        agentId: TARGET_AGENT_ID,
+        agentAuid: TARGET_AGENT_AUID,
+        agentBlueprintId: TARGET_AGENT_BLUEPRINT_ID,
+        tenantId: TENANT_ID,
+      },
+    });
+    const ctx = makeMockTurnContext({ text: 'Hello' });
+    const middlewares = identityFirst
+      ? [identityMiddleware, outputMiddleware]
+      : [outputMiddleware, identityMiddleware];
+
+    await runMiddlewarePipeline(middlewares, ctx, async () => {
+      ctx.turnState.set(A365_PARENT_SPAN_KEY, {
+        traceId: '0af7651916cd43dd8448eb211c80319c',
+        spanId: 'b7ad6b7169203331',
+        traceFlags: 1,
+      });
+      await ctx.simulateSend([{ type: 'message', text: 'Identity-aware reply' }]);
+    });
+
+    await flushProvider.forceFlush();
+    const outputSpan = exporter.getFinishedSpans().find(s => s.name.includes('output_messages'));
+    expect(outputSpan).toBeDefined();
+    expect(outputSpan!.attributes[OpenTelemetryConstants.USER_ID_KEY]).toBe(HUMAN_OID);
+    expect(outputSpan!.attributes[OpenTelemetryConstants.USER_EMAIL_KEY]).toBeUndefined();
+    expect(outputSpan!.attributes[OpenTelemetryConstants.GEN_AI_AGENT_ID_KEY]).toBe(TARGET_AGENT_ID);
+    expect(outputSpan!.attributes[OpenTelemetryConstants.GEN_AI_AGENT_AUID_KEY]).toBe(TARGET_AGENT_AUID);
+    expect(outputSpan!.attributes[OpenTelemetryConstants.GEN_AI_AGENT_BLUEPRINT_ID_KEY])
+      .toBe(TARGET_AGENT_BLUEPRINT_ID);
+    expect(outputSpan!.attributes[OpenTelemetryConstants.TENANT_ID_KEY]).toBe(TENANT_ID);
   });
 
   it('should link OutputScope to parent when parentSpanRef is set in turnState', async () => {
