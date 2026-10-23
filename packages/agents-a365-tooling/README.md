@@ -15,6 +15,10 @@ npm install @microsoft/agents-a365-tooling
 
 For detailed usage examples and implementation guidance, see the [Microsoft Agent 365 Tooling Documentation](https://learn.microsoft.com/microsoft-agent-365/developer/tooling?tabs=nodejs).
 
+## Microsoft Defender for AI real-time protection
+
+`DefenderRtpClient` sends agent-hooks contexts to the Microsoft Defender for AI prevention endpoint at the points Defender evaluates (`input`, `pre_tool_call`, `post_tool_call`, `output`) and returns its verdict, using the agent identity's own app-only token. It is disabled by default (`ENABLE_A365_DEFENDER_RTP`). To use it from an agent-hooks host, register `A365DefenderInterceptor` from [`@microsoft/agents-a365-tooling-extensions-agenthooks`](../agents-a365-tooling-extensions-agenthooks/README.md), which also lists the configuration. See the [design document](docs/design.md) for details.
+
 ## Support
 
 For issues, questions, or feedback:

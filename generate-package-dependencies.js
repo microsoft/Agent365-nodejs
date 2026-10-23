@@ -26,6 +26,7 @@ const packageToType = {
   'agents-a365-observability-tokencache': 'Observability Extensions',
   'agents-a365-runtime': 'Runtime',
   'agents-a365-tooling': 'Tooling',
+  'agents-a365-tooling-extensions-agenthooks': 'Tooling Extensions',
   'agents-a365-tooling-extensions-claude': 'Tooling Extensions',
   'agents-a365-tooling-extensions-langchain': 'Tooling Extensions',
   'agents-a365-tooling-extensions-openai': 'Tooling Extensions'

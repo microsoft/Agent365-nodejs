@@ -209,6 +209,7 @@ All packages in this release:
 - @microsoft/agents-a365-runtime@1.1.0
 - @microsoft/agents-a365-tooling@1.1.0
 - @microsoft/agents-a365-observability@1.1.0
+- @microsoft/agents-a365-tooling-extensions-agenthooks@1.1.0
 - @microsoft/agents-a365-tooling-extensions-claude@1.1.0
 - @microsoft/agents-a365-tooling-extensions-langchain@1.1.0
 - @microsoft/agents-a365-tooling-extensions-openai@1.1.0

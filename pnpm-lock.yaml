@@ -69,6 +69,9 @@ catalogs:
     '@opentelemetry/semantic-conventions':
       specifier: ^1.40.0
       version: 1.40.0
+    '@responsibleai/agent-hooks':
+      specifier: 0.1.0-alpha.5
+      version: 0.1.0-alpha.5
     '@types/jest':
       specifier: ^30.0.0
       version: 30.0.0
@@ -542,6 +545,52 @@ importers:
         specifier: 'catalog:'
         version: 8.59.1(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3)
 
+  packages/agents-a365-tooling-extensions-agenthooks:
+    dependencies:
+      '@microsoft/agents-a365-runtime':
+        specifier: workspace:*
+        version: link:../agents-a365-runtime
+      '@microsoft/agents-a365-tooling':
+        specifier: workspace:*
+        version: link:../agents-a365-tooling
+    devDependencies:
+      '@eslint/js':
+        specifier: 'catalog:'
+        version: 9.39.4
+      '@responsibleai/agent-hooks':
+        specifier: 'catalog:'
+        version: 0.1.0-alpha.5
+      '@types/jest':
+        specifier: 'catalog:'
+        version: 30.0.0
+      '@types/node':
+        specifier: 'catalog:'
+        version: 20.19.39
+      '@typescript-eslint/eslint-plugin':
+        specifier: 'catalog:'
+        version: 8.59.1(@typescript-eslint/parser@8.59.1(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3)
+      '@typescript-eslint/parser':
+        specifier: 'catalog:'
+        version: 8.59.1(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3)
+      eslint:
+        specifier: 'catalog:'
+        version: 9.39.4(jiti@2.6.1)
+      jest:
+        specifier: 'catalog:'
+        version: 30.3.0(@types/node@20.19.39)
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.3
+      ts-jest:
+        specifier: 'catalog:'
+        version: 29.4.9(@babel/core@7.29.0)(@jest/transform@30.3.0)(@jest/types@30.3.0)(babel-jest@30.3.0(@babel/core@7.29.0))(jest-util@30.3.0)(jest@30.3.0(@types/node@20.19.39))(typescript@5.9.3)
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+      typescript-eslint:
+        specifier: 'catalog:'
+        version: 8.59.1(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3)
+
   packages/agents-a365-tooling-extensions-claude:
     dependencies:
       '@anthropic-ai/claude-agent-sdk':
@@ -745,6 +794,9 @@ importers:
       '@microsoft/agents-a365-runtime':
         specifier: workspace:*
         version: link:../packages/agents-a365-runtime
+      '@microsoft/agents-a365-tooling':
+        specifier: workspace:*
+        version: link:../packages/agents-a365-tooling
       '@microsoft/agents-hosting':
         specifier: 'catalog:'
         version: 1.4.2
@@ -778,6 +830,9 @@ importers:
       '@opentelemetry/semantic-conventions':
         specifier: 'catalog:'
         version: 1.40.0
+      '@responsibleai/agent-hooks':
+        specifier: 'catalog:'
+        version: 0.1.0-alpha.5
       dotenv:
         specifier: 'catalog:'
         version: 17.4.2
@@ -1706,6 +1761,42 @@ packages:
 
   '@protobufjs/utf8@1.1.1':
     resolution: {integrity: sha1-6u5ZABIsEQo9vLcowFlwFKJiF3Q=, tarball: https://ms-feed-2.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/@protobufjs/utf8/-/utf8-1.1.1.tgz}
+
+  '@responsibleai/agent-hooks-darwin-arm64@0.1.0-alpha.5':
+    resolution: {integrity: sha1-Q/N0Gqh54JYAnb5TshVHjD9K1go=, tarball: https://ms-feed-25.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/@responsibleai/agent-hooks-darwin-arm64/-/agent-hooks-darwin-arm64-0.1.0-alpha.5.tgz}
+    engines: {node: '>=20'}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@responsibleai/agent-hooks-darwin-x64@0.1.0-alpha.5':
+    resolution: {integrity: sha1-QzGEd3z4sU8SEsb4Ubx57c/W6EE=, tarball: https://ms-feed-25.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/@responsibleai/agent-hooks-darwin-x64/-/agent-hooks-darwin-x64-0.1.0-alpha.5.tgz}
+    engines: {node: '>=20'}
+    cpu: [x64]
+    os: [darwin]
+
+  '@responsibleai/agent-hooks-linux-arm64-gnu@0.1.0-alpha.5':
+    resolution: {integrity: sha1-Wq3sxStG1KskPNpE/Wz/Rsm0mX4=, tarball: https://ms-feed-25.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/@responsibleai/agent-hooks-linux-arm64-gnu/-/agent-hooks-linux-arm64-gnu-0.1.0-alpha.5.tgz}
+    engines: {node: '>=20'}
+    cpu: [arm64]
+    os: [linux]
+    libc: [glibc]
+
+  '@responsibleai/agent-hooks-linux-x64-gnu@0.1.0-alpha.5':
+    resolution: {integrity: sha1-epDvUOxQ4tFyiA9JJrO1Q3xkVGg=, tarball: https://ms-feed-25.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/@responsibleai/agent-hooks-linux-x64-gnu/-/agent-hooks-linux-x64-gnu-0.1.0-alpha.5.tgz}
+    engines: {node: '>=20'}
+    cpu: [x64]
+    os: [linux]
+    libc: [glibc]
+
+  '@responsibleai/agent-hooks-win32-x64-msvc@0.1.0-alpha.5':
+    resolution: {integrity: sha1-3QoGbMXECmeWwXJp12vKN0ccALc=, tarball: https://ms-feed-25.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/@responsibleai/agent-hooks-win32-x64-msvc/-/agent-hooks-win32-x64-msvc-0.1.0-alpha.5.tgz}
+    engines: {node: '>=20'}
+    cpu: [x64]
+    os: [win32]
+
+  '@responsibleai/agent-hooks@0.1.0-alpha.5':
+    resolution: {integrity: sha1-UwGoidifKLV4M8nF1tBN6hqCm0s=, tarball: https://ms-feed-25.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/@responsibleai/agent-hooks/-/agent-hooks-0.1.0-alpha.5.tgz}
+    engines: {node: '>=20'}
 
   '@sinclair/typebox@0.34.49':
     resolution: {integrity: sha1-TxNpI08uz2k4ZkdsOy4bVNKp1o4=, tarball: https://ms-feed-17.pkgs.visualstudio.com/1es-public/_packaging/npm-public/npm/registry/@sinclair/typebox/-/typebox-0.34.49.tgz}
@@ -4867,6 +4958,29 @@ snapshots:
   '@protobufjs/pool@1.1.0': {}
 
   '@protobufjs/utf8@1.1.1': {}
+
+  '@responsibleai/agent-hooks-darwin-arm64@0.1.0-alpha.5':
+    optional: true
+
+  '@responsibleai/agent-hooks-darwin-x64@0.1.0-alpha.5':
+    optional: true
+
+  '@responsibleai/agent-hooks-linux-arm64-gnu@0.1.0-alpha.5':
+    optional: true
+
+  '@responsibleai/agent-hooks-linux-x64-gnu@0.1.0-alpha.5':
+    optional: true
+
+  '@responsibleai/agent-hooks-win32-x64-msvc@0.1.0-alpha.5':
+    optional: true
+
+  '@responsibleai/agent-hooks@0.1.0-alpha.5':
+    optionalDependencies:
+      '@responsibleai/agent-hooks-darwin-arm64': 0.1.0-alpha.5
+      '@responsibleai/agent-hooks-darwin-x64': 0.1.0-alpha.5
+      '@responsibleai/agent-hooks-linux-arm64-gnu': 0.1.0-alpha.5
+      '@responsibleai/agent-hooks-linux-x64-gnu': 0.1.0-alpha.5
+      '@responsibleai/agent-hooks-win32-x64-msvc': 0.1.0-alpha.5
 
   '@sinclair/typebox@0.34.49': {}
 
