@@ -181,7 +181,11 @@ using scope = InferenceScope.start(
   {
     operationName: InferenceOperationType.CHAT,
     model: 'gpt-4',
-    providerName: 'openai'
+    providerName: 'openai',
+    responseModel: 'gpt-4-0613',
+    cacheReadInputTokens: 25,
+    cacheWriteInputTokens: 10,
+    endpoint: { host: 'api.openai.com', port: 443 }
   },
   agentDetails  // Must include tenantId
 );
@@ -191,8 +195,20 @@ scope.recordInputMessages(['User message']);
 scope.recordOutputMessages(['Assistant response']);
 scope.recordInputTokens(100);
 scope.recordOutputTokens(50);
+scope.recordCacheReadInputTokens(25);
+scope.recordCacheWriteInputTokens(10);
 scope.recordFinishReasons(['stop']);
 ```
+
+Inference spans use the model-observation schema: `gen_ai.operation.name` is the
+lowercase semconv value (`chat`, `text_completion`, or `generate_content`); `gen_ai.provider.name` and at least one of
+`gen_ai.request.model` or `gen_ai.response.model` identify the provider and
+model. Attributable agents include `gen_ai.agent.id` and may include
+`gen_ai.agent.type`. Supplied endpoints emit `server.address` and a numeric
+`server.port`. Token usage uses `gen_ai.usage.input_tokens`,
+`gen_ai.usage.output_tokens`, `gen_ai.usage.cache_read.input_tokens`, and
+`gen_ai.usage.cache_write.input_tokens`. Optional attributes are omitted when
+their values are unavailable.
 
 #### ExecuteToolScope ([ExecuteToolScope.ts](../src/tracing/scopes/ExecuteToolScope.ts))
 
@@ -425,12 +441,16 @@ interface AgentDetails {
 ```typescript
 interface InferenceDetails {
   operationName: InferenceOperationType;
-  model: string;
-  providerName?: string;
+  model?: string;
+  providerName: string;
+  responseModel?: string;
   inputTokens?: number;
   outputTokens?: number;
+  cacheReadInputTokens?: number;
+  cacheWriteInputTokens?: number;
   finishReasons?: string[];
   responseId?: string;
+  endpoint?: ServiceEndpoint;
 }
 ```
 

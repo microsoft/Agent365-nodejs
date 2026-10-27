@@ -278,9 +278,12 @@ describe("LangChain Observability - InferenceScope Attributes", () => {
 
       Utils.setModelAttribute(run as Run, mockSpan as Span);
 
-      // Should use response_metadata.model_name first (highest priority)
       expect(mockSpan.setAttribute).toHaveBeenCalledWith(
         OpenTelemetryConstants.GEN_AI_REQUEST_MODEL_KEY,
+        "gpt-3.5-turbo"
+      );
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith(
+        OpenTelemetryConstants.GEN_AI_RESPONSE_MODEL_KEY,
         "gpt-3.5-turbo-0125"
       );
     });
@@ -346,7 +349,8 @@ describe("LangChain Observability - InferenceScope Attributes", () => {
                       total_tokens: 366,
                       input_token_details: {
                         audio: 0,
-                        cache_read: 0
+                        cache_read: 7,
+                        cache_creation: 3
                       },
                       output_token_details: {
                         audio: 0,
@@ -380,6 +384,14 @@ describe("LangChain Observability - InferenceScope Attributes", () => {
       expect(mockSpan.setAttribute).toHaveBeenCalledWith(
         OpenTelemetryConstants.GEN_AI_USAGE_OUTPUT_TOKENS_KEY,
         10
+      );
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith(
+        OpenTelemetryConstants.GEN_AI_USAGE_CACHE_READ_INPUT_TOKENS_KEY,
+        7
+      );
+      expect(mockSpan.setAttribute).toHaveBeenCalledWith(
+        OpenTelemetryConstants.GEN_AI_USAGE_CACHE_WRITE_INPUT_TOKENS_KEY,
+        3
       );
     });
 

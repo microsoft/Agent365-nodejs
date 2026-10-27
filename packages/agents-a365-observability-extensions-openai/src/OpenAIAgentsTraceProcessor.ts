@@ -283,7 +283,7 @@ export class OpenAIAgentsTraceProcessor implements TracingProcessor {
         }
       });
 
-      const modelName = attrs[OpenTelemetryConstants.GEN_AI_REQUEST_MODEL_KEY] ?? '';
+      const modelName = attrs[OpenTelemetryConstants.GEN_AI_RESPONSE_MODEL_KEY] ?? '';
       otelSpan.updateName(`${InferenceOperationType.CHAT} ${modelName}`);
     }
 
