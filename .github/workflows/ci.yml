@@ -80,93 +80,32 @@ jobs:
         version: 10.20.0
 
     - name: Install dependencies
-      run: pnpm i
+      run: pnpm install --frozen-lockfile
 
     - name: Lint code
-      run: npm run lint
+      run: pnpm lint
 
     - name: Set version with Nerdbank.GitVersioning
       run: node setVersion.js
 
     - name: Build package
-      run: npm run build
+      run: pnpm build
+
+    - name: Type check remaining packages
+      run: pnpm typecheck
 
     - name: Run tests
-      run: npm test
+      run: pnpm test
 
     - name: Pack packages
-      run: npm run pack
+      run: pnpm run pack artifacts/release-${{ matrix.node-version }}
 
-    # Copy packages to drop folder
-    - name: Copy packages to drop folder
-      run: |
-        mkdir -p ~/drop/nodejs-${{ matrix.node-version }} && cp -v packages/*.tgz $_
+    - name: Verify release artifacts independently
+      run: node packPackages.js --verify artifacts/release-${{ matrix.node-version }}
 
     - name: Upload NPM packages as artifacts
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
       with:
         name: nodejs-${{ matrix.node-version }}
-        path: ~/drop/nodejs-${{ matrix.node-version }}/*.tgz
-
-    # - name: Publish to NPM (commented for now)
-    #   if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    #   run: npm publish
-    #   env:
-    #     NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-  integration-tests:
-    name: Integration tests
-    needs: [nodejs-sdk]
-    # Pull request workflows can be edited by the PR author, so the Azure OpenAI key lives in the
-    # integration-tests environment, which only allows deployments from main.
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    environment: integration-tests
-    permissions:
-      contents: read
-
-    strategy:
-      matrix:
-        node-version: ['18', '20']
-
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      with:
-        fetch-depth: 0
-
-    - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
-      name: Install pnpm
-      with:
-        run_install: false
-
-    - name: Set up Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'pnpm'
-        cache-dependency-path: '**/pnpm-lock.yaml'
-
-    - name: Setup pnpm
-      uses: pnpm/action-setup@a3252b78c470c02df07e9d59298aecedc3ccdd6d # v3.0.0
-      with:
-        version: 10.20.0
-
-    - name: Install dependencies
-      run: pnpm i
-
-    - name: Set version with Nerdbank.GitVersioning
-      run: node setVersion.js
-
-    - name: Build package
-      run: npm run build
-
-    - name: Run integration tests
-      env:
-        AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
-        AZURE_OPENAI_ENDPOINT: ${{ vars.AZURE_OPENAI_ENDPOINT }}
-        AZURE_OPENAI_DEPLOYMENT: ${{ vars.AZURE_OPENAI_DEPLOYMENT }}
-        AZURE_OPENAI_API_VERSION: ${{ vars.AZURE_OPENAI_API_VERSION }}
-        ENABLE_OBSERVABILITY: ${{ vars.ENABLE_OBSERVABILITY }}
-      run: |
-        npm run test:integration
+        path: artifacts/release-${{ matrix.node-version }}/
+        if-no-files-found: error

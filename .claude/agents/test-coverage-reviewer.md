@@ -61,9 +61,6 @@ Provide specific recommendations:
 ### Test Directory Structure
 ```
 tests/
-├── observability/
-│   ├── BaggageBuilder.test.ts
-│   └── InvokeAgentScope.test.ts
 ├── runtime/
 │   └── Utility.test.ts
 ├── tooling/

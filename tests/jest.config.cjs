@@ -19,7 +19,7 @@ module.exports = {
     '**/?(*.)+(spec|test).js'
   ],
   
-  // Exclude integration tests (they require Azure OpenAI credentials)
+  // Exclude dependencies and any future separately configured integration tests.
   testPathIgnorePatterns: [
     '/node_modules/',
     '/integration/'
@@ -68,17 +68,11 @@ module.exports = {
   // Module name mapper for package imports
   moduleNameMapper: {
     '^@microsoft/agents-a365-runtime$': '<rootDir>/packages/agents-a365-runtime/src',
-    '^@microsoft/agents-a365-observability$': '<rootDir>/packages/agents-a365-observability/src',
-    '^@microsoft/agents-a365-observability-hosting$': '<rootDir>/packages/agents-a365-observability-hosting/src',
-    '^@microsoft/agents-a365-observability-extensions-langchain$': '<rootDir>/packages/agents-a365-observability-extensions-langchain/src',
-    '^@microsoft/agents-a365-observability-extensions-openai$': '<rootDir>/packages/agents-a365-observability-extensions-openai/src',
-    '^@microsoft/agents-a365-observability-tokencache$': '<rootDir>/packages/agents-a365-observability-tokencache/src',
     '^@microsoft/agents-a365-tooling$': '<rootDir>/packages/agents-a365-tooling/src',
     '^@microsoft/agents-a365-tooling-extensions-claude$': '<rootDir>/packages/agents-a365-tooling-extensions-claude/src',
     '^@microsoft/agents-a365-tooling-extensions-langchain$': '<rootDir>/packages/agents-a365-tooling-extensions-langchain/src',
     '^@microsoft/agents-a365-tooling-extensions-openai$': '<rootDir>/packages/agents-a365-tooling-extensions-openai/src',
-    '^@microsoft/agents-a365-notifications$': '<rootDir>/packages/agents-a365-notifications/src',
-    '^@opentelemetry/api$': '<rootDir>/node_modules/@opentelemetry/api'
+    '^@microsoft/agents-a365-notifications$': '<rootDir>/packages/agents-a365-notifications/src'
   },
   
   // Module resolution

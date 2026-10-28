@@ -6,29 +6,26 @@ This document describes the architecture and design of the Microsoft Agent 365 S
 
 The Microsoft Agent 365 SDK extends the [Microsoft 365 Agents SDK](https://github.com/Microsoft/Agents-for-js) with enterprise-grade capabilities for building sophisticated AI agents. It provides comprehensive tooling for:
 
-- **Observability**: OpenTelemetry-based tracing, monitoring, and context propagation
 - **Notifications**: Agent notification services and activity routing for Microsoft 365 workloads
 - **Runtime**: Core utilities for agent operations and Power Platform integration
 - **Tooling**: MCP (Model Context Protocol) server configuration and tool discovery
 
 The SDK supports production deployment across Microsoft 365, Teams, Copilot Studio, and Webchat platforms.
 
+Observability is no longer implemented or released here. Applications use the Microsoft OpenTelemetry distro; see the [migration guide](observability-migration.md) for APIs, authentication, and package-owner retirement actions.
+
 ## Repository Structure
 
 ```
 Agent365-nodejs/
-├── packages/                                    # Core packages (9 total)
+├── packages/                                    # Six maintained packages
 │   ├── agents-a365-runtime/
 │   ├── agents-a365-tooling/
-│   ├── agents-a365-observability/
 │   ├── agents-a365-notifications/
-│   ├── agents-a365-observability-hosting/
-│   ├── agents-a365-observability-extensions-openai/
 │   ├── agents-a365-tooling-extensions-claude/
 │   ├── agents-a365-tooling-extensions-langchain/
 │   └── agents-a365-tooling-extensions-openai/
 ├── tests/                                       # Test suite
-├── tests-agent/                                 # Sample agent applications
 ├── docs/                                        # Documentation
 └── package.json                                 # Workspace configuration
 ```
@@ -74,7 +71,6 @@ Core utilities shared across the SDK.
 | `clusterCategory` | Environment classification (prod, dev, local) |
 | `isDevelopmentEnvironment` | Check if running in development mode |
 | `mcpPlatformAuthenticationScope` | MCP platform authentication scope |
-| `observabilityAuthenticationScopes` | Auth scopes for observability service |
 
 **Usage Example:**
 
@@ -104,84 +100,7 @@ const endpoint = discovery.getTenantIslandClusterEndpoint(tenantId);
 const userAgent = Utility.GetUserAgentHeader('MyOrchestrator');
 ```
 
-### 2. Observability (`@microsoft/agents-a365-observability`)
-
-> **Detailed documentation**: [packages/agents-a365-observability/docs/design.md](../packages/agents-a365-observability/docs/design.md)
-
-The foundation for distributed tracing in agent applications. Built on OpenTelemetry.
-
-**Key Classes:**
-
-| Class | Purpose |
-|-------|---------|
-| `ObservabilityManager` | Main entry point, singleton pattern for telemetry configuration |
-| `ObservabilityBuilder` | Fluent API for configuring telemetry |
-| `InvokeAgentScope` | Trace agent invocation lifecycle (entry point for agent requests) |
-| `InferenceScope` | Trace LLM/AI model inference calls |
-| `ExecuteToolScope` | Trace tool execution operations |
-| `BaggageBuilder` | Fluent API for context propagation across async boundaries |
-
-**Data Classes:**
-
-| Interface | Purpose |
-|-----------|---------|
-| `Request` | Request payload (channel, conversationId, content, sessionId) |
-| `AgentDetails` | Agent identification and metadata (includes tenantId) |
-| `InvokeAgentScopeDetails` | Details for invoking agent scope |
-| `InferenceDetails` | Model name, tokens, provider information |
-| `ToolCallDetails` | Tool name, arguments, endpoint |
-| `CallerDetails` | Wrapper for caller identity: `userDetails` (human) and/or `callerAgentDetails` (A2A) |
-| `UserDetails` | Human caller identification (userId, userEmail, userName, callerClientIp) |
-| `SpanDetails` | Optional span configuration (parentContext, startTime, endTime, spanKind) |
-
-**Usage Example:**
-
-```typescript
-import {
-  ObservabilityManager,
-  InvokeAgentScope,
-  BaggageBuilder,
-  ExecutionType,
-} from '@microsoft/agents-a365-observability';
-
-// Initialize telemetry
-ObservabilityManager.start({
-  serviceName: 'my-agent',
-  tokenResolver: (agentId, tenantId) => getAuthToken(),
-  clusterCategory: 'prod'
-});
-
-// Set context for child spans
-const scope = new BaggageBuilder()
-  .tenantId(tenantId)
-  .agentId(agentId)
-  .correlationId(correlationId)
-  .build();
-
-scope.run(() => {
-  // Trace agent invocation
-  using agentScope = InvokeAgentScope.start(
-    { conversationId, channel: { name: 'Teams' } },  // Request
-    { endpoint: { host: 'api.example.com' } },        // InvokeAgentScopeDetails
-    { agentId, agentName, tenantId },                  // AgentDetails
-    { userDetails: { userId, userName } }                // CallerDetails (optional)
-  );
-
-  // Agent logic here
-  agentScope.recordResponse('result');
-});
-```
-
-### 3. Observability Extensions
-
-Framework-specific instrumentations that integrate with the observability core:
-
-| Package | Purpose | Design Doc |
-|---------|---------|------------|
-| `observability-extensions-openai` | Instrument OpenAI Agents SDK | [design.md](../packages/agents-a365-observability-extensions-openai/docs/design.md) |
-| `observability-hosting` | Hosting-specific observability utilities | [design.md](../packages/agents-a365-observability-hosting/docs/design.md) |
-
-### 4. Tooling (`@microsoft/agents-a365-tooling`)
+### 2. Tooling (`@microsoft/agents-a365-tooling`)
 
 > **Detailed documentation**: [packages/agents-a365-tooling/docs/design.md](../packages/agents-a365-tooling/docs/design.md)
 
@@ -238,7 +157,7 @@ for (const server of servers) {
 }
 ```
 
-### 5. Tooling Extensions
+### 3. Tooling Extensions
 
 Framework-specific adapters for MCP tool integration:
 
@@ -248,7 +167,7 @@ Framework-specific adapters for MCP tool integration:
 | `tooling-extensions-langchain` | LangChain integration | [design.md](../packages/agents-a365-tooling-extensions-langchain/docs/design.md) |
 | `tooling-extensions-openai` | OpenAI Agents SDK integration | [design.md](../packages/agents-a365-tooling-extensions-openai/docs/design.md) |
 
-### 6. Notifications (`@microsoft/agents-a365-notifications`)
+### 4. Notifications (`@microsoft/agents-a365-notifications`)
 
 > **Detailed documentation**: [packages/agents-a365-notifications/docs/design.md](../packages/agents-a365-notifications/docs/design.md)
 
@@ -290,52 +209,7 @@ app.onLifecycleNotification(async (turnContext, turnState, notification) => {
 
 ## Design Patterns
 
-### 1. Singleton Pattern
-
-`ObservabilityManager` uses singleton pattern to ensure a single tracer provider per application:
-
-```typescript
-export class ObservabilityManager {
-  private static instance?: ObservabilityBuilder;
-
-  public static start(options?: BuilderOptions): ObservabilityBuilder {
-    const builder = new ObservabilityBuilder();
-    // Configure builder...
-    builder.start();
-    ObservabilityManager.instance = builder;
-    return builder;
-  }
-
-  public static getInstance(): ObservabilityBuilder | null {
-    return ObservabilityManager.instance || null;
-  }
-}
-```
-
-### 2. Disposable Pattern
-
-All scope classes implement the `Disposable` interface for automatic span lifecycle management:
-
-```typescript
-using scope = InvokeAgentScope.start(request, scopeDetails, agentDetails);
-// Span is active
-scope.recordResponse('result');
-// Span automatically ends when scope is disposed
-```
-
-### 3. Builder Pattern
-
-`BaggageBuilder` and `ObservabilityBuilder` provide fluent APIs for configuration:
-
-```typescript
-const scope = new BaggageBuilder()
-  .tenantId(tenantId)
-  .agentId(agentId)
-  .correlationId(correlationId)
-  .build();
-```
-
-### 4. Strategy Pattern
+### 1. Strategy Pattern
 
 `McpToolServerConfigurationService` selects between manifest-based (dev) and gateway-based (prod) configuration loading based on environment:
 
@@ -347,7 +221,7 @@ async listToolServers(agenticAppId: string, authToken: string): Promise<MCPServe
 }
 ```
 
-### 5. Configuration Provider Pattern
+### 2. Configuration Provider Pattern
 
 The SDK uses a hierarchical configuration system with function-based overrides for multi-tenant support:
 
@@ -431,10 +305,10 @@ get clusterCategory(): ClusterCategory {
 | **Thread safety** | Safe for concurrent access (no shared mutable state) |
 
 **Inheritance Hierarchy:**
-- `RuntimeConfiguration` → `ToolingConfiguration`, `ObservabilityConfiguration`
+- `RuntimeConfiguration` → `ToolingConfiguration`
 - Each child package extends the base with additional settings
 
-### 6. Extension Methods Pattern
+### 3. Extension Methods Pattern
 
 The notifications package uses TypeScript declaration merging to extend `AgentApplication`:
 
@@ -449,42 +323,6 @@ AgentApplication.prototype.onAgenticEmailNotification = function(...) { ... };
 ```
 
 ## Data Flow
-
-### Agent Invocation Tracing Flow
-
-```
-Application
-    │
-    ▼
-BaggageBuilder.build().run()              ← Set tenant, agent, correlation IDs
-    │
-    ▼
-InvokeAgentScope.start()                  ← Create root span
-    │
-    ├──▶ SpanProcessor.onStart()          ← Copy baggage to span attributes
-    │
-    ▼
-[Agent execution]
-    │
-    ├──▶ InferenceScope.start()           ← Child span for LLM calls
-    │         └── recordInputTokens()
-    │         └── recordOutputTokens()
-    │
-    ├──▶ ExecuteToolScope.start()         ← Child span for tool execution
-    │         └── recordResponse()
-    │
-    ▼
-scope.recordResponse()                    ← Record final response
-    │
-    ▼
-BatchSpanProcessor                        ← Accumulate spans
-    │
-    ▼
-Agent365Exporter.export()                 ← Send to backend
-    ├── Partition by (tenant_id, agent_id)
-    ├── Resolve endpoint via PowerPlatformApiDiscovery
-    └── POST to observability service
-```
 
 ### MCP Tool Discovery Flow
 
@@ -516,7 +354,6 @@ isDevScenario()?
 |----------|---------|--------|
 | `NODE_ENV` | Controls development vs production behavior | `Development`, `production` (default) |
 | `CLUSTER_CATEGORY` | Environment classification | `local`, `dev`, `prod`, `gov`, etc. |
-| `A365_OBSERVABILITY_SCOPES_OVERRIDE` | Override observability auth scopes | Space-separated scope strings |
 | `MCP_PLATFORM_AUTHENTICATION_SCOPE` | MCP platform auth scope | Scope string |
 | `MCP_PLATFORM_ENDPOINT` | MCP platform base URL | URL string |
 
@@ -545,7 +382,7 @@ The SDK supports multiple deployment environments via `ClusterCategory`:
 
 ```
 tests/
-├── observability/
+├── notifications/
 ├── runtime/
 ├── tooling/
 └── jest.config.cjs
@@ -560,11 +397,8 @@ pnpm test
 # Run with coverage
 pnpm test:coverage
 
-# Run specific package tests
-cd packages/agents-a365-observability && pnpm test
-
-# Run integration tests
-pnpm test:integration
+# Run Runtime tests through the central runner
+pnpm --filter @microsoft/agents-a365-tests test --runInBand --testPathPatterns=runtime
 ```
 
 ### Test Conventions
@@ -602,7 +436,7 @@ pnpm build
 pnpm build
 
 # Build specific package
-cd packages/agents-a365-observability && pnpm build
+pnpm --filter @microsoft/agents-a365-runtime build
 
 # Watch mode (development)
 pnpm build:watch
@@ -625,19 +459,8 @@ pnpm lint:fix
 Dependencies between packages are managed via pnpm workspace:
 
 ```
-runtime ◄─── observability
-   │              │
-   │              ▼
-   │         observability-hosting
-   │              │
-   │              ▼
-   │         observability-extensions-openai
-   │
-   ▼
-tooling ◄─── tooling-extensions-*
-   │
-   ▼
-notifications
+runtime → tooling → tooling-extensions-* (Claude, LangChain, OpenAI)
+runtime → notifications
 ```
 
 ## Key Files Reference
@@ -645,7 +468,6 @@ notifications
 | File | Purpose |
 |------|---------|
 | [package.json](../package.json) | Workspace configuration, scripts |
-| [packages/agents-a365-observability/src/index.ts](../packages/agents-a365-observability/src/index.ts) | Observability public API |
 | [packages/agents-a365-tooling/src/index.ts](../packages/agents-a365-tooling/src/index.ts) | Tooling public API |
 | [packages/agents-a365-runtime/src/index.ts](../packages/agents-a365-runtime/src/index.ts) | Runtime public API |
 | [packages/agents-a365-notifications/src/index.ts](../packages/agents-a365-notifications/src/index.ts) | Notifications public API |

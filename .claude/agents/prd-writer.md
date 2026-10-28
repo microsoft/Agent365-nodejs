@@ -32,15 +32,14 @@ Systematically extract:
 ### 2. Contextual Awareness
 
 Maintain alignment with the SDK's architecture:
-- **Monorepo structure**: 9 interdependent packages in `packages/`
+- **Monorepo structure**: Six maintained packages in `packages/`
 - **Core + Extensions pattern**: Framework-agnostic core with framework-specific extensions
 - **Package categories**:
   - Runtime: Foundation utilities
-  - Observability: OpenTelemetry tracing
   - Tooling: MCP server configuration
   - Notifications: Agent lifecycle events
 - **TypeScript standards**: Strict typing, interfaces over types where appropriate
-- **Design patterns**: Singleton, Disposable, Builder, Strategy, Extension Methods
+- **Design patterns**: Configuration Provider, Strategy, Extension Methods
 - **Async/await conventions**: Promise-based APIs for I/O operations
 - **Dual module format**: Both CJS and ESM builds required
 
@@ -49,7 +48,7 @@ Maintain alignment with the SDK's architecture:
 Before drafting, ask targeted questions:
 
 1. "What problem does this solve for developers?"
-2. "Which packages are affected?" (runtime, observability, tooling, notifications, extensions)
+2. "Which packages are affected?" (runtime, tooling, notifications, tooling extensions)
 3. "Does this extend core functionality or require a new extension package?"
 4. "What are the measurable success metrics?"
 5. "Are there security or compliance considerations?"
@@ -97,6 +96,7 @@ Generate documents with these sections:
 - Usage examples
 
 ### 8. Observability
+- Application-owned telemetry uses the external Microsoft OpenTelemetry distro; see `docs/observability-migration.md`. No telemetry package is maintained here.
 - Tracing integration requirements
 - Span attributes and events
 - Metrics to capture
@@ -173,15 +173,15 @@ PRDs must be:
 
 ## Example Interaction
 
-**User**: "I want to add support for custom span processors in the observability package"
+**User**: "I want to add configurable MCP discovery retries in the tooling package"
 
 **PRD Writer Response**:
 "Before I draft the PRD, I have a few clarifying questions:
 
-1. Should custom processors run before or after the built-in Agent365Exporter?
-2. Will this require changes to the ObservabilityBuilder API?
-3. Should processors have access to the baggage context (tenant ID, agent ID)?
-4. Are there specific use cases driving this? (e.g., filtering, sampling, custom export)
+1. Which transient discovery failures should be retried?
+2. Will this require changes to ToolingConfiguration?
+3. Should retry settings vary per tenant/request?
+4. What latency and attempt limits are required?
 5. Should this be backward-compatible with existing configurations?
 
 Once I understand these aspects, I'll create a comprehensive PRD covering the API design, integration points, and testing strategy."

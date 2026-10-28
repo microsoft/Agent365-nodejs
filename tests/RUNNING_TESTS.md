@@ -16,7 +16,6 @@
 ```plaintext
 tests/
 ├── runtime/                      # Runtime tests
-├── observability/                # Observability tests
 ├── tooling/                      # Tooling tests
 ├── notifications/                # Notifications tests
 └── all-packages-coverage.test.ts # Ensures all packages appear in coverage reports
@@ -42,7 +41,7 @@ pnpm test:watch                        # Watch mode
 pnpm test -- runtime/power-platform-api-discovery.test.ts
 
 # Additional options
-pnpm test -- --testPathPattern=observability
+pnpm test --testPathPatterns=runtime
 pnpm test -- --testNamePattern="should return"
 pnpm test -- --bail                    # Stop on first failure
 pnpm test -- --onlyFailures            # Re-run failed tests only

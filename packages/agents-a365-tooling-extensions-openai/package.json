@@ -17,7 +17,7 @@
     "lint:fix": "eslint src --fix",
     "prepublishOnly": "npm run clean && npm run build",
     "ci": "npm ci",
-    "pack": "node ../../copyFiles.js . && pnpm pack --pack-destination=../"
+    "pack": "pnpm --dir ../.. run pack"
   },
   "keywords": [
     "ai",

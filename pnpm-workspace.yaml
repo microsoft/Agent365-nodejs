@@ -1,6 +1,10 @@
 packages:
-  - 'packages/agents-a365-*'
-  # - 'tests-agent/*'  # Excluded from workspace
+  - 'packages/agents-a365-notifications'
+  - 'packages/agents-a365-runtime'
+  - 'packages/agents-a365-tooling'
+  - 'packages/agents-a365-tooling-extensions-claude'
+  - 'packages/agents-a365-tooling-extensions-langchain'
+  - 'packages/agents-a365-tooling-extensions-openai'
   - 'tests'
 
 catalog:
@@ -24,7 +28,6 @@ catalog:
   "@langchain/core": "^1.1.32"
   "@langchain/langgraph": "^1.2.2"
   "@langchain/mcp-adapters": "^1.1.3"
-  "@langchain/openai": "^0.5.0"
 
   # Microsoft 365 Agents SDK packages
   "@microsoft/agents-hosting": "^1.3.1"
@@ -42,18 +45,7 @@ catalog:
   "@openai/agents-openai": "^0.7.0"
   "openai": "^6.27.0"
 
-  # OpenTelemetry packages - align versions
-  "@opentelemetry/core": "^2.6.0"
-  "@opentelemetry/api": "^1.9.0"
-  "@opentelemetry/exporter-trace-otlp-http": "^0.213.0"
-  "@opentelemetry/instrumentation": "^0.213.0"
-  "@opentelemetry/resources": "^2.6.0"
-  "@opentelemetry/sdk-node": "^0.213.0"
-  "@opentelemetry/sdk-trace-base": "^2.6.0"
-  "@opentelemetry/semantic-conventions": "^1.40.0"
-
   # Development dependencies - align versions
-  "@babel/preset-typescript": "^7.27.1"
   "@eslint/js": "^9.39.1"
   "@jest/globals": "^30.2.0"
   "@microsoft/m365agentsplayground": "^0.2.18"
@@ -65,10 +57,8 @@ catalog:
   "@typescript-eslint/eslint-plugin": "^8.47.0"
   "@typescript-eslint/parser": "^8.47.0"
   "cross-env": "^7.0.3"
-  "dotenv": "^17.2.2"
   "eslint": "^9.39.1"
   "jest": "^30.2.0"
-  "js-yaml": "^4.1.1"
   "nodemon": "^3.1.10"
   "rimraf": "^6.0.0"
   "ts-jest": "^29.4.5"

@@ -208,16 +208,15 @@ All packages in this release:
 - @microsoft/agents-a365-notifications@1.1.0
 - @microsoft/agents-a365-runtime@1.1.0
 - @microsoft/agents-a365-tooling@1.1.0
-- @microsoft/agents-a365-observability@1.1.0
 - @microsoft/agents-a365-tooling-extensions-claude@1.1.0
 - @microsoft/agents-a365-tooling-extensions-langchain@1.1.0
 - @microsoft/agents-a365-tooling-extensions-openai@1.1.0
 
 ## 📚 Documentation
 
-- [Getting Started](../README.md)
-- [Changelog](../CHANGELOG.md)
-- [Migration Guide](../VERSIONING_MIGRATION.md)
+- [Getting Started](https://github.com/microsoft/Agent365-nodejs/blob/main/README.md)
+- [Changelog](https://github.com/microsoft/Agent365-nodejs/blob/main/CHANGELOG.md)
+- [Observability migration](https://github.com/microsoft/Agent365-nodejs/blob/main/docs/observability-migration.md)
 
 ## Installation
 
@@ -230,28 +229,27 @@ npm install @microsoft/agents-a365-runtime@1.1.0
 
 ### Step 8: Publish to NPM (Optional)
 
-If publishing to NPM registry:
+Observability is retired. First complete the [migration and owner-operated npm retirement checklist](docs/observability-migration.md), including external publisher/old-branch restrictions. Never publish every discovered directory or `*.tgz` file.
 
-```bash
-# Ensure you're logged in
-npm login
+From the approved release commit, create a **new** output directory through the guarded root script:
 
-# Publish all packages (from release branch/tag)
-npm publish --workspaces --access public
-
-# Or publish individually
-cd packages/agents-a365-runtime
-npm publish --access public
+```shell
+pnpm install --frozen-lockfile
+pnpm build
+pnpm test
+pnpm lint
+pnpm typecheck
+pnpm run pack artifacts/release-candidate
+node packPackages.js --verify artifacts/release-candidate
 ```
 
-**Note**: Update the CI workflow to enable automatic NPM publishing:
-```yaml
-- name: Publish to NPM
-  if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-  run: npm publish --workspaces --access public
-  env:
-    NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+Use backslashes for Windows paths. Verify that `packages.json` lists exactly the six maintained packages and compare its SHA-256 hashes immediately before publishing. An authorized maintainer may publish **each exact verified tarball**, for example:
+
+```shell
+pnpm publish artifacts/release-candidate/microsoft-agents-a365-runtime-<version>.tgz --access public
 ```
+
+Repeat only for receipt-listed maintained packages; do not use wildcard publishing or cached drops. CI uploads only its fresh inspected directory and does not publish. External publishers must independently enforce the six-package allowlist and approved commit/receipt; these changes cannot protect old branches, revoke registry credentials, or invalidate already cached artifacts.
 
 ---
 
@@ -524,5 +522,3 @@ git push origin main
 **Document Version**: 1.0  
 **Last Updated**: November 2, 2025  
 **Maintained By**: DevOps Team
-
-

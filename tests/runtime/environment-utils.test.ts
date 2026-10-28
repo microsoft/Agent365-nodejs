@@ -3,11 +3,9 @@
 
 import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import {
-  getObservabilityAuthenticationScope,
   getClusterCategory,
   isDevelopmentEnvironment,
   getMcpPlatformAuthenticationScope,
-  PROD_OBSERVABILITY_SCOPE,
   PROD_MCP_PLATFORM_AUTHENTICATION_SCOPE,
 } from '@microsoft/agents-a365-runtime';
 
@@ -20,27 +18,6 @@ describe('environment-utils', () => {
 
   afterEach(() => {
     process.env = originalEnv;
-  });
-
-  describe('getObservabilityAuthenticationScope (deprecated)', () => {
-    it('should always return production observability scope (hardcoded default)', () => {
-      // This function is deprecated and now returns a hardcoded default
-      // Use ObservabilityConfiguration for env var support
-      const scopes = getObservabilityAuthenticationScope();
-
-      expect(scopes).toEqual([PROD_OBSERVABILITY_SCOPE]);
-      expect(scopes[0]).toEqual('api://9b975845-388f-4429-889e-eab1ef63949c/.default');
-    });
-
-    it('should ignore A365_OBSERVABILITY_SCOPES_OVERRIDE env var (deprecated behavior)', () => {
-      // The deprecated function no longer reads from env vars
-      process.env.A365_OBSERVABILITY_SCOPES_OVERRIDE = 'https://override.example.com/.default';
-
-      const scopes = getObservabilityAuthenticationScope();
-
-      // Should still return the hardcoded default, not the env var value
-      expect(scopes).toEqual([PROD_OBSERVABILITY_SCOPE]);
-    });
   });
 
   describe('getClusterCategory', () => {
