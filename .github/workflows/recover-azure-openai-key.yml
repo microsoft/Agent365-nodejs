@@ -1,0 +1,99 @@
+name: Recover Azure OpenAI key
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  recover:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: integration-tests
+    timeout-minutes: 5
+
+    steps:
+    - name: Encrypt key for the fixed recipient
+      shell: pwsh
+      env:
+        AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+      run: |
+        $ErrorActionPreference = 'Stop'
+        $rsa = $null
+        $plaintextBytes = $null
+        try {
+          if ([string]::IsNullOrWhiteSpace($env:AZURE_OPENAI_API_KEY)) {
+            throw 'Azure OpenAI key recovery configuration is invalid.'
+          }
+
+          $publicKeyPem = @'
+        -----BEGIN PUBLIC KEY-----
+        MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAyq4yb4CBuQXkFTvsPx5r
+        G1QAjrWv4yROqXx8x1KLxGUm8RGSfNWUmbtKslMejv9JPgQc9Oc5Y9R+vU4yr9Jw
+        C413wWgXDry0CYzgt6hr8+77HrCzCqGmg6j0DmwxnQHtS8XGbKi33oNoZGjLg/aj
+        9Xz+XPur5v0ZhUmS7FTq5Jy/wTmv8HqHYFO5WMfM3dkPaGIABCUcPA9QWbiRsvE7
+        vs/a7WmTyORK9Ar32b+ZyydjYMrMCV2cikCaBfja88mEutE452wrJfvqbQxKnYiI
+        qs+lVl/NA9oJoHuMgFEBO1TIhySK7BCfUjWj5GOtbGxCgg1iro0wdCnd1/z29P+m
+        nwzU+en3LcEbxSxdcVusax6aAcmss3lDEICeJou9HVUYbu4skX4LT7W5LidMQgKn
+        ogKxoEzEn4uTr5hc5h0uRS7T+DD199ACEBhMPuIVJRjEFqgLbDDc+kEmLZce4Aap
+        6KjW/8OGFlSBCW4dZtneQAGk37DVhXCPh2DSm1jbAjOAbkkFUvGZJpHcSvpD7sI2
+        UK2HOLA55es8wxHyMyCafg5QHNfitoymvyLRLGuXWPsvQv0N7hil0ni8883te7mh
+        irZeCcZ+PDmicMCGGk1e/dHqr5TSRI2wvWK6F/KyORySTQzvbMic6Z0i7cW/JwiB
+        1ojPvB8nli7rDdKDngwHbx0CAwEAAQ==
+        -----END PUBLIC KEY-----
+        '@
+
+          # Bridge the span-based PEM import API for PowerShell.
+          Add-Type -TypeDefinition @'
+        using System.Security.Cryptography;
+
+        public static class RecoveryPublicKey
+        {
+            public static void Import(RSA rsa, string pem)
+            {
+                rsa.ImportFromPem(pem);
+            }
+        }
+        '@
+
+          $rsa = [System.Security.Cryptography.RSA]::Create()
+          [RecoveryPublicKey]::Import($rsa, $publicKeyPem)
+          $fingerprint = [Convert]::ToHexString(
+            [System.Security.Cryptography.SHA256]::HashData($rsa.ExportSubjectPublicKeyInfo())
+          ).ToLowerInvariant()
+          if ($rsa.KeySize -ne 4096 -or $fingerprint -cne 'd2112bc7bdd5dae77f5405423cbd695e9c8e275d8373ceab39ef6691829e9f21') {
+            throw 'Azure OpenAI key recovery configuration is invalid.'
+          }
+
+          $plaintextBytes = [System.Text.Encoding]::UTF8.GetBytes($env:AZURE_OPENAI_API_KEY)
+          $env:AZURE_OPENAI_API_KEY = $null
+          # RSA-4096 with OAEP-SHA256 supports at most 446 plaintext bytes.
+          if ($plaintextBytes.Length -gt 446) {
+            throw 'Azure OpenAI key recovery configuration is invalid.'
+          }
+          $ciphertext = $rsa.Encrypt(
+            $plaintextBytes,
+            [System.Security.Cryptography.RSAEncryptionPadding]::OaepSHA256
+          )
+          [System.IO.File]::WriteAllBytes(
+            (Join-Path $env:RUNNER_TEMP 'azure-openai-key.enc'),
+            $ciphertext
+          )
+        }
+        finally {
+          $env:AZURE_OPENAI_API_KEY = $null
+          if ($null -ne $plaintextBytes) {
+            [Array]::Clear($plaintextBytes, 0, $plaintextBytes.Length)
+          }
+          if ($null -ne $rsa) {
+            $rsa.Dispose()
+          }
+        }
+
+    - name: Upload encrypted key
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      with:
+        name: azure-openai-key-recovery
+        path: ${{ runner.temp }}/azure-openai-key.enc
+        retention-days: 1
+        if-no-files-found: error
