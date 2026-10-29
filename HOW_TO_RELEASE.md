@@ -235,15 +235,11 @@ npm install @microsoft/agents-a365-runtime@1.1.0
 
 Observability is retired. First complete the [migration and owner-operated npm retirement checklist](docs/observability-migration.md), including external publisher/old-branch restrictions. Never publish every discovered directory or `*.tgz` file.
 
-From the approved release commit, create a **new** output directory through the guarded root script:
+Continue in the already installed, version-stamped checkout from Step 6. Do not repeat `pnpm install --frozen-lockfile` after stamping: `setVersion.js` changes internal dependency specifications without updating the lockfile. If starting from a fresh checkout of the approved release commit, complete Step 6 first.
+
+Create a **new** output directory through the guarded root script, which cleans and rebuilds the packages:
 
 ```shell
-pnpm install --frozen-lockfile
-node setVersion.js
-pnpm build
-pnpm test
-pnpm lint
-pnpm typecheck
 pnpm run pack artifacts/release-candidate
 node packPackages.js --verify artifacts/release-candidate
 ```
