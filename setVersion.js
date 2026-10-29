@@ -16,7 +16,7 @@
  * 
  * Examples:
  *   # For CI/CD pipelines (writes to disk):
- *   pnpm build && node setVersion.js && pnpm run pack
+ *   node setVersion.js && pnpm run pack
  * 
  *   # For local development (dry-run):
  *   node setVersion.js --local

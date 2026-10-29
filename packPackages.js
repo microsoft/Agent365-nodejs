@@ -21,14 +21,17 @@ const allowedNames = new Set([
 const retiredDependency = /^@microsoft\/agents-a365-observability(?:$|-)/;
 const retiredCode = /@microsoft\/agents-a365-observability|ObservabilityManager|ObservabilityBuilder|PerRequestSpanProcessor|LangChainTraceInstrumentor|OpenAIAgentsTraceInstrumentor|OpenAIAgentsTraceProcessor|Agent365Exporter|BaggageMiddleware|OutputLoggingMiddleware/;
 
-function assertManifest(manifest) {
+function assertManifest(manifest, requireResolvedDependencies = false) {
   if (!allowedNames.has(manifest.name)) {
     throw new Error(`Unexpected package: ${manifest.name}`);
   }
   for (const section of ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']) {
-    for (const name of Object.keys(manifest[section] ?? {})) {
+    for (const [name, specification] of Object.entries(manifest[section] ?? {})) {
       if (retiredDependency.test(name)) {
         throw new Error(`Retired dependency: ${manifest.name} -> ${name} (${section})`);
+      }
+      if (requireResolvedDependencies && /^(?:catalog|workspace):/.test(specification)) {
+        throw new Error(`Unresolved dependency specification: ${manifest.name} -> ${name} (${section}): ${specification}`);
       }
     }
   }
@@ -44,11 +47,11 @@ function verify(directory) {
     if (!entries.includes('package/package.json')) {
       throw new Error(`Missing package manifest: ${file}`);
     }
-    const readEntry = entry => execFileSync('tar', ['-xOzf', tarball, entry], {
+    const readEntry = entry => execFileSync('tar', ['-xOzf', tarball, '--', entry], {
       encoding: 'utf8', maxBuffer: 32 * 1024 * 1024,
     });
     const manifest = JSON.parse(readEntry('package/package.json'));
-    assertManifest(manifest);
+    assertManifest(manifest, true);
     if (seen.has(manifest.name)) {
       throw new Error(`Duplicate package: ${manifest.name}`);
     }
@@ -81,13 +84,13 @@ function verify(directory) {
 
 // Use pnpm's JS entry point rather than shell execution (also works on Windows).
 function pnpm(args, cwd = root) {
-  if (!process.env.npm_execpath) {
-    throw new Error('Run packaging through pnpm run pack, not node directly.');
-  }
   execFileSync(process.execPath, [process.env.npm_execpath, ...args], { cwd, stdio: 'inherit' });
 }
 
 function pack(destination) {
+  if (!process.env.npm_execpath || !process.env.npm_config_user_agent?.startsWith('pnpm/')) {
+    throw new Error('Run packaging through pnpm run pack, not npm or node directly.');
+  }
   if (workspaces.length !== allowedNames.size || workspaces.some(dir => dir.includes('*'))) {
     throw new Error('Release workspaces must list exactly the six maintained package directories.');
   }

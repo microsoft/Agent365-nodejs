@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 import { execFileSync, spawnSync } from 'child_process';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import path from 'path';
 
@@ -17,13 +17,36 @@ afterEach(() => {
   rmSync(fixture, { recursive: true, force: true });
 });
 
-function packageFixture(name: string, files: Record<string, string>) {
+function packageFixture(name: string, files: Record<string, string>, extraFiles: Record<string, string> = {}) {
   const dir = path.join(fixture, name);
   mkdirSync(path.join(dir, 'package'), { recursive: true });
   for (const [file, content] of Object.entries(files)) {
     writeFileSync(path.join(dir, 'package', file), content);
   }
-  execFileSync('tar', ['-czf', path.join(fixture, `${name}.tgz`), '-C', dir, 'package']);
+  for (const [file, content] of Object.entries(extraFiles)) {
+    writeFileSync(path.join(dir, file), content);
+  }
+  execFileSync('tar', [
+    '-czf', path.join(fixture, `${name}.tgz`), '-C', dir, '--', 'package', ...Object.keys(extraFiles),
+  ]);
+}
+
+function maintainedPackageFixtures(extraFiles: Record<string, string> = {}) {
+  for (const suffix of [
+    'notifications', 'runtime', 'tooling', 'tooling-extensions-claude',
+    'tooling-extensions-langchain', 'tooling-extensions-openai',
+  ]) {
+    packageFixture(suffix, {
+      'package.json': JSON.stringify({
+        name: `@microsoft/agents-a365-${suffix}`, version: '1.0.0',
+        main: 'index.js', module: 'index.js', types: 'index.d.ts',
+        dependencies: { external: '^1.0.0', alias: 'npm:external@^1.0.0' },
+      }),
+      'index.js': 'exports.maintained = true;',
+      'index.d.ts': 'export declare const maintained: boolean;',
+      'CHANGELOG.md': 'Historical: @microsoft/agents-a365-observability',
+    }, extraFiles);
+  }
 }
 
 it('rejects a retired package even when its tarball has an innocent filename', () => {
@@ -59,21 +82,45 @@ it.each(['dependencies', 'devDependencies', 'peerDependencies', 'optionalDepende
     expect(result.stderr).toMatch(/Retired dependency/);
   });
 
+it.each(['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies'].flatMap(
+  section => ['catalog:', 'workspace:*'].map(specification => [section, specification]),
+))('rejects unresolved %s specification %s', (section, specification) => {
+  packageFixture('runtime', {
+    'package.json': JSON.stringify({
+      name: '@microsoft/agents-a365-runtime', version: '1.0.0',
+      [section]: { external: specification },
+    }),
+  });
+  const result = spawnSync(process.execPath, [script, '--verify', fixture], { encoding: 'utf8' });
+  expect(result.status).not.toBe(0);
+  expect(result.stderr).toMatch(/Unresolved dependency specification/);
+});
+
+it('rejects npm packaging before creating output or running build commands', () => {
+  const destination = path.join(fixture, 'release');
+  const result = spawnSync(process.execPath, [script, destination], {
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      npm_execpath: path.join(fixture, 'npm-cli.js'),
+      npm_config_user_agent: 'npm/10.9.2 node/v22.14.0',
+    },
+  });
+  expect(result.status).not.toBe(0);
+  expect(result.stderr).toMatch(/Run packaging through pnpm run pack/);
+  expect(existsSync(destination)).toBe(false);
+});
+
 it('accepts exactly six clean packages with complete entry points', () => {
-  for (const suffix of [
-    'notifications', 'runtime', 'tooling', 'tooling-extensions-claude',
-    'tooling-extensions-langchain', 'tooling-extensions-openai',
-  ]) {
-    packageFixture(suffix, {
-      'package.json': JSON.stringify({
-        name: `@microsoft/agents-a365-${suffix}`, version: '1.0.0',
-        main: 'index.js', module: 'index.js', types: 'index.d.ts',
-      }),
-      'index.js': 'exports.maintained = true;',
-      'index.d.ts': 'export declare const maintained: boolean;',
-      'CHANGELOG.md': 'Historical: @microsoft/agents-a365-observability',
-    });
-  }
+  maintainedPackageFixtures();
+  const result = spawnSync(process.execPath, [script, '--verify', fixture], { encoding: 'utf8' });
+  expect(result.stderr).toBe('');
+  expect(result.status).toBe(0);
+  expect(JSON.parse(result.stdout)).toHaveLength(6);
+});
+
+it('treats option-shaped archive member names as literal filenames', () => {
+  maintainedPackageFixtures({ '--not-a-tar-option.js': 'exports.maintained = true;' });
   const result = spawnSync(process.execPath, [script, '--verify', fixture], { encoding: 'utf8' });
   expect(result.stderr).toBe('');
   expect(result.status).toBe(0);

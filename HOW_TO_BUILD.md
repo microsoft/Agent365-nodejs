@@ -46,7 +46,9 @@ Use the **root script**, not the built-in `pnpm pack` command or wildcard worksp
 pnpm run pack
 ```
 
-This creates a fresh `artifacts/packages-<unique-id>` directory, cleans and rebuilds maintained packages, copies license/changelog files, packs all six explicit workspaces, inspects their archives, and writes a SHA-256 `packages.json` receipt. It rejects retired directories/dependencies/code, duplicate or missing packages, and missing entry points.
+This creates a fresh `artifacts/packages-<unique-id>` directory, cleans and rebuilds maintained packages, copies license/changelog files, packs all six explicit workspaces, inspects their archives, and writes a SHA-256 `packages.json` receipt. It requires pnpm and rejects retired directories/dependencies/code, unresolved `catalog:`/`workspace:` dependency specifications, duplicate or missing packages, and missing entry points.
+
+For **release artifacts**, first run `node setVersion.js` in write mode before building or packing. Neither `--dry-run` nor the build/pack commands apply versions. Local validation may retain placeholder versions; verify the intended release version in `packages.json` before publishing.
 
 For a named output and independent inspection:
 

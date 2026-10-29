@@ -25,7 +25,7 @@ The remaining Agent365 SDK packages retain their own Node >=18 requirement; that
 | `@microsoft/agents-a365-observability-extensions-openai` | `packages/agents-a365-observability-extensions-openai` | OpenAI tests under `tests/observability` and `tests/observability-extensions-openai` |
 | `@microsoft/agents-a365-observability-extensions-langchain` | `packages/agents-a365-observability-extensions-langchain` | LangChain tests under `tests/observability` |
 
-Their package-root public exports, dual CJS/ESM builds, release/versioning participation, and dedicated Azure OpenAI integration workflow are removed. A historical `observability-tokencache` diagram/mapping was stale, not a fifth current package. The Runtime-only `getObservabilityAuthenticationScope()` and `PROD_OBSERVABILITY_SCOPE` exports were also removed: resolve telemetry authentication with the distro instead of continuing to use a hardcoded legacy scope.
+Their package-root public exports, dual CJS/ESM builds, release/versioning participation, and dedicated Azure OpenAI integration workflow are removed. A historical `observability-tokencache` diagram/mapping was stale, not a fifth current package. The Runtime-only `getObservabilityAuthenticationScope()` and `PROD_OBSERVABILITY_SCOPE` exports were also removed: configure telemetry authentication through the distro APIs. Removing these exports does not mean the scope value must change.
 
 Notifications, Runtime, Tooling, and Tooling framework adapters remain maintained. **Do not uninstall Runtime if your application still uses its authentication, identity, configuration, or discovery APIs.** No maintained implementation depended on the removed packages. The deprecated Runtime constant `PROD_OBSERVABILITY_CLUSTER_CATEGORY` remains a general cluster-default compatibility alias, not a telemetry implementation.
 
@@ -122,9 +122,11 @@ Set service identity with the distro's OpenTelemetry resource options or `OTEL_R
 
 Supply a token resolver for the chosen identity/endpoint. The simple resolver receives `(agentId, tenantId, authScopes)` and returns a string or `Promise<string>`. The contextual resolver accepts `TokenResolverContext`, supports `identity.agenticUserId`, and takes precedence when supplied. A cache must be populated/refreshed through your authenticated flow; do not return empty strings as successful credentials.
 
-The retired exporter used `/observabilityService` with an **app-only resolver**, including per-request export. Request-context tokens were not fallback credentials. The distro's `useS2SEndpoint` defaults to `false`: explicitly choose and validate the endpoint and identity flow rather than assuming old behavior. Check current scopes, audience, tenant consent, and `Agent365.Observability.OtelWrite` permissions in the official migration/authentication documentation. Do not reuse the removed Runtime hardcoded scope or confuse MCP Tooling tokens with telemetry tokens.
+The retired exporter used `/observabilityService` with an **app-only resolver**, including per-request export. Request-context tokens were not fallback credentials. The distro's `useS2SEndpoint` defaults to `false`: explicitly choose and validate the endpoint and identity flow rather than assuming old behavior.
 
-The distro documents a changed default scope (`api://9b975845-388f-4429-889e-eab1ef63949c/.default`) and distinct OBO/S2S requirements. Treat these as identity-flow-specific configuration, not interchangeable strings. Verify acquisition, expiry/refresh, denied consent, and 401/403 handling against your tenant before rollout.
+The removed Runtime helper and core configuration already defaulted to `api://9b975845-388f-4429-889e-eab1ef63949c/.default`, which is also the distro's default. **This scope has not changed for consumers of this SDK.** For app-only export, request that `/.default` scope with an app-only credential; custom resolvers should honor the configured authentication scopes. Do not substitute an MCP Tooling scope/token or a delegated `Agent365.Observability.OtelWrite` token for app-only export.
+
+The upstream migration guide's scope-change warning concerns the older `https://api.powerplatform.com/.default` value, not this SDK's current default. For an explicitly delegated/OBO flow, follow the distro's identity-flow-specific guidance separately rather than unintentionally changing the existing app-only flow. Verify audience, tenant consent, acquisition, expiry/refresh, denied consent, and 401/403 handling before rollout.
 
 Some environment names remain supported upstream: `ENABLE_A365_OBSERVABILITY_EXPORTER`, `A365_OBSERVABILITY_SCOPES_OVERRIDE`, `A365_OBSERVABILITY_DOMAIN_OVERRIDE`, `A365_OBSERVABILITY_LOG_LEVEL`, and `CLUSTER_CATEGORY`. They do not make every old setting compatible. Revalidate precedence against the selected distro version. Old `ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT` and `A365_PER_REQUEST_MAX_*` settings have no verified equivalent; remove or redesign them explicitly.
 
@@ -176,11 +178,12 @@ Unsupported migration assumptions include old per-request buffering/flush semant
 Root and pnpm workspace lists explicitly contain six maintained packages; version tooling uses that list. CI uses the root guarded packaging path:
 
 ```shell
+node setVersion.js
 pnpm run pack artifacts/release-candidate
 node packPackages.js --verify artifacts/release-candidate
 ```
 
-Use an output directory that does **not** already exist (on Windows, use backslashes). The guard rejects physical retired package directories, cleans/rebuilds maintained packages, packs only explicit allowed manifests, and independently inspects all six archives. It checks package identity, dependency sections, entry points, retired paths/imports/known implementation signatures, and duplicate/missing packages, then emits a SHA-256 `packages.json` receipt. Historical changelog entries are preserved and are not executable implementation.
+For releases, run `node setVersion.js` in write mode before building or packing and verify the intended version in the receipt; the pack guard does not stamp versions. Use an output directory that does **not** already exist (on Windows, use backslashes). The guard requires pnpm, rejects physical retired package directories, cleans/rebuilds maintained packages, packs only explicit allowed manifests, and independently inspects all six archives. It checks package identity, dependency sections (including unresolved `catalog:`/`workspace:` specifications), entry points, retired paths/imports/known implementation signatures, and duplicate/missing packages, then emits a SHA-256 `packages.json` receipt. Historical changelog entries are preserved and are not executable implementation.
 
 Reviewed stale `dist` trees from deleted packages must be removed before packing. Do not copy cached `packages/*.tgz`, reuse old output directories, publish by wildcard discovery, or treat a successful individual `pnpm pack` as removal verification. Package owners must publish only verified receipt-listed artifacts from the approved commit. These repository safeguards do **not** revoke already uploaded artifacts, old-branch pipelines, registry permissions, or external release jobs.
 

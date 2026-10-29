@@ -148,11 +148,11 @@ The version will automatically be calculated as a stable release (without `-prev
 ```bash
 # Clone fresh to test
 git clone https://github.com/microsoft/Agent365-nodejs.git test-release
-cd test-release/nodejs
+cd test-release
 git checkout v1.1.0
 
 # Install and check version (dry-run mode)
-npm install
+pnpm install --frozen-lockfile
 node setVersion.js --dry-run
 
 # Expected output:
@@ -164,15 +164,19 @@ node setVersion.js --dry-run
 
 ```bash
 # On the release branch/tag
-npm ci
-npm run lint
-npm run build
-npm test
+pnpm install --frozen-lockfile
+node setVersion.js
+pnpm lint
+pnpm build
+pnpm typecheck
+pnpm test
 
 # Verify all packages have correct version
 grep -r "\"version\"" packages/*/package.json
 # Should show: "version": "1.1.0" for all packages
 ```
+
+Run `node setVersion.js` in **write mode** before building: `--dry-run`, `pnpm build`, and `pnpm run pack` do not apply release versions. Keep the generated version changes local to the release checkout.
 
 ### Step 7: Create GitHub Release
 
@@ -235,6 +239,7 @@ From the approved release commit, create a **new** output directory through the 
 
 ```shell
 pnpm install --frozen-lockfile
+node setVersion.js
 pnpm build
 pnpm test
 pnpm lint
@@ -243,7 +248,7 @@ pnpm run pack artifacts/release-candidate
 node packPackages.js --verify artifacts/release-candidate
 ```
 
-Use backslashes for Windows paths. Verify that `packages.json` lists exactly the six maintained packages and compare its SHA-256 hashes immediately before publishing. An authorized maintainer may publish **each exact verified tarball**, for example:
+Use backslashes for Windows paths. Verify that `packages.json` lists exactly the six maintained packages at the intended release version, never `0.0.0-placeholder`, and compare its SHA-256 hashes immediately before publishing. An authorized maintainer may publish **each exact verified tarball**, for example:
 
 ```shell
 pnpm publish artifacts/release-candidate/microsoft-agents-a365-runtime-<version>.tgz --access public
