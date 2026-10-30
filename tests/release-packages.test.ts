@@ -149,6 +149,10 @@ it('keeps release selection explicit rather than collecting cached wildcard tarb
 });
 
 it('does not start root release packaging from recursive workspace pack scripts', () => {
+  const expectedNodeMajor = process.env.A365_EXPECTED_NODE_MAJOR;
+  if (expectedNodeMajor) {
+    expect(process.versions.node.split('.')[0]).toBe(expectedNodeMajor);
+  }
   const pnpmCli = process.env.npm_execpath;
   if (!pnpmCli || !process.env.npm_config_user_agent?.startsWith('pnpm/')) {
     throw new Error('Run release tests through pnpm test.');

@@ -79,6 +79,9 @@ jobs:
       with:
         version: 10.20.0
 
+    - name: Match pnpm runtime to selected Node.js
+      run: pnpm config set --location=project useNodeVersion "$(node -p 'process.versions.node')"
+
     - name: Install dependencies
       run: pnpm install --frozen-lockfile
 
@@ -95,6 +98,8 @@ jobs:
       run: pnpm typecheck
 
     - name: Run tests
+      env:
+        A365_EXPECTED_NODE_MAJOR: ${{ matrix.node-version }}
       run: pnpm test
 
     - name: Pack packages
