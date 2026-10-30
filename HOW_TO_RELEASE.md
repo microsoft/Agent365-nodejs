@@ -102,12 +102,17 @@ Use when:
 }
 ```
 
-### Step 2: Commit Version Bump
+Update `CHANGELOG.md` for the target version before committing or tagging the release.
+Document breaking changes and migration guidance, preserve historical entries, and replace
+`Unreleased` with the release date when finalizing release notes. The guarded pack path
+copies this file into every npm tarball, so post-publish edits cannot update shipped notes.
+
+### Step 2: Commit Version and Changelog
 
 ```bash
-# Commit the version.json change
-git add version.json
-git commit -m "Bump version to 1.1.0 for release"
+# Commit the version configuration and release notes together
+git add version.json CHANGELOG.md
+git commit -m "Bump version to 1.1.0 and document release changes"
 git push origin main
 ```
 
@@ -295,17 +300,11 @@ These are ready-to-paste owner actions, not commands for CI or this implementati
 
 ## Post-Release Tasks
 
-### 1. Update CHANGELOG.md
+### 1. Verify the Published Changelog
 
-```bash
-# Switch back to main
-git checkout main
-
-# Update CHANGELOG.md with release notes
-git add CHANGELOG.md
-git commit -m "Update CHANGELOG for v1.1.0 release"
-git push origin main
-```
+Confirm the published tarballs contain the release notes from the approved release commit.
+Corrections to shipped notes require a new package version; editing `CHANGELOG.md` on
+`main` after publishing does not change existing artifacts.
 
 ### 2. Announce the Release
 
@@ -351,7 +350,8 @@ Use this checklist for each release:
 - [ ] All CI checks passing
 - [ ] Release notes drafted
 - [ ] `version.json` updated with new base version
-- [ ] Version bump committed to `main`
+- [ ] `CHANGELOG.md` updated for the target version before packing or publishing
+- [ ] Version configuration and changelog committed to `main`
 - [ ] Release branch created (`release/v{MAJOR}.{MINOR}`)
 - [ ] Release tag created (`v{MAJOR}.{MINOR}.{PATCH}`)
 - [ ] Tag pushed to GitHub
@@ -359,7 +359,7 @@ Use this checklist for each release:
 - [ ] All packages have correct version number
 - [ ] GitHub release created with notes
 - [ ] Packages published to NPM (if applicable)
-- [ ] CHANGELOG.md updated
+- [ ] Published tarballs contain the approved changelog
 - [ ] Release announced to team
 - [ ] `version.json` prepared for next version
 - [ ] Documentation updated
