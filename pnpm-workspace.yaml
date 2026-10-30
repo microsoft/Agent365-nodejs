@@ -65,7 +65,7 @@ catalog:
   "tsx": "^4.21.0"
   "typescript": "^5.9.3"
   "typescript-eslint": "^8.47.0"
-  "uuid": "^9.0.1"
+  "uuid": "^11.1.1"
 
 overrides:
   # Brace expansion - update for bug fixes
@@ -122,7 +122,14 @@ overrides:
 
   # Development dependencies - align versions
   "@types/uuid": "^9.0.0"
-  "uuid": "^10.0.0"
+
+  # uuid - security remediation. Forces every uuid consumer (including the
+  # transitive @azure/msal-node and @langchain/langgraph copies) up to the
+  # patched 11.1.1, which fixes CVE-2026-41907 (missing buffer bounds check
+  # in v3/v5/v6 when a caller-supplied buffer is passed). Pinned within
+  # the 11.x line, the last major that still ships a CommonJS build. Remove
+  # once the transitive parents resolve a patched uuid by default.
+  "uuid": "^11.1.1"
 
 # Workspace settings
 linkWorkspacePackages: true
