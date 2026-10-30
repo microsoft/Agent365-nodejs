@@ -7,6 +7,8 @@ This guide describes the process for creating an official release of the Microso
 - [Prerequisites](#prerequisites)
 - [Release Types](#release-types)
 - [Release Process](#release-process)
+- [Repository Release Safeguards](#repository-release-safeguards)
+- [Owner-Operated npm Retirement Checklist](#owner-operated-npm-retirement-checklist)
 - [Post-Release Tasks](#post-release-tasks)
 - [Troubleshooting](#troubleshooting)
 
@@ -100,12 +102,17 @@ Use when:
 }
 ```
 
-### Step 2: Commit Version Bump
+Update `CHANGELOG.md` for the target version before committing or tagging the release.
+Document breaking changes and migration guidance, preserve historical entries, and replace
+`Unreleased` with the release date when finalizing release notes. The guarded pack path
+copies this file into every npm tarball, so post-publish edits cannot update shipped notes.
+
+### Step 2: Commit Version and Changelog
 
 ```bash
-# Commit the version.json change
-git add version.json
-git commit -m "Bump version to 1.1.0 for release"
+# Commit the version configuration and release notes together
+git add version.json CHANGELOG.md
+git commit -m "Bump version to 1.1.0 and document release changes"
 git push origin main
 ```
 
@@ -148,11 +155,11 @@ The version will automatically be calculated as a stable release (without `-prev
 ```bash
 # Clone fresh to test
 git clone https://github.com/microsoft/Agent365-nodejs.git test-release
-cd test-release/nodejs
+cd test-release
 git checkout v1.1.0
 
 # Install and check version (dry-run mode)
-npm install
+pnpm install --frozen-lockfile
 node setVersion.js --dry-run
 
 # Expected output:
@@ -164,15 +171,19 @@ node setVersion.js --dry-run
 
 ```bash
 # On the release branch/tag
-npm ci
-npm run lint
-npm run build
-npm test
+pnpm install --frozen-lockfile
+node setVersion.js
+pnpm lint
+pnpm build
+pnpm typecheck
+pnpm test
 
 # Verify all packages have correct version
 grep -r "\"version\"" packages/*/package.json
 # Should show: "version": "1.1.0" for all packages
 ```
+
+Run `node setVersion.js` in **write mode** before building: `--dry-run`, `pnpm build`, and `pnpm run pack` do not apply release versions. Keep the generated version changes local to the release checkout.
 
 ### Step 7: Create GitHub Release
 
@@ -208,16 +219,15 @@ All packages in this release:
 - @microsoft/agents-a365-notifications@1.1.0
 - @microsoft/agents-a365-runtime@1.1.0
 - @microsoft/agents-a365-tooling@1.1.0
-- @microsoft/agents-a365-observability@1.1.0
 - @microsoft/agents-a365-tooling-extensions-claude@1.1.0
 - @microsoft/agents-a365-tooling-extensions-langchain@1.1.0
 - @microsoft/agents-a365-tooling-extensions-openai@1.1.0
 
 ## 📚 Documentation
 
-- [Getting Started](../README.md)
-- [Changelog](../CHANGELOG.md)
-- [Migration Guide](../VERSIONING_MIGRATION.md)
+- [Getting Started](https://github.com/microsoft/Agent365-nodejs/blob/main/README.md)
+- [Changelog](https://github.com/microsoft/Agent365-nodejs/blob/main/CHANGELOG.md)
+- [Observability migration](https://github.com/microsoft/Agent365-nodejs/blob/main/docs/observability-migration.md)
 
 ## Installation
 
@@ -230,44 +240,71 @@ npm install @microsoft/agents-a365-runtime@1.1.0
 
 ### Step 8: Publish to NPM (Optional)
 
-If publishing to NPM registry:
+Observability is retired. First complete the [owner-operated npm retirement checklist](#owner-operated-npm-retirement-checklist), including external publisher/old-branch restrictions. Never publish every discovered directory or `*.tgz` file.
 
-```bash
-# Ensure you're logged in
-npm login
+Continue in the already installed, version-stamped checkout from Step 6. Do not repeat `pnpm install --frozen-lockfile` after stamping: `setVersion.js` changes internal dependency specifications without updating the lockfile. If starting from a fresh checkout of the approved release commit, complete Step 6 first.
 
-# Publish all packages (from release branch/tag)
-npm publish --workspaces --access public
+Create a **new** output directory through the guarded root script, which cleans and rebuilds the packages:
 
-# Or publish individually
-cd packages/agents-a365-runtime
-npm publish --access public
+```shell
+pnpm run pack artifacts/release-candidate
+node packPackages.js --verify artifacts/release-candidate
 ```
 
-**Note**: Update the CI workflow to enable automatic NPM publishing:
-```yaml
-- name: Publish to NPM
-  if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-  run: npm publish --workspaces --access public
-  env:
-    NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+Verify that `packages.json` lists exactly the six maintained packages at the intended release version, never `0.0.0-placeholder`, and compare its SHA-256 hashes immediately before publishing. An authorized maintainer may publish **each exact verified tarball**, for example:
+
+```shell
+pnpm publish artifacts/release-candidate/microsoft-agents-a365-runtime-<version>.tgz --access public
 ```
+
+Repeat only for receipt-listed maintained packages; do not use wildcard publishing or cached drops. CI uploads only its fresh inspected directory and does not publish. External publishers must independently enforce the six-package allowlist and approved commit/receipt; these changes cannot protect old branches, revoke registry credentials, or invalidate already cached artifacts.
+
+---
+
+## Repository release safeguards
+
+Root and pnpm workspace lists explicitly contain six maintained packages; version tooling uses that list. From an installed checkout (see Step 6), CI and releases use the root guarded packaging path:
+
+```shell
+node setVersion.js
+pnpm run pack artifacts/release-candidate
+node packPackages.js --verify artifacts/release-candidate
+```
+
+For releases, run `node setVersion.js` in write mode before building or packing and verify the intended version in the receipt; the pack guard does not stamp versions. Use an output directory that does **not** already exist. The guard requires pnpm, rejects physical retired package directories, cleans/rebuilds maintained packages, packs only explicit allowed manifests, and independently inspects all six archives. It checks package identity, dependency sections (including unresolved `catalog:`/`workspace:` specifications), entry points, retired paths/imports/known implementation signatures, and duplicate/missing packages, then emits a SHA-256 `packages.json` receipt. Historical changelog entries are preserved and are not executable implementation.
+
+Reviewed stale `dist` trees from deleted packages must be removed before packing. Do not copy cached `packages/*.tgz`, reuse old output directories, publish by wildcard discovery, or treat a successful individual `pnpm pack` as removal verification. Package owners must publish only verified receipt-listed artifacts from the approved commit. These repository safeguards do **not** revoke already uploaded artifacts, old-branch pipelines, registry permissions, or external release jobs.
+
+## Owner-operated npm retirement checklist
+
+No registry operation is performed by the retirement change. An authorized package owner/maintainer must:
+
+1. Publish the [application migration guide](docs/observability-migration.md) at the canonical link below and announce the breaking removal, including Runtime scope-helper removal. Confirm migration destinations, ownership, and support routing.
+2. Audit npm owners/tokens/trusted publishers and every external pipeline, release branch/tag trigger, scheduled job, artifact feed, and manual release runbook. Disable retired-package publishing or backport the allowlist/artifact checks to every branch still allowed to release. Enforce the package-name allowlist independently in the external publisher.
+3. Quarantine/delete specifically identified retired cached tarballs and artifacts in external drops/caches. Rebuild from the approved commit into fresh directories; compare receipt hashes immediately before publishing. Do not replay an old successful build.
+4. Review all versions/dist-tags of the four exact packages, including prereleases, and confirm authorization. Run the following **only after the migration link is live**, using your normal authenticated npm environment.
+5. Check registry deprecation metadata for representative stable/prerelease versions and confirm installation displays the warning. Monitor consumer migration and stop new retired-package releases. Deprecation **warns**; it neither replaces dependencies nor prevents installation. **Do not unpublish.**
+
+[npm's current deprecation syntax](https://docs.npmjs.com/cli/v11/commands/npm-deprecate) is `npm deprecate <package-spec> <message>`. Quoted `@*` targets all versions, including prereleases. This command is workspace-unaware; run once for each exact package:
+
+```shell
+npm deprecate "@microsoft/agents-a365-observability@*" "Retired: migrate your application to @microsoft/opentelemetry using useMicrosoftOpenTelemetry(). Migration: https://github.com/microsoft/Agent365-nodejs/blob/main/docs/observability-migration.md"
+npm deprecate "@microsoft/agents-a365-observability-hosting@*" "Retired: migrate hosting telemetry to @microsoft/opentelemetry. Migration: https://github.com/microsoft/Agent365-nodejs/blob/main/docs/observability-migration.md"
+npm deprecate "@microsoft/agents-a365-observability-extensions-openai@*" "Retired: use OpenAI Agents instrumentation in @microsoft/opentelemetry. Migration: https://github.com/microsoft/Agent365-nodejs/blob/main/docs/observability-migration.md"
+npm deprecate "@microsoft/agents-a365-observability-extensions-langchain@*" "Retired: use LangChain instrumentation in @microsoft/opentelemetry. Migration: https://github.com/microsoft/Agent365-nodejs/blob/main/docs/observability-migration.md"
+```
+
+These are ready-to-paste owner actions, not commands for CI or this implementation session. Preserve historical changelogs and released package availability.
 
 ---
 
 ## Post-Release Tasks
 
-### 1. Update CHANGELOG.md
+### 1. Verify the Published Changelog
 
-```bash
-# Switch back to main
-git checkout main
-
-# Update CHANGELOG.md with release notes
-git add CHANGELOG.md
-git commit -m "Update CHANGELOG for v1.1.0 release"
-git push origin main
-```
+Confirm the published tarballs contain the release notes from the approved release commit.
+Corrections to shipped notes require a new package version; editing `CHANGELOG.md` on
+`main` after publishing does not change existing artifacts.
 
 ### 2. Announce the Release
 
@@ -313,7 +350,8 @@ Use this checklist for each release:
 - [ ] All CI checks passing
 - [ ] Release notes drafted
 - [ ] `version.json` updated with new base version
-- [ ] Version bump committed to `main`
+- [ ] `CHANGELOG.md` updated for the target version before packing or publishing
+- [ ] Version configuration and changelog committed to `main`
 - [ ] Release branch created (`release/v{MAJOR}.{MINOR}`)
 - [ ] Release tag created (`v{MAJOR}.{MINOR}.{PATCH}`)
 - [ ] Tag pushed to GitHub
@@ -321,7 +359,7 @@ Use this checklist for each release:
 - [ ] All packages have correct version number
 - [ ] GitHub release created with notes
 - [ ] Packages published to NPM (if applicable)
-- [ ] CHANGELOG.md updated
+- [ ] Published tarballs contain the approved changelog
 - [ ] Release announced to team
 - [ ] `version.json` prepared for next version
 - [ ] Documentation updated
@@ -524,5 +562,3 @@ git push origin main
 **Document Version**: 1.0  
 **Last Updated**: November 2, 2025  
 **Maintained By**: DevOps Team
-
-

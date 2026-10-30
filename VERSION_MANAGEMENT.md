@@ -84,7 +84,7 @@ npm run build
 npm run version
 
 # Create tarballs
-npm pack --workspaces
+pnpm run pack
 
 # Now you have versioned packages to test!
 # But remember to reset before committing:
@@ -105,7 +105,7 @@ node resetVersion.js
   run: npm test
 
 - name: Package
-  run: npm pack --workspaces
+  run: pnpm run pack
 ```
 
 ## Understanding Version Sources
@@ -242,12 +242,10 @@ npm run build
 # Set version (will modify files temporarily)
 node setVersion.js
 
-# Create package
-cd packages/agents-a365-runtime
-npm pack
+# Create all maintained packages in a fresh inspected output directory
+pnpm run pack
 
 # Reset versions before committing
-cd ../..
 node resetVersion.js
 ```
 
@@ -262,7 +260,7 @@ node resetVersion.js
     fetch-depth: 0  # Required for git versioning
 
 - name: Install dependencies
-  run: npm ci
+  run: pnpm install --frozen-lockfile
 
 - name: Build
   run: npm run build
@@ -274,22 +272,24 @@ node resetVersion.js
   run: npm test
 
 - name: Package
-  run: npm pack --workspaces
+  run: pnpm run pack
 ```
 
 ### Azure DevOps
 
 ```yaml
 - script: |
-    npm ci
+    pnpm install --frozen-lockfile
     npm run build
     node setVersion.js  # No flags for CI
     npm test
-    npm pack --workspaces
+    pnpm run pack
   displayName: 'Build and Package'
 ```
 
 ## Summary
+
+Release only the six maintained packages listed in the guarded pack output's `packages.json` receipt. Never discover/publish cached tarballs by wildcard. Observability packages are retired; see the [migration and owner checklist](docs/observability-migration.md). External/old-branch pipelines need independent allowlist enforcement.
 
 | Aspect | Local Development | CI/CD Build |
 |--------|-------------------|-------------|

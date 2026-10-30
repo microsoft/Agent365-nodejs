@@ -4,12 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-The Microsoft Agent 365 SDK extends the Microsoft 365 Agents SDK with enterprise-grade capabilities for building sophisticated AI agents. This Node.js/TypeScript monorepo provides comprehensive tooling across four core areas:
+The Microsoft Agent 365 SDK extends the Microsoft 365 Agents SDK with enterprise-grade capabilities for building sophisticated AI agents. This Node.js/TypeScript monorepo provides comprehensive tooling across three core areas:
 
-- **Observability**: OpenTelemetry-based tracing and monitoring for agent applications
 - **Notifications**: Agent notification services and lifecycle event handling
 - **Runtime**: Core utilities for agent operations and Power Platform integration
 - **Tooling**: MCP (Model Context Protocol) server configuration and tool discovery
+
+Observability packages are retired here. Applications migrate to `@microsoft/opentelemetry`; see [the migration guide](docs/observability-migration.md). Do not restore retired implementations or add the distro to otherwise unaffected SDK packages.
 
 ## Essential Commands
 
@@ -33,7 +34,7 @@ pnpm clean
 ### Testing
 
 ```bash
-# Run all unit tests (excludes integration tests)
+# Run all SDK tests
 pnpm test
 
 # Run tests with coverage
@@ -42,11 +43,8 @@ pnpm test:coverage
 # Run tests in watch mode
 pnpm test:watch
 
-# Run integration tests
-pnpm test:integration
-
-# Run tests for a specific package
-cd packages/agents-a365-observability && pnpm test
+# Run Runtime tests through the centralized runner
+pnpm --filter @microsoft/agents-a365-tests test --runInBand --testPathPatterns=runtime
 ```
 
 ### Code Quality
@@ -62,25 +60,24 @@ pnpm lint:fix
 ### Package Building and Distribution
 
 ```bash
-# Build and create .tgz files for distribution
-pnpm build
-cd packages && pnpm pack --workspaces
-
-# The .tgz files will be created in the root directory
+# Clean, build, pack and inspect exactly six maintained packages
+pnpm run pack
+# Output: a fresh artifacts/packages-<unique-id> directory plus packages.json receipt
+# Reinspect a specific output independently:
+node packPackages.js --verify <output-directory>
 ```
+
+Never publish cached/wildcard-discovered tarballs. Release only receipt-listed artifacts from the approved commit; external publishers and old release branches need their own allowlist enforcement. See HOW_TO_RELEASE.md.
 
 ## Architecture
 
 ### Monorepo Structure
 
-This is a pnpm workspace monorepo with 9 packages in `packages/`:
+This is a pnpm workspace monorepo with six packages in `packages/`:
 
 ```
 packages/
 ├── agents-a365-runtime/                    # Core utilities (no external deps)
-├── agents-a365-observability/              # OpenTelemetry tracing (depends on runtime)
-├── agents-a365-observability-hosting/      # Hosting-specific observability
-├── agents-a365-observability-extensions-openai/  # OpenAI instrumentation
 ├── agents-a365-notifications/              # Agent notification services
 ├── agents-a365-tooling/                    # MCP server configuration
 ├── agents-a365-tooling-extensions-claude/  # Claude/Anthropic integration
@@ -90,9 +87,7 @@ packages/
 
 **Dependency Flow:**
 ```
-runtime ──► observability ──► observability-hosting ──► observability-extensions-openai
-   │
-   └─────────► tooling ──► tooling-extensions-* (claude, langchain, openai)
+runtime ─────► tooling ──► tooling-extensions-* (claude, langchain, openai)
    │
    └─────────► notifications
 ```
@@ -123,12 +118,9 @@ packages/agents-a365-<name>/
 
 ### Key Design Patterns
 
-1. **Singleton Pattern**: `ObservabilityManager` ensures single tracer provider per application
-2. **Disposable Pattern**: Scope classes (`InvokeAgentScope`, `InferenceScope`, `ExecuteToolScope`) implement `Disposable` for automatic span lifecycle with `using` keyword
-3. **Builder Pattern**: `ObservabilityBuilder` and `BaggageBuilder` provide fluent APIs
-4. **Strategy Pattern**: `McpToolServerConfigurationService` switches between manifest (dev) and gateway (prod) based on `NODE_ENV`
-5. **Extension Methods**: `notifications` package extends `AgentApplication` via TypeScript declaration merging
-6. **Configuration Provider Pattern**: Hierarchical configuration with function-based overrides for multi-tenant support. Each package has its own configuration class (`RuntimeConfiguration`, `ToolingConfiguration`, `ObservabilityConfiguration`) with default singleton providers (`defaultRuntimeConfigurationProvider`, etc.)
+1. **Strategy Pattern**: `McpToolServerConfigurationService` switches between manifest (dev) and gateway (prod) based on `NODE_ENV`
+2. **Extension Methods**: `notifications` package extends `AgentApplication` via TypeScript declaration merging
+3. **Configuration Provider Pattern**: Hierarchical configuration with function-based overrides for multi-tenant support. `RuntimeConfiguration` and `ToolingConfiguration` use default singleton providers (`defaultRuntimeConfigurationProvider`, etc.). Overrides can return different values per request; do not cache getter values as process-static.
 
 ## Core Package Functionality
 
@@ -140,30 +132,6 @@ Foundation package with no SDK dependencies. Provides:
 - **`AgenticAuthenticationService`**: Token exchange for MCP platform auth
 - **`PowerPlatformApiDiscovery`**: Endpoint discovery for different clouds (prod, gov, dod, mooncake, etc.)
 - **Environment utilities** _(deprecated)_: `getClusterCategory()`, `isDevelopmentEnvironment()`, etc. - use `RuntimeConfiguration` instead
-
-### Observability (`@microsoft/agents-a365-observability`)
-OpenTelemetry-based distributed tracing:
-- **`ObservabilityConfiguration`**: Configuration with `observabilityAuthenticationScopes`, `isObservabilityExporterEnabled`, `observabilityLogLevel`, etc.
-- **`PerRequestSpanProcessorConfiguration`**: Extends `ObservabilityConfiguration` with per-request processor settings (`isPerRequestExportEnabled`, `perRequestMaxTraces`, `perRequestMaxSpansPerTrace`, `perRequestMaxConcurrentExports`). Separated from `ObservabilityConfiguration` because these settings are only relevant when using `PerRequestSpanProcessor`.
-- **`defaultObservabilityConfigurationProvider`**: Singleton configuration provider for observability settings
-- **`defaultPerRequestSpanProcessorConfigurationProvider`**: Singleton configuration provider for per-request span processor settings
-- **`ObservabilityManager`**: Main entry point (singleton)
-- **`ObservabilityBuilder`**: Fluent configuration API
-- **Scope classes**:
-  - `InvokeAgentScope`: Trace agent invocations (root span)
-  - `InferenceScope`: Trace LLM/AI inference calls
-  - `ExecuteToolScope`: Trace tool execution
-- **`BaggageBuilder`**: Context propagation across async boundaries (tenant ID, agent ID, correlation ID)
-- **Data contracts**: `InvokeAgentDetails`, `AgentDetails`, `TenantDetails`, `InferenceDetails`, `ToolCallDetails`
-
-**Tracing Flow:**
-```
-BaggageBuilder.build().run()
-  └─► InvokeAgentScope.start()           [Root span - agent request]
-        ├─► InferenceScope.start()        [Child span - LLM call]
-        ├─► ExecuteToolScope.start()      [Child span - tool execution]
-        └─► Agent365Exporter.export()     [Batched HTTP export]
-```
 
 ### Tooling (`@microsoft/agents-a365-tooling`)
 MCP tool server discovery and configuration:
@@ -210,14 +178,6 @@ The keyword "Kairo" is legacy and should not appear in any code. Flag and remove
 | `CLUSTER_CATEGORY` | Environment classification | `local`, `dev`, `test`, `preprod`, `prod`, `gov`, `high`, `dod`, `mooncake`, `ex`, `rx` |
 | `MCP_PLATFORM_ENDPOINT` | MCP platform base URL | URL string |
 | `MCP_PLATFORM_AUTHENTICATION_SCOPE` | MCP platform auth scope | Scope string |
-| `A365_OBSERVABILITY_SCOPES_OVERRIDE` | Override observability auth scopes | Space-separated scope strings |
-| `ENABLE_A365_OBSERVABILITY_EXPORTER` | Enable Agent365 exporter | `true`, `false` (default) |
-| `ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT` | Enable per-request export mode | `true`, `false` (default) |
-| `A365_OBSERVABILITY_DOMAIN_OVERRIDE` | Custom domain URL override | URL string |
-| `A365_OBSERVABILITY_LOG_LEVEL` | Internal logging level | `none` (default), `error`, `warn`, `info`, `debug` |
-| `A365_PER_REQUEST_MAX_TRACES` | Max buffered traces per request (`PerRequestSpanProcessorConfiguration`) | Number (default: 1000) |
-| `A365_PER_REQUEST_MAX_SPANS_PER_TRACE` | Max spans per trace (`PerRequestSpanProcessorConfiguration`) | Number (default: 5000) |
-| `A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS` | Max concurrent exports (`PerRequestSpanProcessorConfiguration`) | Number (default: 20) |
 
 ## Testing
 
@@ -231,7 +191,7 @@ The keyword "Kairo" is legacy and should not appear in any code. Flag and remove
 The Jest config includes module name mappers to resolve workspace packages:
 ```javascript
 '@microsoft/agents-a365-runtime$': '<rootDir>/packages/agents-a365-runtime/src'
-'@microsoft/agents-a365-observability$': '<rootDir>/packages/agents-a365-observability/src'
+'@microsoft/agents-a365-tooling$': '<rootDir>/packages/agents-a365-tooling/src'
 // etc.
 ```
 
@@ -258,9 +218,6 @@ npm run version:check
 
 - **Overall Architecture**: [docs/design.md](docs/design.md) - Main SDK architecture and design
 - **Runtime Package**: [packages/agents-a365-runtime/docs/design.md](packages/agents-a365-runtime/docs/design.md)
-- **Observability Package**: [packages/agents-a365-observability/docs/design.md](packages/agents-a365-observability/docs/design.md)
-- **Observability Hosting**: [packages/agents-a365-observability-hosting/docs/design.md](packages/agents-a365-observability-hosting/docs/design.md)
-- **Observability Extensions (OpenAI)**: [packages/agents-a365-observability-extensions-openai/docs/design.md](packages/agents-a365-observability-extensions-openai/docs/design.md)
 - **Notifications Package**: [packages/agents-a365-notifications/docs/design.md](packages/agents-a365-notifications/docs/design.md)
 - **Tooling Package**: [packages/agents-a365-tooling/docs/design.md](packages/agents-a365-tooling/docs/design.md)
 - **Tooling Extensions (Claude)**: [packages/agents-a365-tooling-extensions-claude/docs/design.md](packages/agents-a365-tooling-extensions-claude/docs/design.md)

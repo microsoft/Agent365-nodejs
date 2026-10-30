@@ -124,7 +124,7 @@ git push origin release/v1.0 --tags
                     ↓
 ┌─────────────────────────────────────────────────┐
 │ 5. Test & Package                               │
-│    npm test && npm pack                         │
+│    pnpm test && pnpm run pack                   │
 └─────────────────────────────────────────────────┘
 ```
 

@@ -1,221 +1,75 @@
 # How to Build Microsoft Agent 365 Node.js SDK
 
-This guide provides instructions for building and developing the Microsoft Agent 365 Node.js SDK packages.
+Use Node.js >=18 and **pnpm 10.20.0** (declared by `packageManager`). TypeScript is a workspace dependency; no global installation is needed.
 
-## Prerequisites
+## Install and develop
 
-- **Node.js**: Version 18.0.0 or higher
-- **npm**: Latest version recommended
-- **TypeScript**: Installed globally or via workspace dependencies
+Run from the repository root:
 
-## Project Structure
-
-The Microsoft Agent 365 Node.js SDK is organized as a monorepo with the following structure:
-
-```
-nodejs/
-├── packages/                                         # Main SDK packages
-│   ├── agents-a365-runtime/                          # @microsoft/agents-a365-runtime
-│   ├── agents-a365-notifications/                    # @microsoft/agents-a365-notifications
-│   ├── agents-a365-observability/                    # @microsoft/agents-a365-observability
-│   ├── agents-a365-tooling/                          # @microsoft/agents-a365-tooling
-│   ├── agents-a365-tooling-extensions-claude/        # @microsoft/agents-a365-tooling-extensions-claude
-│   ├── agents-a365-tooling-extensions-langchain/     # @microsoft/agents-a365-tooling-extensions-langchain
-│   └── agents-a365-tooling-extensions-openai/        # @microsoft/agents-a365-tooling-extensions-openai
-├── samples/                                          # Sample applications
-├── tests/                                            # Test suites
-└── *.tgz                                             # Built package files (generated)
+```shell
+pnpm install --frozen-lockfile
+pnpm build
+pnpm test
+pnpm lint
+pnpm typecheck
 ```
 
-## Getting Started
+`pnpm build` builds CJS and ESM output for six maintained packages:
 
-### 1. Install Dependencies
+- `@microsoft/agents-a365-runtime`
+- `@microsoft/agents-a365-notifications`
+- `@microsoft/agents-a365-tooling`
+- `@microsoft/agents-a365-tooling-extensions-claude`
+- `@microsoft/agents-a365-tooling-extensions-langchain`
+- `@microsoft/agents-a365-tooling-extensions-openai`
 
-Navigate to the `nodejs` directory and install all workspace dependencies:
+Observability implementations, dedicated tests, and package builds are retired. Application telemetry belongs to the [Microsoft OpenTelemetry distro](docs/observability-migration.md); it is not installed into the remaining SDK packages.
 
-```bash
-cd nodejs
-npm install
+For targeted development:
+
+```shell
+pnpm --filter @microsoft/agents-a365-runtime build
+pnpm build:watch
+pnpm test:watch
+pnpm test:coverage
+pnpm lint:fix
+pnpm clean
 ```
 
-This command will:
-- Install dependencies for all workspace packages
-- Generate or update `package-lock.json` files
-- Set up workspace linking between packages
+`pnpm clean` removes workspace build output, not dependencies. Tests live centrally in `tests`; see [running tests](tests/RUNNING_TESTS.md). Dependency versions are maintained in pnpm catalogs, and `pnpm-lock.yaml` is the lockfile. Do not generate npm lockfiles.
 
-**Alternative - Production Install:**
-```bash
-npm ci
-```
-Use `npm ci` for faster, deterministic installs in CI/CD environments or when you want to install exactly what's in the lock file.
+## Pack verified artifacts
 
-### 2. Build All Packages
+Use the **root script**, not the built-in `pnpm pack` command or wildcard workspace packing. Per-package `pack` scripts are intentionally absent so recursive script execution cannot start concurrent clean/build/release runs:
 
-To build all SDK packages:
-
-```bash
-npm run build
+```shell
+pnpm run pack
 ```
 
-To generate distributable `.tgz` files:
+This creates a fresh `artifacts/packages-<unique-id>` directory, cleans and rebuilds maintained packages, copies license/changelog files, packs all six explicit workspaces, inspects their archives, and writes a SHA-256 `packages.json` receipt. It requires pnpm and rejects retired directories/dependencies/code, unresolved `catalog:`/`workspace:` dependency specifications, duplicate or missing packages, and missing entry points.
 
-```bash
-cd packages
-npm run pack
+For **release artifacts**, first run `node setVersion.js` in write mode before building or packing. Neither `--dry-run` nor the build/pack commands apply versions. Local validation may retain placeholder versions; verify the intended release version in `packages.json` before publishing.
+
+For a named output and independent inspection:
+
+```shell
+pnpm run pack artifacts/release-candidate
+node packPackages.js --verify artifacts/release-candidate
 ```
 
-This workflow will:
-- First command: Compile TypeScript source code for all packages and generate JavaScript output in `dist/` folders
-- Second command: Create `.tgz` package files in the `nodejs/` directory
-- Make packages ready for distribution and installation in samples
+The destination must not already exist. Reviewed stale generated output under retired package directories must be removed first. Never collect old `packages/*.tgz` or reuse cached tarballs as a release.
 
-**Generated Package Files:**
-After building and packing, you'll find these `.tgz` files in the `nodejs/` directory:
-- `microsoft-agents-a365-runtime-{version}.tgz`
-- `microsoft-agents-a365-notifications-{version}.tgz`
-- `microsoft-agents-a365-observability-{version}.tgz`
-- `microsoft-agents-a365-tooling-{version}.tgz`
-- `microsoft-agents-a365-tooling-extensions-claude-{version}.tgz`
-- `microsoft-agents-a365-tooling-extensions-langchain-{version}.tgz`
-- `microsoft-agents-a365-tooling-extensions-openai-{version}.tgz`
+Samples are maintained in [Agent365-Samples](https://github.com/microsoft/Agent365-Samples), not this workspace. Install the exact verified tarball(s) needed by your sample; published workspace dependencies may also need corresponding local overrides in that application.
 
-### 3. Clean Build Artifacts
+## Troubleshooting and releasing
 
-To remove build artifacts and start fresh:
+For missing dependencies, restore with `pnpm install --frozen-lockfile`; for stale compilation output, run `pnpm clean` then `pnpm build`. Check Node and pnpm versions before changing configuration. Do not clear shared caches as a routine repair.
 
-```bash
-npm run clean
-```
+See [release instructions](HOW_TO_RELEASE.md) and the [owner-operated retirement checklist](HOW_TO_RELEASE.md#owner-operated-npm-retirement-checklist). Only authorized owners publish receipt-listed artifacts. Repository checks cannot stop external pipelines or old branches from releasing retired packages.
 
-This command will:
-- Remove all `dist/` folders from workspace packages
+## Resources
 
-## Development Workflow
-
-### Building Individual Packages
-
-To build a specific package, navigate to its directory and run:
-
-```bash
-cd packages/agents-a365-observability
-npm run build
-```
-
-### Watch Mode Development
-
-For active development with automatic rebuilding:
-
-```bash
-cd packages/agents-a365-observability
-npm run build:watch
-```
-
-### Installing Local Packages in Samples
-
-After building and packing packages with `npm run build` and `npm pack --workspaces`, you can install them in sample applications:
-
-```bash
-cd samples/claude-code-sdk
-npm install
-```
-
-The sample `package.json` files reference the local `.tgz` files from the `packages/` directory, so they'll use your locally built versions.
-
-## Testing
-
-### Run All Tests
-
-```bash
-cd tests
-npm install
-npm test
-```
-
-### Run Tests in Watch Mode
-
-```bash
-cd tests
-npm run test:watch
-```
-
-## Linting and Code Quality
-
-### Lint All Packages
-
-```bash
-npm run lint
-```
-
-### Fix Linting Issues
-
-```bash
-npm run lint:fix
-```
-
-## Common Build Scripts
-
-The following npm scripts are available at the workspace root (`nodejs/`):
-
-| Script | Description |
-|--------|-------------|
-| `npm run build` | Build all workspace packages |
-| `npm run build:watch` | Build all packages in watch mode |
-| `npm run clean` | Remove all build artifacts from packages |
-| `npm run test` | Run tests for all packages |
-| `npm run test:watch` | Run tests in watch mode |
-| `npm run lint` | Run ESLint on all packages |
-| `npm run lint:fix` | Fix ESLint issues in all packages |
-| `npm run ci` | Run clean install on all packages |
-
-## Troubleshooting
-
-### Build Failures
-
-If you encounter build errors:
-
-1. **Clean and reinstall:**
-   ```bash
-   npm install
-   npm run clean
-   npm run build
-   ```
-
-2. **Check Node.js version:**
-   ```bash
-   node --version  # Should be 18.0.0 or higher
-   ```
-
-3. **Clear npm cache:**
-   ```bash
-   npm cache clean --force
-   ```
-
-### Package Resolution Issues
-
-If samples can't find local packages:
-
-1. Ensure packages are built: `npm run build`
-2. Generate package files: `cd packages && npm pack --workspaces`
-3. Check that `.tgz` files exist in `packages/` directory
-4. Verify sample `package.json` references correct package versions
-
-### TypeScript Compilation Errors
-
-- Ensure all workspace dependencies are installed
-- Check that TypeScript configuration is consistent across packages
-- Verify that cross-package imports use correct module names
-
-## Publishing (For Maintainers)
-
-When ready to publish packages:
-
-1. Update version numbers in all `package.json` files
-2. Run full build and test suite: `npm run build && npm test`
-3. Generate packages: `cd packages && npm pack --workspaces`
-4. Publish individual packages to npm registry
-
-## Additional Resources
-
-- [Microsoft Agent 365 Documentation](../../README.md)
-- [Contributing Guidelines](../../CONTRIBUTING.md)
-- [Security Policy](../../SECURITY.md)
+- [README](README.md)
+- [Architecture](docs/design.md)
+- [Contributing](CONTRIBUTING.md)
+- [Security](SECURITY.md)

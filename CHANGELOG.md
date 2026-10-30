@@ -5,6 +5,26 @@ All notable changes to the Agent365 TypeScript SDK will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - Unreleased
+
+### Breaking Changes
+
+- **Observability packages retired** - This repository no longer builds or releases
+  `@microsoft/agents-a365-observability`,
+  `@microsoft/agents-a365-observability-hosting`,
+  `@microsoft/agents-a365-observability-extensions-openai`, or
+  `@microsoft/agents-a365-observability-extensions-langchain`.
+  Notifications, Runtime, Tooling, and the Tooling extensions remain maintained.
+- **Runtime telemetry exports removed** - `getObservabilityAuthenticationScope()` and
+  `PROD_OBSERVABILITY_SCOPE` are no longer exported by `@microsoft/agents-a365-runtime`.
+  Configure telemetry authentication in the consuming application through the replacement distro.
+- **Application migration required** - Use
+  [`@microsoft/opentelemetry`](https://www.npmjs.com/package/@microsoft/opentelemetry)
+  from the [Microsoft OpenTelemetry JavaScript distro](https://github.com/microsoft/opentelemetry-distro-javascript).
+  This is not a drop-in replacement or an automatic dependency redirect; follow the
+  [Observability migration guide](https://github.com/microsoft/Agent365-nodejs/blob/main/docs/observability-migration.md)
+  for initialization, authentication, context propagation, instrumentation, and shutdown.
+
 ## [2.0.0] - 2026-10-20
 
 ### Breaking Changes (`@microsoft/agents-a365-observability`, `@microsoft/agents-a365-observability-hosting`, `@microsoft/agents-a365-observability-extensions-openai`, `@microsoft/agents-a365-observability-extensions-langchain`)

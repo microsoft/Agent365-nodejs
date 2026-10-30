@@ -1,6 +1,6 @@
 # Test Plan for Agent365-nodejs SDK
 
-> **Note:** This plan is under active development. Keep updating as testing progresses.
+> **Historical draft:** Statuses below describe the original testing roadmap, not current coverage. The maintained scope is now six packages; Observability implementation and dedicated tests have been retired. See [running tests](RUNNING_TESTS.md) for current commands.
 
 **Version:** 1.0  
 **Date:** December 4, 2025  
@@ -12,9 +12,8 @@
 
 ### Current State
 - ✅ Unit tests complete for `runtime` module
-- ✅ Unit tests complete for `observability` modules
 - ❌ Missing tests for `tooling` and `notifications` modules
-- ✅ Coverage reporting includes all 9 packages
+- Coverage reporting targets the six maintained packages
 - ❌ No integration tests or CI/CD automation
 
 ### Goals
@@ -45,7 +44,6 @@
 | 1.1 | Runtime unit tests | HIGH | ✅ Complete |
 | 1.2 | Tooling unit tests | HIGH | ❌ Missing |
 | 1.3 | Notifications unit tests | HIGH | ❌ Missing |
-| 1.4 | Expand observability tests | MEDIUM | ✅ Complete |
 | 1.5 | Tooling extension tests | LOW | ❌ Missing |
 | 2 | Integration tests | MEDIUM | ❌ Missing |
 | 3 | CI/CD automation | HIGH | ❌ Missing |
@@ -90,17 +88,6 @@
 
 ---
 
-### 1.4 Observability Extensions
-
-**Priority:** MEDIUM
-
-| Extension | Status |
-|-----------|--------|
-| `openai` | ✅ Expand existing |
-| `tokencache` | ✅ Expand existing |
-
----
-
 ### 1.5 Tooling Extensions
 
 **Priority:** LOW
@@ -119,10 +106,8 @@
 
 | Integration | Status |
 |-------------|--------|
-| Runtime + Observability | ❌ Missing |
 | Tooling + Runtime | ❌ Missing |
 | Notifications + Runtime | ❌ Missing |
-| OpenAI full flow | ✅ Complete |
 | Claude full flow | ❌ Missing |
 | LangChain full flow | ❌ Missing |
 

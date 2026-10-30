@@ -38,7 +38,7 @@ export default defineConfig(
         {
           "object": "process",
           "property": "env",
-          "message": "Use configuration classes instead of direct process.env access. See RuntimeConfiguration, ToolingConfiguration, or ObservabilityConfiguration."
+          "message": "Use configuration classes instead of direct process.env access. See RuntimeConfiguration or ToolingConfiguration."
         }
       ]
     }
@@ -66,4 +66,3 @@ export default defineConfig(
     }
   }
 );
-
