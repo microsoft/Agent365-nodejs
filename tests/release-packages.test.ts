@@ -174,7 +174,7 @@ it('does not start root release packaging from recursive workspace pack scripts'
     }));
   }
   const result = spawnSync(process.execPath,
-    [pnpmCli, '--include-workspace-root=false', '-r', 'run', 'pack'], {
+    [pnpmCli, '--include-workspace-root=false', '-r', '--if-present', 'run', 'pack'], {
       cwd: fixture, encoding: 'utf8', timeout: 30000,
     });
   expect(result.error).toBeUndefined();
