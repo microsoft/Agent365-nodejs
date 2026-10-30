@@ -147,3 +147,37 @@ it('keeps release selection explicit rather than collecting cached wildcard tarb
     .toHaveLength(6);
   expect(manifest.workspaces.some((workspace: string) => workspace.includes('*'))).toBe(false);
 });
+
+it('does not start root release packaging from recursive workspace pack scripts', () => {
+  const pnpmCli = process.env.npm_execpath;
+  if (!pnpmCli || !process.env.npm_config_user_agent?.startsWith('pnpm/')) {
+    throw new Error('Run release tests through pnpm test.');
+  }
+  const root = path.resolve(__dirname, '..');
+  const manifest = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
+  const workspaces: string[] = manifest.workspaces.filter((workspace: string) =>
+    workspace.startsWith('packages/'));
+  const marker = path.join(fixture, 'release-started');
+  writeFileSync(path.join(fixture, 'package.json'), JSON.stringify({
+    private: true, scripts: { pack: 'node pack.cjs' },
+  }));
+  writeFileSync(path.join(fixture, 'pack.cjs'),
+    "require('node:fs').writeFileSync('release-started', 'true');");
+  writeFileSync(path.join(fixture, 'pnpm-workspace.yaml'),
+    `packages:\n${workspaces.map(workspace => `  - ${JSON.stringify(workspace)}`).join('\n')}\n`);
+  for (const workspace of workspaces) {
+    const source = JSON.parse(readFileSync(path.join(root, workspace, 'package.json'), 'utf8'));
+    const directory = path.join(fixture, workspace);
+    mkdirSync(directory, { recursive: true });
+    writeFileSync(path.join(directory, 'package.json'), JSON.stringify({
+      name: source.name, version: source.version, scripts: source.scripts,
+    }));
+  }
+  const result = spawnSync(process.execPath,
+    [pnpmCli, '--include-workspace-root=false', '-r', 'run', 'pack'], {
+      cwd: fixture, encoding: 'utf8', timeout: 30000,
+    });
+  expect(result.error).toBeUndefined();
+  expect(existsSync(marker)).toBe(false);
+  expect(result.status).toBe(0);
+});

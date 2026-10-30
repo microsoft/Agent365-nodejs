@@ -16,8 +16,7 @@
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
     "prepublishOnly": "npm run clean && npm run build",
-    "ci": "npm ci",
-    "pack": "pnpm --dir ../.. run pack"
+    "ci": "npm ci"
   },
   "keywords": [
     "ai",

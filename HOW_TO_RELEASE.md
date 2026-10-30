@@ -7,6 +7,8 @@ This guide describes the process for creating an official release of the Microso
 - [Prerequisites](#prerequisites)
 - [Release Types](#release-types)
 - [Release Process](#release-process)
+- [Repository Release Safeguards](#repository-release-safeguards)
+- [Owner-Operated npm Retirement Checklist](#owner-operated-npm-retirement-checklist)
 - [Post-Release Tasks](#post-release-tasks)
 - [Troubleshooting](#troubleshooting)
 
@@ -233,7 +235,7 @@ npm install @microsoft/agents-a365-runtime@1.1.0
 
 ### Step 8: Publish to NPM (Optional)
 
-Observability is retired. First complete the [migration and owner-operated npm retirement checklist](docs/observability-migration.md), including external publisher/old-branch restrictions. Never publish every discovered directory or `*.tgz` file.
+Observability is retired. First complete the [owner-operated npm retirement checklist](#owner-operated-npm-retirement-checklist), including external publisher/old-branch restrictions. Never publish every discovered directory or `*.tgz` file.
 
 Continue in the already installed, version-stamped checkout from Step 6. Do not repeat `pnpm install --frozen-lockfile` after stamping: `setVersion.js` changes internal dependency specifications without updating the lockfile. If starting from a fresh checkout of the approved release commit, complete Step 6 first.
 
@@ -244,13 +246,50 @@ pnpm run pack artifacts/release-candidate
 node packPackages.js --verify artifacts/release-candidate
 ```
 
-Use backslashes for Windows paths. Verify that `packages.json` lists exactly the six maintained packages at the intended release version, never `0.0.0-placeholder`, and compare its SHA-256 hashes immediately before publishing. An authorized maintainer may publish **each exact verified tarball**, for example:
+Verify that `packages.json` lists exactly the six maintained packages at the intended release version, never `0.0.0-placeholder`, and compare its SHA-256 hashes immediately before publishing. An authorized maintainer may publish **each exact verified tarball**, for example:
 
 ```shell
 pnpm publish artifacts/release-candidate/microsoft-agents-a365-runtime-<version>.tgz --access public
 ```
 
 Repeat only for receipt-listed maintained packages; do not use wildcard publishing or cached drops. CI uploads only its fresh inspected directory and does not publish. External publishers must independently enforce the six-package allowlist and approved commit/receipt; these changes cannot protect old branches, revoke registry credentials, or invalidate already cached artifacts.
+
+---
+
+## Repository release safeguards
+
+Root and pnpm workspace lists explicitly contain six maintained packages; version tooling uses that list. From an installed checkout (see Step 6), CI and releases use the root guarded packaging path:
+
+```shell
+node setVersion.js
+pnpm run pack artifacts/release-candidate
+node packPackages.js --verify artifacts/release-candidate
+```
+
+For releases, run `node setVersion.js` in write mode before building or packing and verify the intended version in the receipt; the pack guard does not stamp versions. Use an output directory that does **not** already exist. The guard requires pnpm, rejects physical retired package directories, cleans/rebuilds maintained packages, packs only explicit allowed manifests, and independently inspects all six archives. It checks package identity, dependency sections (including unresolved `catalog:`/`workspace:` specifications), entry points, retired paths/imports/known implementation signatures, and duplicate/missing packages, then emits a SHA-256 `packages.json` receipt. Historical changelog entries are preserved and are not executable implementation.
+
+Reviewed stale `dist` trees from deleted packages must be removed before packing. Do not copy cached `packages/*.tgz`, reuse old output directories, publish by wildcard discovery, or treat a successful individual `pnpm pack` as removal verification. Package owners must publish only verified receipt-listed artifacts from the approved commit. These repository safeguards do **not** revoke already uploaded artifacts, old-branch pipelines, registry permissions, or external release jobs.
+
+## Owner-operated npm retirement checklist
+
+No registry operation is performed by the retirement change. An authorized package owner/maintainer must:
+
+1. Publish the [application migration guide](docs/observability-migration.md) at the canonical link below and announce the breaking removal, including Runtime scope-helper removal. Confirm migration destinations, ownership, and support routing.
+2. Audit npm owners/tokens/trusted publishers and every external pipeline, release branch/tag trigger, scheduled job, artifact feed, and manual release runbook. Disable retired-package publishing or backport the allowlist/artifact checks to every branch still allowed to release. Enforce the package-name allowlist independently in the external publisher.
+3. Quarantine/delete specifically identified retired cached tarballs and artifacts in external drops/caches. Rebuild from the approved commit into fresh directories; compare receipt hashes immediately before publishing. Do not replay an old successful build.
+4. Review all versions/dist-tags of the four exact packages, including prereleases, and confirm authorization. Run the following **only after the migration link is live**, using your normal authenticated npm environment.
+5. Check registry deprecation metadata for representative stable/prerelease versions and confirm installation displays the warning. Monitor consumer migration and stop new retired-package releases. Deprecation **warns**; it neither replaces dependencies nor prevents installation. **Do not unpublish.**
+
+[npm's current deprecation syntax](https://docs.npmjs.com/cli/v11/commands/npm-deprecate) is `npm deprecate <package-spec> <message>`. Quoted `@*` targets all versions, including prereleases. This command is workspace-unaware; run once for each exact package:
+
+```shell
+npm deprecate "@microsoft/agents-a365-observability@*" "Retired: migrate your application to @microsoft/opentelemetry using useMicrosoftOpenTelemetry(). Migration: https://github.com/microsoft/Agent365-nodejs/blob/main/docs/observability-migration.md"
+npm deprecate "@microsoft/agents-a365-observability-hosting@*" "Retired: migrate hosting telemetry to @microsoft/opentelemetry. Migration: https://github.com/microsoft/Agent365-nodejs/blob/main/docs/observability-migration.md"
+npm deprecate "@microsoft/agents-a365-observability-extensions-openai@*" "Retired: use OpenAI Agents instrumentation in @microsoft/opentelemetry. Migration: https://github.com/microsoft/Agent365-nodejs/blob/main/docs/observability-migration.md"
+npm deprecate "@microsoft/agents-a365-observability-extensions-langchain@*" "Retired: use LangChain instrumentation in @microsoft/opentelemetry. Migration: https://github.com/microsoft/Agent365-nodejs/blob/main/docs/observability-migration.md"
+```
+
+These are ready-to-paste owner actions, not commands for CI or this implementation session. Preserve historical changelogs and released package availability.
 
 ---
 

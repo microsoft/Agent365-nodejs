@@ -40,7 +40,7 @@ pnpm clean
 
 ## Pack verified artifacts
 
-Use the **root script**, not the built-in `pnpm pack` command or wildcard workspace packing:
+Use the **root script**, not the built-in `pnpm pack` command or wildcard workspace packing. Per-package `pack` scripts are intentionally absent so recursive script execution cannot start concurrent clean/build/release runs:
 
 ```shell
 pnpm run pack
@@ -57,7 +57,7 @@ pnpm run pack artifacts/release-candidate
 node packPackages.js --verify artifacts/release-candidate
 ```
 
-On Windows, use `artifacts\release-candidate`. The destination must not already exist. Reviewed stale generated output under retired package directories must be removed first. Never collect old `packages/*.tgz` or reuse cached tarballs as a release.
+The destination must not already exist. Reviewed stale generated output under retired package directories must be removed first. Never collect old `packages/*.tgz` or reuse cached tarballs as a release.
 
 Samples are maintained in [Agent365-Samples](https://github.com/microsoft/Agent365-Samples), not this workspace. Install the exact verified tarball(s) needed by your sample; published workspace dependencies may also need corresponding local overrides in that application.
 
@@ -65,7 +65,7 @@ Samples are maintained in [Agent365-Samples](https://github.com/microsoft/Agent3
 
 For missing dependencies, restore with `pnpm install --frozen-lockfile`; for stale compilation output, run `pnpm clean` then `pnpm build`. Check Node and pnpm versions before changing configuration. Do not clear shared caches as a routine repair.
 
-See [release instructions](HOW_TO_RELEASE.md) and the [owner-operated retirement checklist](docs/observability-migration.md#owner-operated-npm-retirement-checklist). Only authorized owners publish receipt-listed artifacts. Repository checks cannot stop external pipelines or old branches from releasing retired packages.
+See [release instructions](HOW_TO_RELEASE.md) and the [owner-operated retirement checklist](HOW_TO_RELEASE.md#owner-operated-npm-retirement-checklist). Only authorized owners publish receipt-listed artifacts. Repository checks cannot stop external pipelines or old branches from releasing retired packages.
 
 ## Resources
 

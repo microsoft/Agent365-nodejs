@@ -8,7 +8,7 @@ Use the [Microsoft OpenTelemetry JavaScript distro](https://github.com/microsoft
 
 Consult the distro's [official Agent365 documentation](https://github.com/microsoft/opentelemetry-distro-javascript/blob/main/A365_DOCUMENTATION.md), [Agent365 migration guide](https://github.com/microsoft/opentelemetry-distro-javascript/blob/main/MIGRATION_A365.md), [API reference](https://microsoft.github.io/opentelemetry-distro-javascript/), and [Microsoft Learn onboarding](https://learn.microsoft.com/microsoft-agent-365/developer/microsoft-opentelemetry?tabs=nodejs). This guide supplements them; it does not promise drop-in compatibility.
 
-Verification snapshot: **2026-10-28**, published package **1.5.0**. Its npm metadata declares Node.js **>=22.0.0**, root `import` and `require` exports with declarations, and the public `@microsoft/opentelemetry/loader` subpath. The repository's `main` currently declares stricter engines (`^22.23.4 || ^24.22.1 || >=26.12.1`); some Learn prerequisites still describe older runtimes. Choose a supported Node release satisfying the **selected published version's** engines and deployment policy, and recheck before upgrading:
+Verification snapshot: **2026-10-30**, published package **1.5.0**. Its npm metadata declares Node.js **>=22.0.0**, root `import` and `require` exports with declarations, and the public `@microsoft/opentelemetry/loader` subpath. The repository's `main` currently declares stricter engines (`^22.23.4 || ^24.22.1 || >=26.12.1`); some Learn prerequisites still describe older runtimes. Choose a supported Node release satisfying the **selected published version's** engines and deployment policy, and recheck before upgrading:
 
 ```shell
 npm view @microsoft/opentelemetry version engines exports --json
@@ -49,7 +49,7 @@ Use your application's existing package manager, update its lockfile, and remove
 | `BaggageBuilder`, trace/context and export-token helpers | Available distro APIs; review propagation, identity, and token semantics |
 | Hosting manager, middleware, token cache | Prefer distro `configureA365Hosting`; explicitly configure authentication and content capture |
 | OpenAI instrumentor/trace processor; `LangChainTraceInstrumentor`, `LangChainTracer` | Replace explicit registration with distro `instrumentationOptions`; remove old callbacks/instrumentors |
-| `PerRequestSpanProcessor`, its configuration/providers and buffer limits | No matching public replacement contract verified; redesign and test delivery/latency requirements rather than copying options |
+| `PerRequestSpanProcessor`, its configuration/providers and buffer limits | No `PerRequestSpanProcessor` root export in 1.5.0; use the documented `A365_PER_REQUEST_*` buffer controls below rather than copying old processor/provider wiring |
 
 Names such as `Agent365Exporter`, `ObservabilityHostingManager`, and `A365_OBSERVABILITY_*` can legitimately remain when imported/configured through the **replacement**. A name match alone is not a retired dependency. Do not copy deleted implementations into the remaining packages.
 
@@ -124,11 +124,27 @@ Supply a token resolver for the chosen identity/endpoint. The simple resolver re
 
 The retired exporter used `/observabilityService` with an **app-only resolver**, including per-request export. Request-context tokens were not fallback credentials. The distro's `useS2SEndpoint` defaults to `false`: explicitly choose and validate the endpoint and identity flow rather than assuming old behavior.
 
+**Permission prerequisite:** The app registration or managed identity used for app-only export must have the Agent365 API's `Agent365.Observability.OtelWrite` **application permission**, with administrator consent. For an app registration, use **Entra portal > App registrations > your app > API permissions > Add a permission > APIs my organization uses**, find `9b975845-388f-4429-889e-eab1ef63949c`, select **Application permissions**, add `Agent365.Observability.OtelWrite`, and **Grant admin consent**. See the [upstream permission setup](https://github.com/microsoft/opentelemetry-distro-javascript/blob/main/MIGRATION_A365.md) for administrator/CLI and identity-flow guidance. A valid token without the required grant can still produce HTTP 403.
+
 The removed Runtime helper and core configuration already defaulted to `api://9b975845-388f-4429-889e-eab1ef63949c/.default`, which is also the distro's default. **This scope has not changed for consumers of this SDK.** For app-only export, request that `/.default` scope with an app-only credential; custom resolvers should honor the configured authentication scopes. Do not substitute an MCP Tooling scope/token or a delegated `Agent365.Observability.OtelWrite` token for app-only export.
 
 The upstream migration guide's scope-change warning concerns the older `https://api.powerplatform.com/.default` value, not this SDK's current default. For an explicitly delegated/OBO flow, follow the distro's identity-flow-specific guidance separately rather than unintentionally changing the existing app-only flow. Verify audience, tenant consent, acquisition, expiry/refresh, denied consent, and 401/403 handling before rollout.
 
-Some environment names remain supported upstream: `ENABLE_A365_OBSERVABILITY_EXPORTER`, `A365_OBSERVABILITY_SCOPES_OVERRIDE`, `A365_OBSERVABILITY_DOMAIN_OVERRIDE`, `A365_OBSERVABILITY_LOG_LEVEL`, and `CLUSTER_CATEGORY`. They do not make every old setting compatible. Revalidate precedence against the selected distro version. Old `ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT` and `A365_PER_REQUEST_MAX_*` settings have no verified equivalent; remove or redesign them explicitly.
+Some environment names remain supported upstream: `ENABLE_A365_OBSERVABILITY_EXPORTER`, `A365_OBSERVABILITY_SCOPES_OVERRIDE`, `A365_OBSERVABILITY_DOMAIN_OVERRIDE`, `A365_OBSERVABILITY_LOG_LEVEL`, and `CLUSTER_CATEGORY`. **`ENABLE_A365_OBSERVABILITY_EXPORTER` is only a secondary toggle:** it cannot activate A365 on its own. You must still pass `a365` options with `enabled: true` in code, as shown above. Revalidate option/environment precedence against the selected distro version.
+
+### Per-request buffer settings
+
+The distro's [documented environment controls](https://github.com/microsoft/opentelemetry-distro-javascript/blob/main/README.md#a365-environment-variables), also present in the published 1.5.0 README, include:
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `A365_PER_REQUEST_MAX_TRACES` | Maximum buffered traces | `1000` |
+| `A365_PER_REQUEST_MAX_SPANS_PER_TRACE` | Maximum spans per trace | `5000` |
+| `A365_PER_REQUEST_MAX_CONCURRENT_EXPORTS` | Maximum concurrent exports | `20` |
+| `A365_PER_REQUEST_FLUSH_GRACE_MS` | Grace period after the root span ends, in milliseconds | `250` |
+| `A365_PER_REQUEST_MAX_TRACE_AGE_MS` | Maximum trace age before forced flush, in milliseconds | `1800000` |
+
+These settings are supported, but do not guarantee identical buffering, drop, or flush semantics. The legacy `ENABLE_A365_OBSERVABILITY_PER_REQUEST_EXPORT` switch is not documented in the current upstream environment contract; do not assume it selects the old processing mode. Verify the selected distro version's delivery and latency behavior in application tests.
 
 ## Context, manual spans, hosting, and frameworks
 
@@ -158,10 +174,10 @@ OpenAI Agents and LangChain instrumentation are bundled and enabled by default f
 
 ## Shutdown, flushing, and unsupported assumptions
 
-During an application-owned graceful shutdown, first stop accepting requests and await in-flight work, then:
+During an application-owned graceful shutdown, you **must** stop accepting requests, await in-flight work, then **call and await `shutdownMicrosoftOpenTelemetry()`** to flush pending telemetry and release resources. Skipping shutdown can lose buffered spans and metrics:
 
 ```javascript
-// ESM; CommonJS: const { shutdownMicrosoftOpenTelemetry } = require('...');
+// ESM; CommonJS: const { shutdownMicrosoftOpenTelemetry } = require('@microsoft/opentelemetry');
 import { shutdownMicrosoftOpenTelemetry } from '@microsoft/opentelemetry';
 
 await shutdownMicrosoftOpenTelemetry();
@@ -169,41 +185,10 @@ await shutdownMicrosoftOpenTelemetry();
 
 Await this in your asynchronous signal/lifecycle handler; a synchronous `exit` handler or immediate `process.exit()` cannot flush reliably. Handle rejected shutdown explicitly through application logging/error policy. No generic root-level `forceFlush()` API was verified. Applications explicitly owning an `Agent365Exporter` can use its documented `forceFlush()` contract; do not reach into private distro internals.
 
-The current A365 HTTP exporter requests durable delivery by default. Review its platform requirements: on Unix, provision an existing absolute private durable-storage root; persisted telemetry is plaintext and delivery is at least once. `durableDelivery: { enabled: false }` chooses network-only delivery, with different loss guarantees. Shutdown is bounded and does not drain an existing spool; exporter force-flush replay is also bounded. See upstream operational guidance for permissions, storage, replay, timeouts, and recovery.
+The A365 HTTP exporter requests durable delivery by default. Provision an existing absolute private durable-storage root: upstream `main` now requires this on Unix, while published 1.5.0 documents automatic temporary-directory selection. Follow the selected version's storage guidance; persisted telemetry is plaintext and delivery is at least once. `durableDelivery: { enabled: false }` chooses network-only delivery, with different loss guarantees. Shutdown is bounded and does not drain an existing spool; exporter force-flush replay is also bounded. See upstream operational guidance for permissions, storage, replay, timeouts, and recovery.
 
-Unsupported migration assumptions include old per-request buffering/flush semantics, custom provider factories and builder hooks, identical trace schemas, automatic token fallback, identical log/content policies, and identical instrumentation coverage. Build application regression tests for these requirements. Do not retain both SDKs to mask gaps or assume OTLP success proves Agent365 ingestion. Validate actual backend receipt, identity separation, retries, shutdown, and failures.
+Unsupported migration assumptions include identical per-request buffering/flush semantics, custom provider factories and builder hooks, identical trace schemas, automatic token fallback, identical log/content policies, and identical instrumentation coverage. Build application regression tests for these requirements. Do not retain both SDKs to mask gaps or assume OTLP success proves Agent365 ingestion. Validate actual backend receipt, identity separation, retries, shutdown, and failures.
 
-## Repository release safeguards
+## Maintainer actions
 
-Root and pnpm workspace lists explicitly contain six maintained packages; version tooling uses that list. CI uses the root guarded packaging path:
-
-```shell
-node setVersion.js
-pnpm run pack artifacts/release-candidate
-node packPackages.js --verify artifacts/release-candidate
-```
-
-For releases, run `node setVersion.js` in write mode before building or packing and verify the intended version in the receipt; the pack guard does not stamp versions. Use an output directory that does **not** already exist (on Windows, use backslashes). The guard requires pnpm, rejects physical retired package directories, cleans/rebuilds maintained packages, packs only explicit allowed manifests, and independently inspects all six archives. It checks package identity, dependency sections (including unresolved `catalog:`/`workspace:` specifications), entry points, retired paths/imports/known implementation signatures, and duplicate/missing packages, then emits a SHA-256 `packages.json` receipt. Historical changelog entries are preserved and are not executable implementation.
-
-Reviewed stale `dist` trees from deleted packages must be removed before packing. Do not copy cached `packages/*.tgz`, reuse old output directories, publish by wildcard discovery, or treat a successful individual `pnpm pack` as removal verification. Package owners must publish only verified receipt-listed artifacts from the approved commit. These repository safeguards do **not** revoke already uploaded artifacts, old-branch pipelines, registry permissions, or external release jobs.
-
-## Owner-operated npm retirement checklist
-
-No registry operation is performed by this change. An authorized package owner/maintainer must:
-
-1. Publish this guide at the canonical link below and announce the breaking removal, including Runtime scope-helper removal. Confirm migration destinations, ownership, and support routing.
-2. Audit npm owners/tokens/trusted publishers and every external pipeline, release branch/tag trigger, scheduled job, artifact feed, and manual release runbook. Disable retired-package publishing or backport the allowlist/artifact checks to every branch still allowed to release. Enforce the package-name allowlist independently in the external publisher.
-3. Quarantine/delete specifically identified retired cached tarballs and artifacts in external drops/caches. Rebuild from the approved commit into fresh directories; compare receipt hashes immediately before publishing. Do not replay an old successful build.
-4. Review all versions/dist-tags of the four exact packages, including prereleases, and confirm authorization. Run the following **only after the migration link is live**, using your normal authenticated npm environment.
-5. Check registry deprecation metadata for representative stable/prerelease versions and confirm installation displays the warning. Monitor consumer migration and stop new retired-package releases. Deprecation **warns**; it neither replaces dependencies nor prevents installation. **Do not unpublish.**
-
-[npm's current deprecation syntax](https://docs.npmjs.com/cli/v11/commands/npm-deprecate) is `npm deprecate <package-spec> <message>`. Quoted `@*` targets all versions, including prereleases. This command is workspace-unaware; run once for each exact package:
-
-```shell
-npm deprecate "@microsoft/agents-a365-observability@*" "Retired: migrate your application to @microsoft/opentelemetry using useMicrosoftOpenTelemetry(). Migration: https://github.com/microsoft/Agent365-nodejs/blob/main/docs/observability-migration.md"
-npm deprecate "@microsoft/agents-a365-observability-hosting@*" "Retired: migrate hosting telemetry to @microsoft/opentelemetry. Migration: https://github.com/microsoft/Agent365-nodejs/blob/main/docs/observability-migration.md"
-npm deprecate "@microsoft/agents-a365-observability-extensions-openai@*" "Retired: use OpenAI Agents instrumentation in @microsoft/opentelemetry. Migration: https://github.com/microsoft/Agent365-nodejs/blob/main/docs/observability-migration.md"
-npm deprecate "@microsoft/agents-a365-observability-extensions-langchain@*" "Retired: use LangChain instrumentation in @microsoft/opentelemetry. Migration: https://github.com/microsoft/Agent365-nodejs/blob/main/docs/observability-migration.md"
-```
-
-These are ready-to-paste owner actions, not commands for CI or this implementation session. Preserve historical changelogs and released package availability.
+Repository packaging safeguards and registry deprecation are maintainer tasks, not application migration steps. See [release safeguards](../HOW_TO_RELEASE.md#repository-release-safeguards) and the [owner-operated npm retirement checklist and deprecation messages](../HOW_TO_RELEASE.md#owner-operated-npm-retirement-checklist). Applications must migrate explicitly; npm deprecation neither replaces dependencies nor prevents installation.
