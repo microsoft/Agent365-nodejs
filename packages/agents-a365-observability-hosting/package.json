@@ -26,7 +26,8 @@
   "files": [
     "dist",
     "README.md",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "docs"
   ],
   "scripts": {
     "build": "npm run build:cjs && npm run build:esm",
@@ -44,6 +45,7 @@
   "dependencies": {
     "@microsoft/agents-a365-observability": "workspace:*",
     "@microsoft/agents-a365-runtime": "workspace:*",
+    "@microsoft/agents-activity": "catalog:",
     "@microsoft/agents-hosting": "catalog:",
     "@opentelemetry/api": "catalog:"
   },
