@@ -24,6 +24,7 @@ Agent365-nodejs/
 │   ├── agents-a365-notifications/
 │   ├── agents-a365-observability-hosting/
 │   ├── agents-a365-observability-extensions-openai/
+│   ├── agents-a365-tooling-extensions-agenthooks/
 │   ├── agents-a365-tooling-extensions-claude/
 │   ├── agents-a365-tooling-extensions-langchain/
 │   └── agents-a365-tooling-extensions-openai/
@@ -185,7 +186,7 @@ Framework-specific instrumentations that integrate with the observability core:
 
 > **Detailed documentation**: [packages/agents-a365-tooling/docs/design.md](../packages/agents-a365-tooling/docs/design.md)
 
-MCP (Model Context Protocol) tool server configuration and discovery.
+MCP (Model Context Protocol) tool server configuration and discovery, and the Microsoft Defender for AI real-time protection client.
 
 **Key Classes:**
 
@@ -193,6 +194,8 @@ MCP (Model Context Protocol) tool server configuration and discovery.
 |-------|---------|
 | `McpToolServerConfigurationService` | Discover and configure MCP tool servers |
 | `Utility` | Header composition, token validation, URL construction |
+| `DefenderRtpClient` | Send agent-hooks contexts to the Defender prevention endpoint and return its verdict (opt-in, `ENABLE_A365_DEFENDER_RTP`) |
+| `DefenderRtpTokenResolvers` | The agent identity's app-only Defender token from an Agents SDK connection |
 
 **Interfaces:**
 
@@ -240,10 +243,11 @@ for (const server of servers) {
 
 ### 5. Tooling Extensions
 
-Framework-specific adapters for MCP tool integration:
+Framework-specific adapters for MCP tool integration, and the agent-hooks adapter for real-time protection:
 
 | Package | Purpose | Design Doc |
 |---------|---------|------------|
+| `tooling-extensions-agenthooks` | agent-hooks interceptor for Microsoft Defender for AI real-time protection | [design.md](../packages/agents-a365-tooling-extensions-agenthooks/docs/design.md) |
 | `tooling-extensions-claude` | Claude SDK integration | [design.md](../packages/agents-a365-tooling-extensions-claude/docs/design.md) |
 | `tooling-extensions-langchain` | LangChain integration | [design.md](../packages/agents-a365-tooling-extensions-langchain/docs/design.md) |
 | `tooling-extensions-openai` | OpenAI Agents SDK integration | [design.md](../packages/agents-a365-tooling-extensions-openai/docs/design.md) |

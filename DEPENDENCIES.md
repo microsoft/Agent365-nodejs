@@ -10,6 +10,7 @@ graph LR
   agents_a365_observability_tokencache[agents-a365-observability-tokencache]
   agents_a365_runtime[agents-a365-runtime]
   agents_a365_tooling[agents-a365-tooling]
+  agents_a365_tooling_extensions_agenthooks[agents-a365-tooling-extensions-agenthooks]
   agents_a365_tooling_extensions_claude[agents-a365-tooling-extensions-claude]
   agents_a365_tooling_extensions_langchain[agents-a365-tooling-extensions-langchain]
   agents_a365_tooling_extensions_openai[agents-a365-tooling-extensions-openai]
@@ -20,6 +21,8 @@ graph LR
   agents_a365_observability_tokencache --> agents_a365_observability
   agents_a365_observability_tokencache --> agents_a365_runtime
   agents_a365_tooling --> agents_a365_runtime
+  agents_a365_tooling_extensions_agenthooks --> agents_a365_runtime
+  agents_a365_tooling_extensions_agenthooks --> agents_a365_tooling
   agents_a365_tooling_extensions_claude --> agents_a365_runtime
   agents_a365_tooling_extensions_claude --> agents_a365_tooling
   agents_a365_tooling_extensions_langchain --> agents_a365_runtime
@@ -33,6 +36,7 @@ graph LR
   style agents_a365_observability_tokencache fill:#e8f5e9,stroke:#66bb6a,color:#1f3d1f
   style agents_a365_runtime fill:#bbdefb,stroke:#1565c0,color:#0d1a26
   style agents_a365_tooling fill:#ffe0b2,stroke:#e65100,color:#331a00
+  style agents_a365_tooling_extensions_agenthooks fill:#fff3e0,stroke:#fb8c00,color:#4d2600
   style agents_a365_tooling_extensions_claude fill:#fff3e0,stroke:#fb8c00,color:#4d2600
   style agents_a365_tooling_extensions_langchain fill:#fff3e0,stroke:#fb8c00,color:#4d2600
   style agents_a365_tooling_extensions_openai fill:#fff3e0,stroke:#fb8c00,color:#4d2600
