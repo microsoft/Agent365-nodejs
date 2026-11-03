@@ -1,6 +1,6 @@
 # Microsoft Agent 365 SDK Tests
 
-Unit and integration tests for the Microsoft Agent 365 SDK - Node.js/TypeScript. This test suite ensures reliability, maintainability, and quality across all modules including runtime, tooling, notifications, and observability extensions.
+Tests for the six maintained Microsoft Agent 365 SDK packages: Runtime, Tooling, Notifications, and Tooling extensions. Release tests also reject retired packages and bundled implementations. Dedicated Observability tests are removed; application migration belongs to the [replacement distro](../docs/observability-migration.md).
 
 ## Usage
 

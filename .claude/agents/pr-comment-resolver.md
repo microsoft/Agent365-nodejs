@@ -70,11 +70,11 @@ Types: `fix`, `refactor`, `style`, `docs`, `test`
 
 Example:
 ```
-fix(observability): add null check for tenant ID
+fix(runtime): add null check for tenant ID
 
 Addresses review comment [CRM-003]
 - Added explicit null check before accessing tenantId
-- Prevents potential runtime error when baggage is missing
+- Prevents potential runtime error when request identity is missing
 ```
 
 ### Phase 3: Verification

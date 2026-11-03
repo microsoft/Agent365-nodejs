@@ -11,8 +11,6 @@ const __dirname = path.dirname(__filename);
 // Color definitions for package types
 const packageTypeColors = {
   'Notifications': { fill: '#ffcdd2', stroke: '#c62828', color: '#280505' },
-  'Observability': { fill: '#c8e6c9', stroke: '#2e7d32', color: '#142a14' },
-  'Observability Extensions': { fill: '#e8f5e9', stroke: '#66bb6a', color: '#1f3d1f' },
   'Runtime': { fill: '#bbdefb', stroke: '#1565c0', color: '#0d1a26' },
   'Tooling': { fill: '#ffe0b2', stroke: '#e65100', color: '#331a00' },
   'Tooling Extensions': { fill: '#fff3e0', stroke: '#fb8c00', color: '#4d2600' }
@@ -21,9 +19,6 @@ const packageTypeColors = {
 // Package to type mapping
 const packageToType = {
   'agents-a365-notifications': 'Notifications',
-  'agents-a365-observability': 'Observability',
-  'agents-a365-observability-extensions-openai': 'Observability Extensions',
-  'agents-a365-observability-tokencache': 'Observability Extensions',
   'agents-a365-runtime': 'Runtime',
   'agents-a365-tooling': 'Tooling',
   'agents-a365-tooling-extensions-claude': 'Tooling Extensions',
@@ -163,8 +158,6 @@ function main() {
   markdown += diagram;
   markdown += '## Package Types\n\n';
   markdown += '- **Notifications** (Red): Notification and messaging extensions\n';
-  markdown += '- **Observability** (Green): Telemetry and monitoring core\n';
-  markdown += '- **Observability Extensions** (Light Green): Framework-specific observability integrations\n';
   markdown += '- **Runtime** (Blue): Core runtime components\n';
   markdown += '- **Tooling** (Orange): Agent tooling SDK core\n';
   markdown += '- **Tooling Extensions** (Light Orange): Framework-specific tooling integrations\n\n';

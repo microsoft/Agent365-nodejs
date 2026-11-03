@@ -16,7 +16,7 @@
  * 
  * Examples:
  *   # For CI/CD pipelines (writes to disk):
- *   npm run build && node setVersion.js && npm pack
+ *   node setVersion.js && pnpm run pack
  * 
  *   # For local development (dry-run):
  *   node setVersion.js --local
@@ -24,6 +24,7 @@
 
 import * as nbgv from 'nerdbank-gitversioning'
 import fs from 'fs'
+import path from 'path'
 
 // Parse command line arguments
 const args = process.argv.slice(2)
@@ -101,11 +102,13 @@ const setPackageVersionAndBuildNumber = async versionInfo => {
     console.log(`⏭️  Skipped updating root package.json (dry-run mode)`)
   }
   
-  const files = await fs.promises.readdir('packages', { withFileTypes: true })
-  
-  const folders = files
-    .filter(file => file.isDirectory() && file.name !== 'node_modules')
-    .map(folder => `${folder.parentPath}/${folder.name}`)
+  const rootManifest = JSON.parse(fs.readFileSync('./package.json', 'utf8'))
+  const folders = rootManifest.workspaces.filter(folder => folder.startsWith('packages/'))
+  for (const folder of folders) {
+    if (folder.includes('*') || !fs.existsSync(path.join(folder, 'package.json'))) {
+      throw new Error(`Release workspace must be an explicit package directory: ${folder}`)
+    }
+  }
 
   for (const f of folders) {
     const action = skipWrite ? '⏭️  Would update' : '✅ Updating'

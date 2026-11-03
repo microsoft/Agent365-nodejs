@@ -79,7 +79,6 @@ When generating tasks, consider:
 
 ### Package Placement
 - **Runtime**: Shared utilities, no external SDK dependencies
-- **Observability**: OpenTelemetry integration, tracing scopes
 - **Tooling**: MCP server configuration and discovery
 - **Notifications**: Agent lifecycle event handling
 - **Extensions**: Framework-specific adapters (OpenAI, Claude, LangChain)
@@ -88,7 +87,6 @@ When generating tasks, consider:
 - Use workspace protocol: `"@microsoft/agents-a365-runtime": "workspace:*"`
 - Understand the dependency flow:
   ```
-  runtime → observability → observability-hosting → observability-extensions-*
   runtime → tooling → tooling-extensions-*
   runtime → notifications
   ```
@@ -99,9 +97,8 @@ When generating tasks, consider:
 - Build output: `dist/cjs/`, `dist/esm/`
 
 ### Observability Integration
-- New features should emit appropriate spans
-- Use existing scope classes: `InvokeAgentScope`, `InferenceScope`, `ExecuteToolScope`
-- Propagate baggage context for correlation
+- Application telemetry is owned by the external `@microsoft/opentelemetry` distro.
+- Follow `docs/observability-migration.md`; do not recreate retired scope implementations or add the distro to unaffected SDK packages.
 
 ## Deliverable Format
 
@@ -167,25 +164,25 @@ Before finalizing, verify:
 
 ## Example Output
 
-**Input**: PRD for adding custom span processors to observability
+**Input**: PRD for adding configurable MCP discovery retries to Tooling
 
 **Output**:
 ```markdown
-# Implementation Plan: Custom Span Processors
+# Implementation Plan: MCP Discovery Retries
 
 ## Executive Summary
-This plan breaks down the custom span processor feature into 6 tasks across 3 phases. The implementation adds a plugin architecture to ObservabilityBuilder while maintaining backward compatibility.
+This plan breaks down configurable discovery retries into 6 tasks across 3 phases, preserving existing defaults and request-specific configuration.
 
 ## Architecture Impact
-- **Primary Package**: `@microsoft/agents-a365-observability`
+- **Primary Package**: `@microsoft/agents-a365-tooling`
 - **Dependencies**: None new
 - **Breaking Changes**: None (additive API)
 
 ## Phase 1: Foundation (2 tasks)
 
-### Task 1.1: Define SpanProcessor Interface
-**Package**: `@microsoft/agents-a365-observability`
-**Description**: Create the interface contract for custom span processors...
+### Task 1.1: Define Retry Configuration
+**Package**: `@microsoft/agents-a365-tooling`
+**Description**: Define bounded retries and backoff with existing configuration-provider patterns...
 ...
 
 ## Phase 2: Core Implementation (2 tasks)

@@ -39,9 +39,7 @@ Before writing code:
 Determine:
 - **Package placement**: Core package or extension?
 - **Pattern alignment**: Which design patterns apply?
-  - Singleton (ObservabilityManager)
-  - Disposable (Scope classes with `using` keyword)
-  - Builder (BaggageBuilder, ObservabilityBuilder)
+  - Configuration Provider (Runtime and Tooling dynamic overrides)
   - Strategy (environment-based configuration)
   - Extension Methods (TypeScript declaration merging)
 - **Cross-package impacts**: Dependencies, shared types
@@ -201,10 +199,10 @@ Before requesting code review, verify:
 
 - **Node.js versions**: >=18.0.0
 - **TypeScript**: Strict mode enabled
-- **Structure**: pnpm workspace monorepo with 9 packages
+- **Structure**: pnpm workspace monorepo with six maintained packages
 - **Package naming**: `@microsoft/agents-a365-<name>`
 - **Build output**: Dual format (CJS and ESM)
-- **Observability**: OpenTelemetry for traces, spans, metrics
+- **Application telemetry**: External `@microsoft/opentelemetry` distro; see `docs/observability-migration.md`. Do not reintroduce retired SDK packages.
 - **Tool integration**: MCP (Model Context Protocol)
 - **Testing**: Jest with ts-jest preset
 

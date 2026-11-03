@@ -311,28 +311,12 @@ try {
 
 ## SDK-Specific Patterns
 
-### Disposable Pattern
+### Configuration Providers
 ```typescript
-// ✅ Correct usage with 'using' keyword
-using scope = InvokeAgentScope.start(details, tenantDetails);
-// Span automatically ends when scope is disposed
+import { defaultRuntimeConfigurationProvider } from '@microsoft/agents-a365-runtime';
+
+const config = defaultRuntimeConfigurationProvider.getConfiguration();
+const cluster = config.clusterCategory;
 ```
 
-### Builder Pattern
-```typescript
-// ✅ Fluent API usage
-const baggage = new BaggageBuilder()
-  .tenantId(tenantId)
-  .agentId(agentId)
-  .correlationId(correlationId)
-  .build();
-```
-
-### Singleton Access
-```typescript
-// ✅ Proper singleton usage
-const manager = ObservabilityManager.getInstance();
-if (manager === null) {
-  throw new Error('ObservabilityManager not initialized');
-}
-```
+Evaluate dynamic getter values at their point of use; overrides may vary per request. Observability is retired from this SDK; application integrations use the distro described in `docs/observability-migration.md`.

@@ -166,18 +166,16 @@ const dynamicConfig = new RuntimeConfiguration({
 > **Note:** These functions are deprecated. Use the appropriate configuration class instead:
 > - `RuntimeConfiguration` for `clusterCategory` and `isDevelopmentEnvironment`
 > - `ToolingConfiguration` for `mcpPlatformAuthenticationScope`
-> - `ObservabilityConfiguration` for `observabilityAuthenticationScopes`
 
 ```typescript
 import {
-  getObservabilityAuthenticationScope,  // @deprecated - use ObservabilityConfiguration
   getClusterCategory,                    // @deprecated - use RuntimeConfiguration
   isDevelopmentEnvironment,              // @deprecated - use RuntimeConfiguration
   getMcpPlatformAuthenticationScope,     // @deprecated - use ToolingConfiguration
 } from '@microsoft/agents-a365-runtime';
 ```
 
-These functions are maintained only for backward compatibility. The `getClusterCategory` and `isDevelopmentEnvironment` functions delegate to `defaultRuntimeConfigurationProvider`, while the auth scope functions return hardcoded production defaults.
+These functions are maintained only for backward compatibility. The `getClusterCategory` and `isDevelopmentEnvironment` functions delegate to `defaultRuntimeConfigurationProvider`, while the MCP auth scope helper returns a hardcoded production default. The former Observability scope helper and constant have been removed; see the [migration guide](../../../docs/observability-migration.md).
 
 ## Type Definitions
 
@@ -293,5 +291,4 @@ src/
 The runtime package is a foundational dependency used by:
 
 - `@microsoft/agents-a365-tooling` - For agent identity resolution and headers
-- `@microsoft/agents-a365-observability` - For cluster category and environment utilities
 - All tooling extension packages - For authentication and identity resolution

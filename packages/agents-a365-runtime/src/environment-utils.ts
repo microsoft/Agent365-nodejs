@@ -8,18 +8,10 @@
  * For new code, prefer using the configuration classes directly:
  * - RuntimeConfiguration for clusterCategory, isDevelopmentEnvironment, isNodeEnvDevelopment
  * - ToolingConfiguration for mcpPlatformAuthenticationScope
- * - ObservabilityConfiguration for observabilityAuthenticationScopes
  */
 
 import { RuntimeConfiguration, defaultRuntimeConfigurationProvider } from './configuration';
 import { IConfigurationProvider } from './configuration/IConfigurationProvider';
-
-/**
- * Production observability authentication scope.
- * @deprecated This constant is exported for backward compatibility only.
- * For new code, use `ObservabilityConfiguration.observabilityAuthenticationScopes` instead.
- */
-export const PROD_OBSERVABILITY_SCOPE = 'api://9b975845-388f-4429-889e-eab1ef63949c/.default';
 
 /**
  * Production MCP platform authentication scope.
@@ -38,27 +30,6 @@ export const PROD_OBSERVABILITY_CLUSTER_CATEGORY = 'prod';
 // Default environment names
 export const PRODUCTION_ENVIRONMENT_NAME = 'production';
 export const DEVELOPMENT_ENVIRONMENT_NAME = 'Development';
-
-/**
- * Returns the scope for authenticating to the observability service.
- *
- * @returns The authentication scopes for the current environment.
- * @deprecated Use ObservabilityConfiguration.observabilityAuthenticationScopes instead.
- *
- * @example
- * // Before:
- * import { getObservabilityAuthenticationScope } from '@microsoft/agents-a365-runtime';
- * const scopes = getObservabilityAuthenticationScope();
- *
- * // After:
- * import { defaultObservabilityConfigurationProvider } from '@microsoft/agents-a365-observability';
- * const scopes = [...defaultObservabilityConfigurationProvider.getConfiguration().observabilityAuthenticationScopes];
- */
-export function getObservabilityAuthenticationScope(): string[] {
-  // Returns production default - use ObservabilityConfiguration for proper env var support
-  // eslint-disable-next-line @typescript-eslint/no-deprecated -- Intentional: deprecated function using deprecated constant
-  return [PROD_OBSERVABILITY_SCOPE];
-}
 
 /**
  * Gets the cluster category from environment variables.

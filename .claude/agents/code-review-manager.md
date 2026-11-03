@@ -271,12 +271,12 @@ When the task-implementer completes work:
 I've completed the implementation for [feature]. Please review:
 
 Files created:
-- packages/agents-a365-observability/src/customProcessor.ts
-- tests/observability/customProcessor.test.ts
+- packages/agents-a365-tooling/src/discoveryRetry.ts
+- tests/tooling/discoveryRetry.test.ts
 
 Files modified:
-- packages/agents-a365-observability/src/index.ts
-- packages/agents-a365-observability/src/ObservabilityBuilder.ts
+- packages/agents-a365-tooling/src/index.ts
+- packages/agents-a365-tooling/src/McpToolServerConfigurationService.ts
 
 Test results: 24 passed, 0 failed
 Lint: No errors

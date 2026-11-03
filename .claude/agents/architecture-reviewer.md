@@ -231,7 +231,6 @@ Escalate to team discussion when:
 
 ### Dependency Flow
 ```
-runtime → observability → observability-hosting → observability-extensions-*
 runtime → tooling → tooling-extensions-*
 runtime → notifications
 ```
@@ -240,7 +239,6 @@ runtime → notifications
 | Package | Responsibility |
 |---------|---------------|
 | runtime | Foundation utilities, no external SDK deps |
-| observability | OpenTelemetry tracing infrastructure |
 | tooling | MCP server configuration and discovery |
 | notifications | Agent lifecycle event handling |
 | *-extensions-* | Framework-specific adapters |
@@ -248,8 +246,8 @@ runtime → notifications
 ### Design Patterns
 | Pattern | Usage |
 |---------|-------|
-| Singleton | ObservabilityManager (single tracer provider) |
-| Disposable | Scope classes (automatic span lifecycle) |
-| Builder | BaggageBuilder, ObservabilityBuilder (fluent config) |
+| Configuration Provider | Runtime and Tooling dynamic configuration |
 | Strategy | McpToolServerConfigurationService (dev vs prod) |
 | Extension Methods | Notifications extending AgentApplication |
+
+Observability packages are retired. Application telemetry belongs to `@microsoft/opentelemetry`; consult `docs/observability-migration.md`, not deleted SDK APIs.

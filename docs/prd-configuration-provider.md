@@ -1,5 +1,7 @@
 # PRD: Configuration Provider for Agent365 SDK
 
+> **Historical design draft, not the current API contract.** Observability portions below describe retired packages and are retained only as design history. Current maintained architecture is in [design.md](design.md); applications should follow the [Observability migration guide](observability-migration.md). Do not implement the retired package/provider proposals.
+
 ## Document Information
 
 | Field | Value |
