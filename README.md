@@ -83,7 +83,7 @@ For more detailed build instructions, see the [HOW_TO_BUILD.md](HOW_TO_BUILD.md)
 
 ## Support
 
-For issues, questions, or feedback:
+For issues, questions, or feedback, see [SUPPORT.md](SUPPORT.md) for the support policy and available resources:
 
 - **Issues**: Please file issues in the [GitHub Issues](https://github.com/microsoft/Agent365-nodejs/issues) section
 - **Documentation**: See the [Microsoft Agent 365 developer documentation](https://learn.microsoft.com/microsoft-agent-365/developer/)
