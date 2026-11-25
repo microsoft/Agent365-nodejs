@@ -25,12 +25,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   [Observability migration guide](https://github.com/microsoft/Agent365-nodejs/blob/main/docs/observability-migration.md)
   for initialization, authentication, context propagation, instrumentation, and shutdown.
 
-### Added (`@microsoft/agents-a365-tooling-extensions-langchain`)
+### Added (`@microsoft/agents-a365-tooling-extensions-openai`, `@microsoft/agents-a365-tooling-extensions-langchain`)
 
-- **`closeToolServers(agent)`** — Ends the session on each MCP server and closes the
-  `MultiServerMCPClient` behind an agent that `addToolServersToAgent` returned. Call it in a
-  `finally` block when the turn that used the agent ends. If a returned agent is garbage collected
-  before it is closed, its client is closed then.
+- **`closeToolServers(agent)`** — Closes the MCP connections that `addToolServersToAgent` opened or
+  created for an agent and ends their server sessions. Call it in a `finally` block when the turn
+  that used the agent ends. If the agent is garbage collected before that, they are closed then.
+  - **OpenAI:** removes the servers `addToolServersToAgent` added from the agent and closes the ones
+    it created for this agent (`addToolServersToAgent` doesn't connect them; you do). Servers the
+    agent shares with another agent through `agent.clone()` are only removed, and servers you add
+    yourself are kept and left open.
+  - **LangChain:** ends the session on each MCP server and closes the `MultiServerMCPClient` behind
+    an agent that `addToolServersToAgent` returned.
 
 ### Fixed (`@microsoft/agents-a365-tooling`)
 

@@ -24,6 +24,7 @@ The OpenAI tooling extensions package provides integration between the Microsoft
 │  2. Create MCPServerStreamableHttp instances                     │
 │  3. Add to agent.mcpServers array                                │
 │  4. Return updated agent                                         │
+│  5. closeToolServers: remove and close the servers it created    │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -41,19 +42,19 @@ Main service for registering MCP tools with OpenAI agents:
 
 ```typescript
 import { McpToolRegistrationService } from '@microsoft/agents-a365-tooling-extensions-openai';
-import { Agent } from '@openai/agents';
+import { Agent, run } from '@openai/agents';
 
 const registrationService = new McpToolRegistrationService();
 
-// Create OpenAI agent
-let agent = new Agent({
+// Create the OpenAI agent for this turn
+const agent = new Agent({
   name: 'MyAgent',
   model: 'gpt-4o',
   instructions: 'You are a helpful assistant.'
 });
 
 // Register MCP tools with the agent
-agent = await registrationService.addToolServersToAgent(
+await registrationService.addToolServersToAgent(
   agent,
   authorization,
   authHandlerName,
@@ -61,11 +62,21 @@ agent = await registrationService.addToolServersToAgent(
   authToken  // Optional, will be obtained if not provided
 );
 
-// Agent now has access to MCP tool servers
-const result = await run(agent, 'Search for documents');
+try {
+  // The servers are added but not connected
+  for (const server of agent.mcpServers) {
+    await server.connect();
+  }
+
+  // Agent now has access to MCP tool servers
+  const result = await run(agent, 'Search for documents');
+} finally {
+  // Close the servers of this turn, which also ends their sessions
+  await registrationService.closeToolServers(agent);
+}
 ```
 
-**Method Signature:**
+**Method Signatures:**
 
 ```typescript
 async addToolServersToAgent(
@@ -75,6 +86,10 @@ async addToolServersToAgent(
   turnContext: TurnContext,      // Current turn context
   authToken: string              // Bearer token (optional)
 ): Promise<Agent>                // Returns updated agent
+
+async closeToolServers(
+  agent: Agent                    // Agent passed to addToolServersToAgent
+): Promise<void>
 ```
 
 ## OpenAI Agents SDK Integration
@@ -99,9 +114,8 @@ for (const server of servers) {
   mcpServers.push(mcpServer);
 }
 
-// Add to agent
-agent.mcpServers = agent.mcpServers ?? [];
-agent.mcpServers.push(...mcpServers);
+// Add to agent (a new array, see Preserving Existing MCP Servers)
+agent.mcpServers = [...agent.mcpServers, ...mcpServers];
 ```
 
 ## Server Configuration
@@ -135,15 +149,15 @@ import { McpToolRegistrationService } from '@microsoft/agents-a365-tooling-exten
 async function onMessage(turnContext: TurnContext, authorization: Authorization) {
   const registrationService = new McpToolRegistrationService();
 
-  // Create OpenAI agent
-  let agent = new Agent({
+  // Create the OpenAI agent for this turn
+  const agent = new Agent({
     name: 'MyAssistant',
     model: 'gpt-4o',
     instructions: 'You are a helpful assistant with access to Microsoft 365 tools.'
   });
 
   // Register MCP tools
-  agent = await registrationService.addToolServersToAgent(
+  await registrationService.addToolServersToAgent(
     agent,
     authorization,
     'myAuthHandler',
@@ -151,10 +165,18 @@ async function onMessage(turnContext: TurnContext, authorization: Authorization)
     authToken
   );
 
-  // Run the agent
-  const result = await run(agent, turnContext.activity.text);
+  try {
+    for (const server of agent.mcpServers) {
+      await server.connect();
+    }
 
-  await turnContext.sendActivity(result.finalOutput);
+    // Run the agent
+    const result = await run(agent, turnContext.activity.text);
+
+    await turnContext.sendActivity(result.finalOutput);
+  } finally {
+    await registrationService.closeToolServers(agent);
+  }
 }
 ```
 
@@ -162,28 +184,38 @@ async function onMessage(turnContext: TurnContext, authorization: Authorization)
 
 The service keeps the MCP servers you add to the agent yourself. Servers that an earlier call to
 `addToolServersToAgent` added are removed first, even if the current call fails, so an agent reused
-across turns only has the current turn's servers. Servers an earlier call added to this agent are
+across turns only has the current turn's servers. Servers an earlier call created for this agent are
 also closed; servers it shares with another agent (for example through `agent.clone()`) are only
 removed from this one. A new array is assigned, so an array shared with another agent is not changed:
 
 ```typescript
-// Remove servers an earlier call added; close the ones added to this agent
-const previousServers = agent.mcpServers ?? [];
-const staleServers = previousServers.filter((server) => sdkCreatedServers.has(server));
-agent.mcpServers = previousServers.filter((server) => !sdkCreatedServers.has(server));
-await Promise.allSettled(
-  staleServers.filter((server) => sdkCreatedServers.get(server) === agent).map((server) => server.close())
-);
+// Remove servers an earlier call added; close the ones it created for this agent
+await removeAddedServers(agent);
 
 // ... discover servers for the current turn ...
 
 agent.mcpServers = [...agent.mcpServers, ...mcpServers];
+trackCreatedServers(agent, mcpServers);  // created by this call, for this agent
 
 return agent;
 ```
 
-Create the agent for each turn (or `clone()` a base agent), and don't share one agent between turns
-that run at the same time.
+## Connecting and Closing MCP Servers
+
+`addToolServersToAgent` creates the `MCPServerStreamableHttp` instances but doesn't connect them.
+Connect them before running the agent, as you do with servers you add yourself. A connected server
+keeps a connection and a session open on the MCP server until it is closed, and it carries the
+request headers of the call that created it, so use it only for the current turn:
+
+- Create the agent for each turn (or `clone()` a base agent), and call `closeToolServers(agent)` in a
+  `finally` block when the turn ends. It removes the servers `addToolServersToAgent` added from the
+  agent and closes the ones it created for this agent; closing an `MCPServerStreamableHttp` also ends
+  its server session. It doesn't matter whether the servers were connected. Servers you added
+  yourself are kept and left open, and calling it again does nothing.
+- Don't share one agent between turns that run at the same time.
+- If an agent is garbage collected before `closeToolServers` is called, the servers created for it are
+  closed then. When that happens depends on the garbage collector, so call `closeToolServers` rather
+  than relying on it.
 
 ## File Structure
 
@@ -323,14 +355,14 @@ async function onMessage(turnContext: TurnContext, authorization: Authorization)
   const registrationService = new McpToolRegistrationService();
 
   // Create OpenAI agent with session
-  let agent = new Agent({
+  const agent = new Agent({
     name: 'MyAssistant',
     model: 'gpt-4o',
     instructions: 'You are a helpful assistant.'
   });
 
   // Register MCP tools
-  agent = await registrationService.addToolServersToAgent(
+  await registrationService.addToolServersToAgent(
     agent,
     authorization,
     'myAuthHandler',
@@ -338,22 +370,30 @@ async function onMessage(turnContext: TurnContext, authorization: Authorization)
     authToken
   );
 
-  // Run the agent with conversation session
-  const session = new OpenAIConversationsSession();
-  const result = await run(agent, turnContext.activity.text, { session });
+  try {
+    for (const server of agent.mcpServers) {
+      await server.connect();
+    }
 
-  // Send chat history for threat protection
-  const historyResult = await registrationService.sendChatHistoryAsync(
-    turnContext,
-    session,
-    100  // Send up to 100 messages
-  );
+    // Run the agent with conversation session
+    const session = new OpenAIConversationsSession();
+    const result = await run(agent, turnContext.activity.text, { session });
 
-  if (!historyResult.succeeded) {
-    console.warn('Failed to send chat history:', historyResult.errors);
+    // Send chat history for threat protection
+    const historyResult = await registrationService.sendChatHistoryAsync(
+      turnContext,
+      session,
+      100  // Send up to 100 messages
+    );
+
+    if (!historyResult.succeeded) {
+      console.warn('Failed to send chat history:', historyResult.errors);
+    }
+
+    await turnContext.sendActivity(result.finalOutput);
+  } finally {
+    await registrationService.closeToolServers(agent);
   }
-
-  await turnContext.sendActivity(result.finalOutput);
 }
 ```
 
@@ -366,3 +406,4 @@ async function onMessage(turnContext: TurnContext, authorization: Authorization)
 | Tool Naming | Native MCP names | `mcp__server__tool` | Native MCP names |
 | Return Type | Updated `Agent` | `void` (modifies options) | New `ReactAgent` |
 | Chat History API | `sendChatHistoryAsync` | N/A | N/A |
+| Closing MCP Connections | `closeToolServers(agent)` | Not needed (no connection kept open) | `closeToolServers(agent)` |

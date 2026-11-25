@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+import { setFlagsFromString } from 'v8';
+import { runInNewContext } from 'vm';
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { TurnContext, Authorization } from '@microsoft/agents-hosting';
 import { Agent, MCPServer } from '@openai/agents';
@@ -12,6 +14,7 @@ jest.mock('@openai/agents', () => {
   // Stands in for MCPServerStreamableHttp and keeps the options it was created with.
   class FakeMCPServerStreamableHttp {
     closed = false;
+    closeCalls = 0;
     constructor(readonly options: { name: string; url: string; requestInit: { headers: Record<string, string> } }) {}
     get name(): string {
       return this.options.name;
@@ -19,6 +22,7 @@ jest.mock('@openai/agents', () => {
     async connect(): Promise<void> {}
     async close(): Promise<void> {
       this.closed = true;
+      this.closeCalls++;
     }
   }
   return { ...actual, MCPServerStreamableHttp: FakeMCPServerStreamableHttp };
@@ -27,6 +31,7 @@ jest.mock('@openai/agents', () => {
 interface FakeServer {
   name: string;
   closed: boolean;
+  closeCalls: number;
   options: { requestInit: { headers: Record<string, string> } };
 }
 
@@ -46,6 +51,27 @@ function authorizationByServer(agent: Agent): Record<string, string> {
 
 function closedStates(servers: MCPServer[]): boolean[] {
   return servers.map((server) => (server as unknown as FakeServer).closed);
+}
+
+// A server the caller adds to the agent itself.
+function callerServer(): MCPServer & { closed: boolean } {
+  return {
+    name: 'caller',
+    closed: false,
+    async close(): Promise<void> {
+      this.closed = true;
+    },
+  } as unknown as MCPServer & { closed: boolean };
+}
+
+// Runs a full garbage collection until the condition holds, without starting Node with --expose-gc.
+async function collectGarbageUntil(condition: () => boolean): Promise<void> {
+  setFlagsFromString('--expose-gc');
+  const gc = runInNewContext('gc') as () => void;
+  for (let attempt = 0; attempt < 10 && !condition(); attempt++) {
+    gc();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
 }
 
 describe('McpToolRegistrationService - addToolServersToAgent', () => {
@@ -174,5 +200,59 @@ describe('McpToolRegistrationService - addToolServersToAgent', () => {
 
     expect(authorizationByServer(agent)).toEqual({ calendar: `Bearer ${tokenB}` });
     expect(closedStates(firstServers)).toEqual([true]);
+  });
+
+  describe('closeToolServers', () => {
+    it('closes the servers created for the agent and removes them from it', async () => {
+      const ownServer = callerServer();
+      const agent = new Agent({ name: 'test-agent', instructions: 'Test.', mcpServers: [ownServer] });
+      discovered = ['mail', 'calendar'];
+      await addServers(agent, tokenA);
+      const addedServers = agent.mcpServers.slice(1);
+
+      await service.closeToolServers(agent);
+      await service.closeToolServers(agent);
+
+      expect(agent.mcpServers).toEqual([ownServer]);
+      expect(addedServers.map((server) => (server as unknown as FakeServer).closeCalls)).toEqual([1, 1]);
+      expect(ownServer.closed).toBe(false);
+    });
+
+    it('only removes the servers a clone shares with the agent it was made from', async () => {
+      const baseAgent = new Agent({ name: 'test-agent', instructions: 'Test.' });
+      await addServers(baseAgent, tokenA);
+      const baseServers = [...baseAgent.mcpServers];
+      const clone = baseAgent.clone({});
+
+      await service.closeToolServers(clone);
+
+      expect(clone.mcpServers).toEqual([]);
+      expect(baseAgent.mcpServers).toEqual(baseServers);
+      expect(closedStates(baseServers)).toEqual([false]);
+    });
+
+    it('does nothing for an agent that addToolServersToAgent was not called with', async () => {
+      const ownServer = callerServer();
+      const agent = new Agent({ name: 'test-agent', instructions: 'Test.', mcpServers: [ownServer] });
+      const servers = agent.mcpServers;
+
+      await service.closeToolServers(agent);
+
+      expect(agent.mcpServers).toBe(servers);
+      expect(ownServer.closed).toBe(false);
+    });
+
+    it('closes the servers created for an agent once the agent is garbage collected', async () => {
+      // Registers on a new agent and drops it, keeping only its servers.
+      const servers = await (async (): Promise<MCPServer[]> => {
+        const agent = new Agent({ name: 'test-agent', instructions: 'Test.' });
+        await addServers(agent, tokenA);
+        return [...agent.mcpServers];
+      })();
+
+      await collectGarbageUntil(() => closedStates(servers).every(Boolean));
+
+      expect(closedStates(servers)).toEqual([true]);
+    });
   });
 });
