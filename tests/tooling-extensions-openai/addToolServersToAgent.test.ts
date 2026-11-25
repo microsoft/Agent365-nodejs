@@ -133,4 +133,17 @@ describe('McpToolRegistrationService - addToolServersToAgent', () => {
     expect(baseAgent.mcpServers).toEqual([]);
     expect(authorizationByServer(agentB)).toEqual({ calendar: `Bearer ${tokenB}` });
   });
+
+  it('does not close servers that the agent a clone was made from still uses', async () => {
+    const baseAgent = new Agent({ name: 'test-agent', instructions: 'Test.' });
+
+    await addServers(baseAgent, tokenA);
+    const baseServers = [...baseAgent.mcpServers];
+    discovered = ['calendar'];
+    const agentB = await addServers(baseAgent.clone({}), tokenB);
+
+    expect(authorizationByServer(agentB)).toEqual({ calendar: `Bearer ${tokenB}` });
+    expect(baseAgent.mcpServers).toEqual(baseServers);
+    expect(closedStates(baseServers)).toEqual([false]);
+  });
 });

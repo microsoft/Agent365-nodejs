@@ -66,10 +66,10 @@ await registrationService.addToolServersToAgent(
 // - allowedTools: ['mcp__serverName__toolName', ...]
 ```
 
-Servers that an earlier call added to the same options, and their allowed tools, are removed first,
-even if the current call fails. Servers and allowed tools you add yourself are kept. The service
-assigns new `mcpServers` and `allowedTools` values, so options copied with `{ ...baseOptions }`
-don't change `baseOptions`. Prepare the options for each turn.
+Servers that an earlier call added to the same options, and the `allowedTools` entries it appended,
+are removed first, even if the current call fails. Servers and allowed tools you add yourself are
+kept. The service assigns new `mcpServers` and `allowedTools` values, so options copied with
+`{ ...baseOptions }` don't change `baseOptions`. Prepare the options for each turn.
 
 **Method Signature:**
 

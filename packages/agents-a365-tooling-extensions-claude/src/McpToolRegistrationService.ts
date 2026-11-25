@@ -15,6 +15,10 @@ import type { McpServerConfig, Options } from '@anthropic-ai/claude-agent-sdk';
 // call that created it, so a later call removes it from the options before adding its own servers.
 const sdkCreatedServerConfigs = new WeakSet<object>();
 
+// allowedTools arrays assigned by addToolServersToAgent, mapped to the entries it appended, so a later
+// call removes exactly those entries and keeps the ones the caller added.
+const sdkAddedAllowedTools = new WeakMap<object, string[]>();
+
 /**
  * Discover MCP servers and list tools formatted for the Claude SDK.
  * Use getMcpServers to fetch server configs and getTools to enumerate tools.
@@ -54,21 +58,25 @@ export class McpToolRegistrationService {
       throw new Error('Agent Options is Required');
     }
 
-    // Remove the servers an earlier call added, and their allowed tools, before anything below can
-    // throw. Assign new containers so objects shared with other options (for example through
-    // `{ ...baseOptions }`) are not changed.
+    // Remove the servers an earlier call added, and the allowedTools entries it appended, before
+    // anything below can throw. Assign new containers so objects shared with other options (for
+    // example through `{ ...baseOptions }`) are not changed.
     const previousServers = Object.entries(agentOptions.mcpServers ?? {});
-    const staleServerNames = previousServers
-      .filter(([, config]) => sdkCreatedServerConfigs.has(config))
-      .map(([name]) => name);
-    if (staleServerNames.length > 0) {
-      const staleToolPrefixes = staleServerNames.map((name) => `mcp__${name}__`);
+    if (previousServers.some(([, config]) => sdkCreatedServerConfigs.has(config))) {
       agentOptions.mcpServers = Object.fromEntries(
         previousServers.filter(([, config]) => !sdkCreatedServerConfigs.has(config))
       );
-      agentOptions.allowedTools = agentOptions.allowedTools?.filter(
-        (tool) => !staleToolPrefixes.some((prefix) => tool.startsWith(prefix))
-      );
+    }
+    const appendedTools = agentOptions.allowedTools ? sdkAddedAllowedTools.get(agentOptions.allowedTools) : undefined;
+    if (agentOptions.allowedTools && appendedTools) {
+      const remainingTools = [...agentOptions.allowedTools];
+      for (const tool of appendedTools) {
+        const index = remainingTools.lastIndexOf(tool);
+        if (index >= 0) {
+          remainingTools.splice(index, 1);
+        }
+      }
+      agentOptions.allowedTools = remainingTools;
     }
 
     if (!authToken) {
@@ -114,7 +122,10 @@ export class McpToolRegistrationService {
       tools.push(...clientTools);
     }
 
-    agentOptions.allowedTools = [...(agentOptions.allowedTools ?? []), ...tools.map(t => t.name)];
+    const addedTools = tools.map(t => t.name);
+    const allowedTools = [...(agentOptions.allowedTools ?? []), ...addedTools];
+    sdkAddedAllowedTools.set(allowedTools, addedTools);
+    agentOptions.allowedTools = allowedTools;
 
     agentOptions.mcpServers = { ...agentOptions.mcpServers, ...mcpServers };
   }

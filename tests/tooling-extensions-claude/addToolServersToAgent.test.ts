@@ -98,4 +98,29 @@ describe('McpToolRegistrationService - addToolServersToAgent', () => {
     expect(authorizationByServer(optionsB)).toEqual({ custom: undefined, calendar: `Bearer ${tokenB}` });
     expect(optionsB.allowedTools).toEqual(['Read', 'mcp__calendar__calendar_tool']);
   });
+
+  it('keeps allowedTools entries for caller servers whose names start with a discovered server name', async () => {
+    const archiveServer = { type: 'http', url: 'https://archive.example.com/mcp' } as McpServerConfig;
+    const options: Options = {
+      allowedTools: ['mcp__mail__archive__search'],
+      mcpServers: { mail__archive: archiveServer },
+    };
+
+    await addServers(options, tokenA);
+    discovered = ['calendar'];
+    await addServers(options, tokenB);
+
+    expect(options.allowedTools).toEqual(['mcp__mail__archive__search', 'mcp__calendar__calendar_tool']);
+    expect(Object.keys(options.mcpServers ?? {})).toEqual(['mail__archive', 'calendar']);
+  });
+
+  it('keeps allowedTools entries the caller added for a discovered server', async () => {
+    const options: Options = { allowedTools: ['mcp__mail__mail_tool'] };
+
+    await addServers(options, tokenA);
+    discovered = ['calendar'];
+    await addServers(options, tokenB);
+
+    expect(options.allowedTools).toEqual(['mcp__mail__mail_tool', 'mcp__calendar__calendar_tool']);
+  });
 });

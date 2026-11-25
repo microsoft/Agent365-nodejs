@@ -13,9 +13,10 @@ import { TurnContext, Authorization } from '@microsoft/agents-hosting';
 import { Agent, MCPServerStreamableHttp, AgentInputItem } from '@openai/agents';
 import { OpenAIConversationsSession } from '@openai/agents-openai';
 
-// MCP servers created by addToolServersToAgent. Each one is built with the request headers of the
-// call that created it, so a later call removes it from the agent before adding its own servers.
-const sdkCreatedServers = new WeakSet<object>();
+// MCP servers created by addToolServersToAgent, mapped to the agent they were added to. Each one is
+// built with the request headers of the call that created it, so a later call removes it from the
+// agent before adding its own servers.
+const sdkCreatedServers = new WeakMap<object, object>();
 
 /**
  * Discover MCP servers and list tools formatted for the OpenAI Agents SDK.
@@ -58,12 +59,16 @@ export class McpToolRegistrationService {
       throw new Error('Agent is Required');
     }
 
-    // Remove and close the servers an earlier call added before anything below can throw. Assign a
-    // new array so an array shared with another agent (for example through agent.clone()) is not changed.
+    // Remove the servers an earlier call added before anything below can throw. Assign a new array so
+    // an array shared with another agent (for example through agent.clone()) is not changed, and
+    // close only the servers that were added to this agent: servers it shares with another agent are
+    // only removed from this one.
     const previousServers = agent.mcpServers ?? [];
     const staleServers = previousServers.filter((server) => sdkCreatedServers.has(server));
     agent.mcpServers = previousServers.filter((server) => !sdkCreatedServers.has(server));
-    await Promise.allSettled(staleServers.map((server) => server.close()));
+    await Promise.allSettled(
+      staleServers.filter((server) => sdkCreatedServers.get(server) === agent).map((server) => server.close())
+    );
 
     if (!authToken) {
       const scope = this.configProvider.getConfiguration().mcpPlatformAuthenticationScope;
@@ -91,7 +96,7 @@ export class McpToolRegistrationService {
         }
       });
 
-      sdkCreatedServers.add(mcpServer);
+      sdkCreatedServers.set(mcpServer, agent);
       mcpServers.push(mcpServer);
     }
 
