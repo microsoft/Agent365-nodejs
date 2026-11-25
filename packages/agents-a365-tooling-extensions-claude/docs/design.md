@@ -66,10 +66,29 @@ await registrationService.addToolServersToAgent(
 // - allowedTools: ['mcp__serverName__toolName', ...]
 ```
 
+### Preparing the Options for Each Turn
+
 Servers that an earlier call added to the same options, and the `allowedTools` entries it appended,
 are removed first, even if the current call fails. Servers and allowed tools you add yourself are
 kept. The service assigns new `mcpServers` and `allowedTools` values, so options copied with
-`{ ...baseOptions }` don't change `baseOptions`. Prepare the options for each turn.
+`{ ...baseOptions }` don't change `baseOptions`. Each server config carries the request headers of
+the call that created it, so:
+
+- Prepare the options for each turn, for example with `{ ...baseOptions }`, and use them only for
+  that turn.
+- Don't share one options object between turns that run at the same time. If two calls on one
+  options object overlap, the options end up with the servers and allowed tools of the call that
+  finishes last.
+- Don't build the options for a turn by deep-copying options that `addToolServersToAgent` registered
+  on, for example with `structuredClone()` or a JSON round trip. The service recognizes the server
+  configs and `allowedTools` entries it added by object identity, so in a deep copy they look like
+  entries you added yourself, and a later call keeps them, including servers it doesn't discover.
+  Copy the options from before registration instead.
+
+No MCP connection stays open in this process: `addToolServersToAgent` lists each server's tools to
+build `allowedTools`, and ends the MCP session and closes the connection before it returns. The
+Claude Agent SDK connects to the servers itself when it runs a query, so this extension has no
+`closeToolServers` method.
 
 **Method Signature:**
 

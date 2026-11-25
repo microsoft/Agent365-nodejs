@@ -298,7 +298,9 @@ request headers of the call that created them, so use the returned agent only fo
 - Don't share one agent between turns that run at the same time.
 - If a returned agent is garbage collected before `closeToolServers` is called, its client is closed
   then. When that happens depends on the garbage collector, so call `closeToolServers` rather than
-  relying on it.
+  relying on it. An agent can also stay reachable after its turn: the async context of a LangChain
+  run references the agent, and HTTP keep-alive connections opened during the run keep that context
+  for as long as they stay open, including while a later turn's MCP connections reuse them.
 
 ```typescript
 /** Ends the session on each server the client is connected to, then closes the client. */

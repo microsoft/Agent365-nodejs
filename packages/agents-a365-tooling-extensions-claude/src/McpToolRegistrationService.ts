@@ -81,6 +81,14 @@ export class McpToolRegistrationService {
   /**
    * Registers MCP tool servers and updates agent options with discovered tools and server configs.
    * Call this to enable dynamic Claude tool access.
+   *
+   * Each server config carries the request headers of this call. Servers an earlier call added to
+   * these options, and the allowedTools entries it appended, are removed first. Prepare the options
+   * for each turn, for example with `{ ...baseOptions }`, and don't share them between turns that run
+   * at the same time. Don't deep-copy options this method registered on (for example with
+   * structuredClone or a JSON round trip) to build the options for another turn: the entries it added
+   * are recognized by object identity, so in the copy they look like your own and a later call keeps
+   * them.
    * @param agentOptions The Claude Agent options to which MCP servers will be added.
    * @param authorization Authorization object for token exchange.
    * @param authHandlerName The name of the auth handler to use for token exchange.

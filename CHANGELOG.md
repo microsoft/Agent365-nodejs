@@ -29,7 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`closeToolServers(agent)`** — Closes the MCP connections that `addToolServersToAgent` opened or
   created for an agent and ends their server sessions. Call it in a `finally` block when the turn
-  that used the agent ends. If the agent is garbage collected before that, they are closed then.
+  that used the agent ends. If the agent is garbage collected before that, they are closed then;
+  when that happens depends on the garbage collector, so don't rely on it.
   - **OpenAI:** removes the servers `addToolServersToAgent` added from the agent and closes the ones
     it created for this agent (`addToolServersToAgent` doesn't connect them; you do). Servers the
     agent shares with another agent through `agent.clone()` are only removed, and servers you add
@@ -66,7 +67,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `import`. When two calls on one agent (OpenAI) or one options object (Claude) overlap, the call
   that finishes last replaces the servers the other one added instead of being merged with them.
 
-  Build the agent (or options) for each turn and use it only for that turn.
+  Build the agent (or options) for each turn, use it only for that turn, and call
+  `closeToolServers` in a `finally` block when the turn ends (OpenAI and LangChain). Don't share one
+  agent or options object between turns that run at the same time, and don't build Claude options
+  for a turn by deep-copying options that `addToolServersToAgent` registered on.
 
 ## [2.0.0] - 2026-10-20
 
