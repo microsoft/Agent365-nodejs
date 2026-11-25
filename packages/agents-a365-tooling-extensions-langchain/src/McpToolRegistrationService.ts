@@ -29,6 +29,9 @@ interface RegistrationState {
   // them over to the agent it returns.
   readonly sdkCreatedTools: WeakSet<object>;
   readonly mcpClientByAgent: WeakMap<object, MultiServerMCPClient>;
+  // Closes the MCP client of a returned agent that is garbage collected before closeToolServers is
+  // called with it. The client doesn't reference the agent, so it doesn't keep the agent alive.
+  readonly closeClientOfCollectedAgent: FinalizationRegistry<MultiServerMCPClient>;
 }
 
 // The state lives on globalThis so that every copy of this module in the process (for example the
@@ -37,10 +40,34 @@ interface RegistrationState {
 function getRegistrationState(): RegistrationState {
   const holder = globalThis as unknown as Record<symbol, RegistrationState | undefined>;
   const key = Symbol.for('@microsoft/agents-a365-tooling-extensions-langchain/registration-state/v1');
-  return (holder[key] ??= { sdkCreatedTools: new WeakSet(), mcpClientByAgent: new WeakMap() });
+  return (holder[key] ??= {
+    sdkCreatedTools: new WeakSet(),
+    mcpClientByAgent: new WeakMap(),
+    closeClientOfCollectedAgent: new FinalizationRegistry((client) => {
+      closeMcpClient(client).catch(() => undefined);
+    }),
+  });
 }
 
-const { sdkCreatedTools, mcpClientByAgent } = getRegistrationState();
+const { sdkCreatedTools, mcpClientByAgent, closeClientOfCollectedAgent } = getRegistrationState();
+
+/**
+ * Ends the session on each MCP server the client is connected to, then closes the client.
+ * MultiServerMCPClient.close() closes the connections but leaves the sessions on the servers.
+ */
+async function closeMcpClient(client: MultiServerMCPClient): Promise<void> {
+  await Promise.allSettled(
+    Object.keys(client.config.mcpServers ?? {}).map(async (serverName) => {
+      // The client has connected to every server or recorded why it couldn't, so getClient doesn't
+      // open a connection here.
+      const transport = (await client.getClient(serverName))?.transport as
+        | { terminateSession?: () => Promise<void> }
+        | undefined;
+      await transport?.terminateSession?.();
+    })
+  );
+  await client.close().catch(() => undefined);
+}
 
 /**
  * Discover MCP servers and list tools formatted for the LangChain Orchestrator.
@@ -66,6 +93,11 @@ export class McpToolRegistrationService {
   /**
    * Registers MCP tool servers and updates agent options with discovered tools and server configs.
    * Call this to enable dynamic LangChain tool access based on the current MCP environment.
+   *
+   * Returns a new agent whose MCP tools carry the request headers of this call. The MCP client
+   * behind them stays connected until {@link closeToolServers} is called with the returned agent,
+   * so build the agent for each turn and call closeToolServers when the turn ends. If the returned
+   * agent is passed back in, the MCP client of that earlier call is closed first.
    * @param agent The LangChain Agent instance to which MCP servers will be added.
    * @param authorization Authorization object for token exchange.
    * @param authHandlerName The name of the auth handler to use for token exchange.
@@ -87,11 +119,7 @@ export class McpToolRegistrationService {
 
     // If an earlier call returned this agent, close that call's MCP client before anything below can
     // throw, so the earlier tools stop working even if the caller keeps using this agent.
-    const previousClient = mcpClientByAgent.get(agent);
-    if (previousClient) {
-      mcpClientByAgent.delete(agent);
-      await previousClient.close().catch(() => undefined);
-    }
+    await this.closeToolServers(agent);
 
     if (!authToken) {
       const scope = this.configProvider.getConfiguration().mcpPlatformAuthenticationScope;
@@ -118,24 +146,61 @@ export class McpToolRegistrationService {
       } as Connection;
     }
 
-    const mcpClientConfig = {} as ClientConfig;
-    mcpClientConfig.mcpServers = Object.assign(mcpClientConfig.mcpServers ?? {}, mcpServers);
+    const connectionErrors: unknown[] = [];
+    const mcpClientConfig: ClientConfig = {
+      mcpServers,
+      // Record connection errors instead of stopping at the first one, so the client skips the failed
+      // servers when it is closed rather than connecting to them again. The first error is thrown
+      // after every server was tried.
+      onConnectionError: ({ error }) => {
+        connectionErrors.push(error);
+      },
+    };
     const multiServerMcpClient = new MultiServerMCPClient(mcpClientConfig);
-    const mcpTools = await multiServerMcpClient.getTools();
-    mcpTools.forEach((tool) => sdkCreatedTools.add(tool));
+    try {
+      const mcpTools = await multiServerMcpClient.getTools();
+      if (connectionErrors.length > 0) {
+        throw connectionErrors[0];
+      }
+      mcpTools.forEach((tool) => sdkCreatedTools.add(tool));
 
-    // Merge the agent's own tools with this call's MCP tools. MCP tools added by an earlier call are
-    // dropped, so the returned agent only has the current call's MCP tools.
-    const existingTools = (agent.options.tools ?? []).filter((tool) => !sdkCreatedTools.has(tool as object));
-    const allTools = [...existingTools, ...mcpTools];
+      // Merge the agent's own tools with this call's MCP tools. MCP tools added by an earlier call are
+      // dropped, so the returned agent only has the current call's MCP tools.
+      const existingTools = (agent.options.tools ?? []).filter((tool) => !sdkCreatedTools.has(tool as object));
+      const allTools = [...existingTools, ...mcpTools];
 
-    // Create the agent with existing options and combined tools
-    const agentWithTools = createAgent({
-      ...agent.options,
-      tools: allTools,
-    });
-    mcpClientByAgent.set(agentWithTools, multiServerMcpClient);
-    return agentWithTools;
+      // Create the agent with existing options and combined tools
+      const agentWithTools = createAgent({
+        ...agent.options,
+        tools: allTools,
+      });
+      mcpClientByAgent.set(agentWithTools, multiServerMcpClient);
+      closeClientOfCollectedAgent.register(agentWithTools, multiServerMcpClient, agentWithTools);
+      return agentWithTools;
+    } catch (error) {
+      // Nothing can reach this client once this call fails, so close it here.
+      await closeMcpClient(multiServerMcpClient);
+      throw error;
+    }
+  }
+
+  /**
+   * Closes the MCP client behind an agent that {@link addToolServersToAgent} returned, after ending
+   * the session on each of its MCP servers. Call it when the turn that used the agent ends, for
+   * example in a `finally` block. The agent's MCP tools stop working once it returns.
+   *
+   * Does nothing if the agent wasn't returned by addToolServersToAgent or its client is already
+   * closed. If a returned agent is garbage collected before this is called, its client is closed then.
+   * @param agent An agent returned by addToolServersToAgent.
+   */
+  async closeToolServers(agent: ReactAgent): Promise<void> {
+    const client = mcpClientByAgent.get(agent);
+    if (!client) {
+      return;
+    }
+    mcpClientByAgent.delete(agent);
+    closeClientOfCollectedAgent.unregister(agent);
+    await closeMcpClient(client);
   }
 
   // ============================================================================

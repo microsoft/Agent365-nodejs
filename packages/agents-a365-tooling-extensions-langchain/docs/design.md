@@ -28,6 +28,7 @@ The LangChain tooling extensions package provides integration between the Micros
 │  3. Get tools via MCP adapters                                   │
 │  4. Merge with existing agent tools                              │
 │  5. Return new agent with combined tools                         │
+│  6. closeToolServers: end sessions, close the MCP client         │
 │                                                                  │
 │  Send Chat History API:                                          │
 │  1. Extract messages from various LangChain sources             │
@@ -59,26 +60,31 @@ import { createAgent, ReactAgent } from 'langchain';
 
 const registrationService = new McpToolRegistrationService();
 
-// Create initial LangChain agent
-let agent = createAgent({
+// Create the LangChain agent for this turn
+const baseAgent = createAgent({
   llm: chatModel,
   tools: existingTools
 });
 
 // Register MCP tools with the agent
-agent = await registrationService.addToolServersToAgent(
-  agent,
+const agent = await registrationService.addToolServersToAgent(
+  baseAgent,
   authorization,
   authHandlerName,
   turnContext,
   authToken  // Optional, will be obtained if not provided
 );
 
-// Agent now has access to both existing tools and MCP tools
-const result = await agent.invoke({ input: 'Search for documents' });
+try {
+  // Agent now has access to both existing tools and MCP tools
+  const result = await agent.invoke({ input: 'Search for documents' });
+} finally {
+  // End the MCP server sessions and close the connections of this turn
+  await registrationService.closeToolServers(agent);
+}
 ```
 
-**Method Signature:**
+**Method Signatures:**
 
 ```typescript
 async addToolServersToAgent(
@@ -88,6 +94,10 @@ async addToolServersToAgent(
   turnContext: TurnContext,      // Current turn context
   authToken: string              // Bearer token (optional)
 ): Promise<ReactAgent>           // Returns new agent with MCP tools
+
+async closeToolServers(
+  agent: ReactAgent               // Agent returned by addToolServersToAgent
+): Promise<void>
 ```
 
 ## Send Chat History API
@@ -226,12 +236,26 @@ for (const server of servers) {
   };
 }
 
-// Create MCP client
-const mcpClientConfig: ClientConfig = { mcpServers };
-const multiServerMcpClient = new MultiServerMCPClient(mcpClientConfig);
+// Create MCP client. Connection errors are collected instead of stopping at the first one, so the
+// client can be closed without connecting to the failed server again.
+const connectionErrors: unknown[] = [];
+const multiServerMcpClient = new MultiServerMCPClient({
+  mcpServers,
+  onConnectionError: ({ error }) => { connectionErrors.push(error); }
+});
 
-// Get LangChain-compatible tools
-const mcpTools = await multiServerMcpClient.getTools();
+try {
+  // Get LangChain-compatible tools
+  const mcpTools = await multiServerMcpClient.getTools();
+  if (connectionErrors.length > 0) {
+    throw connectionErrors[0];
+  }
+  // ... create and return the agent (see Tool Merging) ...
+} catch (error) {
+  // Nothing can reach this client once the call fails, so close it here
+  await closeMcpClient(multiServerMcpClient);
+  throw error;
+}
 ```
 
 ## Tool Merging
@@ -242,11 +266,7 @@ dropped and its MCP client is closed first, even if the current call fails:
 
 ```typescript
 // Close the MCP client behind an agent an earlier call returned
-const previousClient = mcpClientByAgent.get(agent);
-if (previousClient) {
-  mcpClientByAgent.delete(agent);
-  await previousClient.close().catch(() => undefined);
-}
+await this.closeToolServers(agent);
 
 // ... discover servers for the current turn ...
 
@@ -262,10 +282,40 @@ const agentWithTools = createAgent({
   tools: [...existingTools, ...mcpTools]
 });
 mcpClientByAgent.set(agentWithTools, multiServerMcpClient);
+closeClientOfCollectedAgent.register(agentWithTools, multiServerMcpClient, agentWithTools);
 return agentWithTools;
 ```
 
-Use the returned agent only for the current turn.
+## Closing MCP Connections
+
+The `MultiServerMCPClient` behind the returned agent stays connected to the MCP servers after
+`addToolServersToAgent` returns, because the agent's MCP tools use it. Its MCP tools carry the
+request headers of the call that created them, so use the returned agent only for the current turn:
+
+- Create the agent for each turn, and call `closeToolServers(agent)` with the returned agent in a
+  `finally` block when the turn ends. It ends the session on each MCP server, then closes the
+  client. Calling it again, or with an agent `addToolServersToAgent` didn't return, does nothing.
+- Don't share one agent between turns that run at the same time.
+- If a returned agent is garbage collected before `closeToolServers` is called, its client is closed
+  then. When that happens depends on the garbage collector, so call `closeToolServers` rather than
+  relying on it.
+
+```typescript
+/** Ends the session on each server the client is connected to, then closes the client. */
+async function closeMcpClient(client: MultiServerMCPClient): Promise<void> {
+  await Promise.allSettled(
+    Object.keys(client.config.mcpServers ?? {}).map(async (serverName) => {
+      const transport = (await client.getClient(serverName))?.transport;
+      await transport?.terminateSession?.();
+    })
+  );
+  await client.close().catch(() => undefined);
+}
+```
+
+`MultiServerMCPClient.close()` closes the connections but doesn't end the server sessions, so the
+session of each Streamable HTTP connection is ended first. `getClient()` doesn't open a connection
+here: the client has connected to every server, or recorded why it couldn't, before it is closed.
 
 ## Usage Examples
 
@@ -285,38 +335,43 @@ async function onMessage(turnContext: TurnContext, authorization: Authorization)
     temperature: 0
   });
 
-  // Create initial agent
-  let agent = createAgent({
+  // Create the agent for this turn
+  const baseAgent = createAgent({
     llm: chatModel,
     tools: []
   });
 
   // Register MCP tools
-  agent = await registrationService.addToolServersToAgent(
-    agent,
+  const agent = await registrationService.addToolServersToAgent(
+    baseAgent,
     authorization,
     'myAuthHandler',
     turnContext,
     authToken
   );
 
-  // Run the agent
-  const result = await agent.invoke({
-    input: turnContext.activity.text
-  });
+  try {
+    // Run the agent
+    const result = await agent.invoke({
+      input: turnContext.activity.text
+    });
 
-  // Send chat history for RTP analysis
-  const messages = getConversationMessages(); // Your message retrieval logic
-  const rtpResult = await registrationService.sendChatHistoryFromMessagesAsync(
-    turnContext,
-    messages
-  );
+    // Send chat history for RTP analysis
+    const messages = getConversationMessages(); // Your message retrieval logic
+    const rtpResult = await registrationService.sendChatHistoryFromMessagesAsync(
+      turnContext,
+      messages
+    );
 
-  if (!rtpResult.succeeded) {
-    console.warn('RTP analysis failed:', rtpResult.errors);
+    if (!rtpResult.succeeded) {
+      console.warn('RTP analysis failed:', rtpResult.errors);
+    }
+
+    await turnContext.sendActivity(result.output);
+  } finally {
+    // End the MCP server sessions and close the connections of this turn
+    await registrationService.closeToolServers(agent);
   }
-
-  await turnContext.sendActivity(result.output);
 }
 ```
 

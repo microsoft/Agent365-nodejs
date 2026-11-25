@@ -25,6 +25,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   [Observability migration guide](https://github.com/microsoft/Agent365-nodejs/blob/main/docs/observability-migration.md)
   for initialization, authentication, context propagation, instrumentation, and shutdown.
 
+### Added (`@microsoft/agents-a365-tooling-extensions-langchain`)
+
+- **`closeToolServers(agent)`** — Ends the session on each MCP server and closes the
+  `MultiServerMCPClient` behind an agent that `addToolServersToAgent` returned. Call it in a
+  `finally` block when the turn that used the agent ends. If a returned agent is garbage collected
+  before it is closed, its client is closed then.
+
 ### Fixed (`@microsoft/agents-a365-tooling`)
 
 - **`getMcpClientTools` ends the MCP server session** — It used to close only the connection, so
@@ -41,7 +48,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     shares with another agent through `agent.clone()` are only removed from it. A new `mcpServers`
     array is assigned, so agents that share an array through `agent.clone()` are not changed.
   - **LangChain:** MCP tools an earlier call added are not copied into the returned agent, and the
-    MCP client behind an agent returned by an earlier call is closed.
+    MCP client behind an agent returned by an earlier call is closed after its server sessions are
+    ended. If a server fails to connect, the sessions of the servers that did connect are ended and
+    their connections closed before the call throws; they used to stay open.
   - **Claude:** servers an earlier call added, and the `allowedTools` entries it appended, are
     removed; entries you add are kept, including entries for tools the call discovers, which it
     doesn't append again. New `mcpServers` and `allowedTools` values are assigned, so options copied
