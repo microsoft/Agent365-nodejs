@@ -1,0 +1,101 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { TurnContext, Authorization } from '@microsoft/agents-hosting';
+import type { McpServerConfig, Options } from '@anthropic-ai/claude-agent-sdk';
+import { McpToolServerConfigurationService, MCPServerConfig, McpClientTool } from '../../packages/agents-a365-tooling/src';
+import { McpToolRegistrationService } from '../../packages/agents-a365-tooling-extensions-claude/src/McpToolRegistrationService';
+
+function tokenFor(caller: string): string {
+  const encode = (value: object): string => Buffer.from(JSON.stringify(value)).toString('base64url');
+  return `${encode({ alg: 'none', typ: 'JWT' })}.${encode({ sub: caller, exp: 4102444800 })}.signature`;
+}
+
+function authorizationByServer(options: Options): Record<string, string | undefined> {
+  return Object.fromEntries(
+    Object.entries(options.mcpServers ?? {}).map(([name, config]) => [
+      name,
+      (config as { headers?: Record<string, string> }).headers?.Authorization,
+    ])
+  );
+}
+
+describe('McpToolRegistrationService - addToolServersToAgent', () => {
+  const tokenA = tokenFor('user-a');
+  const tokenB = tokenFor('user-b');
+  const turnContext = { activity: { channelId: 'msteams' } } as unknown as TurnContext;
+  let service: McpToolRegistrationService;
+  let discovered: string[];
+  let failDiscovery: boolean;
+
+  beforeEach(() => {
+    service = new McpToolRegistrationService();
+    discovered = ['mail'];
+    failDiscovery = false;
+    // Mirrors listToolServers attaching the caller's token to each discovered server.
+    jest
+      .spyOn(
+        McpToolServerConfigurationService.prototype as unknown as {
+          listToolServers: (...args: unknown[]) => Promise<MCPServerConfig[]>;
+        },
+        'listToolServers'
+      )
+      .mockImplementation(async (...args: unknown[]) => {
+        if (failDiscovery) {
+          throw new Error('discovery failed');
+        }
+        const authToken = args[3] as string;
+        return discovered.map((name) => ({
+          mcpServerName: name,
+          url: `https://mcp.example.com/${name}`,
+          headers: { Authorization: `Bearer ${authToken}` },
+        }));
+      });
+    jest
+      .spyOn(McpToolServerConfigurationService.prototype, 'getMcpClientTools')
+      .mockImplementation(async (serverName: string): Promise<McpClientTool[]> => [
+        { name: `${serverName}_tool`, inputSchema: { type: 'object' } },
+      ]);
+  });
+
+  async function addServers(options: Options, authToken: string): Promise<void> {
+    await service.addToolServersToAgent(options, {} as Authorization, 'agentic', turnContext, authToken);
+  }
+
+  it('replaces the servers and allowed tools an earlier call added to reused options', async () => {
+    const options: Options = { allowedTools: ['Read'] };
+
+    await addServers(options, tokenA);
+    discovered = ['calendar'];
+    await addServers(options, tokenB);
+
+    expect(authorizationByServer(options)).toEqual({ calendar: `Bearer ${tokenB}` });
+    expect(options.allowedTools).toEqual(['Read', 'mcp__calendar__calendar_tool']);
+  });
+
+  it('removes the servers and allowed tools an earlier call added when the current call fails', async () => {
+    const options: Options = { allowedTools: ['Read'] };
+
+    await addServers(options, tokenA);
+    failDiscovery = true;
+    await expect(addServers(options, tokenB)).rejects.toThrow('discovery failed');
+
+    expect(options.mcpServers).toEqual({});
+    expect(options.allowedTools).toEqual(['Read']);
+  });
+
+  it('does not change the options a copy was made from', async () => {
+    const customServer = { type: 'http', url: 'https://custom.example.com/mcp' } as McpServerConfig;
+    const baseOptions: Options = { allowedTools: ['Read'], mcpServers: { custom: customServer } };
+
+    await addServers({ ...baseOptions }, tokenA);
+    discovered = ['calendar'];
+    const optionsB: Options = { ...baseOptions };
+    await addServers(optionsB, tokenB);
+
+    expect(baseOptions).toEqual({ allowedTools: ['Read'], mcpServers: { custom: customServer } });
+    expect(authorizationByServer(optionsB)).toEqual({ custom: undefined, calendar: `Bearer ${tokenB}` });
+    expect(optionsB.allowedTools).toEqual(['Read', 'mcp__calendar__calendar_tool']);
+  });
+});

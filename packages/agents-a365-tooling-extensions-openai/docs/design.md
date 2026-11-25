@@ -160,17 +160,27 @@ async function onMessage(turnContext: TurnContext, authorization: Authorization)
 
 ## Preserving Existing MCP Servers
 
-The service preserves any existing MCP servers on the agent:
+The service keeps the MCP servers you add to the agent yourself. Servers that an earlier call to
+`addToolServersToAgent` added are removed and closed first, even if the current call fails, so an
+agent reused across turns only has the current turn's servers. A new array is assigned, so an array
+shared with another agent (for example through `agent.clone()`) is not changed:
 
 ```typescript
-// Ensure mcpServers array exists
-agent.mcpServers = agent.mcpServers ?? [];
+// Remove and close servers an earlier call added
+const previousServers = agent.mcpServers ?? [];
+const staleServers = previousServers.filter((server) => sdkCreatedServers.has(server));
+agent.mcpServers = previousServers.filter((server) => !sdkCreatedServers.has(server));
+await Promise.allSettled(staleServers.map((server) => server.close()));
 
-// Add new servers (doesn't replace existing ones)
-agent.mcpServers.push(...mcpServers);
+// ... discover servers for the current turn ...
+
+agent.mcpServers = [...agent.mcpServers, ...mcpServers];
 
 return agent;
 ```
+
+Create the agent for each turn (or `clone()` a base agent), and don't share one agent between turns
+that run at the same time.
 
 ## File Structure
 

@@ -13,6 +13,10 @@ import { TurnContext, Authorization } from '@microsoft/agents-hosting';
 import { Agent, MCPServerStreamableHttp, AgentInputItem } from '@openai/agents';
 import { OpenAIConversationsSession } from '@openai/agents-openai';
 
+// MCP servers created by addToolServersToAgent. Each one is built with the request headers of the
+// call that created it, so a later call removes it from the agent before adding its own servers.
+const sdkCreatedServers = new WeakSet<object>();
+
 /**
  * Discover MCP servers and list tools formatted for the OpenAI Agents SDK.
  * Uses listToolServers to fetch server configs.
@@ -54,6 +58,13 @@ export class McpToolRegistrationService {
       throw new Error('Agent is Required');
     }
 
+    // Remove and close the servers an earlier call added before anything below can throw. Assign a
+    // new array so an array shared with another agent (for example through agent.clone()) is not changed.
+    const previousServers = agent.mcpServers ?? [];
+    const staleServers = previousServers.filter((server) => sdkCreatedServers.has(server));
+    agent.mcpServers = previousServers.filter((server) => !sdkCreatedServers.has(server));
+    await Promise.allSettled(staleServers.map((server) => server.close()));
+
     if (!authToken) {
       const scope = this.configProvider.getConfiguration().mcpPlatformAuthenticationScope;
       authToken = await AgenticAuthenticationService.GetAgenticUserToken(authorization, authHandlerName, turnContext, [scope]);
@@ -80,11 +91,11 @@ export class McpToolRegistrationService {
         }
       });
 
+      sdkCreatedServers.add(mcpServer);
       mcpServers.push(mcpServer);
     }
 
-    agent.mcpServers = agent.mcpServers ?? [];
-    agent.mcpServers.push(...mcpServers);
+    agent.mcpServers = [...agent.mcpServers, ...mcpServers];
 
     return agent;
   }

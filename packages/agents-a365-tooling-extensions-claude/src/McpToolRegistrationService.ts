@@ -11,6 +11,10 @@ import { TurnContext, Authorization } from '@microsoft/agents-hosting';
 // Claude SDK expects a different shape for MCP server configs
 import type { McpServerConfig, Options } from '@anthropic-ai/claude-agent-sdk';
 
+// MCP server configs created by addToolServersToAgent. Each one carries the request headers of the
+// call that created it, so a later call removes it from the options before adding its own servers.
+const sdkCreatedServerConfigs = new WeakSet<object>();
+
 /**
  * Discover MCP servers and list tools formatted for the Claude SDK.
  * Use getMcpServers to fetch server configs and getTools to enumerate tools.
@@ -50,6 +54,23 @@ export class McpToolRegistrationService {
       throw new Error('Agent Options is Required');
     }
 
+    // Remove the servers an earlier call added, and their allowed tools, before anything below can
+    // throw. Assign new containers so objects shared with other options (for example through
+    // `{ ...baseOptions }`) are not changed.
+    const previousServers = Object.entries(agentOptions.mcpServers ?? {});
+    const staleServerNames = previousServers
+      .filter(([, config]) => sdkCreatedServerConfigs.has(config))
+      .map(([name]) => name);
+    if (staleServerNames.length > 0) {
+      const staleToolPrefixes = staleServerNames.map((name) => `mcp__${name}__`);
+      agentOptions.mcpServers = Object.fromEntries(
+        previousServers.filter(([, config]) => !sdkCreatedServerConfigs.has(config))
+      );
+      agentOptions.allowedTools = agentOptions.allowedTools?.filter(
+        (tool) => !staleToolPrefixes.some((prefix) => tool.startsWith(prefix))
+      );
+    }
+
     if (!authToken) {
       const scope = this.configProvider.getConfiguration().mcpPlatformAuthenticationScope;
       authToken = await AgenticAuthenticationService.GetAgenticUserToken(authorization, authHandlerName, turnContext, [scope]);
@@ -70,11 +91,13 @@ export class McpToolRegistrationService {
       const headers = { ...baseHeaders, ...server.headers };
 
       // Add each server to the config object
-      mcpServers[server.mcpServerName] = {
+      const serverConfig = {
         type: 'http',
         url: server.url,
         headers: headers
       } as McpServerConfig;
+      sdkCreatedServerConfigs.add(serverConfig);
+      mcpServers[server.mcpServerName] = serverConfig;
 
       let clientTools = await this.configService.getMcpClientTools(
         server.mcpServerName,
@@ -91,9 +114,8 @@ export class McpToolRegistrationService {
       tools.push(...clientTools);
     }
 
-    agentOptions.allowedTools = agentOptions.allowedTools ?? [];
-    agentOptions.allowedTools.push(...tools.map(t => t.name));
+    agentOptions.allowedTools = [...(agentOptions.allowedTools ?? []), ...tools.map(t => t.name)];
 
-    agentOptions.mcpServers = Object.assign(agentOptions.mcpServers ?? {}, mcpServers);
+    agentOptions.mcpServers = { ...agentOptions.mcpServers, ...mcpServers };
   }
 }

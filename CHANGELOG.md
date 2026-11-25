@@ -25,6 +25,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   [Observability migration guide](https://github.com/microsoft/Agent365-nodejs/blob/main/docs/observability-migration.md)
   for initialization, authentication, context propagation, instrumentation, and shutdown.
 
+### Fixed (`@microsoft/agents-a365-tooling-extensions-openai`, `@microsoft/agents-a365-tooling-extensions-langchain`, `@microsoft/agents-a365-tooling-extensions-claude`)
+
+- **`addToolServersToAgent` no longer carries over MCP servers from an earlier call** — Each call
+  now first removes what an earlier call added, even if the current call fails, then adds the
+  servers for the current turn. Servers and tools you add yourself are unchanged.
+  - **OpenAI:** servers an earlier call added to the agent are removed and closed. A new
+    `mcpServers` array is assigned, so agents that share an array through `agent.clone()` are not
+    changed.
+  - **LangChain:** MCP tools an earlier call added are not copied into the returned agent, and the
+    MCP client behind an agent returned by an earlier call is closed.
+  - **Claude:** servers an earlier call added, and their `allowedTools` entries, are removed. New
+    `mcpServers` and `allowedTools` values are assigned, so options copied with `{ ...baseOptions }`
+    don't change `baseOptions`.
+
+  Build the agent (or options) for each turn and use it only for that turn.
+
 ## [2.0.0] - 2026-10-20
 
 ### Breaking Changes (`@microsoft/agents-a365-observability`, `@microsoft/agents-a365-observability-hosting`, `@microsoft/agents-a365-observability-extensions-openai`, `@microsoft/agents-a365-observability-extensions-langchain`)

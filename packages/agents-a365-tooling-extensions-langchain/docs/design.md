@@ -236,24 +236,36 @@ const mcpTools = await multiServerMcpClient.getTools();
 
 ## Tool Merging
 
-The service preserves existing tools when adding MCP tools:
+The service keeps the tools you add to the agent yourself and adds the MCP tools for the current
+call. If you pass in an agent that an earlier call returned, the MCP tools that call added are
+dropped and its MCP client is closed first, even if the current call fails:
 
 ```typescript
-// Get existing tools from agent
-const existingTools = agent.options.tools ?? [];
+// Close the MCP client behind an agent an earlier call returned
+const previousClient = mcpClientByAgent.get(agent);
+if (previousClient) {
+  mcpClientByAgent.delete(agent);
+  await previousClient.close().catch(() => undefined);
+}
+
+// ... discover servers for the current turn ...
 
 // Get MCP tools from servers
 const mcpTools = await multiServerMcpClient.getTools();
 
-// Combine all tools
-const allTools = [...existingTools, ...mcpTools];
+// Keep the agent's own tools, drop MCP tools an earlier call added
+const existingTools = (agent.options.tools ?? []).filter((tool) => !sdkCreatedTools.has(tool));
 
 // Create new agent with combined tools
-return createAgent({
+const agentWithTools = createAgent({
   ...agent.options,
-  tools: allTools
+  tools: [...existingTools, ...mcpTools]
 });
+mcpClientByAgent.set(agentWithTools, multiServerMcpClient);
+return agentWithTools;
 ```
+
+Use the returned agent only for the current turn.
 
 ## Usage Examples
 

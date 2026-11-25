@@ -23,6 +23,12 @@ import { v4 as uuidv4 } from 'uuid';
 // These are type-only imports to support TypeScript without requiring the package at runtime
 import type { CompiledStateGraph, StateSnapshot } from '@langchain/langgraph';
 
+// MCP tools created by addToolServersToAgent, and the MCP client behind each agent it returned. They
+// are built with the request headers of the call that created them, so a later call does not carry
+// them over to the agent it returns.
+const sdkCreatedTools = new WeakSet<object>();
+const mcpClientByAgent = new WeakMap<object, MultiServerMCPClient>();
+
 /**
  * Discover MCP servers and list tools formatted for the LangChain Orchestrator.
  * Uses listToolServers to fetch server configs and getTools to enumerate tools.
@@ -66,6 +72,14 @@ export class McpToolRegistrationService {
       throw new Error('Langchain Agent is Required');
     }
 
+    // If an earlier call returned this agent, close that call's MCP client before anything below can
+    // throw, so the earlier tools stop working even if the caller keeps using this agent.
+    const previousClient = mcpClientByAgent.get(agent);
+    if (previousClient) {
+      mcpClientByAgent.delete(agent);
+      await previousClient.close().catch(() => undefined);
+    }
+
     if (!authToken) {
       const scope = this.configProvider.getConfiguration().mcpPlatformAuthenticationScope;
       authToken = await AgenticAuthenticationService.GetAgenticUserToken(authorization, authHandlerName, turnContext, [scope]);
@@ -95,16 +109,20 @@ export class McpToolRegistrationService {
     mcpClientConfig.mcpServers = Object.assign(mcpClientConfig.mcpServers ?? {}, mcpServers);
     const multiServerMcpClient = new MultiServerMCPClient(mcpClientConfig);
     const mcpTools = await multiServerMcpClient.getTools();
+    mcpTools.forEach((tool) => sdkCreatedTools.add(tool));
 
-    // Merge existing agent tools with MCP tools
-    const existingTools = agent.options.tools ?? [];
+    // Merge the agent's own tools with this call's MCP tools. MCP tools added by an earlier call are
+    // dropped, so the returned agent only has the current call's MCP tools.
+    const existingTools = (agent.options.tools ?? []).filter((tool) => !sdkCreatedTools.has(tool as object));
     const allTools = [...existingTools, ...mcpTools];
 
     // Create the agent with existing options and combined tools
-    return createAgent({
+    const agentWithTools = createAgent({
       ...agent.options,
       tools: allTools,
     });
+    mcpClientByAgent.set(agentWithTools, multiServerMcpClient);
+    return agentWithTools;
   }
 
   // ============================================================================
