@@ -29,14 +29,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`closeToolServers(agent)`** — Closes the MCP connections that `addToolServersToAgent` opened or
   created for an agent and ends their server sessions. Call it in a `finally` block when the turn
-  that used the agent ends. If the agent is garbage collected before that, they are closed then;
-  when that happens depends on the garbage collector, so don't rely on it.
+  that used the agent ends. If it isn't called, they are closed once the agent and every copy that
+  shares its servers or tools have been garbage collected; when that happens depends on the garbage
+  collector, so don't rely on it.
   - **OpenAI:** removes the servers `addToolServersToAgent` added from the agent and closes the ones
     it created for this agent (`addToolServersToAgent` doesn't connect them; you do). Servers the
     agent shares with another agent through `agent.clone()` are only removed, and servers you add
-    yourself are kept and left open.
+    yourself are kept and left open. Without it, the servers are closed once the agent and all of its
+    `agent.clone()` copies are collected; don't copy them into an array of your own.
   - **LangChain:** ends the session on each MCP server and closes the `MultiServerMCPClient` behind
-    an agent that `addToolServersToAgent` returned.
+    an agent that `addToolServersToAgent` returned. Without it, the client is closed once the agent
+    and its `agent.withConfig()` copies are collected; don't copy its MCP tools into an array of your
+    own.
 
 ### Fixed (`@microsoft/agents-a365-tooling`)
 

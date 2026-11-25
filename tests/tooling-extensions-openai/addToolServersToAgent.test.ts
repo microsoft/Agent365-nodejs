@@ -74,6 +74,11 @@ async function collectGarbageUntil(condition: () => boolean): Promise<void> {
   }
 }
 
+// Gives the other finalizers of the same garbage collection time to run.
+async function settleFinalizers(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 100));
+}
+
 describe('McpToolRegistrationService - addToolServersToAgent', () => {
   const tokenA = tokenFor('user-a');
   const tokenB = tokenFor('user-b');
@@ -283,6 +288,52 @@ describe('McpToolRegistrationService - addToolServersToAgent', () => {
       await collectGarbageUntil(() => closedStates(servers).every(Boolean));
 
       expect(closedStates(servers)).toEqual([true]);
+    });
+
+    it('keeps the servers open while a clone of the agent is reachable, and closes them once it is not', async () => {
+      let agentCollected = false;
+      const agentObserver = new FinalizationRegistry<string>(() => {
+        agentCollected = true;
+      });
+      const holder: { clone?: Agent } = {};
+      // Registers on a new agent and drops it, keeping only a clone of it and the servers.
+      const servers = await (async (): Promise<MCPServer[]> => {
+        const agent = new Agent({ name: 'test-agent', instructions: 'Test.' });
+        await addServers(agent, tokenA);
+        agentObserver.register(agent, 'agent');
+        holder.clone = agent.clone({});
+        return [...agent.mcpServers];
+      })();
+
+      await collectGarbageUntil(() => agentCollected);
+      await settleFinalizers();
+
+      expect(agentCollected).toBe(true);
+      expect(closedStates(servers)).toEqual([false]);
+
+      holder.clone = undefined;
+      await collectGarbageUntil(() => closedStates(servers).every(Boolean));
+
+      expect(closedStates(servers)).toEqual([true]);
+    });
+
+    it('does not close the servers of a later call once the server array of an earlier call is collected', async () => {
+      let firstArrayCollected = false;
+      const arrayObserver = new FinalizationRegistry<string>(() => {
+        firstArrayCollected = true;
+      });
+      const agent = new Agent({ name: 'test-agent', instructions: 'Test.' });
+      await addServers(agent, tokenA);
+      arrayObserver.register(agent.mcpServers, 'first array');
+      discovered = ['calendar'];
+      await addServers(agent, tokenB);
+      const secondServers = [...agent.mcpServers];
+
+      await collectGarbageUntil(() => firstArrayCollected);
+      await settleFinalizers();
+
+      expect(firstArrayCollected).toBe(true);
+      expect(closedStates(secondServers)).toEqual([false]);
     });
   });
 });

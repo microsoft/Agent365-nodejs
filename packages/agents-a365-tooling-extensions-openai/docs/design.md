@@ -198,7 +198,8 @@ await removeAddedServers(agent);
 // this call's servers replace them instead of being added to them
 const closingOverlappingServers = removeAddedServers(agent);
 agent.mcpServers = [...agent.mcpServers, ...mcpServers];
-trackCreatedServers(agent, mcpServers);  // created by this call, for this agent
+// Created by this call, for this agent. Closed once this new array is garbage collected.
+trackCreatedServers(agent, mcpServers);
 await closingOverlappingServers;
 
 return agent;
@@ -219,9 +220,18 @@ request headers of the call that created it, so use it only for the current turn
 - Don't share one agent between turns that run at the same time. If two calls on one agent overlap,
   the agent ends up with the servers of the call that finishes last, and the servers the other call
   created are closed.
-- If an agent is garbage collected before `closeToolServers` is called, the servers created for it are
-  closed then. When that happens depends on the garbage collector, so call `closeToolServers` rather
-  than relying on it.
+- If `closeToolServers` isn't called, the servers a call created are closed once the agent and all of
+  its `clone()` copies have been garbage collected. When that happens depends on the garbage
+  collector, so call `closeToolServers` rather than relying on it.
+
+  The cleanup follows the `agent.mcpServers` array the call assigned, which `clone()` copies share
+  (each call registers its new array with a copy of its own servers). So don't copy those servers into
+  an array of your own, for example by assigning a new `agent.mcpServers` that contains them, or by
+  using the `active` list of `connectMcpServers()` as the agent's servers. They would be closed once
+  the assigned array is collected, even while your array still holds them. Add servers of your own
+  before calling `addToolServersToAgent`, or push them into `agent.mcpServers`. Closing the servers
+  explicitly doesn't unregister the array, since a clone may still share it; closing a closed
+  `MCPServerStreamableHttp` again does nothing.
 
 ## File Structure
 

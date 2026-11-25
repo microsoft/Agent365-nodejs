@@ -29,9 +29,14 @@ interface RegistrationState {
   // them over to the agent it returns.
   readonly sdkCreatedTools: WeakSet<object>;
   readonly mcpClientByAgent: WeakMap<object, MultiServerMCPClient>;
-  // Closes the MCP client of a returned agent that is garbage collected before closeToolServers is
-  // called with it. The client doesn't reference the agent, so it doesn't keep the agent alive.
-  readonly closeClientOfCollectedAgent: FinalizationRegistry<MultiServerMCPClient>;
+  // Clients that are closed or being closed. getClient() connects again after close(), so a client
+  // must be closed only once.
+  readonly closedClients: WeakSet<object>;
+  // Closes the MCP client of a call once the tools array of the agent it returned is garbage
+  // collected. agent.withConfig() copies, and agents created from a copy of its options, share that
+  // array, so this happens only once all of them are unreachable. The client doesn't reference the
+  // array, so it doesn't keep it alive.
+  readonly closeClientOfCollectedTools: FinalizationRegistry<MultiServerMCPClient>;
 }
 
 // The state lives on globalThis so that every copy of this module in the process (for example the
@@ -43,19 +48,25 @@ function getRegistrationState(): RegistrationState {
   return (holder[key] ??= {
     sdkCreatedTools: new WeakSet(),
     mcpClientByAgent: new WeakMap(),
-    closeClientOfCollectedAgent: new FinalizationRegistry((client) => {
+    closedClients: new WeakSet(),
+    closeClientOfCollectedTools: new FinalizationRegistry((client) => {
       closeMcpClient(client).catch(() => undefined);
     }),
   });
 }
 
-const { sdkCreatedTools, mcpClientByAgent, closeClientOfCollectedAgent } = getRegistrationState();
+const { sdkCreatedTools, mcpClientByAgent, closedClients, closeClientOfCollectedTools } = getRegistrationState();
 
 /**
  * Ends the session on each MCP server the client is connected to, then closes the client.
  * MultiServerMCPClient.close() closes the connections but leaves the sessions on the servers.
+ * Does nothing for a client that is already closed.
  */
 async function closeMcpClient(client: MultiServerMCPClient): Promise<void> {
+  if (closedClients.has(client)) {
+    return;
+  }
+  closedClients.add(client);
   await Promise.allSettled(
     Object.keys(client.config.mcpServers ?? {}).map(async (serverName) => {
       // The client has connected to every server or recorded why it couldn't, so getClient doesn't
@@ -175,7 +186,13 @@ export class McpToolRegistrationService {
         tools: allTools,
       });
       mcpClientByAgent.set(agentWithTools, multiServerMcpClient);
-      closeClientOfCollectedAgent.register(agentWithTools, multiServerMcpClient, agentWithTools);
+      // Follow the tools array rather than the agent: agentWithTools.withConfig() returns a new agent
+      // that shares it (and the MCP tools) without referencing agentWithTools.
+      closeClientOfCollectedTools.register(
+        agentWithTools.options.tools ?? agentWithTools,
+        multiServerMcpClient,
+        multiServerMcpClient
+      );
       return agentWithTools;
     } catch (error) {
       // Nothing can reach this client once this call fails, so close it here.
@@ -187,10 +204,15 @@ export class McpToolRegistrationService {
   /**
    * Closes the MCP client behind an agent that {@link addToolServersToAgent} returned, after ending
    * the session on each of its MCP servers. Call it when the turn that used the agent ends, for
-   * example in a `finally` block. The agent's MCP tools stop working once it returns.
+   * example in a `finally` block. The agent's MCP tools, and those of its withConfig() copies, stop
+   * working once it returns.
    *
-   * Does nothing if the agent wasn't returned by addToolServersToAgent or its client is already
-   * closed. If a returned agent is garbage collected before this is called, its client is closed then.
+   * Does nothing if the agent wasn't returned by addToolServersToAgent (for example a withConfig()
+   * copy of it) or its client is already closed. If this isn't called, the client is closed once the
+   * returned agent and every agent sharing its tools array have been garbage collected: its
+   * withConfig() copies, and agents created from a copy of its options. Don't copy its MCP tools into
+   * an array of your own: the client would be closed once the agent's array is collected, even while
+   * your array still holds them.
    * @param agent An agent returned by addToolServersToAgent.
    */
   async closeToolServers(agent: ReactAgent): Promise<void> {
@@ -199,7 +221,7 @@ export class McpToolRegistrationService {
       return;
     }
     mcpClientByAgent.delete(agent);
-    closeClientOfCollectedAgent.unregister(agent);
+    closeClientOfCollectedTools.unregister(client);
     await closeMcpClient(client);
   }
 

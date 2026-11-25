@@ -282,7 +282,8 @@ const agentWithTools = createAgent({
   tools: [...existingTools, ...mcpTools]
 });
 mcpClientByAgent.set(agentWithTools, multiServerMcpClient);
-closeClientOfCollectedAgent.register(agentWithTools, multiServerMcpClient, agentWithTools);
+// withConfig() copies share the tools array (and the MCP tools), not the agent
+closeClientOfCollectedTools.register(agentWithTools.options.tools, multiServerMcpClient, multiServerMcpClient);
 return agentWithTools;
 ```
 
@@ -294,17 +295,27 @@ request headers of the call that created them, so use the returned agent only fo
 
 - Create the agent for each turn, and call `closeToolServers(agent)` with the returned agent in a
   `finally` block when the turn ends. It ends the session on each MCP server, then closes the
-  client. Calling it again, or with an agent `addToolServersToAgent` didn't return, does nothing.
+  client. Calling it again, or with an agent `addToolServersToAgent` didn't return, does nothing. That
+  includes a `withConfig()` copy of the returned agent, so keep the returned agent and pass it, also
+  when you run a copy.
 - Don't share one agent between turns that run at the same time.
-- If a returned agent is garbage collected before `closeToolServers` is called, its client is closed
-  then. When that happens depends on the garbage collector, so call `closeToolServers` rather than
-  relying on it. An agent can also stay reachable after its turn: the async context of a LangChain
-  run references the agent, and HTTP keep-alive connections opened during the run keep that context
-  for as long as they stay open, including while a later turn's MCP connections reuse them.
+- If `closeToolServers` isn't called, the client is closed once the returned agent and every agent
+  that shares its tools array have been garbage collected. Its `withConfig()` copies share that array,
+  and so do agents created from a copy of its options (`createAgent({ ...agent.options })`); its
+  `graph` keeps the agent reachable. When that happens depends on the garbage collector, so call
+  `closeToolServers` rather than relying on it. Don't copy the MCP tools into an array of your own:
+  the client would be closed once the agent's array is collected, even while your array still holds
+  them. An agent can also stay reachable after its turn: the async context of a LangChain run
+  references the agent, and HTTP keep-alive connections opened during the run keep that context for
+  as long as they stay open, including while a later turn's MCP connections reuse them.
 
 ```typescript
 /** Ends the session on each server the client is connected to, then closes the client. */
 async function closeMcpClient(client: MultiServerMCPClient): Promise<void> {
+  if (closedClients.has(client)) {
+    return;
+  }
+  closedClients.add(client);
   await Promise.allSettled(
     Object.keys(client.config.mcpServers ?? {}).map(async (serverName) => {
       const transport = (await client.getClient(serverName))?.transport;
@@ -318,6 +329,8 @@ async function closeMcpClient(client: MultiServerMCPClient): Promise<void> {
 `MultiServerMCPClient.close()` closes the connections but doesn't end the server sessions, so the
 session of each Streamable HTTP connection is ended first. `getClient()` doesn't open a connection
 here: the client has connected to every server, or recorded why it couldn't, before it is closed.
+After `close()`, though, `getClient()` would connect again, so each client is closed only once, and
+`closeToolServers` also unregisters the garbage collection cleanup.
 
 ## Usage Examples
 

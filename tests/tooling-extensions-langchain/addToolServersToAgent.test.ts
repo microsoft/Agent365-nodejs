@@ -103,6 +103,11 @@ async function collectGarbageUntil(condition: () => boolean): Promise<void> {
   }
 }
 
+// Gives the other finalizers of the same garbage collection time to run.
+async function settleFinalizers(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 100));
+}
+
 describe('McpToolRegistrationService - addToolServersToAgent', () => {
   const tokenA = tokenFor('user-a');
   const tokenB = tokenFor('user-b');
@@ -239,6 +244,49 @@ describe('McpToolRegistrationService - addToolServersToAgent', () => {
 
       await collectGarbageUntil(() => fakeClientClass.instances[0]?.closed === true);
 
+      expect(clientCalls()).toEqual([['terminateSession:mail', 'close']]);
+    });
+
+    it('keeps the MCP client open while a withConfig() copy of the returned agent is reachable', async () => {
+      let agentCollected = false;
+      const agentObserver = new FinalizationRegistry<string>(() => {
+        agentCollected = true;
+      });
+      const holder: { copy?: object } = {};
+      // Registers on a new agent and drops it, keeping only a withConfig() copy of it.
+      await (async (): Promise<void> => {
+        const agent = await addServers(baseAgent, tokenA);
+        agentObserver.register(agent, 'agent');
+        holder.copy = agent.withConfig({ recursionLimit: 5 });
+      })();
+
+      await collectGarbageUntil(() => agentCollected);
+      await settleFinalizers();
+
+      expect(agentCollected).toBe(true);
+      expect(clientCalls()).toEqual([[]]);
+
+      holder.copy = undefined;
+      await collectGarbageUntil(() => fakeClientClass.instances[0]?.closed === true);
+
+      expect(clientCalls()).toEqual([['terminateSession:mail', 'close']]);
+    });
+
+    it('does not close the MCP client again once an agent it closed is garbage collected', async () => {
+      let toolsCollected = false;
+      const toolsObserver = new FinalizationRegistry<string>(() => {
+        toolsCollected = true;
+      });
+      await (async (): Promise<void> => {
+        const agent = await addServers(baseAgent, tokenA);
+        toolsObserver.register(agent.options.tools as object, 'tools');
+        await service.closeToolServers(agent);
+      })();
+
+      await collectGarbageUntil(() => toolsCollected);
+      await settleFinalizers();
+
+      expect(toolsCollected).toBe(true);
       expect(clientCalls()).toEqual([['terminateSession:mail', 'close']]);
     });
   });
