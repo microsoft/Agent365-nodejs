@@ -123,4 +123,15 @@ describe('McpToolRegistrationService - addToolServersToAgent', () => {
 
     expect(options.allowedTools).toEqual(['mcp__mail__mail_tool', 'mcp__calendar__calendar_tool']);
   });
+
+  it('removes the allowedTools entries an earlier call appended after the caller replaced the array', async () => {
+    const options: Options = { allowedTools: ['Read'] };
+
+    await addServers(options, tokenA);
+    options.allowedTools = [...(options.allowedTools ?? []), 'Write'];
+    discovered = ['calendar'];
+    await addServers(options, tokenB);
+
+    expect(options.allowedTools).toEqual(['Read', 'Write', 'mcp__calendar__calendar_tool']);
+  });
 });

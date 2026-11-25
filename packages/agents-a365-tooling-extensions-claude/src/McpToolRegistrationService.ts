@@ -15,8 +15,9 @@ import type { McpServerConfig, Options } from '@anthropic-ai/claude-agent-sdk';
 // call that created it, so a later call removes it from the options before adding its own servers.
 const sdkCreatedServerConfigs = new WeakSet<object>();
 
-// allowedTools arrays assigned by addToolServersToAgent, mapped to the entries it appended, so a later
-// call removes exactly those entries and keeps the ones the caller added.
+// allowedTools arrays assigned by addToolServersToAgent, and the options it registered on, mapped to the
+// entries it appended. A later call removes exactly those entries and keeps the ones the caller added,
+// also when the caller replaced the allowedTools array in between.
 const sdkAddedAllowedTools = new WeakMap<object, string[]>();
 
 /**
@@ -67,7 +68,10 @@ export class McpToolRegistrationService {
         previousServers.filter(([, config]) => !sdkCreatedServerConfigs.has(config))
       );
     }
-    const appendedTools = agentOptions.allowedTools ? sdkAddedAllowedTools.get(agentOptions.allowedTools) : undefined;
+    const appendedTools =
+      (agentOptions.allowedTools && sdkAddedAllowedTools.get(agentOptions.allowedTools)) ??
+      sdkAddedAllowedTools.get(agentOptions);
+    sdkAddedAllowedTools.delete(agentOptions);
     if (agentOptions.allowedTools && appendedTools) {
       const remainingTools = [...agentOptions.allowedTools];
       for (const tool of appendedTools) {
@@ -125,6 +129,7 @@ export class McpToolRegistrationService {
     const addedTools = tools.map(t => t.name);
     const allowedTools = [...(agentOptions.allowedTools ?? []), ...addedTools];
     sdkAddedAllowedTools.set(allowedTools, addedTools);
+    sdkAddedAllowedTools.set(agentOptions, addedTools);
     agentOptions.allowedTools = allowedTools;
 
     agentOptions.mcpServers = { ...agentOptions.mcpServers, ...mcpServers };
