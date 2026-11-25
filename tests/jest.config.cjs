@@ -31,7 +31,9 @@ module.exports = {
       tsconfig: {
         skipLibCheck: true,
         esModuleInterop: true,
-        module: 'commonjs'
+        module: 'commonjs',
+        // Same libraries the packages compile with (packages/*/tsconfig.json)
+        lib: ['ES2023', 'DOM']
       },
       diagnostics: {
         ignoreCodes: [6059]

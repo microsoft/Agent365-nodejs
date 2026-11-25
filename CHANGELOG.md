@@ -25,6 +25,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   [Observability migration guide](https://github.com/microsoft/Agent365-nodejs/blob/main/docs/observability-migration.md)
   for initialization, authentication, context propagation, instrumentation, and shutdown.
 
+### Added (`@microsoft/agents-a365-tooling-extensions-openai`, `@microsoft/agents-a365-tooling-extensions-langchain`)
+
+- **`closeToolServers(agent)`** — Closes the MCP connections that `addToolServersToAgent` opened or
+  created for an agent and ends their server sessions. Call it in a `finally` block when the turn
+  that used the agent ends. If it isn't called, they are closed once the agent and every copy that
+  shares its servers or tools have been garbage collected; when that happens depends on the garbage
+  collector, so don't rely on it.
+  - **OpenAI:** removes the servers `addToolServersToAgent` added from the agent and closes the ones
+    it created for this agent (`addToolServersToAgent` doesn't connect them; you do). Servers the
+    agent shares with another agent through `agent.clone()` are only removed, and servers you add
+    yourself are kept and left open. Without it, the servers are closed once the agent and all of its
+    `agent.clone()` copies are collected; don't copy them into an array of your own.
+  - **LangChain:** ends the session on each MCP server and closes the `MultiServerMCPClient` behind
+    an agent that `addToolServersToAgent` returned. Without it, the client is closed once the agent
+    and its `agent.withConfig()` copies are collected; don't copy its MCP tools into an array of your
+    own.
+
+### Fixed (`@microsoft/agents-a365-tooling`)
+
+- **`getMcpClientTools` ends the MCP server session** — It used to close only the connection, so
+  each call left a session open on the MCP server. The Claude extension's `addToolServersToAgent`
+  lists the tools of every server on each call. The session is now ended before the connection is
+  closed, also when listing tools fails, in which case the connection used to stay open too.
+
+### Fixed (`@microsoft/agents-a365-tooling-extensions-openai`, `@microsoft/agents-a365-tooling-extensions-langchain`, `@microsoft/agents-a365-tooling-extensions-claude`)
+
+- **`addToolServersToAgent` no longer carries over MCP servers from an earlier call** — Each call
+  now first removes what an earlier call added, even if the current call fails, then adds the
+  servers for the current turn. Servers and tools you add yourself are unchanged.
+  - **OpenAI:** servers an earlier call added to the agent are removed and closed. Servers the agent
+    shares with another agent through `agent.clone()` are only removed from it. A new `mcpServers`
+    array is assigned, so agents that share an array through `agent.clone()` are not changed.
+  - **LangChain:** MCP tools an earlier call added are not copied into the returned agent, and the
+    MCP client behind an agent returned by an earlier call is closed after its server sessions are
+    ended. If a server fails to connect, the sessions of the servers that did connect are ended and
+    their connections closed before the call throws; they used to stay open.
+  - **Claude:** servers an earlier call added, and the `allowedTools` entries it appended, are
+    removed; entries you add are kept, including entries for tools the call discovers, which it
+    doesn't append again. New `mcpServers` and `allowedTools` values are assigned, so options copied
+    with `{ ...baseOptions }` don't change `baseOptions`.
+
+  What a call added is also recognized when the next call goes through another copy of the package
+  in the same process, for example the CommonJS build and the ES module build a bundler picks for
+  `import`. When two calls on one agent (OpenAI) or one options object (Claude) overlap, the call
+  that finishes last replaces the servers the other one added instead of being merged with them.
+
+  Build the agent (or options) for each turn, use it only for that turn, and call
+  `closeToolServers` in a `finally` block when the turn ends (OpenAI and LangChain). Don't share one
+  agent or options object between turns that run at the same time, and don't build Claude options
+  for a turn by deep-copying options that `addToolServersToAgent` registered on.
+
 ## [2.0.0] - 2026-10-20
 
 ### Breaking Changes (`@microsoft/agents-a365-observability`, `@microsoft/agents-a365-observability-hosting`, `@microsoft/agents-a365-observability-extensions-openai`, `@microsoft/agents-a365-observability-extensions-langchain`)

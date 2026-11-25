@@ -10,8 +10,90 @@ import { OpenAIToolingConfiguration, defaultOpenAIToolingConfigurationProvider }
 import { TurnContext, Authorization } from '@microsoft/agents-hosting';
 
 // OpenAI Agents SDK
-import { Agent, MCPServerStreamableHttp, AgentInputItem } from '@openai/agents';
+import { Agent, MCPServer, MCPServerStreamableHttp, AgentInputItem } from '@openai/agents';
 import { OpenAIConversationsSession } from '@openai/agents-openai';
+
+interface RegistrationState {
+  // MCP servers created by addToolServersToAgent. Each one is built with the request headers of the
+  // call that created it, so a later call removes it from the agent before adding its own servers.
+  readonly sdkCreatedServers: WeakSet<object>;
+  // The servers addToolServersToAgent created for each agent. Only these are closed when they are
+  // removed from that agent; servers it shares with another agent (for example through agent.clone())
+  // are only removed from it.
+  readonly ownedServersByAgent: WeakMap<object, Set<MCPServer>>;
+  // Closes the servers a call created once the agent.mcpServers array that call assigned is garbage
+  // collected. agent.clone() copies share that array, so this happens only once the agent and all of
+  // its copies are unreachable. Each registration holds its own call's servers, so the array of an
+  // earlier call never closes the servers of a later call on the same agent.
+  readonly closeServersOfCollectedArray: FinalizationRegistry<readonly MCPServer[]>;
+}
+
+// The state lives on globalThis so that every copy of this module in the process (for example the
+// CommonJS and the ES module build of this package) uses the same one and recognizes the servers
+// another copy added.
+function getRegistrationState(): RegistrationState {
+  const holder = globalThis as unknown as Record<symbol, RegistrationState | undefined>;
+  const key = Symbol.for('@microsoft/agents-a365-tooling-extensions-openai/registration-state/v1');
+  return (holder[key] ??= {
+    sdkCreatedServers: new WeakSet(),
+    ownedServersByAgent: new WeakMap(),
+    closeServersOfCollectedArray: new FinalizationRegistry((servers) => {
+      closeServers(servers).catch(() => undefined);
+    }),
+  });
+}
+
+const { sdkCreatedServers, ownedServersByAgent, closeServersOfCollectedArray } = getRegistrationState();
+
+/**
+ * Closes the servers. MCPServerStreamableHttp.close() also ends the server session, and does nothing
+ * for a server that is already closed.
+ */
+async function closeServers(servers: readonly MCPServer[]): Promise<void> {
+  await Promise.allSettled(servers.map((server) => server.close()));
+}
+
+/**
+ * Removes the servers addToolServersToAgent added from the agent and closes the ones it created for
+ * this agent. A new array is assigned, so an array the agent shares with another agent is not changed.
+ * The servers are removed before this returns; the returned promise settles once they are closed.
+ */
+function removeAddedServers(agent: Agent): Promise<void> {
+  const servers = agent.mcpServers ?? [];
+  if (servers.some((server) => sdkCreatedServers.has(server))) {
+    agent.mcpServers = servers.filter((server) => !sdkCreatedServers.has(server));
+  }
+  const owned = ownedServersByAgent.get(agent);
+  if (!owned || owned.size === 0) {
+    return Promise.resolve();
+  }
+  const ownedServers = [...owned];
+  owned.clear();
+  return closeServers(ownedServers);
+}
+
+/**
+ * Records the servers addToolServersToAgent created for the agent, and closes them once the
+ * agent.mcpServers array that call just assigned is garbage collected.
+ */
+function trackCreatedServers(agent: Agent, servers: MCPServer[]): void {
+  if (servers.length === 0) {
+    return;
+  }
+  let owned = ownedServersByAgent.get(agent);
+  if (!owned) {
+    owned = new Set();
+    ownedServersByAgent.set(agent, owned);
+  }
+  for (const server of servers) {
+    sdkCreatedServers.add(server);
+    owned.add(server);
+  }
+  // The held value is a copy of this call's servers: it must not reference the array, and the owned
+  // set changes with later calls. It isn't unregistered when the servers are closed explicitly, since
+  // a clone may still share the array; closing them again then does nothing.
+  closeServersOfCollectedArray.register(agent.mcpServers, [...servers]);
+}
 
 /**
  * Discover MCP servers and list tools formatted for the OpenAI Agents SDK.
@@ -35,6 +117,11 @@ export class McpToolRegistrationService {
   /**
    * Registers MCP tool servers and updates agent options with discovered tools and server configs.
    * Call this to enable dynamic OpenAI tool access based on the current MCP environment.
+   *
+   * Adds an MCPServerStreamableHttp for each discovered server to agent.mcpServers, built with the
+   * request headers of this call. The servers are not connected: connect them before running the
+   * agent, as with servers you add yourself, and call {@link closeToolServers} when the turn ends.
+   * Servers an earlier call added are removed first, and the ones it created for this agent closed.
    * @param agent The OpenAI Agent instance to which MCP servers will be added.
    * @param authorization Authorization object for token exchange.
    * @param authHandlerName The name of the auth handler to use for token exchange.
@@ -53,6 +140,11 @@ export class McpToolRegistrationService {
     if (!agent) {
       throw new Error('Agent is Required');
     }
+
+    // Remove the servers an earlier call added before anything below can throw, and close the ones it
+    // created for this agent. Servers the agent shares with another agent (for example through
+    // agent.clone()) are only removed from this one.
+    await removeAddedServers(agent);
 
     if (!authToken) {
       const scope = this.configProvider.getConfiguration().mcpPlatformAuthenticationScope;
@@ -83,10 +175,39 @@ export class McpToolRegistrationService {
       mcpServers.push(mcpServer);
     }
 
-    agent.mcpServers = agent.mcpServers ?? [];
-    agent.mcpServers.push(...mcpServers);
+    // Another call on this agent may have added its servers while this one was discovering servers.
+    // Remove those again, and close the ones it created for this agent, so this call's servers
+    // replace them instead of being added to them.
+    const closingOverlappingServers = removeAddedServers(agent);
+    agent.mcpServers = [...(agent.mcpServers ?? []), ...mcpServers];
+    trackCreatedServers(agent, mcpServers);
+    await closingOverlappingServers;
 
     return agent;
+  }
+
+  /**
+   * Removes the MCP servers that {@link addToolServersToAgent} added from the agent, and closes the
+   * ones it created for this agent, which also ends their server sessions. Call it when the turn
+   * that used the agent ends, for example in a `finally` block, whether or not the servers were
+   * connected. Servers the agent shares with another agent (for example through agent.clone()) are
+   * only removed from it, and servers you added yourself are kept and left open.
+   *
+   * If this isn't called, the servers a call created are closed once the agent and all of its
+   * agent.clone() copies have been garbage collected: the cleanup follows the agent.mcpServers array
+   * that call assigned, which clone() copies share. Don't copy those servers into an array of your
+   * own, for example by assigning a new agent.mcpServers that contains them: they would be closed once
+   * the assigned array is collected, even while your array still holds them. Add servers of your own
+   * before calling addToolServersToAgent, or push them into agent.mcpServers.
+   * @param agent The agent passed to addToolServersToAgent.
+   */
+  async closeToolServers(agent: Agent): Promise<void> {
+    if (!agent) {
+      return;
+    }
+    const closing = removeAddedServers(agent);
+    ownedServersByAgent.delete(agent);
+    await closing;
   }
 
   /**
