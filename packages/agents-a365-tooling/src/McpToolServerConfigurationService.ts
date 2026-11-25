@@ -252,6 +252,7 @@ export class McpToolServerConfigurationService {
 
   /**
    * Connect to the MCP server and return tools with names prefixed by the server name.
+   * The server session is ended and the connection closed before this method returns.
    * Throws if the server URL is missing or the client fails to list tools.
    */
   async getMcpClientTools(mcpServerName: string, mcpServerConfig: MCPServerConfig): Promise<McpClientTool[]> {
@@ -278,10 +279,18 @@ export class McpToolServerConfigurationService {
     });
 
     await mcpClient.connect(transport);
-    const toolsObj = await mcpClient.listTools();
-    await mcpClient.close();
-
-    return toolsObj.tools;
+    try {
+      const toolsObj = await mcpClient.listTools();
+      return toolsObj.tools;
+    } finally {
+      // close() only closes the connection, so end the session on the server first.
+      try {
+        await transport.terminateSession();
+      } catch (error) {
+        this.logger.warn(`Failed to end the session on MCP server '${mcpServerName}': ${(error as Error)?.message ?? error}`);
+      }
+      await mcpClient.close();
+    }
   }
 
   /**

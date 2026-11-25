@@ -214,12 +214,23 @@ async getMcpClientTools(serverName: string, config: MCPServerConfig): Promise<Mc
 
   const client = new Client({ name: serverName + ' Client', version: '1.0' });
   await client.connect(transport);
-  const tools = await client.listTools();
-  await client.close();
-
-  return tools.tools;
+  try {
+    const tools = await client.listTools();
+    return tools.tools;
+  } finally {
+    // close() only closes the connection, so end the session on the server first
+    try {
+      await transport.terminateSession();
+    } catch (error) {
+      logger.warn(`Failed to end the session on MCP server '${serverName}': ${error.message}`);
+    }
+    await client.close();
+  }
 }
 ```
+
+The server session is ended and the connection closed before `getMcpClientTools` returns, also
+when listing tools fails, so listing tools doesn't leave a session open on the server.
 
 ## Configuration
 

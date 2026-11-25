@@ -25,6 +25,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   [Observability migration guide](https://github.com/microsoft/Agent365-nodejs/blob/main/docs/observability-migration.md)
   for initialization, authentication, context propagation, instrumentation, and shutdown.
 
+### Fixed (`@microsoft/agents-a365-tooling`)
+
+- **`getMcpClientTools` ends the MCP server session** — It used to close only the connection, so
+  each call left a session open on the MCP server. The Claude extension's `addToolServersToAgent`
+  lists the tools of every server on each call. The session is now ended before the connection is
+  closed, also when listing tools fails, in which case the connection used to stay open too.
+
 ### Fixed (`@microsoft/agents-a365-tooling-extensions-openai`, `@microsoft/agents-a365-tooling-extensions-langchain`, `@microsoft/agents-a365-tooling-extensions-claude`)
 
 - **`addToolServersToAgent` no longer carries over MCP servers from an earlier call** — Each call
