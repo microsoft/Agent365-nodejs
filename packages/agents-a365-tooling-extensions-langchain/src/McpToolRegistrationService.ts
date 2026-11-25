@@ -23,11 +23,24 @@ import { v4 as uuidv4 } from 'uuid';
 // These are type-only imports to support TypeScript without requiring the package at runtime
 import type { CompiledStateGraph, StateSnapshot } from '@langchain/langgraph';
 
-// MCP tools created by addToolServersToAgent, and the MCP client behind each agent it returned. They
-// are built with the request headers of the call that created them, so a later call does not carry
-// them over to the agent it returns.
-const sdkCreatedTools = new WeakSet<object>();
-const mcpClientByAgent = new WeakMap<object, MultiServerMCPClient>();
+interface RegistrationState {
+  // MCP tools created by addToolServersToAgent, and the MCP client behind each agent it returned. They
+  // are built with the request headers of the call that created them, so a later call does not carry
+  // them over to the agent it returns.
+  readonly sdkCreatedTools: WeakSet<object>;
+  readonly mcpClientByAgent: WeakMap<object, MultiServerMCPClient>;
+}
+
+// The state lives on globalThis so that every copy of this module in the process (for example the
+// CommonJS and the ES module build of this package) uses the same one and recognizes the tools and
+// clients another copy added.
+function getRegistrationState(): RegistrationState {
+  const holder = globalThis as unknown as Record<symbol, RegistrationState | undefined>;
+  const key = Symbol.for('@microsoft/agents-a365-tooling-extensions-langchain/registration-state/v1');
+  return (holder[key] ??= { sdkCreatedTools: new WeakSet(), mcpClientByAgent: new WeakMap() });
+}
+
+const { sdkCreatedTools, mcpClientByAgent } = getRegistrationState();
 
 /**
  * Discover MCP servers and list tools formatted for the LangChain Orchestrator.

@@ -29,14 +29,11 @@ describe('McpToolRegistrationService - addToolServersToAgent', () => {
   let discovered: string[];
   let failDiscovery: boolean;
 
-  beforeEach(() => {
-    service = new McpToolRegistrationService();
-    discovered = ['mail'];
-    failDiscovery = false;
+  function stubDiscovery(configService: typeof McpToolServerConfigurationService): void {
     // Mirrors listToolServers attaching the caller's token to each discovered server.
     jest
       .spyOn(
-        McpToolServerConfigurationService.prototype as unknown as {
+        configService.prototype as unknown as {
           listToolServers: (...args: unknown[]) => Promise<MCPServerConfig[]>;
         },
         'listToolServers'
@@ -53,10 +50,29 @@ describe('McpToolRegistrationService - addToolServersToAgent', () => {
         }));
       });
     jest
-      .spyOn(McpToolServerConfigurationService.prototype, 'getMcpClientTools')
+      .spyOn(configService.prototype, 'getMcpClientTools')
       .mockImplementation(async (serverName: string): Promise<McpClientTool[]> => [
         { name: `${serverName}_tool`, inputSchema: { type: 'object' } },
       ]);
+  }
+
+  // Loads a second copy of the module, as when both the CommonJS and the ES module build of the
+  // package are loaded in one process.
+  function loadOtherCopy(): typeof McpToolRegistrationService {
+    let otherCopy: typeof McpToolRegistrationService | undefined;
+    jest.isolateModules(() => {
+      stubDiscovery(require('../../packages/agents-a365-tooling/src').McpToolServerConfigurationService);
+      otherCopy = require('../../packages/agents-a365-tooling-extensions-claude/src/McpToolRegistrationService')
+        .McpToolRegistrationService;
+    });
+    return otherCopy as typeof McpToolRegistrationService;
+  }
+
+  beforeEach(() => {
+    service = new McpToolRegistrationService();
+    discovered = ['mail'];
+    failDiscovery = false;
+    stubDiscovery(McpToolServerConfigurationService);
   });
 
   async function addServers(options: Options, authToken: string): Promise<void> {
@@ -144,5 +160,17 @@ describe('McpToolRegistrationService - addToolServersToAgent', () => {
     await expect(addServers(options, tokenB)).rejects.toThrow('discovery failed');
 
     expect(options.allowedTools).toEqual(['mcp__mail__mail_tool']);
+  });
+
+  it('replaces the servers and allowed tools that another copy of the module added', async () => {
+    const options: Options = { allowedTools: ['Read'] };
+
+    await addServers(options, tokenA);
+    const OtherCopy = loadOtherCopy();
+    discovered = ['calendar'];
+    await new OtherCopy().addToolServersToAgent(options, {} as Authorization, 'agentic', turnContext, tokenB);
+
+    expect(authorizationByServer(options)).toEqual({ calendar: `Bearer ${tokenB}` });
+    expect(options.allowedTools).toEqual(['Read', 'mcp__calendar__calendar_tool']);
   });
 });

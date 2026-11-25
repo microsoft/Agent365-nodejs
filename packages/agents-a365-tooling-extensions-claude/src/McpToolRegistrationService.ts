@@ -11,14 +11,26 @@ import { TurnContext, Authorization } from '@microsoft/agents-hosting';
 // Claude SDK expects a different shape for MCP server configs
 import type { McpServerConfig, Options } from '@anthropic-ai/claude-agent-sdk';
 
-// MCP server configs created by addToolServersToAgent. Each one carries the request headers of the
-// call that created it, so a later call removes it from the options before adding its own servers.
-const sdkCreatedServerConfigs = new WeakSet<object>();
+interface RegistrationState {
+  // MCP server configs created by addToolServersToAgent. Each one carries the request headers of the
+  // call that created it, so a later call removes it from the options before adding its own servers.
+  readonly sdkCreatedServerConfigs: WeakSet<object>;
+  // allowedTools arrays assigned by addToolServersToAgent, and the options it registered on, mapped to
+  // the entries it appended. A later call removes exactly those entries and keeps the ones the caller
+  // added, also when the caller replaced the allowedTools array in between.
+  readonly sdkAddedAllowedTools: WeakMap<object, string[]>;
+}
 
-// allowedTools arrays assigned by addToolServersToAgent, and the options it registered on, mapped to the
-// entries it appended. A later call removes exactly those entries and keeps the ones the caller added,
-// also when the caller replaced the allowedTools array in between.
-const sdkAddedAllowedTools = new WeakMap<object, string[]>();
+// The state lives on globalThis so that every copy of this module in the process (for example the
+// CommonJS and the ES module build of this package) uses the same one and recognizes the servers
+// another copy added.
+function getRegistrationState(): RegistrationState {
+  const holder = globalThis as unknown as Record<symbol, RegistrationState | undefined>;
+  const key = Symbol.for('@microsoft/agents-a365-tooling-extensions-claude/registration-state/v1');
+  return (holder[key] ??= { sdkCreatedServerConfigs: new WeakSet(), sdkAddedAllowedTools: new WeakMap() });
+}
+
+const { sdkCreatedServerConfigs, sdkAddedAllowedTools } = getRegistrationState();
 
 /**
  * Discover MCP servers and list tools formatted for the Claude SDK.

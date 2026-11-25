@@ -13,10 +13,23 @@ import { TurnContext, Authorization } from '@microsoft/agents-hosting';
 import { Agent, MCPServerStreamableHttp, AgentInputItem } from '@openai/agents';
 import { OpenAIConversationsSession } from '@openai/agents-openai';
 
-// MCP servers created by addToolServersToAgent, mapped to the agent they were added to. Each one is
-// built with the request headers of the call that created it, so a later call removes it from the
-// agent before adding its own servers.
-const sdkCreatedServers = new WeakMap<object, object>();
+interface RegistrationState {
+  // MCP servers created by addToolServersToAgent, mapped to the agent they were added to. Each one is
+  // built with the request headers of the call that created it, so a later call removes it from the
+  // agent before adding its own servers.
+  readonly sdkCreatedServers: WeakMap<object, object>;
+}
+
+// The state lives on globalThis so that every copy of this module in the process (for example the
+// CommonJS and the ES module build of this package) uses the same one and recognizes the servers
+// another copy added.
+function getRegistrationState(): RegistrationState {
+  const holder = globalThis as unknown as Record<symbol, RegistrationState | undefined>;
+  const key = Symbol.for('@microsoft/agents-a365-tooling-extensions-openai/registration-state/v1');
+  return (holder[key] ??= { sdkCreatedServers: new WeakMap() });
+}
+
+const { sdkCreatedServers } = getRegistrationState();
 
 /**
  * Discover MCP servers and list tools formatted for the OpenAI Agents SDK.

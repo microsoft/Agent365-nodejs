@@ -56,14 +56,11 @@ describe('McpToolRegistrationService - addToolServersToAgent', () => {
   let discovered: string[];
   let failDiscovery: boolean;
 
-  beforeEach(() => {
-    service = new McpToolRegistrationService();
-    discovered = ['mail'];
-    failDiscovery = false;
-    // Mirrors listToolServers attaching the caller's token to each discovered server.
+  // Mirrors listToolServers attaching the caller's token to each discovered server.
+  function stubDiscovery(configService: typeof McpToolServerConfigurationService): void {
     jest
       .spyOn(
-        McpToolServerConfigurationService.prototype as unknown as {
+        configService.prototype as unknown as {
           listToolServers: (...args: unknown[]) => Promise<MCPServerConfig[]>;
         },
         'listToolServers'
@@ -79,6 +76,25 @@ describe('McpToolRegistrationService - addToolServersToAgent', () => {
           headers: { Authorization: `Bearer ${authToken}` },
         }));
       });
+  }
+
+  // Loads a second copy of the module, as when both the CommonJS and the ES module build of the
+  // package are loaded in one process.
+  function loadOtherCopy(): typeof McpToolRegistrationService {
+    let otherCopy: typeof McpToolRegistrationService | undefined;
+    jest.isolateModules(() => {
+      stubDiscovery(require('../../packages/agents-a365-tooling/src').McpToolServerConfigurationService);
+      otherCopy = require('../../packages/agents-a365-tooling-extensions-openai/src/McpToolRegistrationService')
+        .McpToolRegistrationService;
+    });
+    return otherCopy as typeof McpToolRegistrationService;
+  }
+
+  beforeEach(() => {
+    service = new McpToolRegistrationService();
+    discovered = ['mail'];
+    failDiscovery = false;
+    stubDiscovery(McpToolServerConfigurationService);
   });
 
   async function addServers(agent: Agent, authToken: string): Promise<Agent> {
@@ -145,5 +161,18 @@ describe('McpToolRegistrationService - addToolServersToAgent', () => {
     expect(authorizationByServer(agentB)).toEqual({ calendar: `Bearer ${tokenB}` });
     expect(baseAgent.mcpServers).toEqual(baseServers);
     expect(closedStates(baseServers)).toEqual([false]);
+  });
+
+  it('replaces the servers that another copy of the module added', async () => {
+    const agent = new Agent({ name: 'test-agent', instructions: 'Test.' });
+
+    await addServers(agent, tokenA);
+    const firstServers = [...agent.mcpServers];
+    const OtherCopy = loadOtherCopy();
+    discovered = ['calendar'];
+    await new OtherCopy().addToolServersToAgent(agent, {} as Authorization, 'agentic', turnContext, tokenB);
+
+    expect(authorizationByServer(agent)).toEqual({ calendar: `Bearer ${tokenB}` });
+    expect(closedStates(firstServers)).toEqual([true]);
   });
 });

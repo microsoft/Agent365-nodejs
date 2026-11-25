@@ -47,6 +47,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     doesn't append again. New `mcpServers` and `allowedTools` values are assigned, so options copied
     with `{ ...baseOptions }` don't change `baseOptions`.
 
+  What a call added is also recognized when the next call goes through another copy of the package
+  in the same process, for example the CommonJS build and the ES module build a bundler picks for
+  `import`.
+
   Build the agent (or options) for each turn and use it only for that turn.
 
 ## [2.0.0] - 2026-10-20

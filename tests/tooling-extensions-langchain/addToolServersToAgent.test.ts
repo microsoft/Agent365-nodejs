@@ -67,10 +67,14 @@ describe('McpToolRegistrationService - addToolServersToAgent', () => {
     discovered = ['mail'];
     failDiscovery = false;
     clients().length = 0;
-    // Mirrors listToolServers attaching the caller's token to each discovered server.
+    stubDiscovery(McpToolServerConfigurationService);
+  });
+
+  // Mirrors listToolServers attaching the caller's token to each discovered server.
+  function stubDiscovery(configService: typeof McpToolServerConfigurationService): void {
     jest
       .spyOn(
-        McpToolServerConfigurationService.prototype as unknown as {
+        configService.prototype as unknown as {
           listToolServers: (...args: unknown[]) => Promise<MCPServerConfig[]>;
         },
         'listToolServers'
@@ -86,7 +90,19 @@ describe('McpToolRegistrationService - addToolServersToAgent', () => {
           headers: { Authorization: `Bearer ${authToken}` },
         }));
       });
-  });
+  }
+
+  // Loads a second copy of the module, as when both the CommonJS and the ES module build of the
+  // package are loaded in one process.
+  function loadOtherCopy(): typeof McpToolRegistrationService {
+    let otherCopy: typeof McpToolRegistrationService | undefined;
+    jest.isolateModules(() => {
+      stubDiscovery(require('../../packages/agents-a365-tooling/src').McpToolServerConfigurationService);
+      otherCopy = require('../../packages/agents-a365-tooling-extensions-langchain/src/McpToolRegistrationService')
+        .McpToolRegistrationService;
+    });
+    return otherCopy as typeof McpToolRegistrationService;
+  }
 
   async function addServers(agent: ReactAgent, authToken: string): Promise<ReactAgent> {
     return service.addToolServersToAgent(agent, {} as Authorization, 'agentic', turnContext, authToken);
@@ -108,5 +124,15 @@ describe('McpToolRegistrationService - addToolServersToAgent', () => {
     await expect(addServers(agentA, tokenB)).rejects.toThrow('discovery failed');
 
     expect(clients().map((client) => client.closed)).toEqual([true]);
+  });
+
+  it('drops the MCP tools and closes the MCP client that another copy of the module added', async () => {
+    const agentA = await addServers(baseAgent, tokenA);
+    const OtherCopy = loadOtherCopy();
+    discovered = ['calendar'];
+    const agentB = await new OtherCopy().addToolServersToAgent(agentA, {} as Authorization, 'agentic', turnContext, tokenB);
+
+    expect(toolsOf(agentB)).toEqual([callerTool, { name: 'calendar_tool', authorization: `Bearer ${tokenB}` }]);
+    expect(clients().map((client) => client.closed)).toEqual([true, false]);
   });
 });
