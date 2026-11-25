@@ -36,8 +36,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **LangChain:** MCP tools an earlier call added are not copied into the returned agent, and the
     MCP client behind an agent returned by an earlier call is closed.
   - **Claude:** servers an earlier call added, and the `allowedTools` entries it appended, are
-    removed; entries you add are kept. New `mcpServers` and `allowedTools` values are assigned, so
-    options copied with `{ ...baseOptions }` don't change `baseOptions`.
+    removed; entries you add are kept, including entries for tools the call discovers, which it
+    doesn't append again. New `mcpServers` and `allowedTools` values are assigned, so options copied
+    with `{ ...baseOptions }` don't change `baseOptions`.
 
   Build the agent (or options) for each turn and use it only for that turn.
 

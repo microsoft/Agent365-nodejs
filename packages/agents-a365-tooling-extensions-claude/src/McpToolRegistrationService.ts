@@ -126,8 +126,17 @@ export class McpToolRegistrationService {
       tools.push(...clientTools);
     }
 
-    const addedTools = tools.map(t => t.name);
-    const allowedTools = [...(agentOptions.allowedTools ?? []), ...addedTools];
+    const allowedTools = [...(agentOptions.allowedTools ?? [])];
+    const allowedNames = new Set(allowedTools);
+    const addedTools: string[] = [];
+    for (const { name } of tools) {
+      // Names the caller already allows stay the caller's, so a later call never removes them.
+      if (!allowedNames.has(name)) {
+        allowedNames.add(name);
+        allowedTools.push(name);
+        addedTools.push(name);
+      }
+    }
     sdkAddedAllowedTools.set(allowedTools, addedTools);
     sdkAddedAllowedTools.set(agentOptions, addedTools);
     agentOptions.allowedTools = allowedTools;
