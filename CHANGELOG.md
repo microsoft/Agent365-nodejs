@@ -63,7 +63,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   What a call added is also recognized when the next call goes through another copy of the package
   in the same process, for example the CommonJS build and the ES module build a bundler picks for
-  `import`.
+  `import`. When two calls on one agent (OpenAI) or one options object (Claude) overlap, the call
+  that finishes last replaces the servers the other one added instead of being merged with them.
 
   Build the agent (or options) for each turn and use it only for that turn.
 

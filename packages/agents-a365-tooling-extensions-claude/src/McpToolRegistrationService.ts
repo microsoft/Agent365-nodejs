@@ -33,6 +33,34 @@ function getRegistrationState(): RegistrationState {
 const { sdkCreatedServerConfigs, sdkAddedAllowedTools } = getRegistrationState();
 
 /**
+ * Removes the servers addToolServersToAgent added to the options, and the allowedTools entries it
+ * appended. New containers are assigned, so objects shared with other options (for example through
+ * `{ ...baseOptions }`) are not changed.
+ */
+function removeAddedServers(agentOptions: Options): void {
+  const previousServers = Object.entries(agentOptions.mcpServers ?? {});
+  if (previousServers.some(([, config]) => sdkCreatedServerConfigs.has(config))) {
+    agentOptions.mcpServers = Object.fromEntries(
+      previousServers.filter(([, config]) => !sdkCreatedServerConfigs.has(config))
+    );
+  }
+  const appendedTools =
+    (agentOptions.allowedTools && sdkAddedAllowedTools.get(agentOptions.allowedTools)) ??
+    sdkAddedAllowedTools.get(agentOptions);
+  sdkAddedAllowedTools.delete(agentOptions);
+  if (agentOptions.allowedTools && appendedTools) {
+    const remainingTools = [...agentOptions.allowedTools];
+    for (const tool of appendedTools) {
+      const index = remainingTools.lastIndexOf(tool);
+      if (index >= 0) {
+        remainingTools.splice(index, 1);
+      }
+    }
+    agentOptions.allowedTools = remainingTools;
+  }
+}
+
+/**
  * Discover MCP servers and list tools formatted for the Claude SDK.
  * Use getMcpServers to fetch server configs and getTools to enumerate tools.
  */
@@ -72,28 +100,8 @@ export class McpToolRegistrationService {
     }
 
     // Remove the servers an earlier call added, and the allowedTools entries it appended, before
-    // anything below can throw. Assign new containers so objects shared with other options (for
-    // example through `{ ...baseOptions }`) are not changed.
-    const previousServers = Object.entries(agentOptions.mcpServers ?? {});
-    if (previousServers.some(([, config]) => sdkCreatedServerConfigs.has(config))) {
-      agentOptions.mcpServers = Object.fromEntries(
-        previousServers.filter(([, config]) => !sdkCreatedServerConfigs.has(config))
-      );
-    }
-    const appendedTools =
-      (agentOptions.allowedTools && sdkAddedAllowedTools.get(agentOptions.allowedTools)) ??
-      sdkAddedAllowedTools.get(agentOptions);
-    sdkAddedAllowedTools.delete(agentOptions);
-    if (agentOptions.allowedTools && appendedTools) {
-      const remainingTools = [...agentOptions.allowedTools];
-      for (const tool of appendedTools) {
-        const index = remainingTools.lastIndexOf(tool);
-        if (index >= 0) {
-          remainingTools.splice(index, 1);
-        }
-      }
-      agentOptions.allowedTools = remainingTools;
-    }
+    // anything below can throw.
+    removeAddedServers(agentOptions);
 
     if (!authToken) {
       const scope = this.configProvider.getConfiguration().mcpPlatformAuthenticationScope;
@@ -137,6 +145,10 @@ export class McpToolRegistrationService {
 
       tools.push(...clientTools);
     }
+
+    // Another call on these options may have added its servers while this one was discovering
+    // servers. Remove those again, so this call's servers replace them instead of being merged with them.
+    removeAddedServers(agentOptions);
 
     const allowedTools = [...(agentOptions.allowedTools ?? [])];
     const allowedNames = new Set(allowedTools);

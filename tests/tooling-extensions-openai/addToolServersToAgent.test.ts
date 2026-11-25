@@ -81,6 +81,9 @@ describe('McpToolRegistrationService - addToolServersToAgent', () => {
   let service: McpToolRegistrationService;
   let discovered: string[];
   let failDiscovery: boolean;
+  // Servers discovered for a given token, and discovery calls held until released.
+  let serversByToken: Record<string, string[]>;
+  let heldDiscovery: Record<string, Promise<void>>;
 
   // Mirrors listToolServers attaching the caller's token to each discovered server.
   function stubDiscovery(configService: typeof McpToolServerConfigurationService): void {
@@ -96,12 +99,22 @@ describe('McpToolRegistrationService - addToolServersToAgent', () => {
           throw new Error('discovery failed');
         }
         const authToken = args[3] as string;
-        return discovered.map((name) => ({
+        await heldDiscovery[authToken];
+        return (serversByToken[authToken] ?? discovered).map((name) => ({
           mcpServerName: name,
           url: `https://mcp.example.com/${name}`,
           headers: { Authorization: `Bearer ${authToken}` },
         }));
       });
+  }
+
+  // Holds discovery for calls with this token until the returned function is called.
+  function holdDiscovery(authToken: string): () => void {
+    let release: () => void = () => undefined;
+    heldDiscovery[authToken] = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    return release;
   }
 
   // Loads a second copy of the module, as when both the CommonJS and the ES module build of the
@@ -120,6 +133,8 @@ describe('McpToolRegistrationService - addToolServersToAgent', () => {
     service = new McpToolRegistrationService();
     discovered = ['mail'];
     failDiscovery = false;
+    serversByToken = {};
+    heldDiscovery = {};
     stubDiscovery(McpToolServerConfigurationService);
   });
 
@@ -200,6 +215,21 @@ describe('McpToolRegistrationService - addToolServersToAgent', () => {
 
     expect(authorizationByServer(agent)).toEqual({ calendar: `Bearer ${tokenB}` });
     expect(closedStates(firstServers)).toEqual([true]);
+  });
+
+  it('keeps only the servers of the call that finishes last when two calls on one agent overlap', async () => {
+    const agent = new Agent({ name: 'test-agent', instructions: 'Test.' });
+    serversByToken = { [tokenA]: ['mail'], [tokenB]: ['calendar'] };
+    const releaseA = holdDiscovery(tokenA);
+
+    const callA = addServers(agent, tokenA);
+    await addServers(agent, tokenB);
+    const serversB = [...agent.mcpServers];
+    releaseA();
+    await callA;
+
+    expect(authorizationByServer(agent)).toEqual({ mail: `Bearer ${tokenA}` });
+    expect(closedStates(serversB)).toEqual([true]);
   });
 
   describe('closeToolServers', () => {

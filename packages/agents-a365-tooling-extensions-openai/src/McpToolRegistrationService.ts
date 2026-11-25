@@ -164,8 +164,13 @@ export class McpToolRegistrationService {
       mcpServers.push(mcpServer);
     }
 
+    // Another call on this agent may have added its servers while this one was discovering servers.
+    // Remove those again, and close the ones it created for this agent, so this call's servers
+    // replace them instead of being added to them.
+    const closingOverlappingServers = removeAddedServers(agent);
     agent.mcpServers = [...(agent.mcpServers ?? []), ...mcpServers];
     trackCreatedServers(agent, mcpServers);
+    await closingOverlappingServers;
 
     return agent;
   }

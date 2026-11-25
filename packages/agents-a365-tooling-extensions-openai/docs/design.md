@@ -194,8 +194,12 @@ await removeAddedServers(agent);
 
 // ... discover servers for the current turn ...
 
+// Another call on this agent may have added its servers in the meantime: remove those again, so
+// this call's servers replace them instead of being added to them
+const closingOverlappingServers = removeAddedServers(agent);
 agent.mcpServers = [...agent.mcpServers, ...mcpServers];
 trackCreatedServers(agent, mcpServers);  // created by this call, for this agent
+await closingOverlappingServers;
 
 return agent;
 ```
@@ -212,7 +216,9 @@ request headers of the call that created it, so use it only for the current turn
   agent and closes the ones it created for this agent; closing an `MCPServerStreamableHttp` also ends
   its server session. It doesn't matter whether the servers were connected. Servers you added
   yourself are kept and left open, and calling it again does nothing.
-- Don't share one agent between turns that run at the same time.
+- Don't share one agent between turns that run at the same time. If two calls on one agent overlap,
+  the agent ends up with the servers of the call that finishes last, and the servers the other call
+  created are closed.
 - If an agent is garbage collected before `closeToolServers` is called, the servers created for it are
   closed then. When that happens depends on the garbage collector, so call `closeToolServers` rather
   than relying on it.
